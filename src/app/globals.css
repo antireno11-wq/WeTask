@@ -49,6 +49,8 @@ body {
 .brand-logo {
   width: clamp(150px, 20vw, 220px);
   height: auto;
+  mix-blend-mode: multiply;
+  filter: contrast(1.08) saturate(1.05);
 }
 
 .brand-pill {
