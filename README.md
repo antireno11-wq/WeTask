@@ -58,6 +58,31 @@ Body:
 }
 ```
 
+### 3) Listar reservas
+`GET /api/bookings?customerId=<id>&status=PENDING&limit=20`
+
+También soporta listar por prestador:
+`GET /api/bookings?proId=<id>&status=ACCEPTED&limit=20`
+
+Notas:
+- Debes enviar `customerId` o `proId`.
+- `status` es opcional (`PENDING`, `ACCEPTED`, `IN_PROGRESS`, `COMPLETED`, `CANCELLED`).
+- `limit` es opcional (1 a 100, default 20).
+
+### 4) Actualizar estado de reserva
+`PATCH /api/bookings/:bookingId/status`
+
+Body:
+```json
+{
+  "status": "ACCEPTED",
+  "proId": "id-del-prestador"
+}
+```
+
+Notas:
+- `proId` es opcional, pero si se envía debe ser un usuario con rol `PRO`.
+
 ## Próximo sprint recomendado
 1. Autenticación (Clerk/Auth0) + control de roles.
 2. Flujo completo cliente (crear + pagar + ver estado).
