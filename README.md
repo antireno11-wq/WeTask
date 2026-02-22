@@ -9,6 +9,10 @@ Base para WeTask, una app de servicios a domicilio enfocada en Chile, corriendo 
 
 ## Qué incluye
 - Estructura web inicial (`/`)
+- Flujo funcional cliente en home:
+  - listar servicios activos
+  - solicitar reserva sin IDs internos
+  - seguimiento por email
 - Health check (`/api/health`)
 - Endpoint para crear reservas (`POST /api/bookings`)
 - Modelo de datos inicial para:
@@ -82,6 +86,30 @@ Body:
 
 Notas:
 - `proId` es opcional, pero si se envía debe ser un usuario con rol `PRO`.
+
+### 5) Listar servicios activos (flujo cliente)
+`GET /api/services`
+
+### 6) Crear reserva pública (flujo cliente)
+`POST /api/bookings/public`
+
+Body:
+```json
+{
+  "fullName": "Maria Perez",
+  "email": "maria@correo.cl",
+  "phone": "+56912345678",
+  "serviceId": "id-del-servicio",
+  "scheduledAt": "2026-03-01T15:00:00.000Z",
+  "addressLine1": "Av. Providencia 1234",
+  "comuna": "Providencia",
+  "region": "Metropolitana",
+  "notes": "Depto 42"
+}
+```
+
+### 7) Ver reservas por email (flujo cliente)
+`GET /api/bookings/public?email=<correo>&limit=20`
 
 ## Próximo sprint recomendado
 1. Autenticación (Clerk/Auth0) + control de roles.

@@ -1,15 +1,21 @@
 "use client";
 
 import Image from "next/image";
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 
 type BookingStatus = "PENDING" | "ACCEPTED" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
 
-type Booking = {
+type Service = {
   id: string;
-  customerId: string;
-  proId: string | null;
-  serviceId: string;
+  slug: string;
+  name: string;
+  description: string;
+  basePriceClp: number;
+  durationMin: number;
+};
+
+type PublicBooking = {
+  id: string;
   status: BookingStatus;
   scheduledAt: string;
   addressLine1: string;
@@ -21,24 +27,21 @@ type Booking = {
   service: {
     id: string;
     name: string;
-  };
-  customer: {
-    id: string;
-    fullName: string;
-    email: string;
+    slug: string;
   };
   pro: {
     id: string;
     fullName: string;
-    email: string;
   } | null;
 };
 
-type Drafts = Record<string, { status: BookingStatus; proId: string }>;
-
-const statusOptions: BookingStatus[] = ["PENDING", "ACCEPTED", "IN_PROGRESS", "COMPLETED", "CANCELLED"];
-
-const categoryItems = ["Limpieza", "Gasfiter", "Electricista", "Jardineria", "Pintura", "Armado de muebles"];
+const statusLabel: Record<BookingStatus, string> = {
+  PENDING: "Pendiente",
+  ACCEPTED: "Aceptada",
+  IN_PROGRESS: "En progreso",
+  COMPLETED: "Completada",
+  CANCELLED: "Cancelada"
+};
 
 function toIsoOrNull(datetimeLocal: string): string | null {
   if (!datetimeLocal) return null;
@@ -58,8 +61,20 @@ function formatDate(value: string): string {
 }
 
 export default function HomePage() {
-  const [createForm, setCreateForm] = useState({
-    customerId: "",
+  const [services, setServices] = useState<Service[]>([]);
+  const [bookings, setBookings] = useState<PublicBooking[]>([]);
+
+  const [loadingServices, setLoadingServices] = useState(true);
+  const [submittingBooking, setSubmittingBooking] = useState(false);
+  const [loadingBookings, setLoadingBookings] = useState(false);
+
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
+
+  const [requestForm, setRequestForm] = useState({
+    fullName: "",
+    email: "",
+    phone: "",
     serviceId: "",
     scheduledAt: "",
     addressLine1: "",
@@ -67,147 +82,114 @@ export default function HomePage() {
     region: "Metropolitana",
     notes: ""
   });
-  const [listForm, setListForm] = useState({
-    customerId: "",
-    proId: "",
-    status: "",
-    limit: "20"
-  });
 
-  const [bookings, setBookings] = useState<Booking[]>([]);
-  const [drafts, setDrafts] = useState<Drafts>({});
-  const [loadingList, setLoadingList] = useState(false);
-  const [submittingCreate, setSubmittingCreate] = useState(false);
-  const [updatingId, setUpdatingId] = useState<string | null>(null);
-  const [message, setMessage] = useState<string>("");
-  const [error, setError] = useState<string>("");
+  const [trackingEmail, setTrackingEmail] = useState("");
 
-  const canQuery = useMemo(
-    () => Boolean(listForm.customerId.trim() || listForm.proId.trim()),
-    [listForm.customerId, listForm.proId]
+  const selectedService = useMemo(
+    () => services.find((service) => service.id === requestForm.serviceId) ?? null,
+    [services, requestForm.serviceId]
   );
 
-  const hydrateDrafts = (items: Booking[]) => {
-    const nextDrafts: Drafts = {};
-    for (const booking of items) {
-      nextDrafts[booking.id] = {
-        status: booking.status,
-        proId: booking.proId ?? ""
-      };
-    }
-    setDrafts(nextDrafts);
-  };
+  useEffect(() => {
+    const loadServices = async () => {
+      try {
+        setLoadingServices(true);
+        const response = await fetch("/api/services");
+        const data = (await response.json()) as { services?: Service[]; error?: string; detail?: string };
 
-  const handleCreateBooking = async (event: FormEvent<HTMLFormElement>) => {
+        if (!response.ok || !data.services) {
+          throw new Error(data.detail || data.error || "No se pudieron cargar los servicios");
+        }
+
+        setServices(data.services);
+        if (data.services.length > 0) {
+          setRequestForm((prev) => ({ ...prev, serviceId: prev.serviceId || data.services![0].id }));
+        }
+      } catch (requestError) {
+        const detail = requestError instanceof Error ? requestError.message : "Error inesperado";
+        setError(detail);
+      } finally {
+        setLoadingServices(false);
+      }
+    };
+
+    loadServices();
+  }, []);
+
+  const handleSubmitBooking = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setError("");
     setMessage("");
+    setError("");
 
-    const scheduledAt = toIsoOrNull(createForm.scheduledAt);
+    const scheduledAt = toIsoOrNull(requestForm.scheduledAt);
     if (!scheduledAt) {
-      setError("Ingresa una fecha y hora valida para la reserva.");
+      setError("Ingresa una fecha y hora valida.");
       return;
     }
 
-    setSubmittingCreate(true);
+    setSubmittingBooking(true);
     try {
-      const response = await fetch("/api/bookings", {
+      const response = await fetch("/api/bookings/public", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          customerId: createForm.customerId.trim(),
-          serviceId: createForm.serviceId.trim(),
+          fullName: requestForm.fullName.trim(),
+          email: requestForm.email.trim(),
+          phone: requestForm.phone.trim() || undefined,
+          serviceId: requestForm.serviceId,
           scheduledAt,
-          addressLine1: createForm.addressLine1.trim(),
-          comuna: createForm.comuna.trim(),
-          region: createForm.region.trim(),
-          notes: createForm.notes.trim() || undefined
+          addressLine1: requestForm.addressLine1.trim(),
+          comuna: requestForm.comuna.trim(),
+          region: requestForm.region.trim(),
+          notes: requestForm.notes.trim() || undefined
         })
       });
 
-      const data = (await response.json()) as { booking?: Booking; error?: string; detail?: string };
+      const data = (await response.json()) as { booking?: PublicBooking; error?: string; detail?: string };
 
       if (!response.ok || !data.booking) {
         throw new Error(data.detail || data.error || "No se pudo crear la reserva");
       }
 
-      setMessage(`Reserva creada: ${data.booking.id}`);
-      setCreateForm((prev) => ({ ...prev, notes: "", scheduledAt: "" }));
+      setMessage(`Solicitud enviada. Codigo de reserva: ${data.booking.id}`);
+      setTrackingEmail(requestForm.email.trim().toLowerCase());
+      setRequestForm((prev) => ({ ...prev, notes: "", scheduledAt: "" }));
     } catch (requestError) {
       const detail = requestError instanceof Error ? requestError.message : "Error inesperado";
       setError(detail);
     } finally {
-      setSubmittingCreate(false);
+      setSubmittingBooking(false);
     }
   };
 
-  const handleListBookings = async (event: FormEvent<HTMLFormElement>) => {
+  const handleTrackBookings = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setError("");
     setMessage("");
+    setError("");
 
-    if (!canQuery) {
-      setError("Debes ingresar customerId o proId para listar reservas.");
+    const normalizedEmail = trackingEmail.trim().toLowerCase();
+    if (!normalizedEmail) {
+      setError("Ingresa tu email para revisar tus reservas.");
       return;
     }
 
-    setLoadingList(true);
+    setLoadingBookings(true);
     try {
-      const params = new URLSearchParams();
-      if (listForm.customerId.trim()) params.set("customerId", listForm.customerId.trim());
-      if (listForm.proId.trim()) params.set("proId", listForm.proId.trim());
-      if (listForm.status.trim()) params.set("status", listForm.status.trim());
-      if (listForm.limit.trim()) params.set("limit", listForm.limit.trim());
-
-      const response = await fetch(`/api/bookings?${params.toString()}`);
-      const data = (await response.json()) as { bookings?: Booking[]; error?: string; detail?: string };
+      const params = new URLSearchParams({ email: normalizedEmail, limit: "20" });
+      const response = await fetch(`/api/bookings/public?${params.toString()}`);
+      const data = (await response.json()) as { bookings?: PublicBooking[]; error?: string; detail?: string };
 
       if (!response.ok || !data.bookings) {
-        throw new Error(data.detail || data.error || "No se pudieron cargar las reservas");
+        throw new Error(data.detail || data.error || "No se pudieron cargar tus reservas");
       }
 
       setBookings(data.bookings);
-      hydrateDrafts(data.bookings);
-      setMessage(`${data.bookings.length} reserva(s) cargada(s).`);
+      setMessage(`${data.bookings.length} reserva(s) encontrada(s).`);
     } catch (requestError) {
       const detail = requestError instanceof Error ? requestError.message : "Error inesperado";
       setError(detail);
     } finally {
-      setLoadingList(false);
-    }
-  };
-
-  const handlePatchStatus = async (bookingId: string) => {
-    const draft = drafts[bookingId];
-    if (!draft) return;
-
-    setError("");
-    setMessage("");
-    setUpdatingId(bookingId);
-
-    try {
-      const response = await fetch(`/api/bookings/${bookingId}/status`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          status: draft.status,
-          proId: draft.proId.trim() || undefined
-        })
-      });
-
-      const data = (await response.json()) as { booking?: Booking; error?: string; detail?: string };
-
-      if (!response.ok || !data.booking) {
-        throw new Error(data.detail || data.error || "No se pudo actualizar el estado");
-      }
-
-      setBookings((prev) => prev.map((item) => (item.id === bookingId ? data.booking! : item)));
-      setMessage(`Reserva ${bookingId} actualizada a ${draft.status}.`);
-    } catch (requestError) {
-      const detail = requestError instanceof Error ? requestError.message : "Error inesperado";
-      setError(detail);
-    } finally {
-      setUpdatingId(null);
+      setLoadingBookings(false);
     }
   };
 
@@ -215,176 +197,157 @@ export default function HomePage() {
     <main className="page">
       <header className="topbar">
         <div className="brand-lockup">
-          <Image
-            alt="Logo de WeTask"
-            className="brand-logo"
-            height={88}
-            priority
-            src="/logo-wetask.png"
-            width={220}
-          />
+          <Image alt="Logo de WeTask" className="brand-logo" height={88} priority src="/logo-wetask-cropped.png" width={220} />
         </div>
-        <span className="brand-pill">MVP operativo</span>
+        <span className="brand-pill">Reserva en 2 minutos</span>
       </header>
 
       <section className="hero">
         <div>
-          <p className="eyebrow">Servicios a domicilio</p>
-          <h1>Reserva rapido, asigna prestador y controla estados en un solo panel.</h1>
-          <p className="lead">
-            Interfaz inspirada en marketplaces de servicios como Webel: foco en conversion, confianza y claridad de
-            operacion para cliente y prestador.
-          </p>
-          <div className="chips" aria-label="Categorias populares">
-            {categoryItems.map((item) => (
-              <span className="chip" key={item}>
-                {item}
-              </span>
-            ))}
-          </div>
+          <p className="eyebrow">Servicios a domicilio en Chile</p>
+          <h1>Pide tu servicio, agenda fecha y sigue el estado desde tu correo.</h1>
+          <p className="lead">Flujo operativo de cliente: seleccion de servicio, direccion, horario y seguimiento de reserva.</p>
         </div>
 
         <aside className="trust-card">
-          <h2>Confianza primero</h2>
+          <h2>Como funciona</h2>
           <ul>
-            <li>Profesionales verificados</li>
-            <li>Precios transparentes en CLP</li>
-            <li>Seguimiento de cada reserva</li>
+            <li>Elige un servicio activo</li>
+            <li>Completa tus datos y direccion</li>
+            <li>Recibe y sigue tu solicitud por email</li>
           </ul>
         </aside>
       </section>
 
       <section className="panel">
         <div className="panel-head">
-          <h2>1) Crear reserva</h2>
-          <p>Usa IDs existentes en tu base de datos (seed o producción).</p>
+          <h2>1) Solicitar servicio</h2>
+          <p>Completa este formulario como cliente final. No necesitas IDs internos.</p>
         </div>
 
-        <form className="grid-form" onSubmit={handleCreateBooking}>
+        {loadingServices ? <p className="empty">Cargando servicios...</p> : null}
+
+        <div className="service-grid">
+          {services.map((service) => (
+            <button
+              className={`service-card ${requestForm.serviceId === service.id ? "active" : ""}`}
+              key={service.id}
+              onClick={() => setRequestForm((prev) => ({ ...prev, serviceId: service.id }))}
+              type="button"
+            >
+              <strong>{service.name}</strong>
+              <span>{service.description}</span>
+              <span>{formatPriceClp(service.basePriceClp)}</span>
+            </button>
+          ))}
+        </div>
+
+        <form className="grid-form" onSubmit={handleSubmitBooking}>
           <label>
-            Customer ID
+            Nombre completo
             <input
-              value={createForm.customerId}
-              onChange={(event) => setCreateForm((prev) => ({ ...prev, customerId: event.target.value }))}
+              onChange={(event) => setRequestForm((prev) => ({ ...prev, fullName: event.target.value }))}
+              placeholder="Tu nombre"
               required
-              placeholder="cus_..."
+              value={requestForm.fullName}
             />
           </label>
 
           <label>
-            Service ID
+            Email
             <input
-              value={createForm.serviceId}
-              onChange={(event) => setCreateForm((prev) => ({ ...prev, serviceId: event.target.value }))}
+              onChange={(event) => setRequestForm((prev) => ({ ...prev, email: event.target.value }))}
+              placeholder="tu@email.com"
               required
-              placeholder="srv_..."
+              type="email"
+              value={requestForm.email}
+            />
+          </label>
+
+          <label>
+            Telefono
+            <input
+              onChange={(event) => setRequestForm((prev) => ({ ...prev, phone: event.target.value }))}
+              placeholder="+56..."
+              value={requestForm.phone}
             />
           </label>
 
           <label>
             Fecha y hora
             <input
-              type="datetime-local"
-              value={createForm.scheduledAt}
-              onChange={(event) => setCreateForm((prev) => ({ ...prev, scheduledAt: event.target.value }))}
+              onChange={(event) => setRequestForm((prev) => ({ ...prev, scheduledAt: event.target.value }))}
               required
+              type="datetime-local"
+              value={requestForm.scheduledAt}
             />
           </label>
 
-          <label>
+          <label className="full">
             Direccion
             <input
-              value={createForm.addressLine1}
-              onChange={(event) => setCreateForm((prev) => ({ ...prev, addressLine1: event.target.value }))}
-              required
+              onChange={(event) => setRequestForm((prev) => ({ ...prev, addressLine1: event.target.value }))}
               placeholder="Av. Providencia 1234"
+              required
+              value={requestForm.addressLine1}
             />
           </label>
 
           <label>
             Comuna
             <input
-              value={createForm.comuna}
-              onChange={(event) => setCreateForm((prev) => ({ ...prev, comuna: event.target.value }))}
-              required
+              onChange={(event) => setRequestForm((prev) => ({ ...prev, comuna: event.target.value }))}
               placeholder="Providencia"
+              required
+              value={requestForm.comuna}
             />
           </label>
 
           <label>
             Region
             <input
-              value={createForm.region}
-              onChange={(event) => setCreateForm((prev) => ({ ...prev, region: event.target.value }))}
+              onChange={(event) => setRequestForm((prev) => ({ ...prev, region: event.target.value }))}
               required
+              value={requestForm.region}
             />
           </label>
 
           <label className="full">
-            Notas
+            Comentarios (opcional)
             <textarea
-              value={createForm.notes}
-              onChange={(event) => setCreateForm((prev) => ({ ...prev, notes: event.target.value }))}
+              onChange={(event) => setRequestForm((prev) => ({ ...prev, notes: event.target.value }))}
               placeholder="Detalle de acceso, referencias, etc."
+              value={requestForm.notes}
             />
           </label>
 
-          <button className="cta" disabled={submittingCreate} type="submit">
-            {submittingCreate ? "Creando..." : "Crear reserva"}
+          <button className="cta" disabled={submittingBooking || !selectedService} type="submit">
+            {submittingBooking
+              ? "Enviando..."
+              : `Solicitar ${selectedService ? `${selectedService.name} (${formatPriceClp(selectedService.basePriceClp)})` : "servicio"}`}
           </button>
         </form>
       </section>
 
       <section className="panel">
         <div className="panel-head">
-          <h2>2) Listar y actualizar reservas</h2>
-          <p>Consulta por cliente o prestador y ajusta el estado de cada reserva.</p>
+          <h2>2) Ver mis reservas</h2>
+          <p>Ingresa tu correo para revisar estado y detalle de solicitudes.</p>
         </div>
 
-        <form className="query-row" onSubmit={handleListBookings}>
+        <form className="query-row query-single" onSubmit={handleTrackBookings}>
           <label>
-            Customer ID
+            Email de seguimiento
             <input
-              value={listForm.customerId}
-              onChange={(event) => setListForm((prev) => ({ ...prev, customerId: event.target.value }))}
-              placeholder="Obligatorio si no hay proId"
+              onChange={(event) => setTrackingEmail(event.target.value)}
+              placeholder="tu@email.com"
+              required
+              type="email"
+              value={trackingEmail}
             />
           </label>
-
-          <label>
-            Pro ID
-            <input
-              value={listForm.proId}
-              onChange={(event) => setListForm((prev) => ({ ...prev, proId: event.target.value }))}
-              placeholder="Obligatorio si no hay customerId"
-            />
-          </label>
-
-          <label>
-            Estado
-            <select
-              value={listForm.status}
-              onChange={(event) => setListForm((prev) => ({ ...prev, status: event.target.value }))}
-            >
-              <option value="">Todos</option>
-              {statusOptions.map((status) => (
-                <option key={status} value={status}>
-                  {status}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label>
-            Limite
-            <input
-              value={listForm.limit}
-              onChange={(event) => setListForm((prev) => ({ ...prev, limit: event.target.value }))}
-            />
-          </label>
-
-          <button className="cta ghost" disabled={loadingList || !canQuery} type="submit">
-            {loadingList ? "Buscando..." : "Buscar"}
+          <button className="cta ghost" disabled={loadingBookings} type="submit">
+            {loadingBookings ? "Buscando..." : "Buscar reservas"}
           </button>
         </form>
 
@@ -393,80 +356,30 @@ export default function HomePage() {
 
         <div className="list">
           {bookings.length === 0 ? (
-            <p className="empty">Sin resultados todavia. Ejecuta una busqueda para ver reservas.</p>
+            <p className="empty">Todavia no hay reservas cargadas para este correo.</p>
           ) : (
             bookings.map((booking) => (
               <article className="booking-card" key={booking.id}>
                 <div className="booking-head">
                   <h3>{booking.service.name}</h3>
-                  <span className={`status status-${booking.status.toLowerCase()}`}>{booking.status}</span>
+                  <span className={`status status-${booking.status.toLowerCase()}`}>{statusLabel[booking.status]}</span>
                 </div>
 
                 <p>
-                  <strong>ID:</strong> {booking.id}
+                  <strong>Codigo:</strong> {booking.id}
                 </p>
                 <p>
-                  <strong>Cliente:</strong> {booking.customer.fullName} ({booking.customer.email})
+                  <strong>Fecha agendada:</strong> {formatDate(booking.scheduledAt)}
                 </p>
                 <p>
-                  <strong>Direccion:</strong> {booking.addressLine1}, {booking.comuna}
+                  <strong>Direccion:</strong> {booking.addressLine1}, {booking.comuna}, {booking.region}
                 </p>
                 <p>
-                  <strong>Agenda:</strong> {formatDate(booking.scheduledAt)}
+                  <strong>Prestador:</strong> {booking.pro?.fullName ?? "Pendiente de asignacion"}
                 </p>
                 <p>
-                  <strong>Total:</strong> {formatPriceClp(booking.totalPriceClp)}
+                  <strong>Total estimado:</strong> {formatPriceClp(booking.totalPriceClp)}
                 </p>
-
-                <div className="status-editor">
-                  <label>
-                    Nuevo estado
-                    <select
-                      value={drafts[booking.id]?.status ?? booking.status}
-                      onChange={(event) =>
-                        setDrafts((prev) => ({
-                          ...prev,
-                          [booking.id]: {
-                            status: event.target.value as BookingStatus,
-                            proId: prev[booking.id]?.proId ?? booking.proId ?? ""
-                          }
-                        }))
-                      }
-                    >
-                      {statusOptions.map((status) => (
-                        <option key={status} value={status}>
-                          {status}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-
-                  <label>
-                    Asignar proId (opcional)
-                    <input
-                      value={drafts[booking.id]?.proId ?? booking.proId ?? ""}
-                      onChange={(event) =>
-                        setDrafts((prev) => ({
-                          ...prev,
-                          [booking.id]: {
-                            status: prev[booking.id]?.status ?? booking.status,
-                            proId: event.target.value
-                          }
-                        }))
-                      }
-                      placeholder="pro_..."
-                    />
-                  </label>
-
-                  <button
-                    className="cta small"
-                    disabled={updatingId === booking.id}
-                    onClick={() => handlePatchStatus(booking.id)}
-                    type="button"
-                  >
-                    {updatingId === booking.id ? "Actualizando..." : "Guardar estado"}
-                  </button>
-                </div>
               </article>
             ))
           )}
