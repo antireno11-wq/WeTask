@@ -1,118 +1,137 @@
-# WeTask MVP
+# WeTask Marketplace MVP
 
-Base para WeTask, una app de servicios a domicilio enfocada en Chile, corriendo 100% online con GitHub + Railway.
+Base para una plataforma tipo marketplace de servicios al hogar (modelo por hora), inspirada en Webel, sobre Next.js + Prisma + PostgreSQL.
 
 ## Stack
 - Next.js 14 (App Router)
 - Prisma + PostgreSQL
-- API route inicial de reservas
+- API routes (cliente / profesional / admin)
 
-## Qué incluye
-- Estructura web inicial (`/`)
-- Flujo funcional cliente en home:
-  - listar servicios activos
-  - solicitar reserva sin IDs internos
-  - seguimiento por email
-- Health check (`/api/health`)
-- Endpoint para crear reservas (`POST /api/bookings`)
-- Modelo de datos inicial para:
-  - `User` (`CUSTOMER`, `PRO`, `ADMIN`)
-  - `Service`
-  - `Booking`
+## Estado actual
+Incluye dos capas funcionales en paralelo:
+- Flujo publico actual en home (`/`) para solicitar servicio y ver reservas por email.
+- Nueva capa marketplace (`/api/marketplace/*`) con reglas por categoria, asignacion de profesional, reservas por horas, reseñas y endpoints por rol.
 
-## Deploy online (sin instalar nada local)
-1. Sube este repo a GitHub.
-2. En Railway: `New Project` -> `Deploy from GitHub repo`.
-3. Agrega un servicio PostgreSQL en el mismo proyecto de Railway.
-4. En variables del servicio web, define:
-   - `DATABASE_URL` (usar la del PostgreSQL de Railway)
-   - `NEXT_PUBLIC_APP_URL` (URL pública de Railway)
-5. Railway hará build/deploy automático. El `startCommand` ejecuta:
-   - `prisma generate`
-   - `prisma db push`
-   - `next start`
+## Modelo de datos (MVP marketplace)
+- `User` (roles: `CUSTOMER`, `PRO`, `ADMIN`)
+- `ProfessionalProfile`
+- `Category` (reglas: minimo horas, bloques, fee, recargos)
+- `Service`
+- `AvailabilitySlot`
+- `Address`
+- `Booking`
+- `BookingExtra`
+- `Message`
+- `Payment`
+- `Payout`
+- `Review`
+- `DisputeTicket`
 
-## Endpoints de prueba
+## Deploy en Railway
+1. Conecta repo en Railway.
+2. Agrega PostgreSQL.
+3. Variables requeridas:
+- `DATABASE_URL`
+- `NEXT_PUBLIC_APP_URL`
+4. Deploy command ya ejecuta:
+- `prisma generate`
+- `prisma db push`
+- `next start`
 
-### 1) Health
-`GET /api/health`
+## Seed inicial
+Corre semilla para datos base:
+```bash
+npm run prisma:seed
+```
 
-Respuesta esperada:
+Crea:
+- Categorias: limpieza, manitas, electricidad.
+- Servicios base.
+- Usuarios demo (`CUSTOMER`, `PRO`, `ADMIN`).
+- Perfil profesional verificado + disponibilidad.
+
+## Auth temporal por headers (para pruebas)
+La capa marketplace valida roles desde headers HTTP:
+- `x-user-id: <id-usuario>`
+- `x-user-role: CUSTOMER|PRO|ADMIN`
+
+Nota: esto es temporal hasta integrar Clerk/Auth0.
+
+## Endpoints existentes (legacy)
+- `GET /api/health`
+- `GET /api/services`
+- `POST /api/bookings/public`
+- `GET /api/bookings/public?email=...`
+- `POST /api/bookings`
+- `GET /api/bookings?customerId=...|proId=...`
+- `PATCH /api/bookings/:bookingId/status`
+
+## Endpoints marketplace (nuevo)
+
+### Catalogo
+- `GET /api/marketplace/catalog`
+  - Retorna categorias activas con sus servicios activos.
+
+### Profesionales
+- `GET /api/marketplace/pros?serviceId=&city=&minRating=&verified=&maxHourlyRateClp=&limit=`
+- `GET /api/marketplace/pros/:proId`
+
+### Reservas marketplace
+- `POST /api/marketplace/bookings`
+
+Body ejemplo:
 ```json
 {
-  "ok": true,
-  "service": "wetask",
-  "timestamp": "2026-02-22T00:00:00.000Z"
+  "customerId": "cus_123",
+  "serviceId": "srv_123",
+  "proId": "pro_123",
+  "autoAssign": false,
+  "startsAt": "2026-03-01T10:00:00.000Z",
+  "hours": 2,
+  "address": {
+    "street": "Gran Via 12",
+    "city": "Madrid",
+    "postalCode": "28013",
+    "region": "Madrid"
+  },
+  "details": "Limpieza de cocina y bano",
+  "extras": {
+    "materials": true,
+    "urgency": false,
+    "travelFeeClp": 0
+  }
 }
 ```
 
-### 2) Crear reserva
-`POST /api/bookings`
+Calcula automaticamente:
+- subtotal por hora
+- extras
+- fee de plataforma
+- total
+- crea payment en estado `PENDING`
 
-Body:
-```json
-{
-  "customerId": "id-del-cliente",
-  "serviceId": "id-del-servicio",
-  "scheduledAt": "2026-03-01T15:00:00.000Z",
-  "addressLine1": "Av. Providencia 1234",
-  "comuna": "Providencia",
-  "region": "Metropolitana",
-  "notes": "Tocar timbre"
-}
-```
+- `GET /api/marketplace/bookings?limit=30` (solo `ADMIN`)
+- `PATCH /api/marketplace/bookings/:bookingId/status` (roles `ADMIN` o `PRO`)
 
-### 3) Listar reservas
-`GET /api/bookings?customerId=<id>&status=PENDING&limit=20`
+### Panel cliente
+- `GET /api/marketplace/client/bookings?customerId=` (`CUSTOMER`/`ADMIN`)
 
-También soporta listar por prestador:
-`GET /api/bookings?proId=<id>&status=ACCEPTED&limit=20`
+### Panel profesional
+- `GET /api/marketplace/pro/bookings?proId=` (`PRO`/`ADMIN`)
 
-Notas:
-- Debes enviar `customerId` o `proId`.
-- `status` es opcional (`PENDING`, `ACCEPTED`, `IN_PROGRESS`, `COMPLETED`, `CANCELLED`).
-- `limit` es opcional (1 a 100, default 20).
+### Reseñas
+- `POST /api/marketplace/reviews`
+  - Solo cliente (o admin), solo reservas `COMPLETED`.
+  - Recalcula `ratingAvg` y `ratingsCount` del profesional.
 
-### 4) Actualizar estado de reserva
-`PATCH /api/bookings/:bookingId/status`
+### Admin categorias
+- `PATCH /api/marketplace/admin/categories/rules`
+  - Actualiza `basePlatformFeePct`, `minHours`, `slotMinutes`.
+  - Solo `ADMIN`.
 
-Body:
-```json
-{
-  "status": "ACCEPTED",
-  "proId": "id-del-prestador"
-}
-```
-
-Notas:
-- `proId` es opcional, pero si se envía debe ser un usuario con rol `PRO`.
-
-### 5) Listar servicios activos (flujo cliente)
-`GET /api/services`
-
-### 6) Crear reserva pública (flujo cliente)
-`POST /api/bookings/public`
-
-Body:
-```json
-{
-  "fullName": "Maria Perez",
-  "email": "maria@correo.cl",
-  "phone": "+56912345678",
-  "serviceId": "id-del-servicio",
-  "scheduledAt": "2026-03-01T15:00:00.000Z",
-  "addressLine1": "Av. Providencia 1234",
-  "comuna": "Providencia",
-  "region": "Metropolitana",
-  "notes": "Depto 42"
-}
-```
-
-### 7) Ver reservas por email (flujo cliente)
-`GET /api/bookings/public?email=<correo>&limit=20`
-
-## Próximo sprint recomendado
-1. Autenticación (Clerk/Auth0) + control de roles.
-2. Flujo completo cliente (crear + pagar + ver estado).
-3. Panel prestador (aceptar/rechazar reservas).
-4. Panel admin mínimo (gestión manual + soporte).
+## Siguiente sprint recomendado (ya alineado al prompt)
+1. Integrar auth real (Clerk/Auth0) y remover headers temporales.
+2. Integrar pago real (Stripe Payment Intents + webhooks).
+3. Chat por reserva (`/api/marketplace/messages`) con subida de imagen.
+4. Disputas y reembolsos con panel admin.
+5. Paneles UI por rol (cliente/pro/admin) en rutas dedicadas.
