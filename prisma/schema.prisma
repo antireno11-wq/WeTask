@@ -1,0 +1,70 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  CUSTOMER
+  PRO
+  ADMIN
+}
+
+enum BookingStatus {
+  PENDING
+  ACCEPTED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  fullName     String
+  phone        String?
+  role         UserRole  @default(CUSTOMER)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  bookings     Booking[] @relation("CustomerBookings")
+  proBookings  Booking[] @relation("ProBookings")
+}
+
+model Service {
+  id             String    @id @default(cuid())
+  slug           String    @unique
+  name           String
+  description    String
+  basePriceClp   Int
+  durationMin    Int
+  isActive       Boolean   @default(true)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  bookings       Booking[]
+}
+
+model Booking {
+  id                String        @id @default(cuid())
+  customerId        String
+  proId             String?
+  serviceId         String
+  status            BookingStatus @default(PENDING)
+  scheduledAt       DateTime
+  addressLine1      String
+  comuna            String
+  region            String
+  notes             String?
+  totalPriceClp     Int
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  customer          User          @relation("CustomerBookings", fields: [customerId], references: [id], onDelete: Restrict)
+  pro               User?         @relation("ProBookings", fields: [proId], references: [id], onDelete: SetNull)
+  service           Service       @relation(fields: [serviceId], references: [id], onDelete: Restrict)
+
+  @@index([customerId, status])
+  @@index([proId, status])
+  @@index([scheduledAt, status])
+}
