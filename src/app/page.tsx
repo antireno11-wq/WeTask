@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { FormEvent, useMemo, useState } from "react";
 
 type BookingStatus = "PENDING" | "ACCEPTED" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
@@ -213,7 +214,16 @@ export default function HomePage() {
   return (
     <main className="page">
       <header className="topbar">
-        <p className="brand-mark">WeTask</p>
+        <div className="brand-lockup">
+          <Image
+            alt="Logo de WeTask"
+            className="brand-logo"
+            height={88}
+            priority
+            src="/logo-wetask.png"
+            width={220}
+          />
+        </div>
         <span className="brand-pill">MVP operativo</span>
       </header>
 
