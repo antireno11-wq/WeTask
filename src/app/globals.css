@@ -49,10 +49,12 @@ body {
 .brand-logo {
   width: clamp(150px, 20vw, 220px);
   height: auto;
+  mix-blend-mode: multiply;
+  filter: contrast(1.06) saturate(1.04);
 }
 
 .brand-pill {
-  background: var(--ink);
+  background: linear-gradient(135deg, var(--brand-deep) 0%, var(--accent) 100%);
   color: #ffffff;
   border-radius: 999px;
   padding: 8px 12px;
@@ -70,8 +72,8 @@ body {
 .eyebrow {
   display: inline-flex;
   margin: 0;
-  border: 1px solid var(--brand-deep);
-  color: var(--brand-deep);
+  border: 1px solid var(--accent);
+  color: var(--accent);
   border-radius: 999px;
   padding: 6px 12px;
   font-size: 0.75rem;
@@ -104,16 +106,17 @@ body {
 }
 
 .chip {
-  background: #f8fcff;
-  border: 1px solid var(--line);
+  background: #fff7f0;
+  border: 1px solid #ffcda9;
   border-radius: 999px;
   padding: 8px 12px;
   font-size: 0.88rem;
   font-weight: 700;
+  color: #9a3f00;
 }
 
 .trust-card {
-  background: linear-gradient(145deg, #132a57 0%, #1656b0 100%);
+  background: linear-gradient(145deg, #132a57 0%, #1656b0 58%, #ff6a00 100%);
   color: #f9f9f9;
   border-radius: 18px;
   padding: 20px;
@@ -198,7 +201,7 @@ textarea {
 .cta {
   border: 0;
   border-radius: 12px;
-  background: linear-gradient(140deg, var(--brand) 0%, var(--brand-deep) 100%);
+  background: linear-gradient(130deg, var(--brand-deep) 0%, var(--brand) 44%, var(--accent) 100%);
   color: #ffffff;
   font-weight: 800;
   padding: 10px 14px;
@@ -211,9 +214,9 @@ textarea {
 }
 
 .cta.ghost {
-  border: 1px solid var(--brand-deep);
-  background: #ffffff;
-  color: var(--brand-deep);
+  border: 1px solid var(--accent);
+  background: #fff7f0;
+  color: #9a3f00;
 }
 
 .cta:disabled {
