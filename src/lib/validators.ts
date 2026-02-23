@@ -118,3 +118,25 @@ export const marketplaceSearchProsSchema = z.object({
   date: z.coerce.date().optional(),
   limit: z.coerce.number().int().min(1).max(50).default(20)
 });
+
+export const marketplaceProProfileUpdateSchema = z.object({
+  proId: z.string().min(1).optional(),
+  bio: z.string().max(600).optional().nullable(),
+  coverageCity: z.string().min(2).max(120).optional().nullable(),
+  coveragePostal: z.string().min(4).max(12).optional().nullable(),
+  coverageLatitude: z.coerce.number().min(-90).max(90).optional().nullable(),
+  coverageLongitude: z.coerce.number().min(-180).max(180).optional().nullable(),
+  serviceRadiusKm: z.coerce.number().int().min(2).max(60).optional(),
+  hourlyRateFromClp: z.coerce.number().int().min(5000).max(200000).optional().nullable()
+});
+
+export const marketplaceProSlotCreateSchema = z.object({
+  proId: z.string().min(1).optional(),
+  serviceId: z.string().min(1).optional().nullable(),
+  startsAt: z.coerce.date(),
+  endsAt: z.coerce.date()
+});
+
+export const marketplaceProSlotUpdateSchema = z.object({
+  isAvailable: z.boolean()
+});

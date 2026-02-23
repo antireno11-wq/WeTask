@@ -710,6 +710,20 @@ textarea {
   background: #fff3e9;
 }
 
+.pro-slot-card {
+  border: 1px solid #b9d4ec;
+  border-radius: 12px;
+  background: #ffffff;
+  padding: 10px;
+  display: grid;
+  gap: 6px;
+}
+
+.pro-slot-card span {
+  font-size: 0.86rem;
+  color: var(--ink);
+}
+
 .inline-checks {
   display: flex;
   flex-wrap: wrap;

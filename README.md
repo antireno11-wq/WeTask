@@ -38,6 +38,9 @@ Incluye carga automatica de datos demo en Santiago (categorias, servicios, profe
 - `GET|POST /api/marketplace/bookings/:bookingId/messages`
 - `GET /api/marketplace/client/bookings`
 - `GET /api/marketplace/pro/bookings`
+- `GET|PATCH /api/marketplace/pro/profile`
+- `GET|POST /api/marketplace/pro/slots`
+- `PATCH|DELETE /api/marketplace/pro/slots/:slotId`
 - `GET /api/marketplace/notifications`
 - `POST /api/marketplace/reviews`
 - `POST /api/marketplace/disputes`
