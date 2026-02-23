@@ -71,6 +71,8 @@ body {
   height: auto;
   max-height: 76px;
   object-fit: contain;
+  mix-blend-mode: multiply;
+  filter: saturate(1.03) contrast(1.05);
 }
 
 .brand-pill {
@@ -465,6 +467,95 @@ textarea {
   gap: 10px;
 }
 
+.day-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.day-tab {
+  border: 1px solid #b9d4ec;
+  background: #f6fbff;
+  color: var(--ink);
+  border-radius: 999px;
+  padding: 8px 12px;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.day-tab.active {
+  border-color: var(--accent);
+  background: #fff4eb;
+  color: #8a3a00;
+}
+
+.calendar-slot-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.slot-btn {
+  text-decoration: none;
+  border: 1px solid #b9d4ec;
+  border-radius: 12px;
+  padding: 10px;
+  color: var(--ink);
+  background: #ffffff;
+  font-weight: 700;
+}
+
+.pro-map-canvas {
+  position: relative;
+  height: 360px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background:
+    radial-gradient(circle at 20% 20%, #d9efff 0, #e9f5ff 22%, transparent 23%),
+    radial-gradient(circle at 70% 60%, #d3ecff 0, #e8f4ff 20%, transparent 21%),
+    linear-gradient(180deg, #f8fcff 0%, #eef7ff 100%);
+  overflow: hidden;
+}
+
+.pro-marker {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  text-decoration: none;
+  display: grid;
+  place-items: center;
+}
+
+.pro-marker-radius {
+  position: absolute;
+  border-radius: 999px;
+  border: 1px solid rgba(24, 166, 213, 0.45);
+  background: rgba(24, 166, 213, 0.13);
+}
+
+.pro-marker-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 999px;
+  background: var(--accent);
+  border: 2px solid #ffffff;
+  position: relative;
+  z-index: 2;
+}
+
+.pro-marker-name {
+  position: relative;
+  z-index: 2;
+  margin-top: 8px;
+  background: #ffffff;
+  border: 1px solid #d2e3f4;
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+
 .calendar-day {
   border: 1px solid var(--line);
   border-radius: 14px;
@@ -512,6 +603,10 @@ textarea {
   }
 
   .calendar-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .calendar-slot-grid {
     grid-template-columns: 1fr;
   }
 

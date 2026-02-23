@@ -1,10 +1,15 @@
 import { UserRole } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { getRequestIdentity, hasRole } from "@/lib/auth";
+import { ensureMarketplaceDemoData } from "@/lib/marketplace-demo-data";
 import { prisma } from "@/lib/prisma";
+
+export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
   try {
+    await ensureMarketplaceDemoData();
+
     const identity = getRequestIdentity(req);
 
     if (!hasRole(identity.role, [UserRole.CUSTOMER, UserRole.ADMIN])) {

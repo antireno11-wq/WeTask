@@ -14,6 +14,9 @@ type ProfessionalDetail = {
   ratingsCount: number;
   coverageCity: string | null;
   coveragePostal: string | null;
+  coverageLatitude: number | null;
+  coverageLongitude: number | null;
+  serviceRadiusKm: number;
   hourlyRateFromClp: number | null;
   user: {
     id: string;
@@ -43,6 +46,7 @@ function dateInputDefault(): string {
 export default function ProDetailPage() {
   const params = useParams<{ proId: string }>();
   const [date, setDate] = useState(dateInputDefault());
+  const [selectedDay, setSelectedDay] = useState("");
 
   const [data, setData] = useState<ProfessionalDetail | null>(null);
   const [slots, setSlots] = useState<AvailabilitySlot[]>([]);
@@ -55,7 +59,7 @@ export default function ProDetailPage() {
         setLoading(true);
         const [proRes, availabilityRes] = await Promise.all([
           fetch(`/api/marketplace/pros/${params.proId}`),
-          fetch(`/api/marketplace/availability?proId=${params.proId}&date=${date}&days=7&limit=80`)
+          fetch(`/api/marketplace/availability?proId=${params.proId}&date=${date}&days=10&limit=120`)
         ]);
 
         const proBody = (await proRes.json()) as { professional?: ProfessionalDetail; error?: string; detail?: string };
@@ -84,16 +88,27 @@ export default function ProDetailPage() {
     load();
   }, [params.proId, date]);
 
-  const groupedSlots = useMemo(() => {
-    const groups = new Map<string, AvailabilitySlot[]>();
+  const dayGroups = useMemo(() => {
+    const map = new Map<string, AvailabilitySlot[]>();
     for (const slot of slots) {
-      const key = new Date(slot.startsAt).toLocaleDateString("es-CL", { weekday: "short", day: "2-digit", month: "2-digit" });
-      const prev = groups.get(key) ?? [];
+      const key = slot.startsAt.slice(0, 10);
+      const prev = map.get(key) ?? [];
       prev.push(slot);
-      groups.set(key, prev);
+      map.set(key, prev);
     }
-    return Array.from(groups.entries());
+    return Array.from(map.entries()).sort(([a], [b]) => a.localeCompare(b));
   }, [slots]);
+
+  useEffect(() => {
+    if (!selectedDay && dayGroups[0]) {
+      setSelectedDay(dayGroups[0][0]);
+    }
+    if (selectedDay && !dayGroups.some(([day]) => day === selectedDay)) {
+      setSelectedDay(dayGroups[0]?.[0] ?? "");
+    }
+  }, [dayGroups, selectedDay]);
+
+  const selectedSlots = useMemo(() => dayGroups.find(([day]) => day === selectedDay)?.[1] ?? [], [dayGroups, selectedDay]);
 
   return (
     <main className="page market-shell">
@@ -112,7 +127,7 @@ export default function ProDetailPage() {
             </div>
             <p>{data.bio ?? "Sin descripcion"}</p>
             <p>
-              <strong>Cobertura:</strong> {data.coverageCity ?? "N/A"} ({data.coveragePostal ?? "N/A"})
+              <strong>Cobertura:</strong> {data.coverageCity ?? "N/A"} ({data.coveragePostal ?? "N/A"}) · Radio {data.serviceRadiusKm} km
             </p>
             <p>
               <strong>Valor hora:</strong> {data.hourlyRateFromClp ? clp(data.hourlyRateFromClp) : "Por definir"}
@@ -121,38 +136,49 @@ export default function ProDetailPage() {
               <strong>Contacto:</strong> {data.user.email} {data.user.phone ? `· ${data.user.phone}` : ""}
             </p>
             <div className="cta-row">
-              <Link className="cta" href={`/reservar?proId=${data.userId}`}>
-                Reservar con este profesional
-              </Link>
               <label>
-                Fecha
+                Desde fecha
                 <input type="date" value={date} onChange={(event) => setDate(event.target.value)} />
               </label>
+              <Link className="cta" href={`/reservar?proId=${data.userId}`}>
+                Ir a reservar
+              </Link>
             </div>
           </section>
 
           <section className="panel">
             <div className="panel-head">
-              <h2>Calendario del profesional</h2>
-              <p>Disponibilidad detallada por dia y bloque horario.</p>
+              <h2>Calendario clickeable</h2>
+              <p>Selecciona el dia y luego el bloque horario disponible.</p>
             </div>
-            <div className="calendar-grid">
-              {groupedSlots.length === 0 ? (
-                <p className="empty">No hay horarios disponibles para esa fecha.</p>
+
+            <div className="day-tabs">
+              {dayGroups.map(([day]) => (
+                <button
+                  key={day}
+                  type="button"
+                  className={`day-tab ${selectedDay === day ? "active" : ""}`}
+                  onClick={() => setSelectedDay(day)}
+                >
+                  {new Date(`${day}T00:00:00`).toLocaleDateString("es-CL", { weekday: "short", day: "2-digit", month: "2-digit" })}
+                </button>
+              ))}
+            </div>
+
+            <div className="calendar-slot-grid">
+              {selectedSlots.length === 0 ? (
+                <p className="empty">No hay horarios disponibles en ese dia.</p>
               ) : (
-                groupedSlots.map(([day, daySlots]) => (
-                  <article className="calendar-day" key={day}>
-                    <h3>{day}</h3>
-                    <ul>
-                      {daySlots.map((slot) => (
-                        <li key={slot.id}>
-                          {new Date(slot.startsAt).toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" })} -{" "}
-                          {new Date(slot.endsAt).toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" })}
-                          {slot.service ? ` · ${slot.service.name}` : " · General"}
-                        </li>
-                      ))}
-                    </ul>
-                  </article>
+                selectedSlots.map((slot) => (
+                  <Link
+                    key={slot.id}
+                    className="slot-btn"
+                    href={`/reservar?proId=${data.userId}${slot.service ? `&serviceId=${slot.service.id}` : ""}&startsAt=${encodeURIComponent(slot.startsAt)}`}
+                  >
+                    {new Date(slot.startsAt).toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" })} -{" "}
+                    {new Date(slot.endsAt).toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" })}
+                    {slot.service ? ` · ${slot.service.name}` : ""}
+                  </Link>
                 ))
               )}
             </div>

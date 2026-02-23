@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import { MarketNav } from "@/components/market-nav";
 
 type Booking = {
@@ -41,16 +41,60 @@ export default function ClientePage() {
     "x-user-role": "CUSTOMER"
   };
 
+  const sortedBookings = useMemo(
+    () => [...bookings].sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime()),
+    [bookings]
+  );
+
+  const upcomingBookings = sortedBookings.filter((item) => new Date(item.scheduledAt).getTime() >= Date.now());
+  const historyBookings = sortedBookings.filter((item) => new Date(item.scheduledAt).getTime() < Date.now());
+
+  const fetchBookings = async (targetCustomerId: string) => {
+    const requestHeaders = {
+      "Content-Type": "application/json",
+      "x-user-id": targetCustomerId,
+      "x-user-role": "CUSTOMER"
+    };
+
+    const response = await fetch(`/api/marketplace/client/bookings?customerId=${targetCustomerId}`, { headers: requestHeaders });
+    const data = (await response.json()) as { bookings?: Booking[]; error?: string; detail?: string };
+    if (!response.ok || !data.bookings) throw new Error(data.detail || data.error || "No se pudieron cargar reservas");
+    setBookings(data.bookings);
+    return data.bookings.length;
+  };
+
+  useEffect(() => {
+    const bootstrap = async () => {
+      try {
+        const demoRes = await fetch("/api/marketplace/demo");
+        const demoData = (await demoRes.json()) as {
+          customer?: { id: string; fullName: string; email: string };
+          error?: string;
+          detail?: string;
+        };
+
+        if (!demoRes.ok || !demoData.customer) {
+          throw new Error(demoData.detail || demoData.error || "No se pudo cargar demo");
+        }
+
+        setCustomerId(demoData.customer.id);
+        const count = await fetchBookings(demoData.customer.id);
+        setFeedback(`Panel demo cargado para ${demoData.customer.fullName} (${count} reservas).`);
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Error inesperado");
+      }
+    };
+
+    bootstrap();
+  }, []);
+
   const loadBookings = async (event: FormEvent) => {
     event.preventDefault();
     setError("");
     setFeedback("");
     try {
-      const response = await fetch(`/api/marketplace/client/bookings?customerId=${customerId}`, { headers });
-      const data = (await response.json()) as { bookings?: Booking[]; error?: string; detail?: string };
-      if (!response.ok || !data.bookings) throw new Error(data.detail || data.error || "No se pudieron cargar reservas");
-      setBookings(data.bookings);
-      setFeedback(`Reservas cargadas: ${data.bookings.length}`);
+      const count = await fetchBookings(customerId);
+      setFeedback(`Reservas cargadas: ${count}`);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error inesperado");
     }
@@ -140,7 +184,7 @@ export default function ClientePage() {
       <section className="panel">
         <div className="panel-head">
           <h2>Panel Cliente</h2>
-          <p>Mis reservas, chat, reseña y soporte.</p>
+          <p>Mis reservas, proximas, historial, chat, reseña y soporte.</p>
         </div>
 
         <form className="query-row query-single" onSubmit={loadBookings}>
@@ -152,6 +196,43 @@ export default function ClientePage() {
             Cargar reservas
           </button>
         </form>
+      </section>
+
+      <section className="panel">
+        <div className="module-grid">
+          <article className="module-card">
+            <h3>Proximas</h3>
+            <p>{upcomingBookings.length} reserva(s) programada(s)</p>
+          </article>
+          <article className="module-card">
+            <h3>Historial</h3>
+            <p>{historyBookings.length} servicio(s) realizado(s)</p>
+          </article>
+          <article className="module-card">
+            <h3>Soporte</h3>
+            <p>Chat en app + centro de ayuda 24/7</p>
+          </article>
+        </div>
+      </section>
+
+      <section className="panel">
+        <div className="panel-head">
+          <h2>Direcciones guardadas y favoritos (demo)</h2>
+        </div>
+        <div className="module-grid">
+          <article className="module-card">
+            <h3>Casa</h3>
+            <p>Av. Providencia 1550, Providencia</p>
+          </article>
+          <article className="module-card">
+            <h3>Favorito</h3>
+            <p>Ana Gonzalez · Limpieza hogar</p>
+          </article>
+          <article className="module-card">
+            <h3>Favorito</h3>
+            <p>Camila Vera · Clases de piano</p>
+          </article>
+        </div>
       </section>
 
       <section className="list">

@@ -34,6 +34,17 @@ function clp(value: number) {
   return new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP", maximumFractionDigits: 0 }).format(value);
 }
 
+function toDateTimeLocalValue(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  const yyyy = date.getFullYear();
+  const mm = String(date.getMonth() + 1).padStart(2, "0");
+  const dd = String(date.getDate()).padStart(2, "0");
+  const hh = String(date.getHours()).padStart(2, "0");
+  const min = String(date.getMinutes()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}T${hh}:${min}`;
+}
+
 export default function ReservarPage() {
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(true);
@@ -66,11 +77,13 @@ export default function ReservarPage() {
     const params = new URLSearchParams(window.location.search);
     const defaultServiceId = params.get("serviceId") ?? "";
     const defaultProId = params.get("proId") ?? "";
+    const defaultStartsAt = params.get("startsAt") ?? "";
 
     setForm((prev) => ({
       ...prev,
       serviceId: defaultServiceId || prev.serviceId,
       proId: defaultProId || prev.proId,
+      startsAt: defaultStartsAt ? toDateTimeLocalValue(defaultStartsAt) : prev.startsAt,
       autoAssign: defaultProId ? false : prev.autoAssign
     }));
 

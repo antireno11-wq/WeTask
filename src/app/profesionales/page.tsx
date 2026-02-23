@@ -16,6 +16,9 @@ type Professional = {
   ratingAvg: number;
   ratingsCount: number;
   coverageCity: string | null;
+  coverageLatitude: number | null;
+  coverageLongitude: number | null;
+  serviceRadiusKm: number;
   hourlyRateFromClp: number | null;
   user: {
     id: string;
@@ -58,11 +61,25 @@ function dateInputDefault(): string {
   return d.toISOString().slice(0, 10);
 }
 
+function toMapPosition(lat: number, lng: number): { x: number; y: number } {
+  const minLat = -33.58;
+  const maxLat = -33.34;
+  const minLng = -70.82;
+  const maxLng = -70.5;
+
+  const rawX = ((lng - minLng) / (maxLng - minLng)) * 100;
+  const rawY = (1 - (lat - minLat) / (maxLat - minLat)) * 100;
+  const x = Math.min(98, Math.max(2, rawX));
+  const y = Math.min(98, Math.max(2, rawY));
+  return { x, y };
+}
+
 export default function ProfesionalesPage() {
   const [city, setCity] = useState("Santiago");
   const [serviceId, setServiceId] = useState("");
   const [date, setDate] = useState(dateInputDefault());
   const [verified, setVerified] = useState(true);
+  const [selectedDay, setSelectedDay] = useState("");
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -134,16 +151,27 @@ export default function ProfesionalesPage() {
     load();
   }, [city, verified, serviceId, date]);
 
-  const groupedSlots = useMemo(() => {
-    const groups = new Map<string, AvailabilitySlot[]>();
+  const dayGroups = useMemo(() => {
+    const map = new Map<string, AvailabilitySlot[]>();
     for (const slot of slots) {
-      const key = new Date(slot.startsAt).toLocaleDateString("es-CL", { weekday: "short", day: "2-digit", month: "2-digit" });
-      const prev = groups.get(key) ?? [];
+      const key = slot.startsAt.slice(0, 10);
+      const prev = map.get(key) ?? [];
       prev.push(slot);
-      groups.set(key, prev);
+      map.set(key, prev);
     }
-    return Array.from(groups.entries());
+    return Array.from(map.entries()).sort(([a], [b]) => a.localeCompare(b));
   }, [slots]);
+
+  useEffect(() => {
+    if (!selectedDay && dayGroups[0]) {
+      setSelectedDay(dayGroups[0][0]);
+    }
+    if (selectedDay && !dayGroups.some(([day]) => day === selectedDay)) {
+      setSelectedDay(dayGroups[0]?.[0] ?? "");
+    }
+  }, [dayGroups, selectedDay]);
+
+  const selectedSlots = useMemo(() => dayGroups.find(([day]) => day === selectedDay)?.[1] ?? [], [dayGroups, selectedDay]);
 
   return (
     <main className="page market-shell">
@@ -185,15 +213,30 @@ export default function ProfesionalesPage() {
 
       <section className="panel map-panel">
         <div className="panel-head">
-          <h2>Mapa de cobertura Santiago</h2>
-          <p>Santiago Centro, Providencia, Ñuñoa, Las Condes y comunas cercanas.</p>
+          <h2>Mapa de profesionales en Santiago</h2>
+          <p>Cada punto muestra ubicacion base y radio de cobertura.</p>
         </div>
-        <iframe
-          title="Mapa de Santiago"
-          className="santiago-map"
-          loading="lazy"
-          src="https://www.openstreetmap.org/export/embed.html?bbox=-70.76%2C-33.55%2C-70.52%2C-33.34&layer=mapnik&marker=-33.4489%2C-70.6693"
-        />
+        <div className="pro-map-canvas" role="img" aria-label="Mapa de cobertura Santiago">
+          {professionals
+            .filter((pro) => pro.coverageLatitude !== null && pro.coverageLongitude !== null)
+            .map((pro) => {
+              const pos = toMapPosition(pro.coverageLatitude!, pro.coverageLongitude!);
+              const radiusPx = Math.max(16, pro.serviceRadiusKm * 2.3);
+              return (
+                <Link
+                  key={pro.id}
+                  className="pro-marker"
+                  href={`/profesionales/${pro.userId}`}
+                  title={`${pro.user.fullName} · radio ${pro.serviceRadiusKm} km`}
+                  style={{ left: `${pos.x}%`, top: `${pos.y}%` }}
+                >
+                  <span className="pro-marker-radius" style={{ width: radiusPx, height: radiusPx }} />
+                  <span className="pro-marker-dot" />
+                  <span className="pro-marker-name">{pro.user.fullName.split(" ")[0]}</span>
+                </Link>
+              );
+            })}
+        </div>
       </section>
 
       {loading ? <p className="empty">Cargando profesionales...</p> : null}
@@ -215,7 +258,7 @@ export default function ProfesionalesPage() {
               <strong>Precio/hora:</strong> {pro.hourlyRateFromClp ? clp(pro.hourlyRateFromClp) : "Por definir"}
             </p>
             <p>
-              <strong>Zona:</strong> {pro.coverageCity ?? "No definida"}
+              <strong>Zona:</strong> {pro.coverageCity ?? "No definida"} · Radio {pro.serviceRadiusKm} km
             </p>
             <p>
               <strong>Proxima disponibilidad:</strong> {dateText(pro.slots[0]?.startsAt)}
@@ -235,24 +278,34 @@ export default function ProfesionalesPage() {
       <section className="panel">
         <div className="panel-head">
           <h2>Calendario general del servicio</h2>
-          <p>Disponibilidad por fecha y profesional.</p>
+          <p>Haz click en dia y luego en un bloque para reservar.</p>
         </div>
-        <div className="calendar-grid">
-          {groupedSlots.length === 0 ? (
-            <p className="empty">Sin disponibilidad para los filtros seleccionados.</p>
+
+        <div className="day-tabs">
+          {dayGroups.map(([day]) => (
+            <button
+              key={day}
+              type="button"
+              className={`day-tab ${selectedDay === day ? "active" : ""}`}
+              onClick={() => setSelectedDay(day)}
+            >
+              {new Date(`${day}T00:00:00`).toLocaleDateString("es-CL", { weekday: "short", day: "2-digit", month: "2-digit" })}
+            </button>
+          ))}
+        </div>
+
+        <div className="calendar-slot-grid">
+          {selectedSlots.length === 0 ? (
+            <p className="empty">Sin bloques disponibles para ese dia.</p>
           ) : (
-            groupedSlots.map(([day, daySlots]) => (
-              <article className="calendar-day" key={day}>
-                <h3>{day}</h3>
-                <ul>
-                  {daySlots.slice(0, 8).map((slot) => (
-                    <li key={slot.id}>
-                      {new Date(slot.startsAt).toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" })} -{" "}
-                      {slot.professionalProfile.user.fullName}
-                    </li>
-                  ))}
-                </ul>
-              </article>
+            selectedSlots.map((slot) => (
+              <Link
+                className="slot-btn"
+                key={slot.id}
+                href={`/reservar?proId=${slot.professionalProfile.user.id}${slot.service ? `&serviceId=${slot.service.id}` : ""}&startsAt=${encodeURIComponent(slot.startsAt)}`}
+              >
+                {new Date(slot.startsAt).toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" })} · {slot.professionalProfile.user.fullName}
+              </Link>
             ))
           )}
         </div>
