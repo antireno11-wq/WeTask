@@ -67,12 +67,12 @@ body {
 }
 
 .brand-logo {
-  width: clamp(140px, 16vw, 190px);
+  width: clamp(102px, 11vw, 150px);
   height: auto;
-  max-height: 76px;
+  max-height: 60px;
   object-fit: contain;
-  mix-blend-mode: multiply;
-  filter: saturate(1.03) contrast(1.05);
+  mix-blend-mode: darken;
+  filter: contrast(1.1) saturate(1.06);
 }
 
 .brand-pill {
@@ -650,7 +650,8 @@ textarea {
   }
 
   .brand-logo {
-    width: 130px;
+    width: 102px;
+    max-height: 44px;
   }
 
   .grid-form {

@@ -16,7 +16,7 @@ export function MarketNav() {
   return (
     <header className="market-nav">
       <Link href="/" className="brand-link">
-        <Image alt="WeTask" className="brand-logo" src="/logo-wetask-cropped.png" width={220} height={88} priority />
+        <Image alt="WeTask" className="brand-logo" src="/logo-wetask-cropped.png" width={170} height={68} priority />
       </Link>
       <nav>
         {links.map((item) => (
