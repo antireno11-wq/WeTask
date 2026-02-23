@@ -227,7 +227,8 @@ export default function ProPage() {
 
       const data = (await response.json()) as { slot?: ProSlot; error?: string; detail?: string };
       if (!response.ok || !data.slot) throw new Error(data.detail || data.error || "No se pudo crear bloque horario");
-      setSlots((prev) => [...prev, data.slot].sort((a, b) => a.startsAt.localeCompare(b.startsAt)));
+      const createdSlot = data.slot;
+      setSlots((prev) => [...prev, createdSlot].sort((a, b) => a.startsAt.localeCompare(b.startsAt)));
       setFeedback("Bloque horario creado.");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error inesperado");
