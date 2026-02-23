@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { MarketNav } from "@/components/market-nav";
@@ -128,6 +129,12 @@ export default function IngresarPage() {
             Entrar por email
           </button>
         </form>
+
+        <div className="cta-row">
+          <Link href="/registro" className="cta ghost small">
+            Crear cuenta nueva
+          </Link>
+        </div>
 
         {feedback ? <p className="feedback ok">{feedback}</p> : null}
         {error ? <p className="feedback error">{error}</p> : null}

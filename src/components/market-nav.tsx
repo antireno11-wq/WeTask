@@ -91,9 +91,14 @@ export function MarketNav() {
             Salir
           </button>
         ) : (
-          <Link href="/ingresar" className="nav-link auth-btn">
-            Ingresar
-          </Link>
+          <>
+            <Link href="/registro" className="nav-link auth-btn">
+              Registrarse
+            </Link>
+            <Link href="/ingresar" className="nav-link auth-btn">
+              Ingresar
+            </Link>
+          </>
         )}
       </div>
     </header>

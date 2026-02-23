@@ -257,6 +257,10 @@ body {
   gap: 10px;
 }
 
+.home-service-grid.fixed {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
 .home-service-card {
   border-radius: 14px;
   border: 1px solid #c8dcf0;
@@ -270,6 +274,12 @@ body {
   gap: 6px;
   font-weight: 800;
   transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.home-service-card small {
+  font-size: 0.78rem;
+  color: #1b3f6e;
+  font-weight: 700;
 }
 
 .home-service-card:hover {
@@ -298,6 +308,54 @@ body {
   font-size: 1.2rem;
   background: #ffffff;
   border: 1px solid #d1e3f5;
+}
+
+.home-role-grid {
+  margin-top: 14px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.role-card {
+  display: grid;
+  gap: 6px;
+  text-decoration: none;
+  background: #ffffff;
+  border: 1px solid #c7daef;
+  border-radius: 12px;
+  padding: 10px;
+  color: var(--ink);
+}
+
+.role-card span {
+  color: var(--ink-soft);
+  font-size: 0.82rem;
+}
+
+.stat-grid {
+  margin-top: 14px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.stat-card {
+  border: 1px solid #c7daef;
+  border-radius: 12px;
+  background: #ffffff;
+  padding: 10px;
+  display: grid;
+  gap: 2px;
+}
+
+.stat-card strong {
+  font-size: 1rem;
+}
+
+.stat-card span {
+  color: var(--ink-soft);
+  font-size: 0.8rem;
 }
 
 .service-card {
@@ -739,6 +797,14 @@ textarea {
 
   .home-service-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .home-role-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .stat-grid {
+    grid-template-columns: 1fr;
   }
 
   .compact-service-grid {
