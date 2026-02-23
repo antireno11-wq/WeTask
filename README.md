@@ -1,21 +1,47 @@
 # WeTask Marketplace MVP
 
-Base para una plataforma tipo marketplace de servicios al hogar (modelo por hora), inspirada en Webel, sobre Next.js + Prisma + PostgreSQL.
+Plataforma tipo Webel para servicios al hogar por hora, con precio fijo, reserva por bloques y pago dentro de plataforma.
 
 ## Stack
 - Next.js 14 (App Router)
 - Prisma + PostgreSQL
-- API routes (cliente / profesional / admin)
+- API routes por rol (`CUSTOMER`, `PRO`, `ADMIN`)
 
-## Estado actual
-Incluye dos capas funcionales en paralelo:
-- Flujo publico actual en home (`/`) para solicitar servicio y ver reservas por email.
-- Nueva capa marketplace (`/api/marketplace/*`) con reglas por categoria, asignacion de profesional, reservas por horas, reseñas y endpoints por rol.
+## Estado actual (implementado)
 
-## Modelo de datos (MVP marketplace)
-- `User` (roles: `CUSTOMER`, `PRO`, `ADMIN`)
+### UI / Rutas
+- `/` Landing marketplace
+- `/catalogo` Catalogo de servicios por categoria
+- `/profesionales` Listado de profesionales con filtros base
+- `/profesionales/:proId` Ficha de profesional y disponibilidad
+- `/reservar` Flujo de reserva por horas + extras + confirmacion de pago simulada
+- `/cliente` Panel cliente (reservas, chat, reseñas, disputas)
+- `/pro` Panel profesional (agenda, estados, cierre, payout)
+- `/admin` Backoffice (reservas, reglas de categoria, disputas)
+
+### Backend / Endpoints marketplace
+- `GET /api/marketplace/catalog`
+- `GET /api/marketplace/pros`
+- `GET /api/marketplace/pros/:proId`
+- `POST /api/marketplace/bookings`
+- `GET /api/marketplace/bookings` (admin)
+- `GET /api/marketplace/bookings/:bookingId`
+- `PATCH /api/marketplace/bookings/:bookingId/status`
+- `POST /api/marketplace/bookings/:bookingId/payment/confirm`
+- `POST /api/marketplace/bookings/:bookingId/complete`
+- `POST /api/marketplace/bookings/:bookingId/payout/request`
+- `GET|POST /api/marketplace/bookings/:bookingId/messages`
+- `GET /api/marketplace/client/bookings`
+- `GET /api/marketplace/pro/bookings`
+- `POST /api/marketplace/reviews`
+- `POST /api/marketplace/disputes`
+- `GET|PATCH /api/marketplace/admin/disputes`
+- `PATCH /api/marketplace/admin/categories/rules`
+
+### Modelo de datos (Prisma)
+- `User`
 - `ProfessionalProfile`
-- `Category` (reglas: minimo horas, bloques, fee, recargos)
+- `Category`
 - `Service`
 - `AvailabilitySlot`
 - `Address`
@@ -27,111 +53,31 @@ Incluye dos capas funcionales en paralelo:
 - `Review`
 - `DisputeTicket`
 
+## Auth temporal (para pruebas)
+Se valida rol por headers HTTP (hasta integrar Clerk/Auth0):
+- `x-user-id: <id>`
+- `x-user-role: CUSTOMER|PRO|ADMIN`
+
 ## Deploy en Railway
-1. Conecta repo en Railway.
+1. Conecta repo.
 2. Agrega PostgreSQL.
-3. Variables requeridas:
+3. Variables:
 - `DATABASE_URL`
 - `NEXT_PUBLIC_APP_URL`
-4. Deploy command ya ejecuta:
+4. Railway ejecuta en start:
 - `prisma generate`
 - `prisma db push`
 - `next start`
 
-## Seed inicial
-Corre semilla para datos base:
+## Seed
 ```bash
 npm run prisma:seed
 ```
 
-Crea:
-- Categorias: limpieza, manitas, electricidad.
-- Servicios base.
-- Usuarios demo (`CUSTOMER`, `PRO`, `ADMIN`).
-- Perfil profesional verificado + disponibilidad.
+Carga categorias/servicios demo, usuarios (`cliente-demo`, `pro-demo`, `admin-demo`), perfil profesional verificado y disponibilidad.
 
-## Auth temporal por headers (para pruebas)
-La capa marketplace valida roles desde headers HTTP:
-- `x-user-id: <id-usuario>`
-- `x-user-role: CUSTOMER|PRO|ADMIN`
-
-Nota: esto es temporal hasta integrar Clerk/Auth0.
-
-## Endpoints existentes (legacy)
-- `GET /api/health`
-- `GET /api/services`
-- `POST /api/bookings/public`
-- `GET /api/bookings/public?email=...`
-- `POST /api/bookings`
-- `GET /api/bookings?customerId=...|proId=...`
-- `PATCH /api/bookings/:bookingId/status`
-
-## Endpoints marketplace (nuevo)
-
-### Catalogo
-- `GET /api/marketplace/catalog`
-  - Retorna categorias activas con sus servicios activos.
-
-### Profesionales
-- `GET /api/marketplace/pros?serviceId=&city=&minRating=&verified=&maxHourlyRateClp=&limit=`
-- `GET /api/marketplace/pros/:proId`
-
-### Reservas marketplace
-- `POST /api/marketplace/bookings`
-
-Body ejemplo:
-```json
-{
-  "customerId": "cus_123",
-  "serviceId": "srv_123",
-  "proId": "pro_123",
-  "autoAssign": false,
-  "startsAt": "2026-03-01T10:00:00.000Z",
-  "hours": 2,
-  "address": {
-    "street": "Gran Via 12",
-    "city": "Madrid",
-    "postalCode": "28013",
-    "region": "Madrid"
-  },
-  "details": "Limpieza de cocina y bano",
-  "extras": {
-    "materials": true,
-    "urgency": false,
-    "travelFeeClp": 0
-  }
-}
-```
-
-Calcula automaticamente:
-- subtotal por hora
-- extras
-- fee de plataforma
-- total
-- crea payment en estado `PENDING`
-
-- `GET /api/marketplace/bookings?limit=30` (solo `ADMIN`)
-- `PATCH /api/marketplace/bookings/:bookingId/status` (roles `ADMIN` o `PRO`)
-
-### Panel cliente
-- `GET /api/marketplace/client/bookings?customerId=` (`CUSTOMER`/`ADMIN`)
-
-### Panel profesional
-- `GET /api/marketplace/pro/bookings?proId=` (`PRO`/`ADMIN`)
-
-### Reseñas
-- `POST /api/marketplace/reviews`
-  - Solo cliente (o admin), solo reservas `COMPLETED`.
-  - Recalcula `ratingAvg` y `ratingsCount` del profesional.
-
-### Admin categorias
-- `PATCH /api/marketplace/admin/categories/rules`
-  - Actualiza `basePlatformFeePct`, `minHours`, `slotMinutes`.
-  - Solo `ADMIN`.
-
-## Siguiente sprint recomendado (ya alineado al prompt)
-1. Integrar auth real (Clerk/Auth0) y remover headers temporales.
-2. Integrar pago real (Stripe Payment Intents + webhooks).
-3. Chat por reserva (`/api/marketplace/messages`) con subida de imagen.
-4. Disputas y reembolsos con panel admin.
-5. Paneles UI por rol (cliente/pro/admin) en rutas dedicadas.
+## Siguiente paso recomendado
+1. Integrar auth real (Clerk/Auth0).
+2. Integrar Stripe real (Payment Intent + webhook + refund).
+3. Upload real de fotos para chat y detalle de trabajo.
+4. Notificaciones (email/whatsapp/push) por estado.

@@ -34,16 +34,36 @@ body {
   padding: 24px 18px 64px;
 }
 
-.topbar {
+.market-nav {
   display: flex;
   align-items: center;
   justify-content: space-between;
   margin-bottom: 20px;
+  gap: 14px;
+  flex-wrap: wrap;
 }
 
-.brand-lockup {
+.brand-link {
   display: inline-flex;
   align-items: center;
+  text-decoration: none;
+}
+
+.market-nav nav {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.nav-link {
+  text-decoration: none;
+  color: var(--ink);
+  background: #ffffff;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 8px 12px;
+  font-weight: 700;
+  font-size: 0.86rem;
 }
 
 .brand-logo {
@@ -63,6 +83,13 @@ body {
 }
 
 .hero {
+  display: grid;
+  grid-template-columns: 1.3fr 0.9fr;
+  gap: 18px;
+  align-items: stretch;
+}
+
+.hero-block {
   display: grid;
   grid-template-columns: 1.3fr 0.9fr;
   gap: 18px;
@@ -158,6 +185,24 @@ body {
   color: var(--ink-soft);
 }
 
+.module-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.module-card {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: #ffffff;
+  padding: 14px;
+}
+
+.module-card h3 {
+  margin-top: 0;
+  margin-bottom: 8px;
+}
+
 .service-grid {
   margin-bottom: 12px;
   display: grid;
@@ -243,6 +288,13 @@ textarea {
   font-size: 0.88rem;
 }
 
+.cta-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 14px;
+}
+
 .cta.ghost {
   border: 1px solid var(--accent);
   background: #fff7f0;
@@ -263,6 +315,10 @@ textarea {
 
 .query-single {
   grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.query-pros {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .feedback {
@@ -354,8 +410,46 @@ textarea {
   border-color: #f6c1cc;
 }
 
+.status-editor {
+  margin-top: 10px;
+  display: grid;
+  grid-template-columns: 1.2fr repeat(3, auto);
+  gap: 8px;
+  align-items: end;
+}
+
+.action-grid {
+  margin-top: 14px;
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 10px;
+  align-items: end;
+}
+
+.chat-box {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #f9fcff;
+  padding: 10px;
+  max-height: 260px;
+  overflow: auto;
+}
+
+.price-box {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: #eef8ff;
+  border: 1px solid #b8dff7;
+  font-weight: 800;
+}
+
 @media (max-width: 960px) {
   .hero {
+    grid-template-columns: 1fr;
+  }
+
+  .hero-block {
     grid-template-columns: 1fr;
   }
 
@@ -366,16 +460,20 @@ textarea {
   .query-row {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
+  .module-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .status-editor,
+  .action-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 640px) {
   .page {
     padding: 18px 14px 44px;
-  }
-
-  .topbar {
-    align-items: flex-start;
-    gap: 10px;
   }
 
   .brand-logo {
