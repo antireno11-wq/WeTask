@@ -142,6 +142,19 @@ export default function ReservarPage() {
     void loadServices();
   }, []);
 
+  useEffect(() => {
+    const bootstrapSession = async () => {
+      try {
+        const response = await fetch("/api/auth/session");
+        const data = (await response.json()) as { session?: { userId: string } | null };
+        if (data.session?.userId) setCustomerId(data.session.userId);
+      } catch {
+        // noop
+      }
+    };
+    void bootstrapSession();
+  }, []);
+
   const useGeolocation = async () => {
     if (!navigator.geolocation) {
       setError("Tu navegador no soporta geolocalizacion");
@@ -294,11 +307,7 @@ export default function ReservarPage() {
     try {
       setLoadingPay(true);
       const response = await fetch(`/api/marketplace/bookings/${createdBooking.id}/payment/confirm`, {
-        method: "POST",
-        headers: {
-          "x-user-id": customerId,
-          "x-user-role": "CUSTOMER"
-        }
+        method: "POST"
       });
 
       const data = (await response.json()) as { booking?: BookingResponse; error?: string; detail?: string };

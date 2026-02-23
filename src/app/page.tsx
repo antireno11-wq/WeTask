@@ -1,15 +1,15 @@
 import Link from "next/link";
 import { MarketNav } from "@/components/market-nav";
 
-const categories = [
-  "Limpieza",
-  "Manitas",
-  "Electricidad",
-  "Fontaneria",
-  "Pintura",
-  "Jardineria",
-  "Mudanzas ligeras",
-  "Cuidado"
+const featuredServices = [
+  { name: "Limpieza", href: "/catalogo?q=limpieza", icon: "🧼", tone: "cyan" },
+  { name: "Maestro a domicilio", href: "/catalogo?q=maestro", icon: "🛠️", tone: "blue" },
+  { name: "Electricidad", href: "/catalogo?q=electricidad", icon: "💡", tone: "orange" },
+  { name: "Fontaneria", href: "/catalogo?q=fontaneria", icon: "🚰", tone: "cyan" },
+  { name: "Pintura", href: "/catalogo?q=pintura", icon: "🎨", tone: "blue" },
+  { name: "Jardineria", href: "/catalogo?q=jardineria", icon: "🌿", tone: "orange" },
+  { name: "Clases de colegio", href: "/catalogo?q=clases", icon: "📘", tone: "cyan" },
+  { name: "Clases de musica", href: "/catalogo?q=musica", icon: "🎵", tone: "orange" }
 ];
 
 export default function HomePage() {
@@ -19,10 +19,10 @@ export default function HomePage() {
 
       <section className="hero-block">
         <div>
-          <p className="eyebrow">Marketplace tipo Webel</p>
-          <h1>Reserva servicios al hogar por hora, con precio fijo y pago en plataforma.</h1>
+          <p className="eyebrow">Marketplace de servicios</p>
+          <h1>Reserva por hora, elige profesional y paga en la plataforma.</h1>
           <p className="lead">
-            Flujo completo operativo: catalogo, profesional, reserva, pago, ejecucion, reseña y payout.
+            Santiago de Chile. Disponibilidad real por calendario y confirmacion inmediata.
           </p>
           <div className="cta-row">
             <Link href="/reservar" className="cta">
@@ -46,13 +46,16 @@ export default function HomePage() {
 
       <section className="panel">
         <div className="panel-head">
-          <h2>Categorias destacadas</h2>
+          <h2>Servicios destacados</h2>
         </div>
-        <div className="chips">
-          {categories.map((category) => (
-            <span key={category} className="chip">
-              {category}
-            </span>
+        <div className="home-service-grid">
+          {featuredServices.map((service) => (
+            <Link key={service.name} className={`home-service-card ${service.tone}`} href={service.href}>
+              <span className="service-emoji" aria-hidden>
+                {service.icon}
+              </span>
+              <span>{service.name}</span>
+            </Link>
           ))}
         </div>
       </section>
@@ -62,18 +65,18 @@ export default function HomePage() {
           <h2>Modulos MVP incluidos</h2>
         </div>
         <div className="module-grid">
-          <article className="module-card">
+          <Link href="/cliente" className="module-card module-link">
             <h3>Cliente</h3>
             <p>Reservas, tracking, chat, reseña y soporte.</p>
-          </article>
-          <article className="module-card">
+          </Link>
+          <Link href="/pro" className="module-card module-link">
             <h3>Profesional</h3>
             <p>Agenda, estados de servicio, ingresos y payout.</p>
-          </article>
-          <article className="module-card">
+          </Link>
+          <Link href="/admin" className="module-card module-link">
             <h3>Admin</h3>
             <p>Reglas por categoria, disputas, comisiones y operaciones.</p>
-          </article>
+          </Link>
         </div>
       </section>
     </main>

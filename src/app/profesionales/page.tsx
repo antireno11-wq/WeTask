@@ -27,6 +27,10 @@ type Professional = {
   };
   slots: Array<{
     startsAt: string;
+    service: {
+      id: string;
+      name: string;
+    } | null;
   }>;
 };
 
@@ -45,6 +49,12 @@ type AvailabilitySlot = {
     name: string;
   } | null;
 };
+
+function professionalTypeFromSlots(slots: Professional["slots"]): string {
+  const serviceNames = Array.from(new Set(slots.map((slot) => slot.service?.name).filter(Boolean)));
+  if (serviceNames.length === 0) return "Servicio general";
+  return serviceNames.slice(0, 2).join(" · ");
+}
 
 function clp(value: number) {
   return new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP", maximumFractionDigits: 0 }).format(value);
@@ -173,6 +183,17 @@ export default function ProfesionalesPage() {
 
   const selectedSlots = useMemo(() => dayGroups.find(([day]) => day === selectedDay)?.[1] ?? [], [dayGroups, selectedDay]);
 
+  const groupedPros = useMemo(() => {
+    const map = new Map<string, Professional[]>();
+    for (const pro of professionals) {
+      const key = professionalTypeFromSlots(pro.slots);
+      const prev = map.get(key) ?? [];
+      prev.push(pro);
+      map.set(key, prev);
+    }
+    return Array.from(map.entries()).sort(([a], [b]) => a.localeCompare(b));
+  }, [professionals]);
+
   return (
     <main className="page market-shell">
       <MarketNav />
@@ -242,38 +263,49 @@ export default function ProfesionalesPage() {
       {loading ? <p className="empty">Cargando profesionales...</p> : null}
       {error ? <p className="feedback error">{error}</p> : null}
 
-      <section className="list">
-        {professionals.map((pro) => (
-          <article className="booking-card" key={pro.id}>
-            <div className="booking-head">
-              <h3>{pro.user.fullName}</h3>
-              <span className={`status ${pro.isVerified ? "status-completed" : "status-pending"}`}>
-                {pro.isVerified ? "Verificado" : "No verificado"}
-              </span>
-            </div>
-            <p>
-              <strong>Rating:</strong> {Number(pro.ratingAvg || 0).toFixed(1)} ({pro.ratingsCount} reseñas)
-            </p>
-            <p>
-              <strong>Precio/hora:</strong> {pro.hourlyRateFromClp ? clp(pro.hourlyRateFromClp) : "Por definir"}
-            </p>
-            <p>
-              <strong>Zona:</strong> {pro.coverageCity ?? "No definida"} · Radio {pro.serviceRadiusKm} km
-            </p>
-            <p>
-              <strong>Proxima disponibilidad:</strong> {dateText(pro.slots[0]?.startsAt)}
-            </p>
-            <div className="cta-row">
-              <Link className="cta small" href={`/profesionales/${pro.userId}`}>
-                Ver calendario
-              </Link>
-              <Link className="cta ghost small" href={`/reservar?proId=${pro.userId}${serviceId ? `&serviceId=${serviceId}` : ""}`}>
-                Reservar
-              </Link>
-            </div>
-          </article>
-        ))}
-      </section>
+      {groupedPros.map(([groupName, groupPros]) => (
+        <section key={groupName} className="panel">
+          <div className="panel-head">
+            <h2>{groupName}</h2>
+            <p>{groupPros.length} profesionales en esta especialidad.</p>
+          </div>
+          <div className="pro-card-grid">
+            {groupPros.map((pro) => (
+              <article className="booking-card" key={pro.id}>
+                <div className="booking-head">
+                  <h3>{pro.user.fullName}</h3>
+                  <span className={`status ${pro.isVerified ? "status-completed" : "status-pending"}`}>
+                    {pro.isVerified ? "Verificado" : "No verificado"}
+                  </span>
+                </div>
+                <p>
+                  <strong>Especialidad:</strong> {professionalTypeFromSlots(pro.slots)}
+                </p>
+                <p>
+                  <strong>Rating:</strong> {Number(pro.ratingAvg || 0).toFixed(1)} ({pro.ratingsCount} reseñas)
+                </p>
+                <p>
+                  <strong>Precio/hora:</strong> {pro.hourlyRateFromClp ? clp(pro.hourlyRateFromClp) : "Por definir"}
+                </p>
+                <p>
+                  <strong>Zona:</strong> {pro.coverageCity ?? "No definida"} · Radio {pro.serviceRadiusKm} km
+                </p>
+                <p>
+                  <strong>Proxima disponibilidad:</strong> {dateText(pro.slots[0]?.startsAt)}
+                </p>
+                <div className="cta-row">
+                  <Link className="cta small" href={`/profesionales/${pro.userId}`}>
+                    Ver calendario
+                  </Link>
+                  <Link className="cta ghost small" href={`/reservar?proId=${pro.userId}${serviceId ? `&serviceId=${serviceId}` : ""}`}>
+                    Reservar
+                  </Link>
+                </div>
+              </article>
+            ))}
+          </div>
+        </section>
+      ))}
 
       <section className="panel">
         <div className="panel-head">

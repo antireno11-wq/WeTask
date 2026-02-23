@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { MarketNav } from "@/components/market-nav";
 
 type Booking = {
@@ -35,11 +35,18 @@ export default function AdminPage() {
   const [feedback, setFeedback] = useState("");
   const [error, setError] = useState("");
 
-  const headers = {
-    "Content-Type": "application/json",
-    "x-user-id": adminId,
-    "x-user-role": "ADMIN"
-  };
+  useEffect(() => {
+    const bootstrap = async () => {
+      try {
+        const response = await fetch("/api/auth/session");
+        const data = (await response.json()) as { session?: { userId: string } | null };
+        if (data.session?.userId) setAdminId(data.session.userId);
+      } catch {
+        // noop
+      }
+    };
+    void bootstrap();
+  }, []);
 
   const loadAll = async (event: FormEvent) => {
     event.preventDefault();
@@ -47,8 +54,8 @@ export default function AdminPage() {
     setError("");
     try {
       const [bookingsRes, disputesRes] = await Promise.all([
-        fetch("/api/marketplace/bookings?limit=40", { headers }),
-        fetch("/api/marketplace/admin/disputes", { headers })
+        fetch("/api/marketplace/bookings?limit=40"),
+        fetch("/api/marketplace/admin/disputes")
       ]);
 
       const bookingsData = (await bookingsRes.json()) as { bookings?: Booking[]; error?: string; detail?: string };
@@ -72,7 +79,7 @@ export default function AdminPage() {
     try {
       const response = await fetch("/api/marketplace/admin/categories/rules", {
         method: "PATCH",
-        headers,
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           categoryId,
           basePlatformFeePct: feePct,
@@ -98,7 +105,7 @@ export default function AdminPage() {
     try {
       const response = await fetch("/api/marketplace/admin/disputes", {
         method: "PATCH",
-        headers,
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           disputeId,
           resolution,

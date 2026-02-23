@@ -39,7 +39,7 @@ export async function GET(req: NextRequest) {
           },
           orderBy: [{ startsAt: "asc" }],
           take: 6,
-          select: { startsAt: true, endsAt: true, serviceId: true }
+          select: { startsAt: true, endsAt: true, serviceId: true, service: { select: { id: true, name: true } } }
         }
       }
     });

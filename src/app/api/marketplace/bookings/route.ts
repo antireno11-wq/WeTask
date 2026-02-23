@@ -41,8 +41,17 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+    const identity = getRequestIdentity(req);
+    if (!hasRole(identity.role, [UserRole.CUSTOMER, UserRole.ADMIN])) {
+      return NextResponse.json({ error: "No autorizado" }, { status: 403 });
+    }
+
     const body = await req.json();
     const input = marketplaceCreateBookingSchema.parse(body);
+
+    if (identity.role === UserRole.CUSTOMER && identity.userId !== input.customerId) {
+      return NextResponse.json({ error: "No autorizado" }, { status: 403 });
+    }
 
     const [customer, service] = await Promise.all([
       prisma.user.findUnique({ where: { id: input.customerId } }),

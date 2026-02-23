@@ -59,10 +59,19 @@ Incluye carga automatica de datos demo en Santiago (categorias, servicios, profe
 - `Review`
 - `DisputeTicket`
 
-## Auth temporal (para pruebas)
-Se valida rol por headers HTTP (hasta integrar Clerk/Auth0):
-- `x-user-id: <id>`
-- `x-user-role: CUSTOMER|PRO|ADMIN`
+## Auth actual (rol + sesion)
+- Login en `/ingresar` (usuarios demo o email existente).
+- Sesion por cookie `HttpOnly` (`wetask_session`).
+- Middleware protege rutas:
+  - `/cliente` -> `CUSTOMER|ADMIN`
+  - `/pro` -> `PRO|ADMIN`
+  - `/admin` -> `ADMIN`
+- Middleware protege APIs privadas bajo `/api/marketplace/*`.
+
+Compatibilidad temporal:
+- Si defines `ALLOW_HEADER_AUTH=true`, tambien acepta headers:
+  - `x-user-id: <id>`
+  - `x-user-role: CUSTOMER|PRO|ADMIN`
 
 ## Deploy en Railway
 1. Conecta repo.
@@ -71,8 +80,7 @@ Se valida rol por headers HTTP (hasta integrar Clerk/Auth0):
 - `DATABASE_URL`
 - `NEXT_PUBLIC_APP_URL`
 4. Railway ejecuta en start:
-- `prisma generate`
-- `prisma db push`
+- `prisma migrate deploy`
 - `next start`
 
 ## Seed
@@ -83,7 +91,7 @@ npm run prisma:seed
 Carga categorias/servicios demo, usuarios (`cliente-demo`, `pro-demo`, `admin-demo`), perfil profesional verificado y disponibilidad.
 
 ## Siguiente paso recomendado
-1. Integrar auth real (Clerk/Auth0).
+1. Integrar proveedor real (Clerk/Auth0) sobre el flujo actual de sesion.
 2. Integrar Stripe real (Payment Intent + webhook + refund).
 3. Upload real de fotos para chat y detalle de trabajo.
 4. Notificaciones (email/whatsapp/push) por estado.

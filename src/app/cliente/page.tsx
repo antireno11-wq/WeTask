@@ -43,12 +43,6 @@ export default function ClientePage() {
   const [feedback, setFeedback] = useState("");
   const [error, setError] = useState("");
 
-  const headers = {
-    "Content-Type": "application/json",
-    "x-user-id": customerId,
-    "x-user-role": "CUSTOMER"
-  };
-
   const sortedBookings = useMemo(
     () => [...bookings].sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime()),
     [bookings]
@@ -58,13 +52,7 @@ export default function ClientePage() {
   const historyBookings = sortedBookings.filter((item) => new Date(item.scheduledAt).getTime() < Date.now());
 
   const fetchBookings = async (targetCustomerId: string) => {
-    const requestHeaders = {
-      "Content-Type": "application/json",
-      "x-user-id": targetCustomerId,
-      "x-user-role": "CUSTOMER"
-    };
-
-    const response = await fetch(`/api/marketplace/client/bookings?customerId=${targetCustomerId}`, { headers: requestHeaders });
+    const response = await fetch(`/api/marketplace/client/bookings?customerId=${targetCustomerId}`);
     const data = (await response.json()) as { bookings?: Booking[]; error?: string; detail?: string };
     if (!response.ok || !data.bookings) throw new Error(data.detail || data.error || "No se pudieron cargar reservas");
     setBookings(data.bookings);
@@ -72,11 +60,7 @@ export default function ClientePage() {
   };
 
   const fetchNotifications = async (targetCustomerId: string) => {
-    const requestHeaders = {
-      "x-user-id": targetCustomerId,
-      "x-user-role": "CUSTOMER"
-    };
-    const response = await fetch(`/api/marketplace/notifications?userId=${targetCustomerId}`, { headers: requestHeaders });
+    const response = await fetch(`/api/marketplace/notifications?userId=${targetCustomerId}`);
     const data = (await response.json()) as { notifications?: Notification[] };
     setNotifications(data.notifications ?? []);
   };
@@ -84,21 +68,21 @@ export default function ClientePage() {
   useEffect(() => {
     const bootstrap = async () => {
       try {
-        const demoRes = await fetch("/api/marketplace/demo");
-        const demoData = (await demoRes.json()) as {
-          customer?: { id: string; fullName: string; email: string };
+        const sessionRes = await fetch("/api/auth/session");
+        const sessionData = (await sessionRes.json()) as {
+          session?: { userId: string; fullName?: string | null };
           error?: string;
           detail?: string;
         };
 
-        if (!demoRes.ok || !demoData.customer) {
-          throw new Error(demoData.detail || demoData.error || "No se pudo cargar demo");
+        if (!sessionRes.ok || !sessionData.session?.userId) {
+          throw new Error(sessionData.detail || sessionData.error || "No se pudo cargar sesion");
         }
 
-        setCustomerId(demoData.customer.id);
-        const count = await fetchBookings(demoData.customer.id);
-        await fetchNotifications(demoData.customer.id);
-        setFeedback(`Panel demo cargado para ${demoData.customer.fullName} (${count} reservas).`);
+        setCustomerId(sessionData.session.userId);
+        const count = await fetchBookings(sessionData.session.userId);
+        await fetchNotifications(sessionData.session.userId);
+        setFeedback(`Panel cargado para ${sessionData.session.fullName ?? "cliente"} (${count} reservas).`);
       } catch (e) {
         setError(e instanceof Error ? e.message : "Error inesperado");
       }
@@ -124,7 +108,7 @@ export default function ClientePage() {
     setSelectedBookingId(bookingId);
     setError("");
     try {
-      const response = await fetch(`/api/marketplace/bookings/${bookingId}/messages`, { headers });
+      const response = await fetch(`/api/marketplace/bookings/${bookingId}/messages`);
       const data = (await response.json()) as { messages?: Message[]; error?: string; detail?: string };
       if (!response.ok || !data.messages) throw new Error(data.detail || data.error || "No se pudo cargar chat");
       setMessages(data.messages);
@@ -139,7 +123,7 @@ export default function ClientePage() {
     try {
       const response = await fetch(`/api/marketplace/bookings/${selectedBookingId}/messages`, {
         method: "POST",
-        headers,
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ body: chatBody })
       });
       const data = (await response.json()) as { message?: Message; error?: string; detail?: string };
@@ -160,7 +144,7 @@ export default function ClientePage() {
     try {
       const response = await fetch("/api/marketplace/reviews", {
         method: "POST",
-        headers,
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           bookingId: selectedBookingId,
           authorId: customerId,
@@ -186,7 +170,7 @@ export default function ClientePage() {
     try {
       const response = await fetch("/api/marketplace/disputes", {
         method: "POST",
-        headers,
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ bookingId: selectedBookingId, openedById: customerId, reason: disputeReason })
       });
       const data = (await response.json()) as { ticket?: { id: string }; error?: string; detail?: string };

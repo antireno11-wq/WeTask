@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { MarketNav } from "@/components/market-nav";
 
 const statusOptions = ["ACCEPTED", "IN_PROGRESS", "COMPLETED", "CANCELLED"];
@@ -34,11 +34,18 @@ export default function ProPage() {
   const [feedback, setFeedback] = useState("");
   const [error, setError] = useState("");
 
-  const headers = {
-    "Content-Type": "application/json",
-    "x-user-id": proId,
-    "x-user-role": "PRO"
-  };
+  useEffect(() => {
+    const bootstrap = async () => {
+      try {
+        const response = await fetch("/api/auth/session");
+        const data = (await response.json()) as { session?: { userId: string } | null };
+        if (data.session?.userId) setProId(data.session.userId);
+      } catch {
+        // noop
+      }
+    };
+    void bootstrap();
+  }, []);
 
   const loadBookings = async (event: FormEvent) => {
     event.preventDefault();
@@ -46,7 +53,7 @@ export default function ProPage() {
     setError("");
 
     try {
-      const response = await fetch(`/api/marketplace/pro/bookings?proId=${proId}`, { headers });
+      const response = await fetch(`/api/marketplace/pro/bookings?proId=${proId}`);
       const data = (await response.json()) as { bookings?: Booking[]; error?: string; detail?: string };
       if (!response.ok || !data.bookings) throw new Error(data.detail || data.error || "No se pudo cargar reservas");
       setBookings(data.bookings);
@@ -56,7 +63,7 @@ export default function ProPage() {
       });
       setStatusByBooking(next);
 
-      const notificationsResponse = await fetch(`/api/marketplace/notifications?userId=${proId}`, { headers });
+      const notificationsResponse = await fetch(`/api/marketplace/notifications?userId=${proId}`);
       const notificationsData = (await notificationsResponse.json()) as { notifications?: Notification[] };
       setNotifications(notificationsData.notifications ?? []);
     } catch (e) {
@@ -71,7 +78,7 @@ export default function ProPage() {
     try {
       const response = await fetch(`/api/marketplace/bookings/${bookingId}/status`, {
         method: "PATCH",
-        headers,
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: statusByBooking[bookingId] })
       });
       const data = (await response.json()) as { booking?: { id: string; status: string }; error?: string; detail?: string };
@@ -88,8 +95,7 @@ export default function ProPage() {
     setError("");
     try {
       const response = await fetch(`/api/marketplace/bookings/${bookingId}/complete`, {
-        method: "POST",
-        headers
+        method: "POST"
       });
       const data = (await response.json()) as { booking?: { status: string }; error?: string; detail?: string };
       if (!response.ok || !data.booking) throw new Error(data.detail || data.error || "No se pudo finalizar reserva");
@@ -105,8 +111,7 @@ export default function ProPage() {
     setError("");
     try {
       const response = await fetch(`/api/marketplace/bookings/${bookingId}/payout/request`, {
-        method: "POST",
-        headers
+        method: "POST"
       });
       const data = (await response.json()) as { payout?: { id: string; status: string }; error?: string; detail?: string };
       if (!response.ok || !data.payout) throw new Error(data.detail || data.error || "No se pudo solicitar payout");

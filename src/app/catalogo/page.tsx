@@ -33,6 +33,12 @@ export default function CatalogoPage() {
   const [error, setError] = useState("");
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const q = params.get("q");
+    if (q) setQuery(q);
+  }, []);
+
+  useEffect(() => {
     const load = async () => {
       try {
         setLoading(true);
@@ -64,13 +70,26 @@ export default function CatalogoPage() {
       .filter((category) => category.services.length > 0 || category.name.toLowerCase().includes(term));
   }, [categories, query]);
 
+  const compactServices = useMemo(
+    () =>
+      filtered.flatMap((category) =>
+        category.services.map((service) => ({
+          ...service,
+          categoryName: category.name,
+          minHours: category.minHours,
+          slotMinutes: category.slotMinutes
+        }))
+      ),
+    [filtered]
+  );
+
   return (
     <main className="page market-shell">
       <MarketNav />
       <section className="panel">
         <div className="panel-head">
           <h2>Catalogo de servicios</h2>
-          <p>Filtro por nombre o descripcion.</p>
+          <p>Bloques compactos por servicio.</p>
         </div>
         <label>
           Buscar
@@ -81,35 +100,29 @@ export default function CatalogoPage() {
       {loading ? <p className="empty">Cargando catalogo...</p> : null}
       {error ? <p className="feedback error">{error}</p> : null}
 
-      {filtered.map((category) => (
-        <section key={category.id} className="panel">
-          <div className="panel-head">
-            <h2>{category.name}</h2>
-            <p>
-              Minimo {category.minHours}h · Bloques de {category.slotMinutes} min
-            </p>
-          </div>
-          <div className="service-grid">
-            {category.services.map((service) => (
-              <article key={service.id} className="service-card active">
-                <strong>{service.name}</strong>
-                <span>{service.description}</span>
-                <span>
-                  Desde {clp(service.basePriceClp)} / hora · Duracion base {service.durationMin} min
-                </span>
-                <div className="cta-row">
-                  <Link className="cta small" href={`/profesionales?serviceId=${service.id}`}>
-                    Ver profesionales
-                  </Link>
-                  <Link className="cta ghost small" href={`/reservar?serviceId=${service.id}`}>
-                    Reservar
-                  </Link>
-                </div>
-              </article>
-            ))}
-          </div>
-        </section>
-      ))}
+      {!loading && !error && compactServices.length === 0 ? <p className="empty">No hay servicios para el filtro.</p> : null}
+
+      <section className="compact-service-grid">
+        {compactServices.map((service) => (
+          <article key={service.id} className="service-card active compact">
+            <span className="mini-tag">{service.categoryName}</span>
+            <strong>{service.name}</strong>
+            <span>{service.description}</span>
+            <span>Desde {clp(service.basePriceClp)} / hora</span>
+            <span>
+              Minimo {service.minHours}h · Bloque {service.slotMinutes} min
+            </span>
+            <div className="cta-row">
+              <Link className="cta small" href={`/profesionales?serviceId=${service.id}`}>
+                Profesionales
+              </Link>
+              <Link className="cta ghost small" href={`/reservar?serviceId=${service.id}`}>
+                Reservar
+              </Link>
+            </div>
+          </article>
+        ))}
+      </section>
     </main>
   );
 }

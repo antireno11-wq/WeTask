@@ -47,12 +47,37 @@ body {
   display: inline-flex;
   align-items: center;
   text-decoration: none;
+  padding: 4px 10px;
+  border-radius: 14px;
+  background: linear-gradient(145deg, #e4f3ff 0%, #f8fcff 100%);
+  border: 1px solid #d1e5f7;
 }
 
 .market-nav nav {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
+}
+
+.auth-nav {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.auth-badge {
+  border-radius: 999px;
+  border: 1px solid #c9def2;
+  background: #f5faff;
+  color: var(--ink);
+  padding: 7px 10px;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.auth-btn {
+  cursor: pointer;
 }
 
 .nav-link {
@@ -67,12 +92,13 @@ body {
 }
 
 .brand-logo {
-  width: clamp(102px, 11vw, 150px);
+  width: clamp(88px, 9vw, 126px);
   height: auto;
-  max-height: 60px;
+  max-height: 46px;
   object-fit: contain;
-  mix-blend-mode: darken;
-  filter: contrast(1.1) saturate(1.06);
+  mix-blend-mode: multiply;
+  filter: contrast(1.16) saturate(1.08);
+  display: block;
 }
 
 .brand-pill {
@@ -200,6 +226,18 @@ body {
   padding: 14px;
 }
 
+.module-link {
+  text-decoration: none;
+  color: inherit;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+}
+
+.module-link:hover {
+  transform: translateY(-2px);
+  border-color: var(--accent);
+  box-shadow: 0 10px 16px rgba(19, 42, 87, 0.12);
+}
+
 .module-card h3 {
   margin-top: 0;
   margin-bottom: 8px;
@@ -210,6 +248,56 @@ body {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
+}
+
+.home-service-grid {
+  margin-top: 12px;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.home-service-card {
+  border-radius: 14px;
+  border: 1px solid #c8dcf0;
+  text-decoration: none;
+  color: var(--ink);
+  background: #ffffff;
+  min-height: 98px;
+  padding: 12px;
+  display: grid;
+  align-content: space-between;
+  gap: 6px;
+  font-weight: 800;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.home-service-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 20px rgba(19, 42, 87, 0.14);
+}
+
+.home-service-card.cyan {
+  background: linear-gradient(165deg, #effbff 0%, #ffffff 100%);
+}
+
+.home-service-card.blue {
+  background: linear-gradient(165deg, #eef3ff 0%, #ffffff 100%);
+}
+
+.home-service-card.orange {
+  background: linear-gradient(165deg, #fff3e9 0%, #ffffff 100%);
+}
+
+.service-emoji {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  font-size: 1.2rem;
+  background: #ffffff;
+  border: 1px solid #d1e3f5;
 }
 
 .service-card {
@@ -233,6 +321,31 @@ body {
   border-color: var(--accent);
   box-shadow: inset 0 0 0 1px var(--accent);
   background: #fff8f2;
+}
+
+.service-card.compact {
+  padding: 10px;
+  gap: 3px;
+}
+
+.compact-service-grid {
+  margin-top: 14px;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.mini-tag {
+  display: inline-flex;
+  width: fit-content;
+  padding: 4px 9px;
+  border-radius: 999px;
+  border: 1px solid #ffcfaf;
+  color: #9a3f00;
+  font-size: 0.72rem;
+  font-weight: 800;
+  background: #fff8f2;
+  margin-bottom: 2px;
 }
 
 .grid-form {
@@ -350,6 +463,12 @@ textarea {
 .list {
   margin-top: 14px;
   display: grid;
+  gap: 12px;
+}
+
+.pro-card-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
 }
 
@@ -618,6 +737,14 @@ textarea {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .home-service-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .compact-service-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .query-row {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -638,6 +765,10 @@ textarea {
     grid-template-columns: 1fr;
   }
 
+  .pro-card-grid {
+    grid-template-columns: 1fr;
+  }
+
   .status-editor,
   .action-grid {
     grid-template-columns: 1fr;
@@ -650,8 +781,8 @@ textarea {
   }
 
   .brand-logo {
-    width: 102px;
-    max-height: 44px;
+    width: 84px;
+    max-height: 40px;
   }
 
   .grid-form {
@@ -663,6 +794,14 @@ textarea {
   }
 
   .service-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .home-service-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .compact-service-grid {
     grid-template-columns: 1fr;
   }
 }
