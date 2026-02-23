@@ -1,18 +1,84 @@
+"use client";
+
 import Link from "next/link";
+import { useMemo, useState } from "react";
 import { MarketNav } from "@/components/market-nav";
 
 const featuredServices = [
-  { name: "Limpieza", href: "/reservar?service=limpieza", icon: "🧼", tone: "cyan", price: "Desde $12.000/h" },
-  { name: "Maestro a domicilio", href: "/reservar?service=maestro", icon: "🛠️", tone: "blue", price: "Desde $15.000/h" },
-  { name: "Electricidad", href: "/reservar?service=electricidad", icon: "💡", tone: "orange", price: "Desde $18.000/h" },
-  { name: "Fontaneria", href: "/reservar?service=fontaneria", icon: "🚰", tone: "cyan", price: "Desde $17.000/h" },
-  { name: "Pintura", href: "/reservar?service=pintura", icon: "🎨", tone: "blue", price: "Desde $14.000/h" },
-  { name: "Jardineria", href: "/reservar?service=jardineria", icon: "🌿", tone: "orange", price: "Desde $13.000/h" },
-  { name: "Clases de colegio", href: "/reservar?service=clases", icon: "📘", tone: "cyan", price: "Desde $11.000/h" },
-  { name: "Clases de musica", href: "/reservar?service=musica", icon: "🎵", tone: "orange", price: "Desde $13.500/h" }
+  {
+    name: "Limpieza",
+    href: "/reservar?service=limpieza",
+    tone: "cyan",
+    price: "Desde $12.000/h",
+    image:
+      "https://images.unsplash.com/photo-1581578731548-c64695cc6952?auto=format&fit=crop&w=1200&q=80"
+  },
+  {
+    name: "Maestro a domicilio",
+    href: "/reservar?service=maestro",
+    tone: "blue",
+    price: "Desde $15.000/h",
+    image:
+      "https://images.unsplash.com/photo-1581147036324-c1c7f2c3f6d7?auto=format&fit=crop&w=1200&q=80"
+  },
+  {
+    name: "Electricidad",
+    href: "/reservar?service=electricidad",
+    tone: "orange",
+    price: "Desde $18.000/h",
+    image:
+      "https://images.unsplash.com/photo-1621905252507-b35492cc74b4?auto=format&fit=crop&w=1200&q=80"
+  },
+  {
+    name: "Fontaneria",
+    href: "/reservar?service=fontaneria",
+    tone: "cyan",
+    price: "Desde $17.000/h",
+    image:
+      "https://images.unsplash.com/photo-1585704032915-c3400ca199e7?auto=format&fit=crop&w=1200&q=80"
+  },
+  {
+    name: "Pintura",
+    href: "/reservar?service=pintura",
+    tone: "blue",
+    price: "Desde $14.000/h",
+    image:
+      "https://images.unsplash.com/photo-1562259949-e8e7689d7828?auto=format&fit=crop&w=1200&q=80"
+  },
+  {
+    name: "Jardineria",
+    href: "/reservar?service=jardineria",
+    tone: "orange",
+    price: "Desde $13.000/h",
+    image:
+      "https://images.unsplash.com/photo-1416879595882-3373a0480b5b?auto=format&fit=crop&w=1200&q=80"
+  },
+  {
+    name: "Clases de colegio",
+    href: "/reservar?service=clases",
+    tone: "cyan",
+    price: "Desde $11.000/h",
+    image:
+      "https://images.unsplash.com/photo-1503676260728-1c00da094a0b?auto=format&fit=crop&w=1200&q=80"
+  },
+  {
+    name: "Clases de musica",
+    href: "/reservar?service=musica",
+    tone: "orange",
+    price: "Desde $13.500/h",
+    image:
+      "https://images.unsplash.com/photo-1511379938547-c1f69419868d?auto=format&fit=crop&w=1200&q=80"
+  }
 ];
 
 export default function HomePage() {
+  const [search, setSearch] = useState("");
+  const filteredServices = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    if (!term) return featuredServices;
+    return featuredServices.filter((item) => item.name.toLowerCase().includes(term));
+  }, [search]);
+
   return (
     <main className="page market-shell">
       <MarketNav />
@@ -24,6 +90,19 @@ export default function HomePage() {
           <p className="lead">
             Santiago de Chile. Precio por hora definido, agenda visible y pago en plataforma.
           </p>
+
+          <div className="home-search">
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Que servicio necesitas hoy?"
+              aria-label="Buscar servicio"
+            />
+            <Link href={search.trim() ? `/catalogo?q=${encodeURIComponent(search.trim())}` : "/catalogo"} className="cta">
+              Buscar
+            </Link>
+          </div>
+
           <div className="cta-row">
             <Link href="/reservar" className="cta">
               Reservar ahora
@@ -81,11 +160,9 @@ export default function HomePage() {
           <p>Sin cotizacion manual. El precio por hora ya esta definido.</p>
         </div>
         <div className="home-service-grid fixed">
-          {featuredServices.map((service) => (
+          {filteredServices.map((service) => (
             <Link key={service.name} className={`home-service-card ${service.tone}`} href={service.href}>
-              <span className="service-emoji" aria-hidden>
-                {service.icon}
-              </span>
+              <span className="service-photo" style={{ backgroundImage: `url('${service.image}')` }} aria-hidden />
               <span>{service.name}</span>
               <small>{service.price}</small>
             </Link>
