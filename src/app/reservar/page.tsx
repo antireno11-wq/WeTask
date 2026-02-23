@@ -322,7 +322,7 @@ export default function ReservarPage() {
       <section className="panel">
         <div className="panel-head">
           <h2>Reserva instantanea</h2>
-          <p>Flujo tipo app de delivery: direccion -> match -> slot -> pago -> tracking.</p>
+          <p>Flujo tipo app de delivery: direccion - match - slot - pago - tracking.</p>
         </div>
 
         <form className="grid-form" onSubmit={searchPros}>
