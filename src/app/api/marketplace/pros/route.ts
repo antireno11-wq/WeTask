@@ -3,6 +3,8 @@ import { ensureMarketplaceDemoData } from "@/lib/marketplace-demo-data";
 import { prisma } from "@/lib/prisma";
 import { marketplaceListProsQuerySchema } from "@/lib/validators";
 
+export const dynamic = "force-dynamic";
+
 export async function GET(req: NextRequest) {
   try {
     await ensureMarketplaceDemoData();
@@ -30,19 +32,18 @@ export async function GET(req: NextRequest) {
       include: {
         user: { select: { id: true, fullName: true, email: true } },
         slots: {
-          where: { isAvailable: true, startsAt: { gte: new Date() } },
+          where: {
+            isAvailable: true,
+            startsAt: { gte: new Date() },
+            OR: input.serviceId ? [{ serviceId: null }, { serviceId: input.serviceId }] : undefined
+          },
           orderBy: [{ startsAt: "asc" }],
-          take: 1,
+          take: 6,
           select: { startsAt: true, endsAt: true, serviceId: true }
         }
       }
     });
-
-    const filtered = input.serviceId
-      ? profiles.filter((profile) => profile.slots.some((slot) => !slot.serviceId || slot.serviceId === input.serviceId))
-      : profiles;
-
-    return NextResponse.json({ professionals: filtered }, { status: 200 });
+    return NextResponse.json({ professionals: profiles }, { status: 200 });
   } catch (error) {
     return NextResponse.json(
       {

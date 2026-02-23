@@ -97,3 +97,12 @@ export const marketplaceAdminFeeSchema = z.object({
   minHours: z.coerce.number().int().min(1).max(8),
   slotMinutes: z.coerce.number().int().refine((v) => v === 30 || v === 60, "slotMinutes debe ser 30 o 60")
 });
+
+export const marketplaceAvailabilityQuerySchema = z.object({
+  serviceId: z.string().optional(),
+  proId: z.string().optional(),
+  city: z.string().optional(),
+  date: z.coerce.date().optional(),
+  days: z.coerce.number().int().min(1).max(14).default(7),
+  limit: z.coerce.number().int().min(1).max(200).default(100)
+});

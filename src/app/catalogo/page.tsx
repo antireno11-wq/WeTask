@@ -97,9 +97,14 @@ export default function CatalogoPage() {
                 <span>
                   Desde {clp(service.basePriceClp)} / hora · Duracion base {service.durationMin} min
                 </span>
-                <Link className="cta small" href={`/reservar?serviceId=${service.id}`}>
-                  Reservar
-                </Link>
+                <div className="cta-row">
+                  <Link className="cta small" href={`/profesionales?serviceId=${service.id}`}>
+                    Ver profesionales
+                  </Link>
+                  <Link className="cta ghost small" href={`/reservar?serviceId=${service.id}`}>
+                    Reservar
+                  </Link>
+                </div>
               </article>
             ))}
           </div>

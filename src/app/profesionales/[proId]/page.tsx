@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { MarketNav } from "@/components/market-nav";
 
 type ProfessionalDetail = {
@@ -21,17 +21,31 @@ type ProfessionalDetail = {
     email: string;
     phone: string | null;
   };
-  slots: Array<{
-    id: string;
-    startsAt: string;
-    endsAt: string;
-    service: { id: string; name: string } | null;
-  }>;
 };
+
+type AvailabilitySlot = {
+  id: string;
+  startsAt: string;
+  endsAt: string;
+  service: { id: string; name: string } | null;
+};
+
+function clp(value: number) {
+  return new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP", maximumFractionDigits: 0 }).format(value);
+}
+
+function dateInputDefault(): string {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  return d.toISOString().slice(0, 10);
+}
 
 export default function ProDetailPage() {
   const params = useParams<{ proId: string }>();
+  const [date, setDate] = useState(dateInputDefault());
+
   const [data, setData] = useState<ProfessionalDetail | null>(null);
+  const [slots, setSlots] = useState<AvailabilitySlot[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -39,12 +53,28 @@ export default function ProDetailPage() {
     const load = async () => {
       try {
         setLoading(true);
-        const response = await fetch(`/api/marketplace/pros/${params.proId}`);
-        const body = (await response.json()) as { professional?: ProfessionalDetail; error?: string; detail?: string };
-        if (!response.ok || !body.professional) {
-          throw new Error(body.detail || body.error || "No se pudo cargar perfil");
+        const [proRes, availabilityRes] = await Promise.all([
+          fetch(`/api/marketplace/pros/${params.proId}`),
+          fetch(`/api/marketplace/availability?proId=${params.proId}&date=${date}&days=7&limit=80`)
+        ]);
+
+        const proBody = (await proRes.json()) as { professional?: ProfessionalDetail; error?: string; detail?: string };
+        const availabilityBody = (await availabilityRes.json()) as {
+          slots?: Array<AvailabilitySlot>;
+          error?: string;
+          detail?: string;
+        };
+
+        if (!proRes.ok || !proBody.professional) {
+          throw new Error(proBody.detail || proBody.error || "No se pudo cargar perfil");
         }
-        setData(body.professional);
+
+        if (!availabilityRes.ok || !availabilityBody.slots) {
+          throw new Error(availabilityBody.detail || availabilityBody.error || "No se pudo cargar disponibilidad");
+        }
+
+        setData(proBody.professional);
+        setSlots(availabilityBody.slots);
       } catch (e) {
         setError(e instanceof Error ? e.message : "Error inesperado");
       } finally {
@@ -52,7 +82,18 @@ export default function ProDetailPage() {
       }
     };
     load();
-  }, [params.proId]);
+  }, [params.proId, date]);
+
+  const groupedSlots = useMemo(() => {
+    const groups = new Map<string, AvailabilitySlot[]>();
+    for (const slot of slots) {
+      const key = new Date(slot.startsAt).toLocaleDateString("es-CL", { weekday: "short", day: "2-digit", month: "2-digit" });
+      const prev = groups.get(key) ?? [];
+      prev.push(slot);
+      groups.set(key, prev);
+    }
+    return Array.from(groups.entries());
+  }, [slots]);
 
   return (
     <main className="page market-shell">
@@ -74,31 +115,46 @@ export default function ProDetailPage() {
               <strong>Cobertura:</strong> {data.coverageCity ?? "N/A"} ({data.coveragePostal ?? "N/A"})
             </p>
             <p>
+              <strong>Valor hora:</strong> {data.hourlyRateFromClp ? clp(data.hourlyRateFromClp) : "Por definir"}
+            </p>
+            <p>
               <strong>Contacto:</strong> {data.user.email} {data.user.phone ? `· ${data.user.phone}` : ""}
             </p>
-            <Link className="cta" href={`/reservar?proId=${data.userId}`}>
-              Reservar con este profesional
-            </Link>
+            <div className="cta-row">
+              <Link className="cta" href={`/reservar?proId=${data.userId}`}>
+                Reservar con este profesional
+              </Link>
+              <label>
+                Fecha
+                <input type="date" value={date} onChange={(event) => setDate(event.target.value)} />
+              </label>
+            </div>
           </section>
 
           <section className="panel">
             <div className="panel-head">
-              <h2>Disponibilidad</h2>
+              <h2>Calendario del profesional</h2>
+              <p>Disponibilidad detallada por dia y bloque horario.</p>
             </div>
-            <div className="list">
-              {data.slots.map((slot) => (
-                <article key={slot.id} className="booking-card">
-                  <p>
-                    <strong>Inicio:</strong> {new Date(slot.startsAt).toLocaleString("es-ES")}
-                  </p>
-                  <p>
-                    <strong>Fin:</strong> {new Date(slot.endsAt).toLocaleString("es-ES")}
-                  </p>
-                  <p>
-                    <strong>Servicio:</strong> {slot.service?.name ?? "General"}
-                  </p>
-                </article>
-              ))}
+            <div className="calendar-grid">
+              {groupedSlots.length === 0 ? (
+                <p className="empty">No hay horarios disponibles para esa fecha.</p>
+              ) : (
+                groupedSlots.map(([day, daySlots]) => (
+                  <article className="calendar-day" key={day}>
+                    <h3>{day}</h3>
+                    <ul>
+                      {daySlots.map((slot) => (
+                        <li key={slot.id}>
+                          {new Date(slot.startsAt).toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" })} -{" "}
+                          {new Date(slot.endsAt).toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" })}
+                          {slot.service ? ` · ${slot.service.name}` : " · General"}
+                        </li>
+                      ))}
+                    </ul>
+                  </article>
+                ))
+              )}
             </div>
           </section>
         </>

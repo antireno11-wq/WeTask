@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { ensureMarketplaceDemoData } from "@/lib/marketplace-demo-data";
 import { prisma } from "@/lib/prisma";
 
+export const dynamic = "force-dynamic";
+
 export async function GET(_: Request, context: { params: { proId: string } }) {
   try {
     await ensureMarketplaceDemoData();
