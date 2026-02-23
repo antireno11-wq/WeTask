@@ -15,6 +15,13 @@ type Booking = {
   payout: { status: string } | null;
 };
 
+type Notification = {
+  id: string;
+  title: string;
+  body: string;
+  createdAt: string;
+};
+
 function clp(value: number) {
   return new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP", maximumFractionDigits: 0 }).format(value);
 }
@@ -22,6 +29,7 @@ function clp(value: number) {
 export default function ProPage() {
   const [proId, setProId] = useState("");
   const [bookings, setBookings] = useState<Booking[]>([]);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
   const [statusByBooking, setStatusByBooking] = useState<Record<string, string>>({});
   const [feedback, setFeedback] = useState("");
   const [error, setError] = useState("");
@@ -47,6 +55,10 @@ export default function ProPage() {
         next[item.id] = item.status;
       });
       setStatusByBooking(next);
+
+      const notificationsResponse = await fetch(`/api/marketplace/notifications?userId=${proId}`, { headers });
+      const notificationsData = (await notificationsResponse.json()) as { notifications?: Notification[] };
+      setNotifications(notificationsData.notifications ?? []);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error inesperado");
     }
@@ -122,6 +134,27 @@ export default function ProPage() {
             Cargar agenda
           </button>
         </form>
+      </section>
+
+      <section className="panel">
+        <div className="panel-head">
+          <h2>Notificaciones</h2>
+        </div>
+        <div className="list">
+          {notifications.length === 0 ? (
+            <p className="empty">Sin notificaciones por ahora.</p>
+          ) : (
+            notifications.map((item) => (
+              <article className="booking-card" key={item.id}>
+                <p>
+                  <strong>{item.title}</strong>
+                </p>
+                <p>{item.body}</p>
+                <p>{new Date(item.createdAt).toLocaleString("es-ES")}</p>
+              </article>
+            ))
+          )}
+        </div>
       </section>
 
       <section className="list">

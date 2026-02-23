@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { MarketNav } from "@/components/market-nav";
 
@@ -9,154 +10,240 @@ type Service = {
   name: string;
   description: string;
   basePriceClp: number;
-  minHours: number;
-  slotMinutes: number;
 };
 
-type Professional = {
-  user: {
-    id: string;
-    fullName: string;
-  };
-  isVerified: boolean;
+type Slot = {
+  id: string;
+  startsAt: string;
+  endsAt: string;
+  service: { id: string; name: string } | null;
+};
+
+type MatchProfessional = {
+  id: string;
+  userId: string;
+  fullName: string;
   ratingAvg: number;
+  ratingsCount: number;
+  hourlyRateFromClp: number | null;
+  distanceKm: number;
+  nextAvailableAt: string | null;
   coverageCity: string | null;
+  serviceRadiusKm: number;
+  slots: Slot[];
 };
 
 type BookingResponse = {
   id: string;
-  totalPriceClp: number;
   status: string;
   paymentStatus: string;
+  totalPriceClp: number;
 };
 
 function clp(value: number) {
   return new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP", maximumFractionDigits: 0 }).format(value);
 }
 
-function toDateTimeLocalValue(value: string): string {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "";
-  const yyyy = date.getFullYear();
-  const mm = String(date.getMonth() + 1).padStart(2, "0");
-  const dd = String(date.getDate()).padStart(2, "0");
-  const hh = String(date.getHours()).padStart(2, "0");
-  const min = String(date.getMinutes()).padStart(2, "0");
-  return `${yyyy}-${mm}-${dd}T${hh}:${min}`;
+function isoDay(value: string): string {
+  return value.slice(0, 10);
 }
 
 export default function ReservarPage() {
-  const [step, setStep] = useState(1);
-  const [loading, setLoading] = useState(true);
   const [services, setServices] = useState<Service[]>([]);
-  const [pros, setPros] = useState<Professional[]>([]);
+  const [loadingServices, setLoadingServices] = useState(false);
+  const [loadingSearch, setLoadingSearch] = useState(false);
+  const [loadingPay, setLoadingPay] = useState(false);
 
-  const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
 
-  const [form, setForm] = useState({
-    customerId: "",
-    serviceId: "",
-    proId: "",
-    autoAssign: true,
-    startsAt: "",
-    hours: 2,
-    street: "",
+  const [address, setAddress] = useState({
     city: "Santiago",
-    postalCode: "",
-    region: "Metropolitana",
-    details: "",
-    materials: false,
-    urgency: false,
-    travelFeeClp: 0
+    postalCode: "7500000",
+    street: "Av. Providencia 1550",
+    latitude: "",
+    longitude: ""
   });
+
+  const [filters, setFilters] = useState({
+    serviceId: "",
+    date: new Date().toISOString().slice(0, 10)
+  });
+
+  const [customerId, setCustomerId] = useState("");
+
+  const [matches, setMatches] = useState<MatchProfessional[]>([]);
+  const [selectedProId, setSelectedProId] = useState("");
+  const [selectedDay, setSelectedDay] = useState("");
+  const [selectedSlotId, setSelectedSlotId] = useState("");
+
+  const [hours, setHours] = useState(2);
+  const [materials, setMaterials] = useState(false);
+  const [urgency, setUrgency] = useState(false);
+  const [travelFeeClp, setTravelFeeClp] = useState(0);
+  const [details, setDetails] = useState("");
 
   const [createdBooking, setCreatedBooking] = useState<BookingResponse | null>(null);
 
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const defaultServiceId = params.get("serviceId") ?? "";
-    const defaultProId = params.get("proId") ?? "";
-    const defaultStartsAt = params.get("startsAt") ?? "";
+  const selectedPro = useMemo(() => matches.find((pro) => pro.userId === selectedProId) ?? null, [matches, selectedProId]);
 
-    setForm((prev) => ({
-      ...prev,
-      serviceId: defaultServiceId || prev.serviceId,
-      proId: defaultProId || prev.proId,
-      startsAt: defaultStartsAt ? toDateTimeLocalValue(defaultStartsAt) : prev.startsAt,
-      autoAssign: defaultProId ? false : prev.autoAssign
-    }));
+  const dayGroups = useMemo(() => {
+    if (!selectedPro) return [] as Array<[string, Slot[]]>;
+    const map = new Map<string, Slot[]>();
+    for (const slot of selectedPro.slots) {
+      const key = isoDay(slot.startsAt);
+      const prev = map.get(key) ?? [];
+      prev.push(slot);
+      map.set(key, prev);
+    }
+    return Array.from(map.entries()).sort(([a], [b]) => a.localeCompare(b));
+  }, [selectedPro]);
 
-    const load = async () => {
-      try {
-        setLoading(true);
-        const [catalogRes, prosRes] = await Promise.all([
-          fetch("/api/marketplace/catalog"),
-          fetch("/api/marketplace/pros?verified=true&limit=30")
-        ]);
+  const selectedSlots = useMemo(() => dayGroups.find(([day]) => day === selectedDay)?.[1] ?? [], [dayGroups, selectedDay]);
 
-        const catalogData = (await catalogRes.json()) as {
-          categories?: Array<{
-            minHours: number;
-            slotMinutes: number;
-            services: Array<{
-              id: string;
-              slug: string;
-              name: string;
-              description: string;
-              basePriceClp: number;
-            }>;
-          }>;
-          error?: string;
-          detail?: string;
-        };
-        const prosData = (await prosRes.json()) as { professionals?: Professional[]; error?: string; detail?: string };
+  const selectedSlot = useMemo(() => {
+    if (!selectedPro || !selectedSlotId) return null;
+    return selectedPro.slots.find((slot) => slot.id === selectedSlotId) ?? null;
+  }, [selectedPro, selectedSlotId]);
 
-        if (!catalogRes.ok || !catalogData.categories) {
-          throw new Error(catalogData.detail || catalogData.error || "No se pudo cargar catalogo");
-        }
-        if (!prosRes.ok || !prosData.professionals) {
-          throw new Error(prosData.detail || prosData.error || "No se pudo cargar profesionales");
-        }
+  const baseHourly = selectedPro?.hourlyRateFromClp ?? services.find((s) => s.id === filters.serviceId)?.basePriceClp ?? 0;
+  const extrasTotal = (materials ? 5000 : 0) + (urgency ? 9000 : 0) + travelFeeClp;
+  const subtotal = baseHourly * hours;
+  const commission = Math.round(subtotal * 0.12);
+  const total = subtotal + extrasTotal + commission;
 
-        const allServices = catalogData.categories.flatMap((category) =>
-          category.services.map((service) => ({
-            ...service,
-            minHours: category.minHours,
-            slotMinutes: category.slotMinutes
-          }))
-        );
+  const loadServices = async () => {
+    try {
+      setLoadingServices(true);
+      const response = await fetch("/api/marketplace/catalog");
+      const data = (await response.json()) as {
+        categories?: Array<{ services: Array<Service> }>;
+        error?: string;
+        detail?: string;
+      };
 
-        setServices(allServices);
-        setPros(prosData.professionals);
-
-        if (!defaultServiceId && allServices[0]) {
-          setForm((prev) => ({ ...prev, serviceId: allServices[0].id }));
-        }
-      } catch (e) {
-        setError(e instanceof Error ? e.message : "Error inesperado");
-      } finally {
-        setLoading(false);
+      if (!response.ok || !data.categories) {
+        throw new Error(data.detail || data.error || "No se pudieron cargar servicios");
       }
-    };
 
-    load();
+      const list = data.categories.flatMap((category) => category.services);
+      setServices(list);
+      if (!filters.serviceId && list[0]) {
+        setFilters((prev) => ({ ...prev, serviceId: list[0].id }));
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Error inesperado");
+    } finally {
+      setLoadingServices(false);
+    }
+  };
+
+  useEffect(() => {
+    void loadServices();
   }, []);
 
-  const selectedService = useMemo(() => services.find((item) => item.id === form.serviceId) ?? null, [services, form.serviceId]);
+  const useGeolocation = async () => {
+    if (!navigator.geolocation) {
+      setError("Tu navegador no soporta geolocalizacion");
+      return;
+    }
 
-  const estimatedPrice = useMemo(() => {
-    if (!selectedService) return 0;
-    const base = selectedService.basePriceClp * form.hours;
-    const material = form.materials ? 5000 : 0;
-    const urgency = form.urgency ? 9000 : 0;
-    const travel = form.travelFeeClp || 0;
-    const fee = Math.round(base * 0.12);
-    return base + material + urgency + travel + fee;
-  }, [form.hours, form.materials, form.urgency, form.travelFeeClp, selectedService]);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setAddress((prev) => ({
+          ...prev,
+          latitude: position.coords.latitude.toString(),
+          longitude: position.coords.longitude.toString()
+        }));
+        setMessage("Ubicacion detectada. Ahora busca profesionales.");
+      },
+      () => {
+        setError("No pudimos obtener tu ubicacion");
+      }
+    );
+  };
 
-  const createBooking = async (event: FormEvent) => {
+  const searchPros = async (event: FormEvent) => {
     event.preventDefault();
+    setError("");
+    setMessage("");
+    setSelectedProId("");
+    setSelectedSlotId("");
+    setSelectedDay("");
+
+    try {
+      setLoadingSearch(true);
+      const params = new URLSearchParams({
+        city: address.city,
+        postalCode: address.postalCode,
+        street: address.street,
+        date: filters.date,
+        limit: "30"
+      });
+      if (filters.serviceId) params.set("serviceId", filters.serviceId);
+      if (address.latitude && address.longitude) {
+        params.set("latitude", address.latitude);
+        params.set("longitude", address.longitude);
+      }
+
+      const response = await fetch(`/api/marketplace/search-professionals?${params.toString()}`);
+      const data = (await response.json()) as {
+        professionals?: Array<{
+          id: string;
+          userId: string;
+          ratingAvg: number;
+          ratingsCount: number;
+          hourlyRateFromClp: number | null;
+          distanceKm: number;
+          nextAvailableAt: string | null;
+          coverageCity: string | null;
+          serviceRadiusKm: number;
+          user: { fullName: string };
+          slots: Slot[];
+        }>;
+        error?: string;
+        detail?: string;
+      };
+
+      if (!response.ok || !data.professionals) {
+        throw new Error(data.detail || data.error || "No se pudieron buscar profesionales");
+      }
+
+      const normalized: MatchProfessional[] = data.professionals.map((item) => ({
+        id: item.id,
+        userId: item.userId,
+        fullName: item.user.fullName,
+        ratingAvg: Number(item.ratingAvg),
+        ratingsCount: item.ratingsCount,
+        hourlyRateFromClp: item.hourlyRateFromClp,
+        distanceKm: item.distanceKm,
+        nextAvailableAt: item.nextAvailableAt,
+        coverageCity: item.coverageCity,
+        serviceRadiusKm: item.serviceRadiusKm,
+        slots: item.slots
+      }));
+
+      setMatches(normalized);
+      if (normalized[0]) {
+        setSelectedProId(normalized[0].userId);
+        const firstDay = isoDay(normalized[0].slots[0]?.startsAt ?? "");
+        if (firstDay) setSelectedDay(firstDay);
+      }
+
+      setMessage(`${normalized.length} profesional(es) encontrados para tu direccion.`);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Error inesperado");
+    } finally {
+      setLoadingSearch(false);
+    }
+  };
+
+  const createBooking = async () => {
+    if (!customerId || !selectedPro || !selectedSlot || !filters.serviceId) {
+      setError("Completa cliente, profesional, servicio y horario.");
+      return;
+    }
+
     setError("");
     setMessage("");
 
@@ -165,204 +252,246 @@ export default function ReservarPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          customerId: form.customerId,
-          serviceId: form.serviceId,
-          proId: form.autoAssign ? undefined : form.proId || undefined,
-          autoAssign: form.autoAssign,
-          startsAt: new Date(form.startsAt).toISOString(),
-          hours: form.hours,
+          customerId,
+          serviceId: filters.serviceId,
+          proId: selectedPro.userId,
+          slotId: selectedSlot.id,
+          autoAssign: false,
+          startsAt: selectedSlot.startsAt,
+          hours,
           address: {
-            street: form.street,
-            city: form.city,
-            postalCode: form.postalCode,
-            region: form.region
+            street: address.street,
+            city: address.city,
+            postalCode: address.postalCode,
+            region: address.city
           },
-          details: form.details,
+          details,
           extras: {
-            materials: form.materials,
-            urgency: form.urgency,
-            travelFeeClp: Number(form.travelFeeClp || 0)
+            materials,
+            urgency,
+            travelFeeClp
           }
         })
       });
 
       const data = (await response.json()) as { booking?: BookingResponse; error?: string; detail?: string };
-
       if (!response.ok || !data.booking) {
         throw new Error(data.detail || data.error || "No se pudo crear la reserva");
       }
 
       setCreatedBooking(data.booking);
-      setStep(4);
-      setMessage(`Reserva creada: ${data.booking.id}`);
+      setMessage(`Reserva creada: ${data.booking.id}. Falta confirmar pago.`);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error inesperado");
     }
   };
 
   const confirmPayment = async () => {
-    if (!createdBooking) return;
-
+    if (!createdBooking || !customerId) return;
     setError("");
     setMessage("");
+
     try {
+      setLoadingPay(true);
       const response = await fetch(`/api/marketplace/bookings/${createdBooking.id}/payment/confirm`, {
         method: "POST",
         headers: {
-          "x-user-id": form.customerId,
+          "x-user-id": customerId,
           "x-user-role": "CUSTOMER"
         }
       });
+
       const data = (await response.json()) as { booking?: BookingResponse; error?: string; detail?: string };
       if (!response.ok || !data.booking) {
         throw new Error(data.detail || data.error || "No se pudo confirmar pago");
       }
+
       setCreatedBooking(data.booking);
-      setMessage("Pago confirmado y reserva confirmada.");
+      setMessage("Pago confirmado. Reserva confirmada y slot bloqueado.");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error inesperado");
+    } finally {
+      setLoadingPay(false);
     }
   };
 
   return (
     <main className="page market-shell">
       <MarketNav />
+
       <section className="panel">
         <div className="panel-head">
-          <h2>Reserva paso a paso</h2>
-          <p>Paso {step} de 4</p>
+          <h2>Reserva instantanea</h2>
+          <p>Flujo tipo app de delivery: direccion -> match -> slot -> pago -> tracking.</p>
         </div>
 
-        {loading ? <p className="empty">Cargando datos...</p> : null}
-
-        <form className="grid-form" onSubmit={createBooking}>
+        <form className="grid-form" onSubmit={searchPros}>
           <label>
-            Customer ID (demo)
-            <input required value={form.customerId} onChange={(e) => setForm((p) => ({ ...p, customerId: e.target.value }))} />
+            Ciudad
+            <input value={address.city} onChange={(e) => setAddress((prev) => ({ ...prev, city: e.target.value }))} required />
+          </label>
+          <label>
+            Codigo postal
+            <input value={address.postalCode} onChange={(e) => setAddress((prev) => ({ ...prev, postalCode: e.target.value }))} required />
+          </label>
+          <label className="full">
+            Calle
+            <input value={address.street} onChange={(e) => setAddress((prev) => ({ ...prev, street: e.target.value }))} required />
           </label>
 
           <label>
             Servicio
-            <select value={form.serviceId} onChange={(e) => setForm((p) => ({ ...p, serviceId: e.target.value }))}>
+            <select value={filters.serviceId} onChange={(e) => setFilters((prev) => ({ ...prev, serviceId: e.target.value }))}>
+              <option value="">Selecciona</option>
               {services.map((service) => (
                 <option key={service.id} value={service.id}>
-                  {service.name} ({clp(service.basePriceClp)}/h)
+                  {service.name}
                 </option>
               ))}
             </select>
           </label>
-
           <label>
-            Asignacion
-            <select
-              value={form.autoAssign ? "auto" : "manual"}
-              onChange={(e) => setForm((p) => ({ ...p, autoAssign: e.target.value === "auto" }))}
-            >
-              <option value="auto">Automatica</option>
-              <option value="manual">Elegir profesional</option>
-            </select>
+            Fecha deseada
+            <input type="date" value={filters.date} onChange={(e) => setFilters((prev) => ({ ...prev, date: e.target.value }))} />
           </label>
 
           <label>
-            Profesional
-            <select
-              disabled={form.autoAssign}
-              value={form.proId}
-              onChange={(e) => setForm((p) => ({ ...p, proId: e.target.value }))}
-            >
-              <option value="">Selecciona</option>
-              {pros.map((pro) => (
-                <option key={pro.user.id} value={pro.user.id}>
-                  {pro.user.fullName} · {Number(pro.ratingAvg || 0).toFixed(1)}
-                </option>
-              ))}
-            </select>
+            Customer ID
+            <input value={customerId} onChange={(e) => setCustomerId(e.target.value)} placeholder="cliente demo o real" required />
           </label>
 
-          <label>
-            Inicio
-            <input type="datetime-local" required value={form.startsAt} onChange={(e) => setForm((p) => ({ ...p, startsAt: e.target.value }))} />
-          </label>
-
-          <label>
-            Horas
-            <input
-              type="number"
-              min={selectedService?.minHours ?? 1}
-              max={8}
-              value={form.hours}
-              onChange={(e) => setForm((p) => ({ ...p, hours: Number(e.target.value) || 1 }))}
-            />
-          </label>
-
-          <label className="full">
-            Direccion
-            <input value={form.street} required onChange={(e) => setForm((p) => ({ ...p, street: e.target.value }))} />
-          </label>
-
-          <label>
-            Ciudad
-            <input value={form.city} required onChange={(e) => setForm((p) => ({ ...p, city: e.target.value }))} />
-          </label>
-
-          <label>
-            Codigo postal
-            <input value={form.postalCode} required onChange={(e) => setForm((p) => ({ ...p, postalCode: e.target.value }))} />
-          </label>
-
-          <label>
-            Materiales
-            <select value={form.materials ? "yes" : "no"} onChange={(e) => setForm((p) => ({ ...p, materials: e.target.value === "yes" }))}>
-              <option value="no">No</option>
-              <option value="yes">Si</option>
-            </select>
-          </label>
-
-          <label>
-            Urgencia
-            <select value={form.urgency ? "yes" : "no"} onChange={(e) => setForm((p) => ({ ...p, urgency: e.target.value === "yes" }))}>
-              <option value="no">No</option>
-              <option value="yes">Si</option>
-            </select>
-          </label>
-
-          <label>
-            Desplazamiento (CLP)
-            <input
-              type="number"
-              min={0}
-              value={form.travelFeeClp}
-              onChange={(e) => setForm((p) => ({ ...p, travelFeeClp: Number(e.target.value) || 0 }))}
-            />
-          </label>
-
-          <label className="full">
-            Detalles del trabajo
-            <textarea value={form.details} onChange={(e) => setForm((p) => ({ ...p, details: e.target.value }))} />
-          </label>
-
-          <p className="price-box">Total estimado: {clp(estimatedPrice)}</p>
-
-          <button type="submit" className="cta">
-            Crear reserva
-          </button>
-        </form>
-
-        {createdBooking ? (
-          <div className="panel" style={{ marginTop: 12 }}>
-            <h3>Pago</h3>
-            <p>
-              Reserva {createdBooking.id} · Estado {createdBooking.status} · Pago {createdBooking.paymentStatus}
-            </p>
-            <button className="cta" type="button" onClick={confirmPayment}>
-              Confirmar pago (simulado)
+          <div className="cta-row">
+            <button className="cta ghost" type="button" onClick={useGeolocation}>
+              Usar geolocalizacion
+            </button>
+            <button className="cta" type="submit" disabled={loadingSearch || loadingServices}>
+              {loadingSearch ? "Buscando..." : "Buscar profesionales"}
             </button>
           </div>
-        ) : null}
-
-        {message ? <p className="feedback ok">{message}</p> : null}
-        {error ? <p className="feedback error">{error}</p> : null}
+        </form>
       </section>
+
+      <section className="panel">
+        <div className="panel-head">
+          <h2>Profesionales disponibles</h2>
+          <p>Ordenados por distancia, disponibilidad, rating y precio.</p>
+        </div>
+
+        <div className="list">
+          {matches.map((pro) => (
+            <article className={`booking-card ${selectedProId === pro.userId ? "selected-pro" : ""}`} key={pro.id}>
+              <div className="booking-head">
+                <h3>{pro.fullName}</h3>
+                <span className="status status-completed">{pro.distanceKm} km</span>
+              </div>
+              <p>
+                <strong>Rating:</strong> {pro.ratingAvg.toFixed(1)} ({pro.ratingsCount})
+              </p>
+              <p>
+                <strong>Precio/hora:</strong> {pro.hourlyRateFromClp ? clp(pro.hourlyRateFromClp) : "Por definir"}
+              </p>
+              <p>
+                <strong>Proxima hora:</strong> {pro.nextAvailableAt ? new Date(pro.nextAvailableAt).toLocaleString("es-ES") : "Sin slots"}
+              </p>
+              <p>
+                <strong>Radio cobertura:</strong> {pro.serviceRadiusKm} km
+              </p>
+              <button
+                className="cta small"
+                type="button"
+                onClick={() => {
+                  setSelectedProId(pro.userId);
+                  const firstDay = isoDay(pro.slots[0]?.startsAt ?? "");
+                  setSelectedDay(firstDay);
+                  setSelectedSlotId("");
+                }}
+              >
+                Elegir profesional
+              </button>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      {selectedPro ? (
+        <section className="panel">
+          <div className="panel-head">
+            <h2>Agenda de {selectedPro.fullName}</h2>
+            <p>Selecciona dia y bloque horario disponible.</p>
+          </div>
+
+          <div className="day-tabs">
+            {dayGroups.map(([day]) => (
+              <button key={day} type="button" className={`day-tab ${selectedDay === day ? "active" : ""}`} onClick={() => setSelectedDay(day)}>
+                {new Date(`${day}T00:00:00`).toLocaleDateString("es-ES", { weekday: "short", day: "2-digit", month: "2-digit" })}
+              </button>
+            ))}
+          </div>
+
+          <div className="calendar-slot-grid">
+            {selectedSlots.map((slot) => (
+              <button
+                key={slot.id}
+                type="button"
+                className={`slot-btn ${selectedSlotId === slot.id ? "slot-btn-active" : ""}`}
+                onClick={() => setSelectedSlotId(slot.id)}
+              >
+                {new Date(slot.startsAt).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" })}
+              </button>
+            ))}
+          </div>
+
+          <div className="grid-form" style={{ marginTop: 12 }}>
+            <label>
+              Horas (1-8)
+              <input type="number" min={1} max={8} value={hours} onChange={(e) => setHours(Number(e.target.value) || 1)} />
+            </label>
+            <label>
+              Desplazamiento (CLP)
+              <input type="number" min={0} value={travelFeeClp} onChange={(e) => setTravelFeeClp(Number(e.target.value) || 0)} />
+            </label>
+            <label>
+              <span>Extras</span>
+              <div className="inline-checks">
+                <label><input type="checkbox" checked={materials} onChange={(e) => setMaterials(e.target.checked)} /> Materiales</label>
+                <label><input type="checkbox" checked={urgency} onChange={(e) => setUrgency(e.target.checked)} /> Urgencia</label>
+              </div>
+            </label>
+            <label className="full">
+              Detalles del trabajo
+              <textarea value={details} onChange={(e) => setDetails(e.target.value)} />
+            </label>
+          </div>
+
+          <div className="price-box" style={{ marginTop: 12 }}>
+            Resumen en vivo: ({clp(baseHourly)} x {hours}h) + extras {clp(extrasTotal)} + comision {clp(commission)} = <strong>{clp(total)}</strong>
+          </div>
+
+          <div className="cta-row">
+            <button className="cta" type="button" onClick={createBooking}>
+              Crear reserva
+            </button>
+            <Link className="cta ghost" href="/cliente">
+              Ver Mis Reservas
+            </Link>
+          </div>
+
+          {createdBooking ? (
+            <div className="panel" style={{ marginTop: 12 }}>
+              <h3>Checkout</h3>
+              <p>
+                Reserva {createdBooking.id} · Estado {createdBooking.status} · Pago {createdBooking.paymentStatus}
+              </p>
+              <button className="cta" type="button" disabled={loadingPay} onClick={confirmPayment}>
+                {loadingPay ? "Confirmando pago..." : "Pagar y confirmar"}
+              </button>
+            </div>
+          ) : null}
+        </section>
+      ) : null}
+
+      {message ? <p className="feedback ok">{message}</p> : null}
+      {error ? <p className="feedback error">{error}</p> : null}
     </main>
   );
 }

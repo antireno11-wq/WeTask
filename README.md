@@ -15,6 +15,7 @@ Plataforma tipo Webel para servicios al hogar por hora, con precio fijo, reserva
 - `/profesionales` Listado de profesionales con filtros, mapa de Santiago y calendario general clickeable
 - `/profesionales/:proId` Ficha de profesional y calendario clickeable
 - `/reservar` Flujo de reserva por horas + extras + confirmacion de pago simulada
+- `/reservar` Flujo tipo app de delivery: direccion/geolocalizacion -> matching por distancia -> slot clickeable -> checkout en vivo -> pago/confirmacion
 - `/cliente` Panel cliente (reservas, chat, reseñas, disputas)
 - `/pro` Panel profesional (agenda, estados, cierre, payout)
 - `/admin` Backoffice (reservas, reglas de categoria, disputas)
@@ -24,17 +25,20 @@ Incluye carga automatica de datos demo en Santiago (categorias, servicios, profe
 ### Backend / Endpoints marketplace
 - `GET /api/marketplace/catalog`
 - `GET /api/marketplace/pros`
+- `GET /api/marketplace/search-professionals` (matching por direccion, radio y disponibilidad)
 - `GET /api/marketplace/pros/:proId`
 - `POST /api/marketplace/bookings`
 - `GET /api/marketplace/bookings` (admin)
 - `GET /api/marketplace/bookings/:bookingId`
 - `PATCH /api/marketplace/bookings/:bookingId/status`
 - `POST /api/marketplace/bookings/:bookingId/payment/confirm`
+  - Bloquea slot seleccionado para evitar doble reserva.
 - `POST /api/marketplace/bookings/:bookingId/complete`
 - `POST /api/marketplace/bookings/:bookingId/payout/request`
 - `GET|POST /api/marketplace/bookings/:bookingId/messages`
 - `GET /api/marketplace/client/bookings`
 - `GET /api/marketplace/pro/bookings`
+- `GET /api/marketplace/notifications`
 - `POST /api/marketplace/reviews`
 - `POST /api/marketplace/disputes`
 - `GET|PATCH /api/marketplace/admin/disputes`

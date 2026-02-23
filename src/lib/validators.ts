@@ -57,6 +57,7 @@ export const marketplaceCreateBookingSchema = z.object({
   customerId: z.string().min(1),
   serviceId: z.string().min(1),
   proId: z.string().min(1).optional(),
+  slotId: z.string().min(1).optional(),
   autoAssign: z.boolean().optional().default(false),
   startsAt: z.coerce.date(),
   hours: z.coerce.number().int().min(1).max(8),
@@ -105,4 +106,15 @@ export const marketplaceAvailabilityQuerySchema = z.object({
   date: z.coerce.date().optional(),
   days: z.coerce.number().int().min(1).max(14).default(7),
   limit: z.coerce.number().int().min(1).max(200).default(100)
+});
+
+export const marketplaceSearchProsSchema = z.object({
+  city: z.string().min(2),
+  postalCode: z.string().min(4).max(10),
+  street: z.string().min(3).optional(),
+  latitude: z.coerce.number().min(-90).max(90).optional(),
+  longitude: z.coerce.number().min(-180).max(180).optional(),
+  serviceId: z.string().min(1).optional(),
+  date: z.coerce.date().optional(),
+  limit: z.coerce.number().int().min(1).max(50).default(20)
 });

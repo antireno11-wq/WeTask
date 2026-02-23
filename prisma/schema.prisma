@@ -64,6 +64,7 @@ model User {
   reviewsGiven        Review[]              @relation("ReviewAuthor")
   professionalProfile ProfessionalProfile?
   payouts             Payout[]
+  notifications       Notification[]
 }
 
 model Category {
@@ -130,6 +131,7 @@ model AvailabilitySlot {
   updatedAt           DateTime            @updatedAt
   professionalProfile ProfessionalProfile @relation(fields: [professionalProfileId], references: [id], onDelete: Cascade)
   service             Service?            @relation(fields: [serviceId], references: [id], onDelete: SetNull)
+  bookings            Booking[]           @relation("BookedSlot")
 
   @@index([professionalProfileId, startsAt, isAvailable])
 }
@@ -156,6 +158,7 @@ model Booking {
   customerId        String
   proId             String?
   serviceId         String
+  bookedSlotId      String?
   addressId         String?
   status            BookingStatus @default(PENDING)
   scheduledAt       DateTime
@@ -179,6 +182,7 @@ model Booking {
   customer          User          @relation("CustomerBookings", fields: [customerId], references: [id], onDelete: Restrict)
   pro               User?         @relation("ProBookings", fields: [proId], references: [id], onDelete: SetNull)
   service           Service       @relation(fields: [serviceId], references: [id], onDelete: Restrict)
+  bookedSlot        AvailabilitySlot? @relation("BookedSlot", fields: [bookedSlotId], references: [id], onDelete: SetNull)
   address           Address?      @relation(fields: [addressId], references: [id], onDelete: SetNull)
   extras            BookingExtra[]
   messages          Message[]
@@ -186,10 +190,12 @@ model Booking {
   payout            Payout?
   review            Review?
   disputes          DisputeTicket[]
+  notifications     Notification[]
 
   @@index([customerId, status])
   @@index([proId, status])
   @@index([scheduledAt, status])
+  @@index([bookedSlotId])
 }
 
 model BookingExtra {
@@ -277,4 +283,18 @@ model DisputeTicket {
   booking           Booking     @relation(fields: [bookingId], references: [id], onDelete: Cascade)
 
   @@index([bookingId, status])
+}
+
+model Notification {
+  id          String   @id @default(cuid())
+  userId      String
+  bookingId   String?
+  title       String
+  body        String
+  isRead      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  booking     Booking? @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
 }

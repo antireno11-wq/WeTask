@@ -69,8 +69,28 @@ export async function POST(req: NextRequest) {
     const platformFeePct = Number(service.category.basePlatformFeePct);
 
     let assignedProId = input.proId ?? null;
+    let selectedSlotId = input.slotId ?? null;
 
-    if (input.autoAssign && !assignedProId) {
+    if (selectedSlotId) {
+      const selectedSlot = await prisma.availabilitySlot.findUnique({
+        where: { id: selectedSlotId },
+        include: { professionalProfile: true }
+      });
+
+      if (!selectedSlot || !selectedSlot.isAvailable) {
+        return NextResponse.json({ error: "Horario no disponible" }, { status: 409 });
+      }
+
+      if (selectedSlot.startsAt.getTime() !== input.startsAt.getTime()) {
+        return NextResponse.json({ error: "La hora seleccionada no coincide con el bloque" }, { status: 400 });
+      }
+
+      if (selectedSlot.serviceId && selectedSlot.serviceId !== input.serviceId) {
+        return NextResponse.json({ error: "El bloque no pertenece al servicio seleccionado" }, { status: 400 });
+      }
+
+      assignedProId = selectedSlot.professionalProfile.userId;
+    } else if (input.autoAssign && !assignedProId) {
       const candidate = await prisma.availabilitySlot.findFirst({
         where: {
           isAvailable: true,
@@ -87,6 +107,7 @@ export async function POST(req: NextRequest) {
       });
 
       assignedProId = candidate?.professionalProfile.userId ?? null;
+      selectedSlotId = candidate?.id ?? null;
     }
 
     if (assignedProId) {
@@ -122,6 +143,7 @@ export async function POST(req: NextRequest) {
       data: {
         customerId: customer.id,
         proId: assignedProId,
+        bookedSlotId: selectedSlotId,
         serviceId: input.serviceId,
         addressId: address.id,
         status: assignedProId ? "ASSIGNED" : "CREATED",

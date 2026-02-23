@@ -19,6 +19,13 @@ type Message = {
   sender: { fullName: string };
 };
 
+type Notification = {
+  id: string;
+  title: string;
+  body: string;
+  createdAt: string;
+};
+
 function clp(value: number) {
   return new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP", maximumFractionDigits: 0 }).format(value);
 }
@@ -28,6 +35,7 @@ export default function ClientePage() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [selectedBookingId, setSelectedBookingId] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
   const [chatBody, setChatBody] = useState("");
   const [reviewScore, setReviewScore] = useState(5);
   const [reviewComment, setReviewComment] = useState("");
@@ -63,6 +71,16 @@ export default function ClientePage() {
     return data.bookings.length;
   };
 
+  const fetchNotifications = async (targetCustomerId: string) => {
+    const requestHeaders = {
+      "x-user-id": targetCustomerId,
+      "x-user-role": "CUSTOMER"
+    };
+    const response = await fetch(`/api/marketplace/notifications?userId=${targetCustomerId}`, { headers: requestHeaders });
+    const data = (await response.json()) as { notifications?: Notification[] };
+    setNotifications(data.notifications ?? []);
+  };
+
   useEffect(() => {
     const bootstrap = async () => {
       try {
@@ -79,6 +97,7 @@ export default function ClientePage() {
 
         setCustomerId(demoData.customer.id);
         const count = await fetchBookings(demoData.customer.id);
+        await fetchNotifications(demoData.customer.id);
         setFeedback(`Panel demo cargado para ${demoData.customer.fullName} (${count} reservas).`);
       } catch (e) {
         setError(e instanceof Error ? e.message : "Error inesperado");
@@ -94,6 +113,7 @@ export default function ClientePage() {
     setFeedback("");
     try {
       const count = await fetchBookings(customerId);
+      await fetchNotifications(customerId);
       setFeedback(`Reservas cargadas: ${count}`);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error inesperado");
@@ -196,6 +216,27 @@ export default function ClientePage() {
             Cargar reservas
           </button>
         </form>
+      </section>
+
+      <section className="panel">
+        <div className="panel-head">
+          <h2>Notificaciones</h2>
+        </div>
+        <div className="list">
+          {notifications.length === 0 ? (
+            <p className="empty">Sin notificaciones por ahora.</p>
+          ) : (
+            notifications.map((item) => (
+              <article className="booking-card" key={item.id}>
+                <p>
+                  <strong>{item.title}</strong>
+                </p>
+                <p>{item.body}</p>
+                <p>{new Date(item.createdAt).toLocaleString("es-ES")}</p>
+              </article>
+            ))
+          )}
+        </div>
       </section>
 
       <section className="panel">
