@@ -80,7 +80,7 @@ Compatibilidad temporal:
 - `DATABASE_URL`
 - `NEXT_PUBLIC_APP_URL`
 4. Railway ejecuta en start:
-- `prisma migrate deploy`
+- `prisma db push`
 - `next start`
 
 ## Seed
