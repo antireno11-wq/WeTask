@@ -80,7 +80,8 @@ export default function ClientePage() {
       });
       const data = (await response.json()) as { message?: Message; error?: string; detail?: string };
       if (!response.ok || !data.message) throw new Error(data.detail || data.error || "No se pudo enviar mensaje");
-      setMessages((prev) => [...prev, data.message]);
+      const newMessage = data.message;
+      setMessages((prev) => [...prev, newMessage]);
       setChatBody("");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error inesperado");
