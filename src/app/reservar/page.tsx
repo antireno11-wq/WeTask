@@ -1,7 +1,6 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "next/navigation";
 import { MarketNav } from "@/components/market-nav";
 
 type Service = {
@@ -36,10 +35,6 @@ function clp(value: number) {
 }
 
 export default function ReservarPage() {
-  const searchParams = useSearchParams();
-  const defaultServiceId = searchParams.get("serviceId") ?? "";
-  const defaultProId = searchParams.get("proId") ?? "";
-
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(true);
   const [services, setServices] = useState<Service[]>([]);
@@ -50,9 +45,9 @@ export default function ReservarPage() {
 
   const [form, setForm] = useState({
     customerId: "",
-    serviceId: defaultServiceId,
-    proId: defaultProId,
-    autoAssign: defaultProId ? false : true,
+    serviceId: "",
+    proId: "",
+    autoAssign: true,
     startsAt: "",
     hours: 2,
     street: "",
@@ -68,6 +63,17 @@ export default function ReservarPage() {
   const [createdBooking, setCreatedBooking] = useState<BookingResponse | null>(null);
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const defaultServiceId = params.get("serviceId") ?? "";
+    const defaultProId = params.get("proId") ?? "";
+
+    setForm((prev) => ({
+      ...prev,
+      serviceId: defaultServiceId || prev.serviceId,
+      proId: defaultProId || prev.proId,
+      autoAssign: defaultProId ? false : prev.autoAssign
+    }));
+
     const load = async () => {
       try {
         setLoading(true);
@@ -122,7 +128,7 @@ export default function ReservarPage() {
     };
 
     load();
-  }, [defaultServiceId]);
+  }, []);
 
   const selectedService = useMemo(() => services.find((item) => item.id === form.serviceId) ?? null, [services, form.serviceId]);
 
