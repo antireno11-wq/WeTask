@@ -19,6 +19,8 @@ Plataforma tipo Webel para servicios al hogar por hora, con precio fijo, reserva
 - `/pro` Panel profesional (agenda, estados, cierre, payout)
 - `/admin` Backoffice (reservas, reglas de categoria, disputas)
 
+Incluye carga automatica de datos demo en Santiago (categorias, servicios y profesionales verificados) al consultar catalogo/profesionales.
+
 ### Backend / Endpoints marketplace
 - `GET /api/marketplace/catalog`
 - `GET /api/marketplace/pros`

@@ -1,8 +1,11 @@
 import { NextResponse } from "next/server";
+import { ensureMarketplaceDemoData } from "@/lib/marketplace-demo-data";
 import { prisma } from "@/lib/prisma";
 
 export async function GET(_: Request, context: { params: { proId: string } }) {
   try {
+    await ensureMarketplaceDemoData();
+
     const profile = await prisma.professionalProfile.findFirst({
       where: {
         userId: context.params.proId,

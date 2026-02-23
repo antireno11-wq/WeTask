@@ -32,7 +32,7 @@ function dateText(value?: string) {
 }
 
 export default function ProfesionalesPage() {
-  const [city, setCity] = useState("Madrid");
+  const [city, setCity] = useState("Santiago");
   const [verified, setVerified] = useState(true);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");

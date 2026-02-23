@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
+import { ensureMarketplaceDemoData } from "@/lib/marketplace-demo-data";
 import { prisma } from "@/lib/prisma";
 import { marketplaceListProsQuerySchema } from "@/lib/validators";
 
 export async function GET(req: NextRequest) {
   try {
+    await ensureMarketplaceDemoData();
+
     const searchParams = req.nextUrl.searchParams;
     const input = marketplaceListProsQuerySchema.parse({
       serviceId: searchParams.get("serviceId") ?? undefined,
