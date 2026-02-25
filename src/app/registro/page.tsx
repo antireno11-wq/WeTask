@@ -28,6 +28,10 @@ export default function RegistroPage() {
   const [postalCode, setPostalCode] = useState("7500000");
   const [serviceRadiusKm, setServiceRadiusKm] = useState(8);
   const [hourlyRateFromClp, setHourlyRateFromClp] = useState(12000);
+  const [documentType, setDocumentType] = useState<"CEDULA_CHILE" | "PASAPORTE">("CEDULA_CHILE");
+  const [documentNumber, setDocumentNumber] = useState("");
+  const [identityDocumentUrl, setIdentityDocumentUrl] = useState("");
+  const [backgroundCheckUrl, setBackgroundCheckUrl] = useState("");
   const [coverageLat, setCoverageLat] = useState(-33.4489);
   const [coverageLng, setCoverageLng] = useState(-70.6693);
 
@@ -92,7 +96,11 @@ export default function RegistroPage() {
           serviceRadiusKm,
           latitude: role === "PRO" ? coverageLat : undefined,
           longitude: role === "PRO" ? coverageLng : undefined,
-          hourlyRateFromClp: role === "PRO" ? hourlyRateFromClp : undefined
+          hourlyRateFromClp: role === "PRO" ? hourlyRateFromClp : undefined,
+          documentType: role === "PRO" ? documentType : undefined,
+          documentNumber: role === "PRO" ? documentNumber : undefined,
+          identityDocumentUrl: role === "PRO" ? identityDocumentUrl : undefined,
+          backgroundCheckUrl: role === "PRO" ? backgroundCheckUrl : undefined
         })
       });
 
@@ -187,6 +195,52 @@ export default function RegistroPage() {
                   onChange={(e) => setHourlyRateFromClp(Number(e.target.value) || 12000)}
                 />
               </label>
+
+              <div className="full coverage-map-card">
+                <div className="coverage-map-head">
+                  <h3>Documentacion obligatoria</h3>
+                  <p>Necesitamos validar identidad y antecedentes antes de activar tu perfil profesional.</p>
+                </div>
+                <div className="grid-form">
+                  <label>
+                    Tipo de documento
+                    <select value={documentType} onChange={(e) => setDocumentType(e.target.value as "CEDULA_CHILE" | "PASAPORTE")} required>
+                      <option value="CEDULA_CHILE">Cedula chilena</option>
+                      <option value="PASAPORTE">Pasaporte</option>
+                    </select>
+                  </label>
+                  <label>
+                    Numero de documento
+                    <input
+                      value={documentNumber}
+                      onChange={(e) => setDocumentNumber(e.target.value)}
+                      required
+                      minLength={5}
+                      placeholder="Ej: 12345678-9"
+                    />
+                  </label>
+                  <label>
+                    URL documento identidad
+                    <input
+                      type="url"
+                      value={identityDocumentUrl}
+                      onChange={(e) => setIdentityDocumentUrl(e.target.value)}
+                      required
+                      placeholder="https://..."
+                    />
+                  </label>
+                  <label>
+                    URL certificado antecedentes
+                    <input
+                      type="url"
+                      value={backgroundCheckUrl}
+                      onChange={(e) => setBackgroundCheckUrl(e.target.value)}
+                      required
+                      placeholder="https://..."
+                    />
+                  </label>
+                </div>
+              </div>
 
               <div className="full coverage-map-card">
                 <div className="coverage-map-head">
