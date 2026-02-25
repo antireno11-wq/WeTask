@@ -48,6 +48,11 @@ function isoDay(value: string): string {
   return value.slice(0, 10);
 }
 
+function starsText(value: number) {
+  const rounded = Math.max(1, Math.min(5, Math.round(value || 0)));
+  return `${"★".repeat(rounded)}${"☆".repeat(5 - rounded)}`;
+}
+
 export default function ReservarPage() {
   const [services, setServices] = useState<Service[]>([]);
   const [loadingServices, setLoadingServices] = useState(false);
@@ -394,7 +399,7 @@ export default function ReservarPage() {
                 <span className="status status-completed">{pro.distanceKm} km</span>
               </div>
               <p>
-                <strong>Rating:</strong> {pro.ratingAvg.toFixed(1)} ({pro.ratingsCount})
+                <strong>Rating:</strong> {starsText(pro.ratingAvg)} {pro.ratingAvg.toFixed(1)} ({pro.ratingsCount})
               </p>
               <p>
                 <strong>Precio/hora:</strong> {pro.hourlyRateFromClp ? clp(pro.hourlyRateFromClp) : "Por definir"}

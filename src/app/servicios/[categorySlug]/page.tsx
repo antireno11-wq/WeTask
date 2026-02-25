@@ -31,6 +31,11 @@ function clp(value: number) {
   return new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP", maximumFractionDigits: 0 }).format(value);
 }
 
+function starsText(value: number) {
+  const rounded = Math.max(1, Math.min(5, Math.round(value || 0)));
+  return `${"★".repeat(rounded)}${"☆".repeat(5 - rounded)}`;
+}
+
 export default function ServicioCategoriaPage() {
   const params = useParams<{ categorySlug: string }>();
   const categorySlug = params?.categorySlug ?? "";
@@ -115,7 +120,7 @@ export default function ServicioCategoriaPage() {
               </span>
             </div>
             <p>
-              <strong>Rating:</strong> {Number(pro.ratingAvg || 0).toFixed(1)} ({pro.ratingsCount} reseñas)
+              <strong>Rating:</strong> {starsText(Number(pro.ratingAvg || 0))} {Number(pro.ratingAvg || 0).toFixed(1)} ({pro.ratingsCount} reseñas)
             </p>
             <p>
               <strong>Zona:</strong> {pro.coverageComuna ?? "Sin comuna"} · {pro.coverageCity ?? "Sin ciudad"}

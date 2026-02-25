@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { MarketNav } from "@/components/market-nav";
 
@@ -10,13 +11,6 @@ type Booking = {
   totalPriceClp: number;
   service: { name: string };
   pro: { fullName: string } | null;
-};
-
-type Message = {
-  id: string;
-  body: string;
-  createdAt: string;
-  sender: { fullName: string };
 };
 
 type Notification = {
@@ -33,13 +27,7 @@ function clp(value: number) {
 export default function ClientePage() {
   const [customerId, setCustomerId] = useState("");
   const [bookings, setBookings] = useState<Booking[]>([]);
-  const [selectedBookingId, setSelectedBookingId] = useState("");
-  const [messages, setMessages] = useState<Message[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [chatBody, setChatBody] = useState("");
-  const [reviewScore, setReviewScore] = useState(5);
-  const [reviewComment, setReviewComment] = useState("");
-  const [disputeReason, setDisputeReason] = useState("");
   const [feedback, setFeedback] = useState("");
   const [error, setError] = useState("");
 
@@ -99,84 +87,6 @@ export default function ClientePage() {
       const count = await fetchBookings(customerId);
       await fetchNotifications(customerId);
       setFeedback(`Reservas cargadas: ${count}`);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Error inesperado");
-    }
-  };
-
-  const loadMessages = async (bookingId: string) => {
-    setSelectedBookingId(bookingId);
-    setError("");
-    try {
-      const response = await fetch(`/api/marketplace/bookings/${bookingId}/messages`);
-      const data = (await response.json()) as { messages?: Message[]; error?: string; detail?: string };
-      if (!response.ok || !data.messages) throw new Error(data.detail || data.error || "No se pudo cargar chat");
-      setMessages(data.messages);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Error inesperado");
-    }
-  };
-
-  const sendMessage = async () => {
-    if (!selectedBookingId || !chatBody.trim()) return;
-    setError("");
-    try {
-      const response = await fetch(`/api/marketplace/bookings/${selectedBookingId}/messages`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ body: chatBody })
-      });
-      const data = (await response.json()) as { message?: Message; error?: string; detail?: string };
-      if (!response.ok || !data.message) throw new Error(data.detail || data.error || "No se pudo enviar mensaje");
-      const newMessage = data.message;
-      setMessages((prev) => [...prev, newMessage]);
-      setChatBody("");
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Error inesperado");
-    }
-  };
-
-  const leaveReview = async () => {
-    if (!selectedBookingId) return;
-    setError("");
-    setFeedback("");
-
-    try {
-      const response = await fetch("/api/marketplace/reviews", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          bookingId: selectedBookingId,
-          authorId: customerId,
-          rating: reviewScore,
-          comment: reviewComment,
-          punctuality: reviewScore,
-          quality: reviewScore,
-          communication: reviewScore
-        })
-      });
-      const data = (await response.json()) as { review?: { id: string }; error?: string; detail?: string };
-      if (!response.ok || !data.review) throw new Error(data.detail || data.error || "No se pudo enviar reseña");
-      setFeedback(`Reseña enviada: ${data.review.id}`);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Error inesperado");
-    }
-  };
-
-  const openDispute = async () => {
-    if (!selectedBookingId || !disputeReason.trim()) return;
-    setError("");
-    setFeedback("");
-    try {
-      const response = await fetch("/api/marketplace/disputes", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ bookingId: selectedBookingId, openedById: customerId, reason: disputeReason })
-      });
-      const data = (await response.json()) as { ticket?: { id: string }; error?: string; detail?: string };
-      if (!response.ok || !data.ticket) throw new Error(data.detail || data.error || "No se pudo crear disputa");
-      setFeedback(`Disputa creada: ${data.ticket.id}`);
-      setDisputeReason("");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error inesperado");
     }
@@ -279,60 +189,12 @@ export default function ClientePage() {
             <p>
               <strong>Total:</strong> {clp(booking.totalPriceClp)}
             </p>
-            <button className="cta small" onClick={() => loadMessages(booking.id)} type="button">
+            <Link className="cta small" href={`/cliente/reservas/${booking.id}`} target="_blank" rel="noreferrer">
               Abrir chat / acciones
-            </button>
+            </Link>
           </article>
         ))}
       </section>
-
-      {selectedBookingId ? (
-        <section className="panel">
-          <div className="panel-head">
-            <h2>Reserva {selectedBookingId}</h2>
-          </div>
-
-          <div className="chat-box">
-            {messages.map((item) => (
-              <p key={item.id}>
-                <strong>{item.sender.fullName}:</strong> {item.body}
-              </p>
-            ))}
-          </div>
-
-          <div className="query-row query-single">
-            <label>
-              Mensaje
-              <input value={chatBody} onChange={(e) => setChatBody(e.target.value)} placeholder="Escribe al profesional" />
-            </label>
-            <button className="cta small" type="button" onClick={sendMessage}>
-              Enviar
-            </button>
-          </div>
-
-          <div className="action-grid">
-            <label>
-              Rating (1-5)
-              <input type="number" min={1} max={5} value={reviewScore} onChange={(e) => setReviewScore(Number(e.target.value) || 5)} />
-            </label>
-            <label>
-              Comentario reseña
-              <input value={reviewComment} onChange={(e) => setReviewComment(e.target.value)} />
-            </label>
-            <button className="cta ghost small" type="button" onClick={leaveReview}>
-              Enviar reseña
-            </button>
-
-            <label>
-              Motivo disputa
-              <input value={disputeReason} onChange={(e) => setDisputeReason(e.target.value)} />
-            </label>
-            <button className="cta ghost small" type="button" onClick={openDispute}>
-              Abrir disputa
-            </button>
-          </div>
-        </section>
-      ) : null}
 
       {feedback ? <p className="feedback ok">{feedback}</p> : null}
       {error ? <p className="feedback error">{error}</p> : null}

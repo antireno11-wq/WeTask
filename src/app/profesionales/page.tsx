@@ -78,6 +78,11 @@ function dateInputDefault(): string {
   return d.toISOString().slice(0, 10);
 }
 
+function starsText(value: number) {
+  const rounded = Math.max(1, Math.min(5, Math.round(value || 0)));
+  return `${"★".repeat(rounded)}${"☆".repeat(5 - rounded)}`;
+}
+
 function toMapPosition(lat: number, lng: number): { x: number; y: number } {
   const rawX = ((lng - MAP_BOUNDS.minLng) / (MAP_BOUNDS.maxLng - MAP_BOUNDS.minLng)) * 100;
   const rawY = (1 - (lat - MAP_BOUNDS.minLat) / (MAP_BOUNDS.maxLat - MAP_BOUNDS.minLat)) * 100;
@@ -292,7 +297,7 @@ export default function ProfesionalesPage() {
                   <strong>Especialidad:</strong> {professionalTypeFromSlots(pro.slots)}
                 </p>
                 <p>
-                  <strong>Rating:</strong> {Number(pro.ratingAvg || 0).toFixed(1)} ({pro.ratingsCount} reseñas)
+                  <strong>Rating:</strong> {starsText(Number(pro.ratingAvg || 0))} {Number(pro.ratingAvg || 0).toFixed(1)} ({pro.ratingsCount} reseñas)
                 </p>
                 <p>
                   <strong>Precio/hora:</strong> {pro.hourlyRateFromClp ? clp(pro.hourlyRateFromClp) : "Por definir"}

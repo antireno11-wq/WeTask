@@ -37,6 +37,11 @@ function clp(value: number) {
   return new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP", maximumFractionDigits: 0 }).format(value);
 }
 
+function starsText(value: number) {
+  const rounded = Math.max(1, Math.min(5, Math.round(value || 0)));
+  return `${"★".repeat(rounded)}${"☆".repeat(5 - rounded)}`;
+}
+
 function dateInputDefault(): string {
   const d = new Date();
   d.setHours(0, 0, 0, 0);
@@ -122,7 +127,8 @@ export default function ProDetailPage() {
             <div className="panel-head">
               <h2>{data.user.fullName}</h2>
               <p>
-                Rating {Number(data.ratingAvg || 0).toFixed(1)} · {data.ratingsCount} reseñas · {data.isVerified ? "Verificado" : "No verificado"}
+                {starsText(Number(data.ratingAvg || 0))} {Number(data.ratingAvg || 0).toFixed(1)} · {data.ratingsCount} reseñas ·{" "}
+                {data.isVerified ? "Verificado" : "No verificado"}
               </p>
             </div>
             <p>{data.bio ?? "Sin descripcion"}</p>
