@@ -64,13 +64,10 @@ export function MarketNav() {
   };
 
   const role = session?.role ?? null;
+  const accountHref = role === "PRO" ? "/pro" : role === "ADMIN" ? "/admin" : "/cliente";
   const links = [
     { href: "/servicios", label: "Servicios" },
-    { href: "/profesionales", label: "Profesionales" },
-    { href: "/reservar", label: "Pedir servicio" },
-    ...(role === "CUSTOMER" ? [{ href: "/cliente", label: "Panel Cliente" }] : []),
-    ...(role === "PRO" ? [{ href: "/pro", label: "Panel Profesional" }] : []),
-    ...(role === "ADMIN" ? [{ href: "/admin", label: "Admin" }] : [])
+    { href: "/profesionales", label: "Profesionales" }
   ];
 
   return (
@@ -88,9 +85,14 @@ export function MarketNav() {
       <div className="auth-nav">
         {session?.role ? <span className="auth-badge">{session.fullName ?? "Usuario"} · {session.role}</span> : null}
         {session?.role ? (
-          <button type="button" className="nav-link auth-btn" onClick={logout}>
-            Salir
-          </button>
+          <>
+            <Link href={accountHref} className="nav-link auth-btn">
+              Mi cuenta
+            </Link>
+            <button type="button" className="nav-link auth-btn" onClick={logout}>
+              Salir
+            </button>
+          </>
         ) : (
           <>
             <Link href="/registro?role=CUSTOMER" className="nav-link auth-btn">
