@@ -947,11 +947,17 @@ textarea {
   height: 360px;
   border: 1px solid var(--line);
   border-radius: 16px;
-  background:
-    radial-gradient(circle at 20% 20%, #d9efff 0, #e9f5ff 22%, transparent 23%),
-    radial-gradient(circle at 70% 60%, #d3ecff 0, #e8f4ff 20%, transparent 21%),
-    linear-gradient(180deg, #f8fcff 0%, #eef7ff 100%);
+  background: #dfeaf4;
   overflow: hidden;
+}
+
+.pro-map-layer {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  pointer-events: none;
 }
 
 .pro-marker {
@@ -960,6 +966,7 @@ textarea {
   text-decoration: none;
   display: grid;
   place-items: center;
+  z-index: 2;
 }
 
 .pro-marker-radius {

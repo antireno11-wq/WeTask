@@ -50,6 +50,13 @@ type AvailabilitySlot = {
   } | null;
 };
 
+const MAP_BOUNDS = {
+  minLat: -33.58,
+  maxLat: -33.34,
+  minLng: -70.82,
+  maxLng: -70.5
+};
+
 function professionalTypeFromSlots(slots: Professional["slots"]): string {
   const serviceNames = Array.from(new Set(slots.map((slot) => slot.service?.name).filter(Boolean)));
   if (serviceNames.length === 0) return "Servicio general";
@@ -72,13 +79,8 @@ function dateInputDefault(): string {
 }
 
 function toMapPosition(lat: number, lng: number): { x: number; y: number } {
-  const minLat = -33.58;
-  const maxLat = -33.34;
-  const minLng = -70.82;
-  const maxLng = -70.5;
-
-  const rawX = ((lng - minLng) / (maxLng - minLng)) * 100;
-  const rawY = (1 - (lat - minLat) / (maxLat - minLat)) * 100;
+  const rawX = ((lng - MAP_BOUNDS.minLng) / (MAP_BOUNDS.maxLng - MAP_BOUNDS.minLng)) * 100;
+  const rawY = (1 - (lat - MAP_BOUNDS.minLat) / (MAP_BOUNDS.maxLat - MAP_BOUNDS.minLat)) * 100;
   const x = Math.min(98, Math.max(2, rawX));
   const y = Math.min(98, Math.max(2, rawY));
   return { x, y };
@@ -193,6 +195,7 @@ export default function ProfesionalesPage() {
     }
     return Array.from(map.entries()).sort(([a], [b]) => a.localeCompare(b));
   }, [professionals]);
+  const mapEmbedUrl = `https://www.openstreetmap.org/export/embed.html?bbox=${MAP_BOUNDS.minLng}%2C${MAP_BOUNDS.minLat}%2C${MAP_BOUNDS.maxLng}%2C${MAP_BOUNDS.maxLat}&layer=mapnik`;
 
   return (
     <main className="page market-shell">
@@ -238,6 +241,13 @@ export default function ProfesionalesPage() {
           <p>Cada punto muestra ubicacion base y radio de cobertura.</p>
         </div>
         <div className="pro-map-canvas" role="img" aria-label="Mapa de cobertura Santiago">
+          <iframe
+            title="Mapa base de Santiago"
+            src={mapEmbedUrl}
+            loading="lazy"
+            className="pro-map-layer"
+            referrerPolicy="no-referrer-when-downgrade"
+          />
           {professionals
             .filter((pro) => pro.coverageLatitude !== null && pro.coverageLongitude !== null)
             .map((pro) => {
