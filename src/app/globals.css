@@ -47,10 +47,9 @@ body {
   display: inline-flex;
   align-items: center;
   text-decoration: none;
-  padding: 4px 10px;
-  border-radius: 14px;
-  background: linear-gradient(145deg, #e4f3ff 0%, #f8fcff 100%);
-  border: 1px solid #d1e5f7;
+  padding: 0;
+  border: 0;
+  background: transparent;
 }
 
 .market-nav nav {
@@ -92,12 +91,12 @@ body {
 }
 
 .brand-logo {
-  width: clamp(88px, 9vw, 126px);
+  width: clamp(110px, 11vw, 168px);
   height: auto;
-  max-height: 46px;
+  max-height: 72px;
   object-fit: contain;
-  mix-blend-mode: multiply;
-  filter: contrast(1.16) saturate(1.08);
+  mix-blend-mode: normal;
+  filter: none;
   display: block;
 }
 
@@ -1095,8 +1094,8 @@ textarea {
   }
 
   .brand-logo {
-    width: 84px;
-    max-height: 40px;
+    width: 102px;
+    max-height: 56px;
   }
 
   .grid-form {

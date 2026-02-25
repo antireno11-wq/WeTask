@@ -7,12 +7,12 @@ import { usePathname, useRouter } from "next/navigation";
 export function MarketNav() {
   const router = useRouter();
   const pathname = usePathname();
-  const [logoSrc, setLogoSrc] = useState("/logo-wetask-cropped.png");
+  const [logoSrc, setLogoSrc] = useState("/logo-wetask.png");
   const [session, setSession] = useState<{ fullName?: string | null; role?: string | null } | null>(null);
 
   useEffect(() => {
     const img = new window.Image();
-    img.src = "/logo-wetask-cropped.png";
+    img.src = "/logo-wetask.png";
     img.onload = () => {
       const canvas = document.createElement("canvas");
       canvas.width = img.width;
@@ -24,17 +24,34 @@ export function MarketNav() {
       const frame = ctx.getImageData(0, 0, canvas.width, canvas.height);
       const pixels = frame.data;
 
-      // Convert near-white matte background to transparent.
+      // Remove the matte background by comparing against the average corner color.
+      const topLeft = [pixels[0], pixels[1], pixels[2]];
+      const topRight = [pixels[(canvas.width - 1) * 4], pixels[(canvas.width - 1) * 4 + 1], pixels[(canvas.width - 1) * 4 + 2]];
+      const bottomLeftIndex = (canvas.width * (canvas.height - 1)) * 4;
+      const bottomLeft = [pixels[bottomLeftIndex], pixels[bottomLeftIndex + 1], pixels[bottomLeftIndex + 2]];
+      const bottomRightIndex = (canvas.width * canvas.height - 1) * 4;
+      const bottomRight = [pixels[bottomRightIndex], pixels[bottomRightIndex + 1], pixels[bottomRightIndex + 2]];
+
+      const matte = [
+        Math.round((topLeft[0] + topRight[0] + bottomLeft[0] + bottomRight[0]) / 4),
+        Math.round((topLeft[1] + topRight[1] + bottomLeft[1] + bottomRight[1]) / 4),
+        Math.round((topLeft[2] + topRight[2] + bottomLeft[2] + bottomRight[2]) / 4)
+      ];
+
       for (let i = 0; i < pixels.length; i += 4) {
         const r = pixels[i];
         const g = pixels[i + 1];
         const b = pixels[i + 2];
-        const isWhite = r > 244 && g > 244 && b > 244;
-        const isNearWhite = r > 230 && g > 230 && b > 230;
-        if (isWhite) {
+
+        const dr = r - matte[0];
+        const dg = g - matte[1];
+        const db = b - matte[2];
+        const distance = Math.sqrt(dr * dr + dg * dg + db * db);
+
+        if (distance < 26) {
           pixels[i + 3] = 0;
-        } else if (isNearWhite) {
-          pixels[i + 3] = Math.min(pixels[i + 3], 110);
+        } else if (distance < 45) {
+          pixels[i + 3] = Math.min(pixels[i + 3], 72);
         }
       }
 
