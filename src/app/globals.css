@@ -91,9 +91,9 @@ body {
 }
 
 .brand-logo {
-  width: clamp(110px, 11vw, 168px);
+  width: clamp(128px, 13vw, 196px);
   height: auto;
-  max-height: 72px;
+  max-height: 82px;
   object-fit: contain;
   mix-blend-mode: normal;
   filter: none;
@@ -958,6 +958,7 @@ textarea {
   height: 100%;
   border: 0;
   pointer-events: none;
+  filter: saturate(1.1) contrast(1.05);
 }
 
 .pro-marker {
@@ -1101,8 +1102,8 @@ textarea {
   }
 
   .brand-logo {
-    width: 102px;
-    max-height: 56px;
+    width: 118px;
+    max-height: 64px;
   }
 
   .grid-form {

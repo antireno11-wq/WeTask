@@ -43,7 +43,7 @@ export default function RegistroPage() {
     setCoverageLng(geocodedCenter.lng);
   }, [geocodedCenter, role]);
 
-  const mapEmbedUrl = `https://www.openstreetmap.org/export/embed.html?bbox=${SANTIAGO_BOUNDS.minLng}%2C${SANTIAGO_BOUNDS.minLat}%2C${SANTIAGO_BOUNDS.maxLng}%2C${SANTIAGO_BOUNDS.maxLat}&layer=mapnik&marker=${coverageLat}%2C${coverageLng}`;
+  const mapEmbedUrl = `https://www.openstreetmap.org/export/embed.html?bbox=${SANTIAGO_BOUNDS.minLng}%2C${SANTIAGO_BOUNDS.minLat}%2C${SANTIAGO_BOUNDS.maxLng}%2C${SANTIAGO_BOUNDS.maxLat}&layer=hot&marker=${coverageLat}%2C${coverageLng}`;
   const markerLeftPct = ((coverageLng - SANTIAGO_BOUNDS.minLng) / (SANTIAGO_BOUNDS.maxLng - SANTIAGO_BOUNDS.minLng)) * 100;
   const markerTopPct = (1 - (coverageLat - SANTIAGO_BOUNDS.minLat) / (SANTIAGO_BOUNDS.maxLat - SANTIAGO_BOUNDS.minLat)) * 100;
   const radiusPx = Math.max(28, serviceRadiusKm * 10);

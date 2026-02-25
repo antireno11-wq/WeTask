@@ -195,7 +195,7 @@ export default function ProfesionalesPage() {
     }
     return Array.from(map.entries()).sort(([a], [b]) => a.localeCompare(b));
   }, [professionals]);
-  const mapEmbedUrl = `https://www.openstreetmap.org/export/embed.html?bbox=${MAP_BOUNDS.minLng}%2C${MAP_BOUNDS.minLat}%2C${MAP_BOUNDS.maxLng}%2C${MAP_BOUNDS.maxLat}&layer=mapnik`;
+  const mapEmbedUrl = `https://www.openstreetmap.org/export/embed.html?bbox=${MAP_BOUNDS.minLng}%2C${MAP_BOUNDS.minLat}%2C${MAP_BOUNDS.maxLng}%2C${MAP_BOUNDS.maxLat}&layer=hot`;
 
   return (
     <main className="page market-shell">

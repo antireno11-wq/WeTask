@@ -122,7 +122,7 @@ export default function ProPage() {
   const markerLeftPct = ((mapLng - SANTIAGO_BOUNDS.minLng) / (SANTIAGO_BOUNDS.maxLng - SANTIAGO_BOUNDS.minLng)) * 100;
   const markerTopPct = (1 - (mapLat - SANTIAGO_BOUNDS.minLat) / (SANTIAGO_BOUNDS.maxLat - SANTIAGO_BOUNDS.minLat)) * 100;
   const radiusPx = Math.max(28, serviceRadiusKm * 10);
-  const mapEmbedUrl = `https://www.openstreetmap.org/export/embed.html?bbox=${SANTIAGO_BOUNDS.minLng}%2C${SANTIAGO_BOUNDS.minLat}%2C${SANTIAGO_BOUNDS.maxLng}%2C${SANTIAGO_BOUNDS.maxLat}&layer=mapnik&marker=${mapLat}%2C${mapLng}`;
+  const mapEmbedUrl = `https://www.openstreetmap.org/export/embed.html?bbox=${SANTIAGO_BOUNDS.minLng}%2C${SANTIAGO_BOUNDS.minLat}%2C${SANTIAGO_BOUNDS.maxLng}%2C${SANTIAGO_BOUNDS.maxLat}&layer=hot&marker=${mapLat}%2C${mapLng}`;
 
   const slotGroups = useMemo(() => {
     const map = new Map<string, ProSlot[]>();
