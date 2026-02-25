@@ -16,6 +16,10 @@ type RegisterPayload = {
   longitude?: number;
   serviceRadiusKm?: number;
   hourlyRateFromClp?: number;
+  documentType?: "CEDULA_CHILE" | "PASAPORTE";
+  documentNumber?: string;
+  identityDocumentUrl?: string;
+  backgroundCheckUrl?: string;
 };
 
 export async function POST(req: NextRequest) {
@@ -34,6 +38,26 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Email invalido" }, { status: 400 });
     }
 
+    if (role === UserRole.PRO) {
+      const documentType = body.documentType === "PASAPORTE" ? "PASAPORTE" : body.documentType === "CEDULA_CHILE" ? "CEDULA_CHILE" : null;
+      const documentNumber = body.documentNumber?.trim();
+      const identityDocumentUrl = body.identityDocumentUrl?.trim();
+      const backgroundCheckUrl = body.backgroundCheckUrl?.trim();
+
+      if (!documentType) {
+        return NextResponse.json({ error: "Debes seleccionar tipo de documento" }, { status: 400 });
+      }
+      if (!documentNumber || documentNumber.length < 5) {
+        return NextResponse.json({ error: "Numero de documento invalido" }, { status: 400 });
+      }
+      if (!identityDocumentUrl || !/^https?:\/\/\S+$/i.test(identityDocumentUrl)) {
+        return NextResponse.json({ error: "Debes adjuntar URL del documento de identidad" }, { status: 400 });
+      }
+      if (!backgroundCheckUrl || !/^https?:\/\/\S+$/i.test(backgroundCheckUrl)) {
+        return NextResponse.json({ error: "Debes adjuntar URL del certificado de antecedentes" }, { status: 400 });
+      }
+    }
+
     const exists = await prisma.user.findUnique({ where: { email }, select: { id: true } });
     if (exists) {
       return NextResponse.json({ error: "Ese email ya esta registrado" }, { status: 409 });
@@ -50,6 +74,11 @@ export async function POST(req: NextRequest) {
             ? {
                 create: {
                   isVerified: false,
+                  verificationStatus: "PENDING_REVIEW",
+                  idDocumentType: body.documentType?.trim() || null,
+                  idDocumentNumber: body.documentNumber?.trim() || null,
+                  idDocumentUrl: body.identityDocumentUrl?.trim() || null,
+                  backgroundCheckUrl: body.backgroundCheckUrl?.trim() || null,
                   coverageCity: body.city?.trim() || "Santiago",
                   coveragePostal: body.postalCode?.trim() || null,
                   coverageLatitude: typeof body.latitude === "number" ? body.latitude : null,
