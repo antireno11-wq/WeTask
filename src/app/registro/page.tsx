@@ -229,7 +229,7 @@ export default function RegistroPage() {
             <div className="full coverage-map-card">
               <div className="coverage-map-head">
                 <h3>Mapa de cobertura</h3>
-                <p>Disponible para cuentas Profesionales. Cambia "Tipo de cuenta" a Profesional para activarlo.</p>
+                <p>Disponible para cuentas Profesionales. Cambia &quot;Tipo de cuenta&quot; a Profesional para activarlo.</p>
               </div>
             </div>
           ) : null}
