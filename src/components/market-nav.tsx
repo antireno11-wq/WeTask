@@ -4,15 +4,6 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 
-const links = [
-  { href: "/catalogo", label: "Catalogo" },
-  { href: "/profesionales", label: "Profesionales" },
-  { href: "/reservar", label: "Reservar" },
-  { href: "/cliente", label: "Panel Cliente" },
-  { href: "/pro", label: "Panel Pro" },
-  { href: "/admin", label: "Admin" }
-];
-
 export function MarketNav() {
   const router = useRouter();
   const pathname = usePathname();
@@ -72,6 +63,16 @@ export function MarketNav() {
     router.refresh();
   };
 
+  const role = session?.role ?? null;
+  const links = [
+    { href: "/catalogo", label: "Catalogo" },
+    { href: "/profesionales", label: "Profesionales" },
+    { href: "/reservar", label: "Pedir servicio" },
+    ...(role === "CUSTOMER" ? [{ href: "/cliente", label: "Panel Cliente" }] : []),
+    ...(role === "PRO" ? [{ href: "/pro", label: "Panel Profesional" }] : []),
+    ...(role === "ADMIN" ? [{ href: "/admin", label: "Admin" }] : [])
+  ];
+
   return (
     <header className="market-nav">
       <Link href="/" className="brand-link">
@@ -92,8 +93,11 @@ export function MarketNav() {
           </button>
         ) : (
           <>
-            <Link href="/registro" className="nav-link auth-btn">
-              Registrarse
+            <Link href="/registro?role=CUSTOMER" className="nav-link auth-btn">
+              Soy Cliente
+            </Link>
+            <Link href="/registro?role=PRO" className="nav-link auth-btn">
+              Soy Profesional
             </Link>
             <Link href="/ingresar" className="nav-link auth-btn">
               Ingresar

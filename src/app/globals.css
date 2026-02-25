@@ -223,6 +223,18 @@ body {
   gap: 10px;
 }
 
+.login-split {
+  margin-bottom: 12px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.login-split .module-card {
+  display: grid;
+  gap: 8px;
+}
+
 .module-card {
   border: 1px solid var(--line);
   border-radius: 14px;
@@ -372,6 +384,25 @@ body {
   margin: 6px 0 0;
   color: var(--ink-soft);
   font-size: 0.86rem;
+}
+
+.minimal-info {
+  margin-top: 14px;
+}
+
+.minimal-info h2 {
+  margin: 0 0 8px;
+  font-family: "Space Grotesk", sans-serif;
+}
+
+.minimal-info p {
+  margin: 0;
+  color: var(--ink-soft);
+  line-height: 1.55;
+}
+
+.minimal-info p + p {
+  margin-top: 10px;
 }
 
 .minimal-hero h1 {
@@ -1033,6 +1064,10 @@ textarea {
   }
 
   .module-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .login-split {
     grid-template-columns: 1fr;
   }
 

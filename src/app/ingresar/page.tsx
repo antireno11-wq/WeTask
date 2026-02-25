@@ -85,30 +85,38 @@ export default function IngresarPage() {
       <section className="panel">
         <div className="panel-head">
           <h2>Ingresar</h2>
-          <p>Autenticacion por rol para cliente, profesional y admin.</p>
+          <p>Accesos separados para cliente y profesional.</p>
+        </div>
+
+        <div className="login-split">
+          <article className="module-card">
+            <h3>Cliente</h3>
+            <p>Reserva servicios y sigue tus pedidos.</p>
+            {customer ? (
+              <button className="cta small" type="button" onClick={() => void login({ userId: customer.id })} disabled={loading}>
+                Entrar como cliente demo
+              </button>
+            ) : null}
+            <Link href="/registro?role=CUSTOMER" className="cta ghost small">
+              Crear cuenta cliente
+            </Link>
+          </article>
+
+          <article className="module-card">
+            <h3>Profesional</h3>
+            <p>Gestiona tu perfil, disponibilidad y reservas.</p>
+            {professionals[0] ? (
+              <button className="cta small" type="button" onClick={() => void login({ userId: professionals[0].id })} disabled={loading}>
+                Entrar como profesional demo
+              </button>
+            ) : null}
+            <Link href="/registro?role=PRO" className="cta ghost small">
+              Crear cuenta profesional
+            </Link>
+          </article>
         </div>
 
         <div className="module-grid">
-          {customer ? (
-            <article className="module-card">
-              <h3>Cliente demo</h3>
-              <p>{customer.fullName}</p>
-              <button className="cta small" type="button" onClick={() => void login({ userId: customer.id })} disabled={loading}>
-                Entrar como cliente
-              </button>
-            </article>
-          ) : null}
-
-          {professionals[0] ? (
-            <article className="module-card">
-              <h3>Profesional demo</h3>
-              <p>{professionals[0].fullName}</p>
-              <button className="cta small" type="button" onClick={() => void login({ userId: professionals[0].id })} disabled={loading}>
-                Entrar como pro
-              </button>
-            </article>
-          ) : null}
-
           {admin ? (
             <article className="module-card">
               <h3>Admin demo</h3>
@@ -129,12 +137,6 @@ export default function IngresarPage() {
             Entrar por email
           </button>
         </form>
-
-        <div className="cta-row">
-          <Link href="/registro" className="cta ghost small">
-            Crear cuenta nueva
-          </Link>
-        </div>
 
         {feedback ? <p className="feedback ok">{feedback}</p> : null}
         {error ? <p className="feedback error">{error}</p> : null}
