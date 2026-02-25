@@ -86,6 +86,8 @@ export async function PATCH(req: NextRequest) {
       create: {
         userId: targetProId,
         bio: input.bio ?? null,
+        coverageStreet: input.coverageStreet ?? null,
+        coverageComuna: input.coverageComuna ?? null,
         coverageCity: input.coverageCity ?? null,
         coveragePostal: input.coveragePostal ?? null,
         coverageLatitude: input.coverageLatitude ?? null,
@@ -95,6 +97,8 @@ export async function PATCH(req: NextRequest) {
       },
       update: {
         bio: input.bio,
+        coverageStreet: input.coverageStreet,
+        coverageComuna: input.coverageComuna,
         coverageCity: input.coverageCity,
         coveragePostal: input.coveragePostal,
         coverageLatitude: input.coverageLatitude,

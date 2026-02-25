@@ -122,6 +122,8 @@ export const marketplaceSearchProsSchema = z.object({
 export const marketplaceProProfileUpdateSchema = z.object({
   proId: z.string().min(1).optional(),
   bio: z.string().max(600).optional().nullable(),
+  coverageStreet: z.string().min(3).max(180).optional().nullable(),
+  coverageComuna: z.string().min(2).max(120).optional().nullable(),
   coverageCity: z.string().min(2).max(120).optional().nullable(),
   coveragePostal: z.string().min(4).max(12).optional().nullable(),
   coverageLatitude: z.coerce.number().min(-90).max(90).optional().nullable(),

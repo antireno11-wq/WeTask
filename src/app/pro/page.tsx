@@ -2,6 +2,7 @@
 
 import { FormEvent, MouseEvent, useEffect, useMemo, useState } from "react";
 import { MarketNav } from "@/components/market-nav";
+import { geocodeAddress } from "@/lib/geo";
 
 const statusOptions = ["ACCEPTED", "IN_PROGRESS", "COMPLETED", "CANCELLED"];
 const SANTIAGO_BOUNDS = {
@@ -10,6 +11,7 @@ const SANTIAGO_BOUNDS = {
   minLng: -70.82,
   maxLng: -70.45
 };
+const CHILE_CITIES = ["Santiago", "Valparaiso", "Vina del Mar", "Concepcion", "La Serena", "Antofagasta", "Temuco", "Puerto Montt"];
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
@@ -40,6 +42,8 @@ type Service = {
 type ProProfile = {
   id: string;
   bio: string | null;
+  coverageStreet: string | null;
+  coverageComuna: string | null;
   coverageCity: string | null;
   coveragePostal: string | null;
   coverageLatitude: number | null;
@@ -81,10 +85,13 @@ export default function ProPage() {
 
   const [profile, setProfile] = useState<ProProfile | null>(null);
   const [bio, setBio] = useState("");
+  const [coverageStreet, setCoverageStreet] = useState("");
+  const [coverageComuna, setCoverageComuna] = useState("");
   const [coverageCity, setCoverageCity] = useState("Santiago");
   const [coveragePostal, setCoveragePostal] = useState("7500000");
   const [coverageLatitude, setCoverageLatitude] = useState("");
   const [coverageLongitude, setCoverageLongitude] = useState("");
+  const [manualCoveragePoint, setManualCoveragePoint] = useState(false);
   const [serviceRadiusKm, setServiceRadiusKm] = useState(8);
   const [hourlyRateFromClp, setHourlyRateFromClp] = useState(12000);
 
@@ -97,6 +104,19 @@ export default function ProPage() {
   const [error, setError] = useState("");
   const parsedMapLat = Number(coverageLatitude);
   const parsedMapLng = Number(coverageLongitude);
+  const cityOptions = useMemo(
+    () => (coverageCity && !CHILE_CITIES.includes(coverageCity) ? [coverageCity, ...CHILE_CITIES] : CHILE_CITIES),
+    [coverageCity]
+  );
+  const geocodedCenter = useMemo(
+    () =>
+      geocodeAddress({
+        city: coverageCity || "Santiago",
+        postalCode: coveragePostal || "7500000",
+        street: `${coverageStreet} ${coverageComuna}`.trim()
+      }),
+    [coverageCity, coveragePostal, coverageStreet, coverageComuna]
+  );
   const mapLat = Number.isFinite(parsedMapLat) ? parsedMapLat : -33.4489;
   const mapLng = Number.isFinite(parsedMapLng) ? parsedMapLng : -70.6693;
   const markerLeftPct = ((mapLng - SANTIAGO_BOUNDS.minLng) / (SANTIAGO_BOUNDS.maxLng - SANTIAGO_BOUNDS.minLng)) * 100;
@@ -119,13 +139,23 @@ export default function ProPage() {
     setProfile(nextProfile);
     if (!nextProfile) return;
     setBio(nextProfile.bio ?? "");
+    setCoverageStreet(nextProfile.coverageStreet ?? "");
+    setCoverageComuna(nextProfile.coverageComuna ?? "");
     setCoverageCity(nextProfile.coverageCity ?? "Santiago");
     setCoveragePostal(nextProfile.coveragePostal ?? "");
-    setCoverageLatitude(nextProfile.coverageLatitude != null ? String(nextProfile.coverageLatitude) : "");
-    setCoverageLongitude(nextProfile.coverageLongitude != null ? String(nextProfile.coverageLongitude) : "");
+    const hasCoords = nextProfile.coverageLatitude != null && nextProfile.coverageLongitude != null;
+    setCoverageLatitude(hasCoords ? String(nextProfile.coverageLatitude) : "");
+    setCoverageLongitude(hasCoords ? String(nextProfile.coverageLongitude) : "");
+    setManualCoveragePoint(hasCoords);
     setServiceRadiusKm(nextProfile.serviceRadiusKm ?? 8);
     setHourlyRateFromClp(nextProfile.hourlyRateFromClp ?? 12000);
   };
+
+  useEffect(() => {
+    if (manualCoveragePoint) return;
+    setCoverageLatitude(geocodedCenter.lat.toFixed(6));
+    setCoverageLongitude(geocodedCenter.lng.toFixed(6));
+  }, [geocodedCenter, manualCoveragePoint]);
 
   const loadAll = async (targetProId: string) => {
     if (!targetProId) return;
@@ -204,6 +234,7 @@ export default function ProPage() {
 
     const nextLng = SANTIAGO_BOUNDS.minLng + xPct * (SANTIAGO_BOUNDS.maxLng - SANTIAGO_BOUNDS.minLng);
     const nextLat = SANTIAGO_BOUNDS.maxLat - yPct * (SANTIAGO_BOUNDS.maxLat - SANTIAGO_BOUNDS.minLat);
+    setManualCoveragePoint(true);
     setCoverageLatitude(nextLat.toFixed(6));
     setCoverageLongitude(nextLng.toFixed(6));
   };
@@ -223,6 +254,8 @@ export default function ProPage() {
         body: JSON.stringify({
           proId,
           bio: bio.trim() || null,
+          coverageStreet: coverageStreet.trim() || null,
+          coverageComuna: coverageComuna.trim() || null,
           coverageCity: coverageCity.trim() || null,
           coveragePostal: coveragePostal.trim() || null,
           coverageLatitude: coverageLatitude ? Number(coverageLatitude) : null,
@@ -382,20 +415,42 @@ export default function ProPage() {
             <textarea value={bio} onChange={(e) => setBio(e.target.value)} placeholder="Experiencia, especialidad, herramientas." />
           </label>
           <label>
+            Direccion
+            <input
+              value={coverageStreet}
+              onChange={(e) => {
+                setManualCoveragePoint(false);
+                setCoverageStreet(e.target.value);
+              }}
+              placeholder="Calle y numero"
+            />
+          </label>
+          <label>
+            Comuna
+            <input
+              value={coverageComuna}
+              onChange={(e) => {
+                setManualCoveragePoint(false);
+                setCoverageComuna(e.target.value);
+              }}
+              placeholder="Providencia"
+            />
+          </label>
+          <label>
             Ciudad
-            <input value={coverageCity} onChange={(e) => setCoverageCity(e.target.value)} />
-          </label>
-          <label>
-            Codigo postal
-            <input value={coveragePostal} onChange={(e) => setCoveragePostal(e.target.value)} />
-          </label>
-          <label>
-            Latitud
-            <input value={coverageLatitude} onChange={(e) => setCoverageLatitude(e.target.value)} placeholder="-33.45" />
-          </label>
-          <label>
-            Longitud
-            <input value={coverageLongitude} onChange={(e) => setCoverageLongitude(e.target.value)} placeholder="-70.66" />
+            <select
+              value={coverageCity}
+              onChange={(e) => {
+                setManualCoveragePoint(false);
+                setCoverageCity(e.target.value);
+              }}
+            >
+              {cityOptions.map((city) => (
+                <option key={city} value={city}>
+                  {city}
+                </option>
+              ))}
+            </select>
           </label>
           <label>
             Radio cobertura (km)
@@ -441,7 +496,7 @@ export default function ProPage() {
               </span>
             </div>
             <p className="coverage-meta">
-              Punto: {mapLat.toFixed(4)}, {mapLng.toFixed(4)} · Radio {serviceRadiusKm} km
+              Direccion base: {coverageStreet || "Sin direccion"}, {coverageComuna || "Sin comuna"}, {coverageCity} · Radio {serviceRadiusKm} km
             </p>
           </div>
         </div>

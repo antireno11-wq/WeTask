@@ -108,6 +108,8 @@ model ProfessionalProfile {
   isVerified        Boolean     @default(false)
   ratingAvg         Decimal     @default(0) @db.Decimal(3, 2)
   ratingsCount      Int         @default(0)
+  coverageStreet    String?
+  coverageComuna    String?
   coverageCity      String?
   coveragePostal    String?
   coverageLatitude  Float?
