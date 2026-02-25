@@ -9,6 +9,13 @@ const homeCategories = [
   { emoji: "🏠", label: "Hogar", href: "/servicios/limpieza" },
   { emoji: "📚", label: "Clases", href: "/servicios/clases-colegio" },
   { emoji: "🧰", label: "Oficios", href: "/servicios/maestro-polifuncional" },
+  { emoji: "🌿", label: "Jardineria", href: "/servicios" },
+  { emoji: "👶", label: "Baby sitter", href: "/servicios" },
+  { emoji: "💇", label: "Peluqueria", href: "/servicios" },
+  { emoji: "💅", label: "Manicure", href: "/servicios" },
+  { emoji: "🐾", label: "Veterinario", href: "/servicios" },
+  { emoji: "🐕", label: "Paseadores de perro", href: "/servicios" },
+  { emoji: "🦴", label: "Cuidadores de perro", href: "/servicios" },
   { emoji: "⚡", label: "Electricidad", href: "/servicios/electricidad" },
   { emoji: "🎵", label: "Musica", href: "/servicios/clases-musica" },
   { emoji: "🧩", label: "Otros", href: "/servicios" }

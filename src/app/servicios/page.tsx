@@ -12,6 +12,16 @@ type Category = {
   services: Array<{ id: string }>;
 };
 
+const upcomingCategories = [
+  { emoji: "🌿", name: "Jardineria" },
+  { emoji: "👶", name: "Baby sitter" },
+  { emoji: "💇", name: "Peluqueria" },
+  { emoji: "💅", name: "Manicure" },
+  { emoji: "🐾", name: "Veterinario" },
+  { emoji: "🐕", name: "Paseadores de perro" },
+  { emoji: "🦴", name: "Cuidadores de perro" }
+];
+
 export default function ServiciosPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
@@ -56,6 +66,15 @@ export default function ServiciosPage() {
             <span>{category.description ?? "Servicios disponibles en esta categoria."}</span>
             <span>{category.services.length} servicios</span>
           </Link>
+        ))}
+        {upcomingCategories.map((category) => (
+          <article key={category.name} className="service-card upcoming-card">
+            <strong>
+              {category.emoji} {category.name}
+            </strong>
+            <span>Categoria en expansion para proximos lanzamientos.</span>
+            <span>Proximamente</span>
+          </article>
         ))}
       </section>
     </main>

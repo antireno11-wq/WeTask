@@ -712,6 +712,11 @@ body {
   background: #fff8f2;
 }
 
+.upcoming-card {
+  border-style: dashed;
+  background: #f7fbff;
+}
+
 .service-card.compact {
   padding: 10px;
   gap: 3px;
