@@ -33,6 +33,20 @@ export default function HomePage() {
           solicitudes. Todo ocurre dentro de la plataforma para mantener seguimiento y orden operativo.
         </p>
       </section>
+
+      <section className="panel home-links-panel">
+        <div className="home-links">
+          <Link href="/sobre-nosotros" className="home-link-item">
+            Sobre nosotros
+          </Link>
+          <Link href="/empleo" className="home-link-item">
+            Empleo
+          </Link>
+          <Link href="/legal" className="home-link-item">
+            Legal
+          </Link>
+        </div>
+      </section>
     </main>
   );
 }

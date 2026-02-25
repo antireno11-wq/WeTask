@@ -404,6 +404,32 @@ body {
   margin-top: 10px;
 }
 
+.home-links-panel {
+  margin-top: 14px;
+}
+
+.home-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.home-link-item {
+  text-decoration: none;
+  color: var(--ink);
+  background: #ffffff;
+  border: 1px solid #c9dced;
+  border-radius: 999px;
+  padding: 8px 12px;
+  font-weight: 700;
+  font-size: 0.86rem;
+}
+
+.home-link-item:hover {
+  border-color: var(--accent);
+  background: #fff8f1;
+}
+
 .minimal-hero h1 {
   margin: 0;
   max-width: 20ch;
@@ -694,6 +720,13 @@ textarea {
   margin: 0;
   color: var(--ink-soft);
   font-size: 0.8rem;
+}
+
+.input-hint {
+  margin-top: 4px;
+  color: var(--ink-soft);
+  font-size: 0.76rem;
+  font-weight: 600;
 }
 
 .query-row {
