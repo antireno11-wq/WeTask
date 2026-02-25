@@ -12,6 +12,7 @@ const SANTIAGO_BOUNDS = {
   minLng: -70.82,
   maxLng: -70.45
 };
+const CHILE_CITIES = ["Santiago", "Valparaiso", "Vina del Mar", "Concepcion", "La Serena", "Antofagasta", "Temuco", "Puerto Montt"];
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
@@ -24,6 +25,8 @@ export default function RegistroPage() {
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [role, setRole] = useState<"CUSTOMER" | "PRO">("CUSTOMER");
+  const [coverageStreet, setCoverageStreet] = useState("");
+  const [coverageComuna, setCoverageComuna] = useState("");
   const [city, setCity] = useState("Santiago");
   const [postalCode, setPostalCode] = useState("7500000");
   const [serviceRadiusKm, setServiceRadiusKm] = useState(8);
@@ -32,6 +35,8 @@ export default function RegistroPage() {
   const [documentNumber, setDocumentNumber] = useState("");
   const [identityDocumentUrl, setIdentityDocumentUrl] = useState("");
   const [backgroundCheckUrl, setBackgroundCheckUrl] = useState("");
+  const [identityDocumentName, setIdentityDocumentName] = useState("");
+  const [backgroundCheckName, setBackgroundCheckName] = useState("");
   const [coverageLat, setCoverageLat] = useState(-33.4489);
   const [coverageLng, setCoverageLng] = useState(-70.6693);
 
@@ -39,7 +44,15 @@ export default function RegistroPage() {
   const [feedback, setFeedback] = useState("");
   const [error, setError] = useState("");
 
-  const geocodedCenter = useMemo(() => geocodeAddress({ city, postalCode }), [city, postalCode]);
+  const geocodedCenter = useMemo(
+    () =>
+      geocodeAddress({
+        city,
+        postalCode,
+        street: `${coverageStreet} ${coverageComuna}`.trim()
+      }),
+    [city, postalCode, coverageStreet, coverageComuna]
+  );
 
   useEffect(() => {
     if (role !== "PRO") return;
@@ -76,6 +89,14 @@ export default function RegistroPage() {
     updateCoverageFromPointer(event.clientX, event.clientY, rect);
   };
 
+  const toDataUrl = (file: File) =>
+    new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(typeof reader.result === "string" ? reader.result : "");
+      reader.onerror = () => reject(new Error("No se pudo leer archivo"));
+      reader.readAsDataURL(file);
+    });
+
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     setLoading(true);
@@ -83,6 +104,10 @@ export default function RegistroPage() {
     setError("");
 
     try {
+      if (role === "PRO" && (!identityDocumentUrl || !backgroundCheckUrl)) {
+        throw new Error("Debes cargar documento de identidad y certificado de antecedentes");
+      }
+
       const response = await fetch("/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -91,6 +116,8 @@ export default function RegistroPage() {
           email,
           phone,
           role,
+          coverageStreet: role === "PRO" ? coverageStreet : undefined,
+          coverageComuna: role === "PRO" ? coverageComuna : undefined,
           city,
           postalCode,
           serviceRadiusKm,
@@ -166,8 +193,24 @@ export default function RegistroPage() {
           {role === "PRO" ? (
             <>
               <label>
-                Ciudad base
-                <input value={city} onChange={(e) => setCity(e.target.value)} />
+                Direccion
+                <input value={coverageStreet} onChange={(e) => setCoverageStreet(e.target.value)} placeholder="Calle y numero" />
+              </label>
+
+              <label>
+                Comuna
+                <input value={coverageComuna} onChange={(e) => setCoverageComuna(e.target.value)} placeholder="Providencia" />
+              </label>
+
+              <label>
+                Ciudad
+                <select value={city} onChange={(e) => setCity(e.target.value)}>
+                  {CHILE_CITIES.map((cityOption) => (
+                    <option key={cityOption} value={cityOption}>
+                      {cityOption}
+                    </option>
+                  ))}
+                </select>
               </label>
 
               <label>
@@ -195,52 +238,6 @@ export default function RegistroPage() {
                   onChange={(e) => setHourlyRateFromClp(Number(e.target.value) || 12000)}
                 />
               </label>
-
-              <div className="full coverage-map-card">
-                <div className="coverage-map-head">
-                  <h3>Documentacion obligatoria</h3>
-                  <p>Necesitamos validar identidad y antecedentes antes de activar tu perfil profesional.</p>
-                </div>
-                <div className="grid-form">
-                  <label>
-                    Tipo de documento
-                    <select value={documentType} onChange={(e) => setDocumentType(e.target.value as "CEDULA_CHILE" | "PASAPORTE")} required>
-                      <option value="CEDULA_CHILE">Cedula chilena</option>
-                      <option value="PASAPORTE">Pasaporte</option>
-                    </select>
-                  </label>
-                  <label>
-                    Numero de documento
-                    <input
-                      value={documentNumber}
-                      onChange={(e) => setDocumentNumber(e.target.value)}
-                      required
-                      minLength={5}
-                      placeholder="Ej: 12345678-9"
-                    />
-                  </label>
-                  <label>
-                    URL documento identidad
-                    <input
-                      type="url"
-                      value={identityDocumentUrl}
-                      onChange={(e) => setIdentityDocumentUrl(e.target.value)}
-                      required
-                      placeholder="https://..."
-                    />
-                  </label>
-                  <label>
-                    URL certificado antecedentes
-                    <input
-                      type="url"
-                      value={backgroundCheckUrl}
-                      onChange={(e) => setBackgroundCheckUrl(e.target.value)}
-                      required
-                      placeholder="https://..."
-                    />
-                  </label>
-                </div>
-              </div>
 
               <div className="full coverage-map-card">
                 <div className="coverage-map-head">
@@ -275,6 +272,64 @@ export default function RegistroPage() {
                 <p className="coverage-meta">
                   Punto: {coverageLat.toFixed(4)}, {coverageLng.toFixed(4)} · Radio {serviceRadiusKm} km
                 </p>
+              </div>
+
+              <div className="full coverage-map-card">
+                <div className="coverage-map-head">
+                  <h3>Documentacion obligatoria</h3>
+                  <p>Necesitamos validar identidad y antecedentes antes de activar tu perfil profesional.</p>
+                </div>
+                <div className="grid-form">
+                  <label>
+                    Tipo de documento
+                    <select value={documentType} onChange={(e) => setDocumentType(e.target.value as "CEDULA_CHILE" | "PASAPORTE")} required>
+                      <option value="CEDULA_CHILE">Cedula chilena</option>
+                      <option value="PASAPORTE">Pasaporte</option>
+                    </select>
+                  </label>
+                  <label>
+                    Numero de documento
+                    <input
+                      value={documentNumber}
+                      onChange={(e) => setDocumentNumber(e.target.value)}
+                      required
+                      minLength={5}
+                      placeholder="Ej: 12345678-9"
+                    />
+                  </label>
+                  <label>
+                    Documento de identidad (archivo)
+                    <input
+                      type="file"
+                      accept=".pdf,image/*"
+                      required
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        const content = await toDataUrl(file);
+                        setIdentityDocumentUrl(content);
+                        setIdentityDocumentName(file.name);
+                      }}
+                    />
+                    {identityDocumentName ? <span className="input-hint">Cargado: {identityDocumentName}</span> : null}
+                  </label>
+                  <label>
+                    Certificado de antecedentes (archivo)
+                    <input
+                      type="file"
+                      accept=".pdf,image/*"
+                      required
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        const content = await toDataUrl(file);
+                        setBackgroundCheckUrl(content);
+                        setBackgroundCheckName(file.name);
+                      }}
+                    />
+                    {backgroundCheckName ? <span className="input-hint">Cargado: {backgroundCheckName}</span> : null}
+                  </label>
+                </div>
               </div>
             </>
           ) : null}

@@ -115,14 +115,11 @@ export function MarketNav() {
           </>
         ) : (
           <>
-            <Link href="/registro?role=CUSTOMER" className="nav-link auth-btn">
-              Soy Cliente
-            </Link>
             <Link href="/registro?role=PRO" className="nav-link auth-btn">
-              Soy Profesional
+              Ofrecer servicios
             </Link>
-            <Link href="/ingresar" className="nav-link auth-btn">
-              Ingresar
+            <Link href="/ingresar" className="nav-link auth-btn auth-login-pill">
+              Acceder
             </Link>
           </>
         )}

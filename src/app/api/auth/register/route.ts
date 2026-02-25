@@ -10,6 +10,8 @@ type RegisterPayload = {
   email?: string;
   phone?: string;
   role?: "CUSTOMER" | "PRO";
+  coverageStreet?: string;
+  coverageComuna?: string;
   city?: string;
   postalCode?: string;
   latitude?: number;
@@ -21,6 +23,10 @@ type RegisterPayload = {
   identityDocumentUrl?: string;
   backgroundCheckUrl?: string;
 };
+
+function isValidDocumentRef(value: string) {
+  return /^https?:\/\/\S+$/i.test(value) || value.startsWith("data:");
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -50,11 +56,11 @@ export async function POST(req: NextRequest) {
       if (!documentNumber || documentNumber.length < 5) {
         return NextResponse.json({ error: "Numero de documento invalido" }, { status: 400 });
       }
-      if (!identityDocumentUrl || !/^https?:\/\/\S+$/i.test(identityDocumentUrl)) {
-        return NextResponse.json({ error: "Debes adjuntar URL del documento de identidad" }, { status: 400 });
+      if (!identityDocumentUrl || !isValidDocumentRef(identityDocumentUrl)) {
+        return NextResponse.json({ error: "Debes adjuntar documento de identidad" }, { status: 400 });
       }
-      if (!backgroundCheckUrl || !/^https?:\/\/\S+$/i.test(backgroundCheckUrl)) {
-        return NextResponse.json({ error: "Debes adjuntar URL del certificado de antecedentes" }, { status: 400 });
+      if (!backgroundCheckUrl || !isValidDocumentRef(backgroundCheckUrl)) {
+        return NextResponse.json({ error: "Debes adjuntar certificado de antecedentes" }, { status: 400 });
       }
     }
 
@@ -79,6 +85,8 @@ export async function POST(req: NextRequest) {
                   idDocumentNumber: body.documentNumber?.trim() || null,
                   idDocumentUrl: body.identityDocumentUrl?.trim() || null,
                   backgroundCheckUrl: body.backgroundCheckUrl?.trim() || null,
+                  coverageStreet: body.coverageStreet?.trim() || null,
+                  coverageComuna: body.coverageComuna?.trim() || null,
                   coverageCity: body.city?.trim() || "Santiago",
                   coveragePostal: body.postalCode?.trim() || null,
                   coverageLatitude: typeof body.latitude === "number" ? body.latitude : null,
