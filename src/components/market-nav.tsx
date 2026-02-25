@@ -65,7 +65,7 @@ export function MarketNav() {
 
   const role = session?.role ?? null;
   const links = [
-    { href: "/catalogo", label: "Catalogo" },
+    { href: "/servicios", label: "Servicios" },
     { href: "/profesionales", label: "Profesionales" },
     { href: "/reservar", label: "Pedir servicio" },
     ...(role === "CUSTOMER" ? [{ href: "/cliente", label: "Panel Cliente" }] : []),

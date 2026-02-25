@@ -45,7 +45,7 @@ export default function CatalogoPage() {
         const response = await fetch("/api/marketplace/catalog");
         const data = (await response.json()) as { categories?: Category[]; error?: string; detail?: string };
         if (!response.ok || !data.categories) {
-          throw new Error(data.detail || data.error || "No se pudo cargar catalogo");
+          throw new Error(data.detail || data.error || "No se pudieron cargar los servicios");
         }
         setCategories(data.categories);
       } catch (e) {
@@ -70,26 +70,13 @@ export default function CatalogoPage() {
       .filter((category) => category.services.length > 0 || category.name.toLowerCase().includes(term));
   }, [categories, query]);
 
-  const compactServices = useMemo(
-    () =>
-      filtered.flatMap((category) =>
-        category.services.map((service) => ({
-          ...service,
-          categoryName: category.name,
-          minHours: category.minHours,
-          slotMinutes: category.slotMinutes
-        }))
-      ),
-    [filtered]
-  );
-
   return (
     <main className="page market-shell">
       <MarketNav />
       <section className="panel">
         <div className="panel-head">
-          <h2>Catalogo de servicios</h2>
-          <p>Bloques compactos por servicio.</p>
+          <h2>Servicios</h2>
+          <p>Explora por categoria y elige el servicio que necesitas.</p>
         </div>
         <label>
           Buscar
@@ -97,32 +84,38 @@ export default function CatalogoPage() {
         </label>
       </section>
 
-      {loading ? <p className="empty">Cargando catalogo...</p> : null}
+      {loading ? <p className="empty">Cargando servicios...</p> : null}
       {error ? <p className="feedback error">{error}</p> : null}
 
-      {!loading && !error && compactServices.length === 0 ? <p className="empty">No hay servicios para el filtro.</p> : null}
+      {!loading && !error && filtered.length === 0 ? <p className="empty">No hay servicios para el filtro.</p> : null}
 
-      <section className="compact-service-grid">
-        {compactServices.map((service) => (
-          <article key={service.id} className="service-card active compact">
-            <span className="mini-tag">{service.categoryName}</span>
-            <strong>{service.name}</strong>
-            <span>{service.description}</span>
-            <span>Desde {clp(service.basePriceClp)} / hora</span>
-            <span>
-              Minimo {service.minHours}h · Bloque {service.slotMinutes} min
-            </span>
-            <div className="cta-row">
-              <Link className="cta small" href={`/profesionales?serviceId=${service.id}`}>
-                Profesionales
-              </Link>
-              <Link className="cta ghost small" href={`/reservar?serviceId=${service.id}`}>
-                Reservar
-              </Link>
-            </div>
-          </article>
-        ))}
-      </section>
+      {filtered.map((category) => (
+        <section key={category.id} className="panel">
+          <div className="panel-head">
+            <h2>{category.name}</h2>
+            <p>
+              Minimo {category.minHours}h · Bloques de {category.slotMinutes} min
+            </p>
+          </div>
+          <div className="service-grid">
+            {category.services.map((service) => (
+              <article key={service.id} className="service-card active">
+                <strong>{service.name}</strong>
+                <span>{service.description}</span>
+                <span>Desde {clp(service.basePriceClp)} / hora</span>
+                <div className="cta-row">
+                  <Link className="cta small" href={`/profesionales?serviceId=${service.id}`}>
+                    Ver profesionales
+                  </Link>
+                  <Link className="cta ghost small" href={`/reservar?serviceId=${service.id}`}>
+                    Reservar
+                  </Link>
+                </div>
+              </article>
+            ))}
+          </div>
+        </section>
+      ))}
     </main>
   );
 }
