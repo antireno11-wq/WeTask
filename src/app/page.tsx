@@ -15,7 +15,7 @@ const homeCategories = [
   { emoji: "💅", label: "Manicure", href: "/servicios" },
   { emoji: "🐾", label: "Veterinario", href: "/servicios" },
   { emoji: "🐕", label: "Paseadores de perro", href: "/servicios" },
-  { emoji: "🦴", label: "Cuidadores de perro", href: "/servicios" },
+  { emoji: "🦴", label: "Cuidadores de animales", href: "/servicios" },
   { emoji: "⚡", label: "Electricidad", href: "/servicios/electricidad" },
   { emoji: "🎵", label: "Musica", href: "/servicios/clases-musica" },
   { emoji: "🧩", label: "Otros", href: "/servicios" }

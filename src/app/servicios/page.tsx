@@ -19,7 +19,7 @@ const upcomingCategories = [
   { emoji: "💅", name: "Manicure" },
   { emoji: "🐾", name: "Veterinario" },
   { emoji: "🐕", name: "Paseadores de perro" },
-  { emoji: "🦴", name: "Cuidadores de perro" }
+  { emoji: "🦴", name: "Cuidadores de animales" }
 ];
 
 export default function ServiciosPage() {
