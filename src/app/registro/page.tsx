@@ -1,9 +1,21 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, MouseEvent, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { MarketNav } from "@/components/market-nav";
+import { geocodeAddress } from "@/lib/geo";
+
+const SANTIAGO_BOUNDS = {
+  minLat: -33.62,
+  maxLat: -33.3,
+  minLng: -70.82,
+  maxLng: -70.45
+};
+
+function clamp(value: number, min: number, max: number) {
+  return Math.min(Math.max(value, min), max);
+}
 
 export default function RegistroPage() {
   const router = useRouter();
@@ -16,10 +28,25 @@ export default function RegistroPage() {
   const [postalCode, setPostalCode] = useState("7500000");
   const [serviceRadiusKm, setServiceRadiusKm] = useState(8);
   const [hourlyRateFromClp, setHourlyRateFromClp] = useState(12000);
+  const [coverageLat, setCoverageLat] = useState(-33.4489);
+  const [coverageLng, setCoverageLng] = useState(-70.6693);
 
   const [loading, setLoading] = useState(false);
   const [feedback, setFeedback] = useState("");
   const [error, setError] = useState("");
+
+  const geocodedCenter = useMemo(() => geocodeAddress({ city, postalCode }), [city, postalCode]);
+
+  useEffect(() => {
+    if (role !== "PRO") return;
+    setCoverageLat(geocodedCenter.lat);
+    setCoverageLng(geocodedCenter.lng);
+  }, [geocodedCenter, role]);
+
+  const mapEmbedUrl = `https://www.openstreetmap.org/export/embed.html?bbox=${SANTIAGO_BOUNDS.minLng}%2C${SANTIAGO_BOUNDS.minLat}%2C${SANTIAGO_BOUNDS.maxLng}%2C${SANTIAGO_BOUNDS.maxLat}&layer=mapnik&marker=${coverageLat}%2C${coverageLng}`;
+  const markerLeftPct = ((coverageLng - SANTIAGO_BOUNDS.minLng) / (SANTIAGO_BOUNDS.maxLng - SANTIAGO_BOUNDS.minLng)) * 100;
+  const markerTopPct = (1 - (coverageLat - SANTIAGO_BOUNDS.minLat) / (SANTIAGO_BOUNDS.maxLat - SANTIAGO_BOUNDS.minLat)) * 100;
+  const radiusPx = Math.max(28, serviceRadiusKm * 10);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -28,6 +55,22 @@ export default function RegistroPage() {
       setRole(presetRole);
     }
   }, []);
+
+  const updateCoverageFromPointer = (clientX: number, clientY: number, rect: DOMRect) => {
+    const xPct = clamp((clientX - rect.left) / rect.width, 0, 1);
+    const yPct = clamp((clientY - rect.top) / rect.height, 0, 1);
+
+    const nextLng = SANTIAGO_BOUNDS.minLng + xPct * (SANTIAGO_BOUNDS.maxLng - SANTIAGO_BOUNDS.minLng);
+    const nextLat = SANTIAGO_BOUNDS.maxLat - yPct * (SANTIAGO_BOUNDS.maxLat - SANTIAGO_BOUNDS.minLat);
+
+    setCoverageLat(nextLat);
+    setCoverageLng(nextLng);
+  };
+
+  const onCoverageMapClick = (event: MouseEvent<HTMLDivElement>) => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    updateCoverageFromPointer(event.clientX, event.clientY, rect);
+  };
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
@@ -47,6 +90,8 @@ export default function RegistroPage() {
           city,
           postalCode,
           serviceRadiusKm,
+          latitude: role === "PRO" ? coverageLat : undefined,
+          longitude: role === "PRO" ? coverageLng : undefined,
           hourlyRateFromClp: role === "PRO" ? hourlyRateFromClp : undefined
         })
       });
@@ -142,7 +187,51 @@ export default function RegistroPage() {
                   onChange={(e) => setHourlyRateFromClp(Number(e.target.value) || 12000)}
                 />
               </label>
+
+              <div className="full coverage-map-card">
+                <div className="coverage-map-head">
+                  <h3>Zona de cobertura</h3>
+                  <p>Haz click en el mapa para fijar tu punto base y ajustar tu radio real.</p>
+                </div>
+                <div
+                  className="coverage-map-wrap coverage-map-interactive"
+                  onClick={onCoverageMapClick}
+                  onKeyDown={(event) => {
+                    if (event.key !== "Enter" && event.key !== " ") return;
+                    event.preventDefault();
+                    const rect = event.currentTarget.getBoundingClientRect();
+                    updateCoverageFromPointer(rect.left + rect.width / 2, rect.top + rect.height / 2, rect);
+                  }}
+                  role="button"
+                  tabIndex={0}
+                  aria-label="Seleccionar punto de cobertura en el mapa"
+                >
+                  <iframe
+                    title="Mapa de cobertura de servicio"
+                    src={mapEmbedUrl}
+                    loading="lazy"
+                    className="coverage-map-frame"
+                    referrerPolicy="no-referrer-when-downgrade"
+                  />
+                  <span className="coverage-pin" style={{ left: `${markerLeftPct}%`, top: `${markerTopPct}%` }} aria-hidden>
+                    <span className="coverage-pin-radius" style={{ width: `${radiusPx}px`, height: `${radiusPx}px` }} />
+                    <span className="coverage-pin-dot" />
+                  </span>
+                </div>
+                <p className="coverage-meta">
+                  Punto: {coverageLat.toFixed(4)}, {coverageLng.toFixed(4)} · Radio {serviceRadiusKm} km
+                </p>
+              </div>
             </>
+          ) : null}
+
+          {role !== "PRO" ? (
+            <div className="full coverage-map-card">
+              <div className="coverage-map-head">
+                <h3>Mapa de cobertura</h3>
+                <p>Disponible para cuentas Profesionales. Cambia "Tipo de cuenta" a Profesional para activarlo.</p>
+              </div>
+            </div>
           ) : null}
 
           <div className="cta-row full">
