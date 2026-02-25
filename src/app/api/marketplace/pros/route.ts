@@ -11,6 +11,7 @@ export async function GET(req: NextRequest) {
 
     const searchParams = req.nextUrl.searchParams;
     const input = marketplaceListProsQuerySchema.parse({
+      categoryId: searchParams.get("categoryId") ?? undefined,
       serviceId: searchParams.get("serviceId") ?? undefined,
       city: searchParams.get("city") ?? undefined,
       minRating: searchParams.get("minRating") ?? undefined,
@@ -25,6 +26,16 @@ export async function GET(req: NextRequest) {
         ratingAvg: input.minRating ? { gte: input.minRating } : undefined,
         coverageCity: input.city ? { equals: input.city, mode: "insensitive" } : undefined,
         hourlyRateFromClp: input.maxHourlyRateClp ? { lte: input.maxHourlyRateClp } : undefined,
+        slots:
+          input.categoryId && !input.serviceId
+            ? {
+                some: {
+                  isAvailable: true,
+                  startsAt: { gte: new Date() },
+                  service: { categoryId: input.categoryId }
+                }
+              }
+            : undefined,
         user: { role: "PRO" }
       },
       orderBy: [{ isVerified: "desc" }, { ratingAvg: "desc" }, { ratingsCount: "desc" }],
@@ -35,7 +46,8 @@ export async function GET(req: NextRequest) {
           where: {
             isAvailable: true,
             startsAt: { gte: new Date() },
-            OR: input.serviceId ? [{ serviceId: null }, { serviceId: input.serviceId }] : undefined
+            OR: input.serviceId ? [{ serviceId: null }, { serviceId: input.serviceId }] : undefined,
+            service: input.categoryId && !input.serviceId ? { categoryId: input.categoryId } : undefined
           },
           orderBy: [{ startsAt: "asc" }],
           take: 6,

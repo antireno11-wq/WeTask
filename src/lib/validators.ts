@@ -45,6 +45,7 @@ export const publicBookingsQuerySchema = z.object({
 });
 
 export const marketplaceListProsQuerySchema = z.object({
+  categoryId: z.string().optional(),
   serviceId: z.string().optional(),
   city: z.string().optional(),
   minRating: z.coerce.number().min(0).max(5).optional(),

@@ -12,7 +12,7 @@ export default function HomePage() {
         <h1>Servicios a domicilio, simple.</h1>
         <p className="lead">Elige si quieres pedir un servicio o trabajar como profesional.</p>
         <div className="cta-row minimal-main-actions">
-          <Link href="/reservar" className="cta">
+          <Link href="/servicios" className="cta">
             Pedir servicio
           </Link>
           <Link href="/registro?role=PRO" className="cta">
