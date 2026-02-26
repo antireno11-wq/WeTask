@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "next/navigation";
 import { MarketNav } from "@/components/market-nav";
 
 export const dynamic = "force-dynamic";
@@ -57,13 +56,6 @@ function starsText(value: number) {
 }
 
 export default function ReservarPage() {
-  const query = useSearchParams();
-  const initialServiceId = query.get("serviceId") ?? "";
-  const initialProId = query.get("proId") ?? "";
-  const initialStreet = query.get("address") ?? "Av. Providencia 1550";
-  const initialCity = query.get("city") ?? "Santiago";
-  const initialPostalCode = query.get("postalCode") ?? "7500000";
-
   const [services, setServices] = useState<Service[]>([]);
   const [loadingServices, setLoadingServices] = useState(false);
   const [loadingSearch, setLoadingSearch] = useState(false);
@@ -73,22 +65,22 @@ export default function ReservarPage() {
   const [message, setMessage] = useState("");
 
   const [address, setAddress] = useState({
-    city: initialCity,
-    postalCode: initialPostalCode,
-    street: initialStreet,
+    city: "Santiago",
+    postalCode: "7500000",
+    street: "Av. Providencia 1550",
     latitude: "",
     longitude: ""
   });
 
   const [filters, setFilters] = useState({
-    serviceId: initialServiceId,
+    serviceId: "",
     date: new Date().toISOString().slice(0, 10)
   });
 
   const [customerId, setCustomerId] = useState("");
 
   const [matches, setMatches] = useState<MatchProfessional[]>([]);
-  const [selectedProId, setSelectedProId] = useState(initialProId);
+  const [selectedProId, setSelectedProId] = useState("");
   const [selectedDay, setSelectedDay] = useState("");
   const [selectedSlotId, setSelectedSlotId] = useState("");
 
@@ -155,6 +147,27 @@ export default function ReservarPage() {
 
   useEffect(() => {
     void loadServices();
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const serviceId = params.get("serviceId");
+    const proId = params.get("proId");
+    const addressLine = params.get("address");
+    const city = params.get("city");
+    const postalCode = params.get("postalCode");
+
+    if (serviceId) setFilters((prev) => ({ ...prev, serviceId }));
+    if (proId) setSelectedProId(proId);
+    if (addressLine || city || postalCode) {
+      setAddress((prev) => ({
+        ...prev,
+        street: addressLine || prev.street,
+        city: city || prev.city,
+        postalCode: postalCode || prev.postalCode
+      }));
+    }
   }, []);
 
   useEffect(() => {
