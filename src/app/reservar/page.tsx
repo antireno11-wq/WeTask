@@ -5,6 +5,8 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { MarketNav } from "@/components/market-nav";
 
+export const dynamic = "force-dynamic";
+
 type Service = {
   id: string;
   slug: string;
