@@ -9,18 +9,8 @@ type Category = {
   slug: string;
   name: string;
   description: string | null;
-  services: Array<{ id: string }>;
+  services: Array<{ id: string; basePriceClp: number }>;
 };
-
-const upcomingCategories = [
-  { emoji: "🌿", name: "Jardineria" },
-  { emoji: "👶", name: "Baby sitter" },
-  { emoji: "💇", name: "Peluqueria" },
-  { emoji: "💅", name: "Manicure" },
-  { emoji: "🐾", name: "Veterinario" },
-  { emoji: "🐕", name: "Paseadores de perro" },
-  { emoji: "🦴", name: "Cuidadores de animales" }
-];
 
 export default function ServiciosPage() {
   const [categories, setCategories] = useState<Category[]>([]);
@@ -61,20 +51,19 @@ export default function ServiciosPage() {
 
       <section className="service-grid">
         {categories.map((category) => (
-          <Link key={category.id} href={`/servicios/${category.slug}`} className="service-card module-link">
+          <Link key={category.id} href={`/services/${category.slug}`} className="service-card module-link">
             <strong>{category.name}</strong>
             <span>{category.description ?? "Servicios disponibles en esta categoria."}</span>
-            <span>{category.services.length} servicios</span>
+            <span>
+              {category.services.length > 0
+                ? `Desde ${new Intl.NumberFormat("es-CL", {
+                    style: "currency",
+                    currency: "CLP",
+                    maximumFractionDigits: 0
+                  }).format(Math.min(...category.services.map((service) => service.basePriceClp)))}`
+                : "Precio por definir"}
+            </span>
           </Link>
-        ))}
-        {upcomingCategories.map((category) => (
-          <article key={category.name} className="service-card upcoming-card">
-            <strong>
-              {category.emoji} {category.name}
-            </strong>
-            <span>Categoria en expansion para proximos lanzamientos.</span>
-            <span>Proximamente</span>
-          </article>
         ))}
       </section>
     </main>

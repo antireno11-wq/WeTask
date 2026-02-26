@@ -406,7 +406,8 @@ body {
   box-shadow: 0 12px 26px rgba(10, 91, 125, 0.22);
 }
 
-.home-search-bar input {
+.home-search-bar input,
+.home-search-bar select {
   border: 0;
   border-right: 1px solid #d7e8f3;
   border-radius: 0;
@@ -567,30 +568,51 @@ body {
     url("https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?auto=format&fit=crop&w=1200&q=80");
 }
 
-.home-links-panel {
+.home-footer-panel {
   margin-top: 14px;
 }
 
-.home-links {
-  display: flex;
-  flex-wrap: wrap;
+.home-footer-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 24px;
+}
+
+.home-footer-col {
+  display: grid;
+  align-content: start;
   gap: 10px;
+}
+
+.home-footer-col h3 {
+  margin: 0;
+  font-family: "Space Grotesk", sans-serif;
+  font-size: 1.2rem;
+}
+
+.home-footer-col p {
+  margin: 0;
+  color: var(--ink-soft);
+  line-height: 1.6;
+}
+
+.home-footer-links {
+  display: grid;
+  gap: 8px;
 }
 
 .home-link-item {
   text-decoration: none;
   color: var(--ink);
-  background: #ffffff;
-  border: 1px solid #c9dced;
-  border-radius: 999px;
-  padding: 8px 12px;
+  border: 0;
+  border-radius: 10px;
+  padding: 4px 0;
   font-weight: 700;
-  font-size: 0.86rem;
+  font-size: 1rem;
 }
 
 .home-link-item:hover {
-  border-color: var(--accent);
-  background: #fff8f1;
+  color: var(--brand-deep);
 }
 
 .minimal-hero h1 {
@@ -720,6 +742,24 @@ body {
 .service-card.compact {
   padding: 10px;
   gap: 3px;
+}
+
+.pro-card-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.pro-avatar {
+  width: 42px;
+  height: 42px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(145deg, #e9f6ff 0%, #ffffff 100%);
+  border: 1px solid #c8dff2;
+  color: var(--ink);
+  font-weight: 800;
 }
 
 .compact-service-grid {
@@ -1292,7 +1332,8 @@ textarea {
     padding: 10px;
   }
 
-  .home-search-bar input {
+  .home-search-bar input,
+  .home-search-bar select {
     border-right: 0;
     border-bottom: 1px solid #d7e8f3;
   }
@@ -1321,6 +1362,11 @@ textarea {
 
   .how-works-visual {
     height: 260px;
+  }
+
+  .home-footer-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
   }
 
   .query-row {

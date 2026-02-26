@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import { MarketNav } from "@/components/market-nav";
 
 type Category = {
@@ -10,40 +10,30 @@ type Category = {
   slug: string;
   name: string;
   description: string | null;
-  services: Array<{ id: string; name: string }>;
-};
-
-type Professional = {
-  id: string;
-  userId: string;
-  isVerified: boolean;
-  ratingAvg: number;
-  ratingsCount: number;
-  coverageCity: string | null;
-  coverageComuna: string | null;
-  serviceRadiusKm: number;
-  hourlyRateFromClp: number | null;
-  user: { fullName: string };
-  slots: Array<{ startsAt: string; service: { id: string; name: string } | null }>;
+  services: Array<{ id: string; name: string; basePriceClp: number }>;
 };
 
 function clp(value: number) {
   return new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP", maximumFractionDigits: 0 }).format(value);
 }
 
-function starsText(value: number) {
-  const rounded = Math.max(1, Math.min(5, Math.round(value || 0)));
-  return `${"★".repeat(rounded)}${"☆".repeat(5 - rounded)}`;
-}
-
 export default function ServicioCategoriaPage() {
   const params = useParams<{ categorySlug: string }>();
   const categorySlug = params?.categorySlug ?? "";
+  const router = useRouter();
+  const query = useSearchParams();
 
   const [category, setCategory] = useState<Category | null>(null);
-  const [professionals, setProfessionals] = useState<Professional[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [coverageNote, setCoverageNote] = useState("");
+
+  const [address, setAddress] = useState({
+    street: query.get("address") ?? "",
+    comuna: query.get("comuna") ?? "",
+    city: query.get("city") ?? "Santiago",
+    postalCode: query.get("postalCode") ?? "7500000"
+  });
 
   useEffect(() => {
     const load = async () => {
@@ -62,13 +52,6 @@ export default function ServicioCategoriaPage() {
           throw new Error("Categoria no encontrada");
         }
         setCategory(match);
-
-        const prosRes = await fetch(`/api/marketplace/pros?categoryId=${match.id}&city=Santiago&verified=true&limit=30`);
-        const prosData = (await prosRes.json()) as { professionals?: Professional[]; error?: string; detail?: string };
-        if (!prosRes.ok || !prosData.professionals) {
-          throw new Error(prosData.detail || prosData.error || "No se pudieron cargar profesionales");
-        }
-        setProfessionals(prosData.professionals);
       } catch (e) {
         setError(e instanceof Error ? e.message : "Error inesperado");
       } finally {
@@ -80,64 +63,105 @@ export default function ServicioCategoriaPage() {
 
   const serviceNames = useMemo(() => category?.services.map((item) => item.name) ?? [], [category]);
 
+  const minPrice = useMemo(() => {
+    if (!category || category.services.length === 0) return null;
+    return Math.min(...category.services.map((item) => item.basePriceClp));
+  }, [category]);
+
+  const openPros = (event: FormEvent) => {
+    event.preventDefault();
+    if (!category) return;
+    if (!address.city.trim() || !address.postalCode.trim() || !address.street.trim()) {
+      setCoverageNote("Completa direccion, comuna y ciudad para validar cobertura.");
+      return;
+    }
+
+    const qs = new URLSearchParams({
+      address: address.street.trim(),
+      comuna: address.comuna.trim(),
+      city: address.city.trim(),
+      postalCode: address.postalCode.trim()
+    });
+
+    router.push(`/services/${category.slug}/pros?${qs.toString()}`);
+  };
+
   return (
     <main className="page market-shell">
       <MarketNav />
 
       <section className="panel">
-        <div className="panel-head">
-          <h2>{category?.name ?? "Categoria"}</h2>
-          <p>{category?.description ?? "Profesionales disponibles para esta categoria."}</p>
-        </div>
-        <div className="chips">
-          {serviceNames.map((name) => (
-            <span key={name} className="chip">
-              {name}
-            </span>
-          ))}
-        </div>
-        <div className="cta-row">
-          <Link href="/servicios" className="cta ghost small">
-            Volver a categorias
-          </Link>
-        </div>
-      </section>
+        {loading ? <p className="empty">Cargando categoria...</p> : null}
+        {error ? <p className="feedback error">{error}</p> : null}
 
-      {loading ? <p className="empty">Cargando profesionales...</p> : null}
-      {error ? <p className="feedback error">{error}</p> : null}
-
-      {!loading && !error && professionals.length === 0 ? (
-        <p className="empty">No hay profesionales activos en esta categoria por ahora.</p>
-      ) : null}
-
-      <section className="pro-card-grid">
-        {professionals.map((pro) => (
-          <article className="booking-card" key={pro.id}>
-            <div className="booking-head">
-              <h3>{pro.user.fullName}</h3>
-              <span className={`status ${pro.isVerified ? "status-completed" : "status-pending"}`}>
-                {pro.isVerified ? "Verificado" : "No verificado"}
-              </span>
+        {category ? (
+          <>
+            <div className="panel-head">
+              <h2>{category.name}</h2>
+              <p>{category.description ?? "Encuentra profesionales verificados para este servicio."}</p>
             </div>
+
             <p>
-              <strong>Rating:</strong> {starsText(Number(pro.ratingAvg || 0))} {Number(pro.ratingAvg || 0).toFixed(1)} ({pro.ratingsCount} reseñas)
+              <strong>Precio desde:</strong> {minPrice ? clp(minPrice) : "Por definir"}
             </p>
-            <p>
-              <strong>Zona:</strong> {pro.coverageComuna ?? "Sin comuna"} · {pro.coverageCity ?? "Sin ciudad"}
-            </p>
-            <p>
-              <strong>Precio/hora:</strong> {pro.hourlyRateFromClp ? clp(pro.hourlyRateFromClp) : "Por definir"}
-            </p>
-            <div className="cta-row">
-              <Link className="cta small" href={`/profesionales/${pro.userId}`}>
-                Ver perfil
-              </Link>
-              <Link className="cta ghost small" href={`/reservar?proId=${pro.userId}`}>
-                Reservar
-              </Link>
+
+            <div className="chips">
+              {serviceNames.map((name) => (
+                <span key={name} className="chip">
+                  {name}
+                </span>
+              ))}
             </div>
-          </article>
-        ))}
+
+            <form className="grid-form" onSubmit={openPros}>
+              <label className="full">
+                Direccion
+                <input
+                  value={address.street}
+                  onChange={(event) => setAddress((prev) => ({ ...prev, street: event.target.value }))}
+                  placeholder="Calle y numero"
+                  required
+                />
+              </label>
+              <label>
+                Comuna
+                <input
+                  value={address.comuna}
+                  onChange={(event) => setAddress((prev) => ({ ...prev, comuna: event.target.value }))}
+                  placeholder="Providencia"
+                />
+              </label>
+              <label>
+                Ciudad
+                <input
+                  value={address.city}
+                  onChange={(event) => setAddress((prev) => ({ ...prev, city: event.target.value }))}
+                  required
+                />
+              </label>
+              <label>
+                Codigo postal
+                <input
+                  value={address.postalCode}
+                  onChange={(event) => setAddress((prev) => ({ ...prev, postalCode: event.target.value }))}
+                  required
+                />
+              </label>
+              <div className="cta-row">
+                <button type="submit" className="cta">
+                  Ver profesionales disponibles
+                </button>
+                <Link href="/services" className="cta ghost small">
+                  Ver todas las categorias
+                </Link>
+              </div>
+            </form>
+
+            {coverageNote ? <p className="feedback error">{coverageNote}</p> : null}
+
+            <p className="minimal-note">Si no hay cobertura en tu zona podras activar “Avisarme cuando haya”.</p>
+          </>
+        ) : null}
       </section>
     </main>
   );

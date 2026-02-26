@@ -16,6 +16,7 @@ export async function GET(req: NextRequest) {
       street: req.nextUrl.searchParams.get("street") ?? undefined,
       latitude: req.nextUrl.searchParams.get("latitude") ?? undefined,
       longitude: req.nextUrl.searchParams.get("longitude") ?? undefined,
+      categoryId: req.nextUrl.searchParams.get("categoryId") ?? undefined,
       serviceId: req.nextUrl.searchParams.get("serviceId") ?? undefined,
       date: req.nextUrl.searchParams.get("date") ?? undefined,
       limit: req.nextUrl.searchParams.get("limit") ?? undefined
@@ -44,7 +45,8 @@ export async function GET(req: NextRequest) {
           where: {
             isAvailable: true,
             startsAt: { gte: startDate },
-            OR: input.serviceId ? [{ serviceId: null }, { serviceId: input.serviceId }] : undefined
+            OR: input.serviceId ? [{ serviceId: null }, { serviceId: input.serviceId }] : undefined,
+            service: input.categoryId && !input.serviceId ? { categoryId: input.categoryId } : undefined
           },
           orderBy: [{ startsAt: "asc" }],
           take: 8,

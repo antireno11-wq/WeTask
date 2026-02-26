@@ -79,6 +79,90 @@ async function main() {
     isActive: true
   });
 
+  const jardineria = await upsertCategory({
+    slug: "jardineria",
+    name: "Jardineria",
+    description: "Mantencion de jardines, poda y riego",
+    minHours: 1,
+    slotMinutes: 60,
+    basePlatformFeePct: 12,
+    urgencyFeeClp: 8000,
+    materialFeeDefaultClp: 0,
+    isActive: true
+  });
+
+  const babySitter = await upsertCategory({
+    slug: "baby-sitter",
+    name: "Baby sitter",
+    description: "Cuidado infantil por bloques de tiempo",
+    minHours: 4,
+    slotMinutes: 60,
+    basePlatformFeePct: 12,
+    urgencyFeeClp: 10000,
+    materialFeeDefaultClp: 0,
+    isActive: true
+  });
+
+  const peluqueria = await upsertCategory({
+    slug: "peluqueria",
+    name: "Peluqueria",
+    description: "Corte y peinado a domicilio",
+    minHours: 1,
+    slotMinutes: 60,
+    basePlatformFeePct: 12,
+    urgencyFeeClp: 6000,
+    materialFeeDefaultClp: 0,
+    isActive: true
+  });
+
+  const manicure = await upsertCategory({
+    slug: "manicure",
+    name: "Manicure",
+    description: "Manicure clasica y esmaltado",
+    minHours: 1,
+    slotMinutes: 60,
+    basePlatformFeePct: 12,
+    urgencyFeeClp: 4000,
+    materialFeeDefaultClp: 0,
+    isActive: true
+  });
+
+  const veterinario = await upsertCategory({
+    slug: "veterinario",
+    name: "Veterinario",
+    description: "Control y atencion veterinaria",
+    minHours: 1,
+    slotMinutes: 60,
+    basePlatformFeePct: 12,
+    urgencyFeeClp: 12000,
+    materialFeeDefaultClp: 0,
+    isActive: true
+  });
+
+  const paseadoresPerro = await upsertCategory({
+    slug: "paseadores-de-perro",
+    name: "Paseadores de perro",
+    description: "Paseos diarios para mascotas",
+    minHours: 1,
+    slotMinutes: 60,
+    basePlatformFeePct: 10,
+    urgencyFeeClp: 0,
+    materialFeeDefaultClp: 0,
+    isActive: true
+  });
+
+  const cuidadoresAnimales = await upsertCategory({
+    slug: "cuidadores-de-animales",
+    name: "Cuidadores de animales",
+    description: "Visitas y cuidado de mascotas",
+    minHours: 1,
+    slotMinutes: 60,
+    basePlatformFeePct: 12,
+    urgencyFeeClp: 0,
+    materialFeeDefaultClp: 0,
+    isActive: true
+  });
+
   await upsertService({
     slug: "limpieza-hogar",
     name: "Limpieza hogar",
@@ -126,6 +210,76 @@ async function main() {
     basePriceClp: 20000,
     durationMin: 60,
     categoryId: clasesMusica.id,
+    isActive: true
+  });
+
+  await upsertService({
+    slug: "jardineria-mantencion",
+    name: "Mantencion de jardin",
+    description: "Poda, corte de pasto y limpieza",
+    basePriceClp: 24000,
+    durationMin: 60,
+    categoryId: jardineria.id,
+    isActive: true
+  });
+
+  await upsertService({
+    slug: "baby-sitter-4h",
+    name: "Baby sitter bloque 4h",
+    description: "Cuidado infantil por bloque de 4 horas",
+    basePriceClp: 32000,
+    durationMin: 240,
+    categoryId: babySitter.id,
+    isActive: true
+  });
+
+  await upsertService({
+    slug: "peluqueria-corte",
+    name: "Corte y peinado",
+    description: "Corte y brushing a domicilio",
+    basePriceClp: 18000,
+    durationMin: 60,
+    categoryId: peluqueria.id,
+    isActive: true
+  });
+
+  await upsertService({
+    slug: "manicure-clasica",
+    name: "Manicure clasica",
+    description: "Limpieza y esmaltado",
+    basePriceClp: 16000,
+    durationMin: 60,
+    categoryId: manicure.id,
+    isActive: true
+  });
+
+  await upsertService({
+    slug: "veterinario-control",
+    name: "Control veterinario",
+    description: "Chequeo general de mascota",
+    basePriceClp: 28000,
+    durationMin: 60,
+    categoryId: veterinario.id,
+    isActive: true
+  });
+
+  await upsertService({
+    slug: "paseo-perro-60",
+    name: "Paseo de perro 60 minutos",
+    description: "Paseo individual o grupal",
+    basePriceClp: 12000,
+    durationMin: 60,
+    categoryId: paseadoresPerro.id,
+    isActive: true
+  });
+
+  await upsertService({
+    slug: "cuidado-animales-visita",
+    name: "Cuidado de animales por visita",
+    description: "Alimentacion y cuidado basico",
+    basePriceClp: 15000,
+    durationMin: 60,
+    categoryId: cuidadoresAnimales.id,
     isActive: true
   });
 

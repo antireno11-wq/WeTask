@@ -146,7 +146,7 @@ export default function ProDetailPage() {
                 Desde fecha
                 <input type="date" value={date} onChange={(event) => setDate(event.target.value)} />
               </label>
-              <Link className="cta" href={`/reservar?proId=${data.userId}`}>
+              <Link className="cta" href={`/booking/new?proId=${data.userId}`}>
                 Ir a reservar
               </Link>
             </div>
@@ -179,7 +179,7 @@ export default function ProDetailPage() {
                   <Link
                     key={slot.id}
                     className="slot-btn"
-                    href={`/reservar?proId=${data.userId}${slot.service ? `&serviceId=${slot.service.id}` : ""}&startsAt=${encodeURIComponent(slot.startsAt)}`}
+                    href={`/booking/new?proId=${data.userId}${slot.service ? `&serviceId=${slot.service.id}` : ""}&startsAt=${encodeURIComponent(slot.startsAt)}`}
                   >
                     {new Date(slot.startsAt).toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" })} -{" "}
                     {new Date(slot.endsAt).toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" })}

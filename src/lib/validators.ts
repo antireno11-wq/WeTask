@@ -115,6 +115,7 @@ export const marketplaceSearchProsSchema = z.object({
   street: z.string().min(3).optional(),
   latitude: z.coerce.number().min(-90).max(90).optional(),
   longitude: z.coerce.number().min(-180).max(180).optional(),
+  categoryId: z.string().min(1).optional(),
   serviceId: z.string().min(1).optional(),
   date: z.coerce.date().optional(),
   limit: z.coerce.number().int().min(1).max(50).default(20)

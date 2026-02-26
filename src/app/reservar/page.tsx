@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { FormEvent, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { MarketNav } from "@/components/market-nav";
 
 type Service = {
@@ -54,6 +55,13 @@ function starsText(value: number) {
 }
 
 export default function ReservarPage() {
+  const query = useSearchParams();
+  const initialServiceId = query.get("serviceId") ?? "";
+  const initialProId = query.get("proId") ?? "";
+  const initialStreet = query.get("address") ?? "Av. Providencia 1550";
+  const initialCity = query.get("city") ?? "Santiago";
+  const initialPostalCode = query.get("postalCode") ?? "7500000";
+
   const [services, setServices] = useState<Service[]>([]);
   const [loadingServices, setLoadingServices] = useState(false);
   const [loadingSearch, setLoadingSearch] = useState(false);
@@ -63,22 +71,22 @@ export default function ReservarPage() {
   const [message, setMessage] = useState("");
 
   const [address, setAddress] = useState({
-    city: "Santiago",
-    postalCode: "7500000",
-    street: "Av. Providencia 1550",
+    city: initialCity,
+    postalCode: initialPostalCode,
+    street: initialStreet,
     latitude: "",
     longitude: ""
   });
 
   const [filters, setFilters] = useState({
-    serviceId: "",
+    serviceId: initialServiceId,
     date: new Date().toISOString().slice(0, 10)
   });
 
   const [customerId, setCustomerId] = useState("");
 
   const [matches, setMatches] = useState<MatchProfessional[]>([]);
-  const [selectedProId, setSelectedProId] = useState("");
+  const [selectedProId, setSelectedProId] = useState(initialProId);
   const [selectedDay, setSelectedDay] = useState("");
   const [selectedSlotId, setSelectedSlotId] = useState("");
 
@@ -335,8 +343,8 @@ export default function ReservarPage() {
 
       <section className="panel">
         <div className="panel-head">
-          <h2>Reserva instantanea</h2>
-          <p>Flujo tipo app de delivery: direccion - match - slot - pago - tracking.</p>
+          <h2>Checkout de reserva</h2>
+          <p>Servicio, profesional, fecha/hora y pago protegido en un solo flujo.</p>
         </div>
 
         <form className="grid-form" onSubmit={searchPros}>
@@ -480,6 +488,7 @@ export default function ReservarPage() {
           <div className="price-box" style={{ marginTop: 12 }}>
             Resumen en vivo: ({clp(baseHourly)} x {hours}h) + extras {clp(extrasTotal)} + comision {clp(commission)} = <strong>{clp(total)}</strong>
           </div>
+          <p className="minimal-note">Pago protegido y sujeto a politica de cancelacion.</p>
 
           <div className="cta-row">
             <button className="cta" type="button" onClick={createBooking}>

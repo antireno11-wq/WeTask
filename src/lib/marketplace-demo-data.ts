@@ -152,6 +152,174 @@ export async function ensureMarketplaceDemoData() {
         materialFeeDefaultClp: 0,
         isActive: true
       }
+    }),
+    jardineria: await prisma.category.upsert({
+      where: { slug: "jardineria" },
+      update: {
+        name: "Jardineria",
+        description: "Mantencion de jardines, poda y riego",
+        minHours: 1,
+        slotMinutes: 60,
+        basePlatformFeePct: 12,
+        urgencyFeeClp: 8000,
+        materialFeeDefaultClp: 0,
+        isActive: true
+      },
+      create: {
+        slug: "jardineria",
+        name: "Jardineria",
+        description: "Mantencion de jardines, poda y riego",
+        minHours: 1,
+        slotMinutes: 60,
+        basePlatformFeePct: 12,
+        urgencyFeeClp: 8000,
+        materialFeeDefaultClp: 0,
+        isActive: true
+      }
+    }),
+    babySitter: await prisma.category.upsert({
+      where: { slug: "baby-sitter" },
+      update: {
+        name: "Baby sitter",
+        description: "Cuidado infantil por bloques de tiempo",
+        minHours: 4,
+        slotMinutes: 60,
+        basePlatformFeePct: 12,
+        urgencyFeeClp: 10000,
+        materialFeeDefaultClp: 0,
+        isActive: true
+      },
+      create: {
+        slug: "baby-sitter",
+        name: "Baby sitter",
+        description: "Cuidado infantil por bloques de tiempo",
+        minHours: 4,
+        slotMinutes: 60,
+        basePlatformFeePct: 12,
+        urgencyFeeClp: 10000,
+        materialFeeDefaultClp: 0,
+        isActive: true
+      }
+    }),
+    peluqueria: await prisma.category.upsert({
+      where: { slug: "peluqueria" },
+      update: {
+        name: "Peluqueria",
+        description: "Corte, brushing y styling a domicilio",
+        minHours: 1,
+        slotMinutes: 60,
+        basePlatformFeePct: 12,
+        urgencyFeeClp: 6000,
+        materialFeeDefaultClp: 0,
+        isActive: true
+      },
+      create: {
+        slug: "peluqueria",
+        name: "Peluqueria",
+        description: "Corte, brushing y styling a domicilio",
+        minHours: 1,
+        slotMinutes: 60,
+        basePlatformFeePct: 12,
+        urgencyFeeClp: 6000,
+        materialFeeDefaultClp: 0,
+        isActive: true
+      }
+    }),
+    manicure: await prisma.category.upsert({
+      where: { slug: "manicure" },
+      update: {
+        name: "Manicure",
+        description: "Manicure clasica, gel y cuidados de manos",
+        minHours: 1,
+        slotMinutes: 60,
+        basePlatformFeePct: 12,
+        urgencyFeeClp: 4000,
+        materialFeeDefaultClp: 0,
+        isActive: true
+      },
+      create: {
+        slug: "manicure",
+        name: "Manicure",
+        description: "Manicure clasica, gel y cuidados de manos",
+        minHours: 1,
+        slotMinutes: 60,
+        basePlatformFeePct: 12,
+        urgencyFeeClp: 4000,
+        materialFeeDefaultClp: 0,
+        isActive: true
+      }
+    }),
+    veterinario: await prisma.category.upsert({
+      where: { slug: "veterinario" },
+      update: {
+        name: "Veterinario",
+        description: "Atencion veterinaria preventiva y de control",
+        minHours: 1,
+        slotMinutes: 60,
+        basePlatformFeePct: 12,
+        urgencyFeeClp: 12000,
+        materialFeeDefaultClp: 0,
+        isActive: true
+      },
+      create: {
+        slug: "veterinario",
+        name: "Veterinario",
+        description: "Atencion veterinaria preventiva y de control",
+        minHours: 1,
+        slotMinutes: 60,
+        basePlatformFeePct: 12,
+        urgencyFeeClp: 12000,
+        materialFeeDefaultClp: 0,
+        isActive: true
+      }
+    }),
+    paseadoresPerro: await prisma.category.upsert({
+      where: { slug: "paseadores-de-perro" },
+      update: {
+        name: "Paseadores de perro",
+        description: "Paseos diarios de 30 o 60 minutos",
+        minHours: 1,
+        slotMinutes: 60,
+        basePlatformFeePct: 10,
+        urgencyFeeClp: 0,
+        materialFeeDefaultClp: 0,
+        isActive: true
+      },
+      create: {
+        slug: "paseadores-de-perro",
+        name: "Paseadores de perro",
+        description: "Paseos diarios de 30 o 60 minutos",
+        minHours: 1,
+        slotMinutes: 60,
+        basePlatformFeePct: 10,
+        urgencyFeeClp: 0,
+        materialFeeDefaultClp: 0,
+        isActive: true
+      }
+    }),
+    cuidadoresAnimales: await prisma.category.upsert({
+      where: { slug: "cuidadores-de-animales" },
+      update: {
+        name: "Cuidadores de animales",
+        description: "Visitas o cuidado nocturno para mascotas",
+        minHours: 1,
+        slotMinutes: 60,
+        basePlatformFeePct: 12,
+        urgencyFeeClp: 0,
+        materialFeeDefaultClp: 0,
+        isActive: true
+      },
+      create: {
+        slug: "cuidadores-de-animales",
+        name: "Cuidadores de animales",
+        description: "Visitas o cuidado nocturno para mascotas",
+        minHours: 1,
+        slotMinutes: 60,
+        basePlatformFeePct: 12,
+        urgencyFeeClp: 0,
+        materialFeeDefaultClp: 0,
+        isActive: true
+      }
     })
   };
 
@@ -211,6 +379,55 @@ export async function ensureMarketplaceDemoData() {
       description: "Tecnica, lectura y repertorio",
       basePriceClp: 23000,
       categoryId: categories.clasesMusica.id
+    },
+    {
+      slug: "jardineria-mantencion",
+      name: "Mantencion de jardin",
+      description: "Poda, corte de pasto y limpieza de patio",
+      basePriceClp: 24000,
+      categoryId: categories.jardineria.id
+    },
+    {
+      slug: "baby-sitter-4h",
+      name: "Baby sitter bloque 4h",
+      description: "Cuidado infantil por bloque de cuatro horas",
+      basePriceClp: 32000,
+      categoryId: categories.babySitter.id
+    },
+    {
+      slug: "peluqueria-corte",
+      name: "Corte y peinado",
+      description: "Corte de cabello y brushing a domicilio",
+      basePriceClp: 18000,
+      categoryId: categories.peluqueria.id
+    },
+    {
+      slug: "manicure-clasica",
+      name: "Manicure clasica",
+      description: "Limpieza y esmaltado tradicional",
+      basePriceClp: 16000,
+      categoryId: categories.manicure.id
+    },
+    {
+      slug: "veterinario-control",
+      name: "Control veterinario",
+      description: "Chequeo general de mascota",
+      basePriceClp: 28000,
+      categoryId: categories.veterinario.id
+    },
+    {
+      slug: "paseo-perro-60",
+      name: "Paseo de perro 60 minutos",
+      description: "Paseo individual o grupal por 60 minutos",
+      basePriceClp: 12000,
+      categoryId: categories.paseadoresPerro.id
+    },
+    {
+      slug: "cuidado-animales-visita",
+      name: "Cuidado de animales por visita",
+      description: "Alimentacion y cuidados basicos por visita",
+      basePriceClp: 15000,
+      categoryId: categories.cuidadoresAnimales.id
     }
   ];
 
@@ -251,7 +468,7 @@ export async function ensureMarketplaceDemoData() {
       rate: 22000,
       rating: 4.9,
       count: 184,
-      serviceSlugs: ["limpieza-hogar", "limpieza-profunda"]
+      serviceSlugs: ["limpieza-hogar", "limpieza-profunda", "manicure-clasica"]
     },
     {
       email: "pro.carlos@wetask.cl",
@@ -264,7 +481,7 @@ export async function ensureMarketplaceDemoData() {
       rate: 27000,
       rating: 4.8,
       count: 129,
-      serviceSlugs: ["maestro-hogar", "electricista-domicilio"]
+      serviceSlugs: ["maestro-hogar", "electricista-domicilio", "jardineria-mantencion"]
     },
     {
       email: "pro.javier@wetask.cl",
@@ -277,7 +494,7 @@ export async function ensureMarketplaceDemoData() {
       rate: 30000,
       rating: 4.7,
       count: 97,
-      serviceSlugs: ["electricista-domicilio"]
+      serviceSlugs: ["electricista-domicilio", "veterinario-control"]
     },
     {
       email: "pro.paula@wetask.cl",
@@ -290,7 +507,7 @@ export async function ensureMarketplaceDemoData() {
       rate: 24000,
       rating: 4.9,
       count: 210,
-      serviceSlugs: ["limpieza-hogar", "maestro-hogar"]
+      serviceSlugs: ["limpieza-hogar", "maestro-hogar", "peluqueria-corte"]
     },
     {
       email: "pro.mario@wetask.cl",
@@ -303,7 +520,7 @@ export async function ensureMarketplaceDemoData() {
       rate: 18000,
       rating: 4.8,
       count: 75,
-      serviceSlugs: ["clases-matematicas", "clases-lenguaje"]
+      serviceSlugs: ["clases-matematicas", "clases-lenguaje", "paseo-perro-60"]
     },
     {
       email: "pro.camila@wetask.cl",
@@ -316,7 +533,7 @@ export async function ensureMarketplaceDemoData() {
       rate: 21000,
       rating: 4.9,
       count: 143,
-      serviceSlugs: ["clases-guitarra", "clases-piano"]
+      serviceSlugs: ["clases-guitarra", "clases-piano", "baby-sitter-4h", "cuidado-animales-visita"]
     }
   ];
 

@@ -262,7 +262,7 @@ export default function ProfesionalesPage() {
                 <Link
                   key={pro.id}
                   className="pro-marker"
-                  href={`/profesionales/${pro.userId}`}
+                  href={`/pro/${pro.userId}`}
                   title={`${pro.user.fullName} · radio ${pro.serviceRadiusKm} km`}
                   style={{ left: `${pos.x}%`, top: `${pos.y}%` }}
                 >
@@ -309,10 +309,10 @@ export default function ProfesionalesPage() {
                   <strong>Proxima disponibilidad:</strong> {dateText(pro.slots[0]?.startsAt)}
                 </p>
                 <div className="cta-row">
-                  <Link className="cta small" href={`/profesionales/${pro.userId}`}>
-                    Ver calendario
+                  <Link className="cta small" href={`/pro/${pro.userId}`}>
+                    Ver perfil
                   </Link>
-                  <Link className="cta ghost small" href={`/reservar?proId=${pro.userId}${serviceId ? `&serviceId=${serviceId}` : ""}`}>
+                  <Link className="cta ghost small" href={`/booking/new?proId=${pro.userId}${serviceId ? `&serviceId=${serviceId}` : ""}`}>
                     Reservar
                   </Link>
                 </div>
@@ -349,7 +349,7 @@ export default function ProfesionalesPage() {
               <Link
                 className="slot-btn"
                 key={slot.id}
-                href={`/reservar?proId=${slot.professionalProfile.user.id}${slot.service ? `&serviceId=${slot.service.id}` : ""}&startsAt=${encodeURIComponent(slot.startsAt)}`}
+                href={`/booking/new?proId=${slot.professionalProfile.user.id}${slot.service ? `&serviceId=${slot.service.id}` : ""}&startsAt=${encodeURIComponent(slot.startsAt)}`}
               >
                 {new Date(slot.startsAt).toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" })} · {slot.professionalProfile.user.fullName}
               </Link>
