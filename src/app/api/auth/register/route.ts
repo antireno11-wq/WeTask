@@ -101,7 +101,7 @@ export async function POST(req: NextRequest) {
             role: {
               connectOrCreate: {
                 where: { code: role },
-                create: { code: role, label: role === UserRole.PRO ? "Tasker" : role === UserRole.ADMIN ? "Admin" : "Cliente" }
+                create: { code: role, label: role === UserRole.PRO ? "Tasker" : "Cliente" }
               }
             }
           }
