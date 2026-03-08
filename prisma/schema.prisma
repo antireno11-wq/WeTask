@@ -13,6 +13,12 @@ enum UserRole {
   ADMIN
 }
 
+enum AuthProvider {
+  EMAIL
+  GOOGLE
+  APPLE
+}
+
 enum BookingStatus {
   CREATED
   PENDING
@@ -55,6 +61,10 @@ model User {
   fullName            String
   phone               String?
   role                UserRole              @default(CUSTOMER)
+  authProvider        AuthProvider          @default(EMAIL)
+  passwordHash        String?
+  termsAcceptedAt     DateTime?
+  emailVerifiedAt     DateTime?
   createdAt           DateTime              @default(now())
   updatedAt           DateTime              @updatedAt
   bookings            Booking[]             @relation("CustomerBookings")
@@ -65,6 +75,67 @@ model User {
   professionalProfile ProfessionalProfile?
   payouts             Payout[]
   notifications       Notification[]
+  roleAssignments     UserRoleAssignment[]
+  emailVerifications  EmailVerificationToken[]
+  passwordResets      PasswordResetToken[]
+  sessions            AuthSession[]
+}
+
+model Role {
+  id          String               @id @default(cuid())
+  code        UserRole             @unique
+  label       String
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+  assignments UserRoleAssignment[]
+}
+
+model UserRoleAssignment {
+  id        String   @id @default(cuid())
+  userId    String
+  roleId    String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role      Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, roleId])
+  @@index([roleId])
+}
+
+model EmailVerificationToken {
+  id         String   @id @default(cuid())
+  userId     String
+  tokenHash  String   @unique
+  expiresAt  DateTime
+  usedAt     DateTime?
+  createdAt  DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
+}
+
+model PasswordResetToken {
+  id         String   @id @default(cuid())
+  userId     String
+  tokenHash  String   @unique
+  expiresAt  DateTime
+  usedAt     DateTime?
+  createdAt  DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
+}
+
+model AuthSession {
+  id         String   @id @default(cuid())
+  userId     String
+  tokenHash  String   @unique
+  expiresAt  DateTime
+  revokedAt  DateTime?
+  createdAt  DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
 }
 
 model Category {
@@ -81,6 +152,7 @@ model Category {
   createdAt             DateTime  @default(now())
   updatedAt             DateTime  @updatedAt
   services              Service[]
+  taskerServices        TaskerService[]
 }
 
 model Service {
@@ -96,6 +168,7 @@ model Service {
   updatedAt      DateTime  @updatedAt
   bookings       Booking[]
   slots          AvailabilitySlot[]
+  taskerServices TaskerService[]
   category       Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
 
   @@index([categoryId, isActive])
@@ -125,6 +198,27 @@ model ProfessionalProfile {
   updatedAt         DateTime    @updatedAt
   user              User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   slots             AvailabilitySlot[]
+  taskerServices    TaskerService[]
+}
+
+model TaskerService {
+  id                    String              @id @default(cuid())
+  professionalProfileId String
+  categoryId            String
+  serviceId             String
+  priceClp              Int
+  minBooking            Int                 @default(1)
+  isActive              Boolean             @default(true)
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+  professionalProfile   ProfessionalProfile @relation(fields: [professionalProfileId], references: [id], onDelete: Cascade)
+  category              Category            @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  service               Service             @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+
+  @@unique([professionalProfileId, serviceId])
+  @@index([professionalProfileId, isActive])
+  @@index([categoryId, isActive])
+  @@index([serviceId, isActive])
 }
 
 model AvailabilitySlot {

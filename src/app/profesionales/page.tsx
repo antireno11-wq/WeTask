@@ -200,7 +200,7 @@ export default function ProfesionalesPage() {
     }
     return Array.from(map.entries()).sort(([a], [b]) => a.localeCompare(b));
   }, [professionals]);
-  const mapEmbedUrl = `https://www.openstreetmap.org/export/embed.html?bbox=${MAP_BOUNDS.minLng}%2C${MAP_BOUNDS.minLat}%2C${MAP_BOUNDS.maxLng}%2C${MAP_BOUNDS.maxLat}&layer=hot`;
+  const mapEmbedUrl = "https://www.google.com/maps?q=Santiago%20Chile&z=11&output=embed";
 
   return (
     <main className="page market-shell">

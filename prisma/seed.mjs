@@ -19,6 +19,22 @@ async function upsertService(data) {
 }
 
 async function main() {
+  const roleCustomer = await prisma.role.upsert({
+    where: { code: "CUSTOMER" },
+    update: { label: "Cliente" },
+    create: { code: "CUSTOMER", label: "Cliente" }
+  });
+  const rolePro = await prisma.role.upsert({
+    where: { code: "PRO" },
+    update: { label: "Tasker" },
+    create: { code: "PRO", label: "Tasker" }
+  });
+  const roleAdmin = await prisma.role.upsert({
+    where: { code: "ADMIN" },
+    update: { label: "Admin" },
+    create: { code: "ADMIN", label: "Admin" }
+  });
+
   const limpieza = await upsertCategory({
     slug: "limpieza",
     name: "Limpieza",
@@ -283,24 +299,44 @@ async function main() {
     isActive: true
   });
 
-  await prisma.user.upsert({
+  const customer = await prisma.user.upsert({
     where: { email: "cliente-demo@wetask.cl" },
-    update: { fullName: "Camila Soto", role: "CUSTOMER" },
+    update: { fullName: "Camila Soto", role: "CUSTOMER", emailVerifiedAt: new Date(), termsAcceptedAt: new Date() },
     create: {
       email: "cliente-demo@wetask.cl",
       fullName: "Camila Soto",
-      role: "CUSTOMER"
+      role: "CUSTOMER",
+      emailVerifiedAt: new Date(),
+      termsAcceptedAt: new Date()
     }
   });
 
-  await prisma.user.upsert({
+  const admin = await prisma.user.upsert({
     where: { email: "admin-demo@wetask.cl" },
-    update: { fullName: "Admin Demo", role: "ADMIN" },
+    update: { fullName: "Admin Demo", role: "ADMIN", emailVerifiedAt: new Date(), termsAcceptedAt: new Date() },
     create: {
       email: "admin-demo@wetask.cl",
       fullName: "Admin Demo",
-      role: "ADMIN"
+      role: "ADMIN",
+      emailVerifiedAt: new Date(),
+      termsAcceptedAt: new Date()
     }
+  });
+
+  await prisma.userRoleAssignment.upsert({
+    where: { userId_roleId: { userId: customer.id, roleId: roleCustomer.id } },
+    update: {},
+    create: { userId: customer.id, roleId: roleCustomer.id }
+  });
+  await prisma.userRoleAssignment.upsert({
+    where: { userId_roleId: { userId: admin.id, roleId: roleAdmin.id } },
+    update: {},
+    create: { userId: admin.id, roleId: roleAdmin.id }
+  });
+  await prisma.userRoleAssignment.upsert({
+    where: { userId_roleId: { userId: admin.id, roleId: rolePro.id } },
+    update: {},
+    create: { userId: admin.id, roleId: rolePro.id }
   });
 }
 

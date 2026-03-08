@@ -15,6 +15,20 @@ type DemoPro = {
   serviceSlugs: string[];
 };
 
+async function ensureRoleAssignment(userId: string, code: UserRole, label: string) {
+  const role = await prisma.role.upsert({
+    where: { code },
+    update: { label },
+    create: { code, label }
+  });
+
+  await prisma.userRoleAssignment.upsert({
+    where: { userId_roleId: { userId, roleId: role.id } },
+    update: {},
+    create: { userId, roleId: role.id }
+  });
+}
+
 export async function ensureMarketplaceDemoData() {
   const legacyCategory = await prisma.category.findUnique({ where: { slug: "manitas" } });
   if (legacyCategory) {
@@ -540,9 +554,10 @@ export async function ensureMarketplaceDemoData() {
   for (const [index, pro] of pros.entries()) {
     const user = await prisma.user.upsert({
       where: { email: pro.email },
-      update: { fullName: pro.fullName, role: UserRole.PRO },
-      create: { email: pro.email, fullName: pro.fullName, role: UserRole.PRO }
+      update: { fullName: pro.fullName, role: UserRole.PRO, emailVerifiedAt: new Date(), termsAcceptedAt: new Date() },
+      create: { email: pro.email, fullName: pro.fullName, role: UserRole.PRO, emailVerifiedAt: new Date(), termsAcceptedAt: new Date() }
     });
+    await ensureRoleAssignment(user.id, UserRole.PRO, "Tasker");
 
     const profile = await prisma.professionalProfile.upsert({
       where: { userId: user.id },
@@ -599,24 +614,62 @@ export async function ensureMarketplaceDemoData() {
 
       await prisma.availabilitySlot.createMany({ data: slotData });
     }
+
+    for (const serviceSlug of pro.serviceSlugs) {
+      const service = serviceBySlug.get(serviceSlug);
+      if (!service?.categoryId) continue;
+
+      await prisma.taskerService.upsert({
+        where: {
+          professionalProfileId_serviceId: {
+            professionalProfileId: profile.id,
+            serviceId: service.id
+          }
+        },
+        update: {
+          categoryId: service.categoryId,
+          priceClp: pro.rate,
+          minBooking: 1,
+          isActive: true
+        },
+        create: {
+          professionalProfileId: profile.id,
+          categoryId: service.categoryId,
+          serviceId: service.id,
+          priceClp: pro.rate,
+          minBooking: 1,
+          isActive: true
+        }
+      });
+    }
   }
 
   const customer = await prisma.user.upsert({
     where: { email: "cliente-demo@wetask.cl" },
-    update: { fullName: "Camila Soto", role: UserRole.CUSTOMER, phone: "+56981234567" },
+    update: { fullName: "Camila Soto", role: UserRole.CUSTOMER, phone: "+56981234567", emailVerifiedAt: new Date(), termsAcceptedAt: new Date() },
     create: {
       email: "cliente-demo@wetask.cl",
       fullName: "Camila Soto",
       role: UserRole.CUSTOMER,
-      phone: "+56981234567"
+      phone: "+56981234567",
+      emailVerifiedAt: new Date(),
+      termsAcceptedAt: new Date()
     }
   });
+  await ensureRoleAssignment(customer.id, UserRole.CUSTOMER, "Cliente");
 
-  await prisma.user.upsert({
+  const admin = await prisma.user.upsert({
     where: { email: "admin-demo@wetask.cl" },
-    update: { fullName: "Admin Demo", role: UserRole.ADMIN },
-    create: { email: "admin-demo@wetask.cl", fullName: "Admin Demo", role: UserRole.ADMIN }
+    update: { fullName: "Admin Demo", role: UserRole.ADMIN, emailVerifiedAt: new Date(), termsAcceptedAt: new Date() },
+    create: {
+      email: "admin-demo@wetask.cl",
+      fullName: "Admin Demo",
+      role: UserRole.ADMIN,
+      emailVerifiedAt: new Date(),
+      termsAcceptedAt: new Date()
+    }
   });
+  await ensureRoleAssignment(admin.id, UserRole.ADMIN, "Admin");
 
   const customerAddress = await prisma.address.upsert({
     where: { id: "demo-customer-address" },

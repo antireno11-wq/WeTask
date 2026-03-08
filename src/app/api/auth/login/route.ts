@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { ensureMarketplaceDemoData } from "@/lib/marketplace-demo-data";
 import { encodeSessionCookie, SESSION_COOKIE_NAME } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { verifyPassword } from "@/lib/security";
 
 export const dynamic = "force-dynamic";
 
@@ -10,17 +11,20 @@ export async function POST(req: NextRequest) {
   try {
     await ensureMarketplaceDemoData();
 
-    const body = (await req.json()) as { userId?: string; email?: string; role?: UserRole };
+    const body = (await req.json()) as { userId?: string; email?: string; password?: string; role?: UserRole };
 
     if (!body.userId && !body.email) {
       return NextResponse.json({ error: "Debes enviar userId o email" }, { status: 400 });
     }
 
     const user = body.userId
-      ? await prisma.user.findUnique({ where: { id: body.userId }, select: { id: true, email: true, fullName: true, role: true } })
+      ? await prisma.user.findUnique({
+          where: { id: body.userId },
+          select: { id: true, email: true, fullName: true, role: true, passwordHash: true, authProvider: true, emailVerifiedAt: true }
+        })
       : await prisma.user.findUnique({
           where: { email: body.email! },
-          select: { id: true, email: true, fullName: true, role: true }
+          select: { id: true, email: true, fullName: true, role: true, passwordHash: true, authProvider: true, emailVerifiedAt: true }
         });
 
     if (!user) {
@@ -29,6 +33,22 @@ export async function POST(req: NextRequest) {
 
     if (body.role && body.role !== user.role) {
       return NextResponse.json({ error: "El rol no coincide con el usuario" }, { status: 400 });
+    }
+
+    if (!body.userId) {
+      if (user.authProvider === "EMAIL") {
+        if (!body.password || !user.passwordHash) {
+          return NextResponse.json({ error: "Debes ingresar email y contraseña" }, { status: 400 });
+        }
+        const ok = await verifyPassword(body.password, user.passwordHash);
+        if (!ok) {
+          return NextResponse.json({ error: "Credenciales invalidas" }, { status: 401 });
+        }
+      }
+
+      if (!user.emailVerifiedAt) {
+        return NextResponse.json({ error: "Debes verificar tu correo antes de ingresar" }, { status: 403 });
+      }
     }
 
     const response = NextResponse.json(

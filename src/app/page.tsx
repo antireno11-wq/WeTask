@@ -6,18 +6,18 @@ import { useRouter } from "next/navigation";
 import { MarketNav } from "@/components/market-nav";
 
 const homeCategories = [
-  { emoji: "🧹", label: "Limpieza", href: "/services/limpieza" },
-  { emoji: "🧰", label: "Maestro", href: "/services/maestro-polifuncional" },
-  { emoji: "⚡", label: "Electricidad", href: "/services/electricidad" },
-  { emoji: "📚", label: "Clases colegio", href: "/services/clases-colegio" },
-  { emoji: "🎵", label: "Clases musica", href: "/services/clases-musica" },
-  { emoji: "🌿", label: "Jardineria", href: "/services/jardineria" },
-  { emoji: "👶", label: "Baby sitter", href: "/services/baby-sitter" },
-  { emoji: "💇", label: "Peluqueria", href: "/services/peluqueria" },
-  { emoji: "💅", label: "Manicure", href: "/services/manicure" },
-  { emoji: "🐾", label: "Veterinario", href: "/services/veterinario" },
-  { emoji: "🐕", label: "Paseadores de perro", href: "/services/paseadores-de-perro" },
-  { emoji: "🦴", label: "Cuidadores de animales", href: "/services/cuidadores-de-animales" }
+  { emoji: "🧹", label: "Limpieza", href: "/services/limpieza", image: "https://images.unsplash.com/photo-1581578731548-c64695cc6952?auto=format&fit=crop&w=120&q=80" },
+  { emoji: "🧰", label: "Maestro", href: "/services/maestro-polifuncional", image: "https://images.unsplash.com/photo-1621905251918-48416bd8575a?auto=format&fit=crop&w=120&q=80" },
+  { emoji: "⚡", label: "Electricidad", href: "/services/electricidad", image: "https://images.unsplash.com/photo-1621905252507-b35492cc74b4?auto=format&fit=crop&w=120&q=80" },
+  { emoji: "📚", label: "Clases colegio", href: "/services/clases-colegio", image: "https://images.unsplash.com/photo-1503676260728-1c00da094a0b?auto=format&fit=crop&w=120&q=80" },
+  { emoji: "🎵", label: "Clases musica", href: "/services/clases-musica", image: "https://images.unsplash.com/photo-1511379938547-c1f69419868d?auto=format&fit=crop&w=120&q=80" },
+  { emoji: "🌿", label: "Jardineria", href: "/services/jardineria", image: "https://images.unsplash.com/photo-1416879595882-3373a0480b5b?auto=format&fit=crop&w=120&q=80" },
+  { emoji: "👶", label: "Baby sitter", href: "/services/baby-sitter", image: "https://images.unsplash.com/photo-1503919545889-aef636e10ad4?auto=format&fit=crop&w=120&q=80" },
+  { emoji: "💇", label: "Peluqueria", href: "/services/peluqueria", image: "https://images.unsplash.com/photo-1521590832167-7bcbfaa6381f?auto=format&fit=crop&w=120&q=80" },
+  { emoji: "💅", label: "Manicure", href: "/services/manicure", image: "https://images.unsplash.com/photo-1604654894610-df63bc536371?auto=format&fit=crop&w=120&q=80" },
+  { emoji: "🐾", label: "Veterinario", href: "/services/veterinario", image: "https://images.unsplash.com/photo-1516734212186-a967f81ad0d7?auto=format&fit=crop&w=120&q=80" },
+  { emoji: "🐕", label: "Paseadores de perro", href: "/services/paseadores-de-perro", image: "https://images.unsplash.com/photo-1517849845537-4d257902454a?auto=format&fit=crop&w=120&q=80" },
+  { emoji: "🦴", label: "Cuidadores de animales", href: "/services/cuidadores-de-animales", image: "https://images.unsplash.com/photo-1450778869180-41d0601e046e?auto=format&fit=crop&w=120&q=80" }
 ];
 
 export default function HomePage() {
@@ -73,6 +73,11 @@ export default function HomePage() {
           <div className="home-category-row">
             {homeCategories.map((category) => (
               <Link key={category.label} href={category.href} className="home-category-pill">
+                <span
+                  className="home-category-thumb"
+                  style={{ backgroundImage: `linear-gradient(180deg, rgba(8,44,66,0.08), rgba(8,44,66,0.08)), url(${category.image})` }}
+                  aria-hidden
+                />
                 <span aria-hidden>{category.emoji}</span>
                 <span>{category.label}</span>
               </Link>
@@ -114,6 +119,37 @@ export default function HomePage() {
             <div className="how-works-visual collage-three" aria-hidden />
             <h3>Contratalo en 1 click</h3>
             <p>Reserva y paga en plataforma con seguimiento de tu servicio de principio a fin.</p>
+          </article>
+        </div>
+      </section>
+
+      <section className="panel home-guarantee-panel">
+        <div className="home-guarantee-grid">
+          <article className="home-guarantee-copy">
+            <p className="home-guarantee-eyebrow">GARANTIA WETASK</p>
+            <h2>
+              No te preocupes, tu servicio esta <span>siempre protegido</span>
+            </h2>
+            <p>El profesional solo recibira el dinero cuando confirmes que todo fue segun lo esperado.</p>
+            <p>Si algo sale mal, te devolvemos el total del servicio.</p>
+          </article>
+
+          <article className="home-guarantee-visual" aria-hidden>
+            <div className="home-guarantee-ring">
+              <div className="home-guarantee-badge">100% PROTEGIDO</div>
+            </div>
+            <div className="home-guarantee-card card-top-left">
+              <strong>Pago seguro</strong>
+              <span>Tu dinero esta protegido hasta que recibas el servicio.</span>
+            </div>
+            <div className="home-guarantee-card card-top-right">
+              <strong>Garantia de reembolso</strong>
+              <span>Si algo sale mal, te devolvemos el dinero.</span>
+            </div>
+            <div className="home-guarantee-card card-bottom">
+              <strong>Atencion 365 dias</strong>
+              <span>Siempre disponibles para ayudarte cuando lo necesites.</span>
+            </div>
           </article>
         </div>
       </section>

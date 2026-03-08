@@ -1,18 +1,22 @@
 import { UserRole } from "@prisma/client";
 import { NextRequest } from "next/server";
+import { signSession, verifySession } from "@/lib/security";
 
 export const SESSION_COOKIE_NAME = "wetask_session";
 
 export type RequestIdentity = {
   userId: string | null;
   role: UserRole | null;
+  sessionId?: string | null;
   email?: string | null;
   fullName?: string | null;
 };
 
 type SessionCookie = {
+  sid?: string;
   userId: string;
   role: UserRole;
+  exp?: number;
   email?: string | null;
   fullName?: string | null;
 };
@@ -30,20 +34,22 @@ function safeParseSessionCookie(raw: string | undefined): SessionCookie | null {
 }
 
 export function encodeSessionCookie(identity: { userId: string; role: UserRole; email?: string | null; fullName?: string | null }) {
-  return encodeURIComponent(
-    JSON.stringify({
-      userId: identity.userId,
-      role: identity.role,
-      email: identity.email ?? null,
-      fullName: identity.fullName ?? null
-    })
-  );
+  const exp = Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 7;
+  return signSession({
+    userId: identity.userId,
+    role: identity.role,
+    email: identity.email ?? null,
+    fullName: identity.fullName ?? null,
+    exp
+  });
 }
 
 export function decodeSessionCookie(raw: string | undefined): RequestIdentity {
-  const parsed = safeParseSessionCookie(raw);
+  const signed = raw ? verifySession<SessionCookie>(raw) : null;
+  const parsed = signed ?? safeParseSessionCookie(raw);
   if (!parsed) return { userId: null, role: null };
   return {
+    sessionId: parsed.sid ?? null,
     userId: parsed.userId,
     role: parsed.role,
     email: parsed.email ?? null,

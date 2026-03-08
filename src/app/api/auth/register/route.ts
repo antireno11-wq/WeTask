@@ -2,14 +2,18 @@ import { UserRole } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { encodeSessionCookie, SESSION_COOKIE_NAME } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { hashPassword, randomToken, sha256 } from "@/lib/security";
 
 export const dynamic = "force-dynamic";
 
 type RegisterPayload = {
   fullName?: string;
   email?: string;
+  password?: string;
   phone?: string;
   role?: "CUSTOMER" | "PRO";
+  authProvider?: "EMAIL" | "GOOGLE" | "APPLE";
+  acceptTerms?: boolean;
   coverageStreet?: string;
   coverageComuna?: string;
   city?: string;
@@ -35,6 +39,9 @@ export async function POST(req: NextRequest) {
     const fullName = body.fullName?.trim();
     const email = body.email?.trim().toLowerCase();
     const role = body.role === "PRO" ? UserRole.PRO : UserRole.CUSTOMER;
+    const authProvider = body.authProvider === "GOOGLE" ? "GOOGLE" : body.authProvider === "APPLE" ? "APPLE" : "EMAIL";
+    const password = body.password?.trim();
+    const acceptTerms = body.acceptTerms === true;
 
     if (!fullName || fullName.length < 3) {
       return NextResponse.json({ error: "Nombre debe tener al menos 3 caracteres" }, { status: 400 });
@@ -42,6 +49,14 @@ export async function POST(req: NextRequest) {
 
     if (!email || !/^\S+@\S+\.\S+$/.test(email)) {
       return NextResponse.json({ error: "Email invalido" }, { status: 400 });
+    }
+
+    if (!acceptTerms) {
+      return NextResponse.json({ error: "Debes aceptar terminos y condiciones" }, { status: 400 });
+    }
+
+    if (authProvider === "EMAIL" && (!password || password.length < 8)) {
+      return NextResponse.json({ error: "La contraseña debe tener al menos 8 caracteres" }, { status: 400 });
     }
 
     if (role === UserRole.PRO) {
@@ -69,12 +84,28 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Ese email ya esta registrado" }, { status: 409 });
     }
 
+    const passwordHash = authProvider === "EMAIL" && password ? await hashPassword(password) : null;
+
     const user = await prisma.user.create({
       data: {
         fullName,
         email,
         phone: body.phone?.trim() || null,
         role,
+        authProvider,
+        passwordHash,
+        termsAcceptedAt: new Date(),
+        emailVerifiedAt: authProvider === "EMAIL" ? null : new Date(),
+        roleAssignments: {
+          create: {
+            role: {
+              connectOrCreate: {
+                where: { code: role },
+                create: { code: role, label: role === UserRole.PRO ? "Tasker" : role === UserRole.ADMIN ? "Admin" : "Cliente" }
+              }
+            }
+          }
+        },
         professionalProfile:
           role === UserRole.PRO
             ? {
@@ -100,27 +131,47 @@ export async function POST(req: NextRequest) {
       select: { id: true, fullName: true, email: true, role: true }
     });
 
+    let emailVerificationToken: string | null = null;
+    if (authProvider === "EMAIL") {
+      emailVerificationToken = randomToken(24);
+      await prisma.emailVerificationToken.create({
+        data: {
+          userId: user.id,
+          tokenHash: sha256(emailVerificationToken),
+          expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24)
+        }
+      });
+    }
+
+    const shouldCreateSession = authProvider !== "EMAIL";
     const response = NextResponse.json(
       {
-        session: {
-          userId: user.id,
-          fullName: user.fullName,
-          email: user.email,
-          role: user.role
-        }
+        session: shouldCreateSession
+          ? {
+              userId: user.id,
+              fullName: user.fullName,
+              email: user.email,
+              role: user.role
+            }
+          : null,
+        emailVerificationRequired: authProvider === "EMAIL",
+        verificationTokenPreview:
+          process.env.NODE_ENV !== "production" && emailVerificationToken ? emailVerificationToken : undefined
       },
       { status: 201 }
     );
 
-    response.cookies.set({
-      name: SESSION_COOKIE_NAME,
-      value: encodeSessionCookie({ userId: user.id, role: user.role, email: user.email, fullName: user.fullName }),
-      path: "/",
-      httpOnly: true,
-      sameSite: "lax",
-      secure: process.env.NODE_ENV === "production",
-      maxAge: 60 * 60 * 24 * 7
-    });
+    if (shouldCreateSession) {
+      response.cookies.set({
+        name: SESSION_COOKIE_NAME,
+        value: encodeSessionCookie({ userId: user.id, role: user.role, email: user.email, fullName: user.fullName }),
+        path: "/",
+        httpOnly: true,
+        sameSite: "lax",
+        secure: process.env.NODE_ENV === "production",
+        maxAge: 60 * 60 * 24 * 7
+      });
+    }
 
     return response;
   } catch (error) {

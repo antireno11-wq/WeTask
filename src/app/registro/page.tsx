@@ -23,7 +23,9 @@ export default function RegistroPage() {
 
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [phone, setPhone] = useState("");
+  const [acceptTerms, setAcceptTerms] = useState(false);
   const [role, setRole] = useState<"CUSTOMER" | "PRO">("CUSTOMER");
   const [coverageStreet, setCoverageStreet] = useState("");
   const [coverageComuna, setCoverageComuna] = useState("");
@@ -114,8 +116,10 @@ export default function RegistroPage() {
         body: JSON.stringify({
           fullName,
           email,
+          password,
           phone,
           role,
+          acceptTerms,
           coverageStreet: role === "PRO" ? coverageStreet : undefined,
           coverageComuna: role === "PRO" ? coverageComuna : undefined,
           city,
@@ -134,20 +138,52 @@ export default function RegistroPage() {
       const data = (await response.json()) as {
         error?: string;
         detail?: string;
+        emailVerificationRequired?: boolean;
+        verificationTokenPreview?: string;
         session?: { fullName: string; role: "CUSTOMER" | "PRO" | "ADMIN" };
       };
 
-      if (!response.ok || !data.session) {
+      if (!response.ok) {
         throw new Error(data.detail || data.error || "No se pudo crear la cuenta");
       }
 
-      setFeedback(`Cuenta creada para ${data.session.fullName}`);
-
-      if (data.session.role === "PRO") {
-        router.push("/pro");
-      } else {
-        router.push("/cliente");
+      if (data.emailVerificationRequired) {
+        setFeedback(
+          `Cuenta creada. Revisa tu correo para verificar tu cuenta.${data.verificationTokenPreview ? ` Token dev: ${data.verificationTokenPreview}` : ""}`
+        );
+        return;
       }
+
+      if (!data.session) {
+        throw new Error("No se pudo iniciar sesion tras registro.");
+      }
+
+      setFeedback(`Cuenta creada para ${data.session.fullName}`);
+      router.push(data.session.role === "PRO" ? "/pro" : "/cliente");
+      router.refresh();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Error inesperado");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const oauthRegister = async (provider: "GOOGLE" | "APPLE") => {
+    setLoading(true);
+    setFeedback("");
+    setError("");
+    try {
+      if (!fullName || !email) throw new Error("Completa nombre y email para continuar.");
+      if (!acceptTerms) throw new Error("Debes aceptar terminos y condiciones.");
+
+      const response = await fetch("/api/auth/oauth", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ provider, email, fullName, role, acceptTerms })
+      });
+      const data = (await response.json()) as { error?: string; detail?: string; session?: { role: "CUSTOMER" | "PRO" | "ADMIN" } };
+      if (!response.ok || !data.session) throw new Error(data.detail || data.error || "No se pudo continuar con proveedor");
+      router.push(data.session.role === "PRO" ? "/pro" : "/cliente");
       router.refresh();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error inesperado");
@@ -175,6 +211,11 @@ export default function RegistroPage() {
           <label>
             Email
             <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+          </label>
+
+          <label>
+            Contraseña
+            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} minLength={8} required />
           </label>
 
           <label>
@@ -333,6 +374,24 @@ export default function RegistroPage() {
               </div>
             </>
           ) : null}
+
+          <label className="full">
+            <span className="inline-checks">
+              <label>
+                <input type="checkbox" checked={acceptTerms} onChange={(e) => setAcceptTerms(e.target.checked)} required /> Acepto terminos y
+                condiciones
+              </label>
+            </span>
+          </label>
+
+          <div className="cta-row">
+            <button type="button" className="cta ghost" onClick={() => void oauthRegister("GOOGLE")} disabled={loading}>
+              Continuar con Google
+            </button>
+            <button type="button" className="cta ghost" onClick={() => void oauthRegister("APPLE")} disabled={loading}>
+              Continuar con Apple
+            </button>
+          </div>
 
           {role !== "PRO" ? (
             <div className="full coverage-map-card">
