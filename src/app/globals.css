@@ -423,6 +423,12 @@ body {
 .home-search-bar .cta {
   border-radius: 0;
   min-width: 130px;
+  background: #103154;
+  border: 0;
+}
+
+.home-search-bar .cta:hover {
+  background: #184368;
 }
 
 .home-category-row {
@@ -467,7 +473,7 @@ body {
   overflow: hidden;
   border-color: #9bd9ec;
   background:
-    linear-gradient(180deg, rgba(10, 120, 153, 0.82) 0%, rgba(20, 162, 188, 0.72) 100%),
+    linear-gradient(180deg, rgba(8, 18, 32, 0.22) 0%, rgba(8, 18, 32, 0.12) 100%),
     url("https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=2000&q=80");
   background-size: cover;
   background-position: center;
@@ -477,6 +483,17 @@ body {
 .home-hero-main .lead,
 .home-hero-main .minimal-note {
   color: rgba(255, 255, 255, 0.92);
+}
+
+.home-hero-main .cta {
+  background: #ffffff;
+  color: #103154;
+  border: 1px solid #d6e6f3;
+}
+
+.home-hero-main .cta:hover {
+  background: #f4f9ff;
+  color: #0d2844;
 }
 
 .minimal-main h1 {
