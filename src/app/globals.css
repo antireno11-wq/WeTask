@@ -304,7 +304,7 @@ body {
   height: 88px;
   border-radius: 10px;
   background-size: cover;
-  background-position: center;
+  background-position: center 58%;
   border: 1px solid #d4e4f3;
 }
 
@@ -464,10 +464,10 @@ body {
   overflow: hidden;
   border-color: #9bd9ec;
   background:
-    linear-gradient(180deg, rgba(8, 18, 32, 0.14) 0%, rgba(8, 18, 32, 0.06) 100%),
-    url("/hero-webel-reference.webp?v=1");
+    linear-gradient(180deg, rgba(8, 18, 32, 0.08) 0%, rgba(8, 18, 32, 0.02) 100%),
+    url("/hero-webel-reference.webp?v=2");
   background-size: cover;
-  background-position: center;
+  background-position: center 58%;
   color: #ffffff;
 }
 
@@ -564,7 +564,7 @@ body {
   border-radius: 22px;
   border: 1px solid #d8e6ef;
   background-size: cover;
-  background-position: center;
+  background-position: center 58%;
   box-shadow: 0 14px 28px rgba(17, 66, 96, 0.12);
 }
 
