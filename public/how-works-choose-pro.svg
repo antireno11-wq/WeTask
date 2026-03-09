@@ -1,0 +1,44 @@
+<svg width="1200" height="800" viewBox="0 0 1200 800" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#F1F8FF"/>
+      <stop offset="1" stop-color="#FFFFFF"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="800" rx="28" fill="url(#bg)"/>
+
+  <text x="80" y="95" font-family="Arial, sans-serif" font-size="40" font-weight="800" fill="#132A57">Compara y elige al mejor profesional</text>
+  <text x="80" y="135" font-family="Arial, sans-serif" font-size="24" font-weight="500" fill="#4E6487">Perfiles verificados, rating real y precios claros</text>
+
+  <rect x="80" y="190" width="1040" height="520" rx="20" fill="#FFFFFF" stroke="#D9E7F4" stroke-width="3"/>
+
+  <rect x="120" y="235" width="960" height="130" rx="16" fill="#F8FBFF" stroke="#DCE9F5"/>
+  <circle cx="190" cy="300" r="34" fill="#D6E8F8"/>
+  <rect x="245" y="272" width="220" height="16" rx="8" fill="#2A4B79"/>
+  <rect x="245" y="298" width="150" height="12" rx="6" fill="#8CA2C0"/>
+  <text x="530" y="304" font-family="Arial, sans-serif" font-size="22" font-weight="700" fill="#FF9F1A">★★★★★</text>
+  <rect x="760" y="265" width="130" height="34" rx="10" fill="#E9F4FF"/>
+  <text x="825" y="288" text-anchor="middle" font-family="Arial, sans-serif" font-size="18" font-weight="700" fill="#1A4D7B">$15.000/h</text>
+  <rect x="915" y="258" width="145" height="50" rx="12" fill="#132A57"/>
+  <text x="987" y="290" text-anchor="middle" font-family="Arial, sans-serif" font-size="18" font-weight="700" fill="#FFFFFF">Ver perfil</text>
+
+  <rect x="120" y="385" width="960" height="130" rx="16" fill="#F8FBFF" stroke="#DCE9F5"/>
+  <circle cx="190" cy="450" r="34" fill="#D6E8F8"/>
+  <rect x="245" y="422" width="220" height="16" rx="8" fill="#2A4B79"/>
+  <rect x="245" y="448" width="180" height="12" rx="6" fill="#8CA2C0"/>
+  <text x="530" y="454" font-family="Arial, sans-serif" font-size="22" font-weight="700" fill="#FF9F1A">★★★★☆</text>
+  <rect x="760" y="415" width="130" height="34" rx="10" fill="#E9F4FF"/>
+  <text x="825" y="438" text-anchor="middle" font-family="Arial, sans-serif" font-size="18" font-weight="700" fill="#1A4D7B">$12.000/h</text>
+  <rect x="915" y="408" width="145" height="50" rx="12" fill="#132A57"/>
+  <text x="987" y="440" text-anchor="middle" font-family="Arial, sans-serif" font-size="18" font-weight="700" fill="#FFFFFF">Ver perfil</text>
+
+  <rect x="120" y="535" width="960" height="130" rx="16" fill="#F8FBFF" stroke="#DCE9F5"/>
+  <circle cx="190" cy="600" r="34" fill="#D6E8F8"/>
+  <rect x="245" y="572" width="220" height="16" rx="8" fill="#2A4B79"/>
+  <rect x="245" y="598" width="160" height="12" rx="6" fill="#8CA2C0"/>
+  <text x="530" y="604" font-family="Arial, sans-serif" font-size="22" font-weight="700" fill="#FF9F1A">★★★★★</text>
+  <rect x="760" y="565" width="130" height="34" rx="10" fill="#E9F4FF"/>
+  <text x="825" y="588" text-anchor="middle" font-family="Arial, sans-serif" font-size="18" font-weight="700" fill="#1A4D7B">$18.000/h</text>
+  <rect x="915" y="558" width="145" height="50" rx="12" fill="#132A57"/>
+  <text x="987" y="590" text-anchor="middle" font-family="Arial, sans-serif" font-size="18" font-weight="700" fill="#FFFFFF">Ver perfil</text>
+</svg>
