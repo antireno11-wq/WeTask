@@ -12,9 +12,15 @@ export async function GET(request: NextRequest) {
 
     const apiKey = process.env.GOOGLE_MAPS_API_KEY;
     if (!apiKey) {
+      // Fallback no bloqueante para ambientes sin API key configurada.
       return NextResponse.json(
-        { valid: false, error: "Falta configurar GOOGLE_MAPS_API_KEY en el servidor." },
-        { status: 500 }
+        {
+          valid: true,
+          skipped: true,
+          normalizedAddress: address,
+          location: { lat: null, lng: null }
+        },
+        { status: 200 }
       );
     }
 

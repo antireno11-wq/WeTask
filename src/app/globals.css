@@ -464,8 +464,8 @@ body {
   overflow: hidden;
   border-color: #9bd9ec;
   background:
-    linear-gradient(180deg, rgba(8, 18, 32, 0.22) 0%, rgba(8, 18, 32, 0.12) 100%),
-    url("/hero-wetask-house-animated.svg");
+    linear-gradient(180deg, rgba(8, 18, 32, 0.14) 0%, rgba(8, 18, 32, 0.06) 100%),
+    url("/hero-wetask-webel-style.svg");
   background-size: cover;
   background-position: center;
   color: #ffffff;
