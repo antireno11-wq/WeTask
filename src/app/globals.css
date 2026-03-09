@@ -474,7 +474,7 @@ body {
   border-color: #9bd9ec;
   background:
     linear-gradient(180deg, rgba(8, 18, 32, 0.22) 0%, rgba(8, 18, 32, 0.12) 100%),
-    url("https://images.unsplash.com/photo-1581578731548-c64695cc6952?auto=format&fit=crop&w=2000&q=80");
+    url("/hero-wetask-services.svg");
   background-size: cover;
   background-position: center;
   color: #ffffff;
