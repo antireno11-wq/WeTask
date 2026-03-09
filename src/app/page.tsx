@@ -6,26 +6,44 @@ import { useRouter } from "next/navigation";
 import { MarketNav } from "@/components/market-nav";
 
 const homeCategories = [
-  { emoji: "🧹", label: "Limpieza", href: "/services/limpieza", image: "https://images.unsplash.com/photo-1581578731548-c64695cc6952?auto=format&fit=crop&w=120&q=80" },
-  { emoji: "🧰", label: "Maestro", href: "/services/maestro-polifuncional", image: "https://images.unsplash.com/photo-1621905251918-48416bd8575a?auto=format&fit=crop&w=120&q=80" },
-  { emoji: "📚", label: "Clases", href: "/services/clases-colegio", image: "https://images.unsplash.com/photo-1503676260728-1c00da094a0b?auto=format&fit=crop&w=120&q=80" }
+  { emoji: "🧹", label: "Limpieza", href: "/services/limpieza" },
+  { emoji: "🧰", label: "Maestro", href: "/services/maestro-polifuncional" },
+  { emoji: "📚", label: "Clases", href: "/services/clases-colegio" }
 ];
 
 export default function HomePage() {
   const router = useRouter();
   const [servicePath, setServicePath] = useState("/services");
   const [addressQuery, setAddressQuery] = useState("");
+  const [addressError, setAddressError] = useState("");
+  const [searching, setSearching] = useState(false);
 
-  const search = (event: FormEvent) => {
+  const search = async (event: FormEvent) => {
     event.preventDefault();
-    if (servicePath && servicePath !== "/services") {
-      router.push(servicePath);
-      return;
+    const typedAddress = addressQuery.trim();
+    setAddressError("");
+
+    if (typedAddress) {
+      try {
+        setSearching(true);
+        const response = await fetch(`/api/maps/validate-address?address=${encodeURIComponent(typedAddress)}`);
+        const data = (await response.json()) as { valid?: boolean; error?: string };
+        if (!response.ok || !data.valid) {
+          setAddressError(data.error ?? "No pudimos validar esa direccion con Google Maps.");
+          return;
+        }
+      } catch {
+        setAddressError("No pudimos validar esa direccion. Intenta nuevamente.");
+        return;
+      } finally {
+        setSearching(false);
+      }
     }
 
     const params = new URLSearchParams();
-    if (addressQuery.trim()) params.set("city", addressQuery.trim());
-    router.push(`/services${params.toString() ? `?${params.toString()}` : ""}`);
+    if (typedAddress) params.set("address", typedAddress);
+    const target = servicePath && servicePath !== "/services" ? servicePath : "/services";
+    router.push(`${target}${params.toString() ? `?${params.toString()}` : ""}`);
   };
 
   return (
@@ -47,19 +65,15 @@ export default function HomePage() {
               placeholder="Direccion o comuna"
               aria-label="Direccion o comuna"
             />
-            <button type="submit" className="cta">
-              Buscar
+            <button type="submit" className="cta" disabled={searching}>
+              {searching ? "Validando..." : "Buscar"}
             </button>
           </form>
+          {addressError ? <p className="feedback error">{addressError}</p> : null}
 
           <div className="home-category-row">
             {homeCategories.map((category) => (
               <Link key={category.label} href={category.href} className="home-category-pill">
-                <span
-                  className="home-category-thumb"
-                  style={{ backgroundImage: `linear-gradient(180deg, rgba(8,44,66,0.08), rgba(8,44,66,0.08)), url(${category.image})` }}
-                  aria-hidden
-                />
                 <span aria-hidden>{category.emoji}</span>
                 <span>{category.label}</span>
               </Link>
