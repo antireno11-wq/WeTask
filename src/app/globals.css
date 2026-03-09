@@ -978,6 +978,24 @@ textarea {
   cursor: not-allowed;
 }
 
+
+.service-category-actions .cta {
+  border: 1px solid #103154;
+  background: #103154;
+  color: #ffffff;
+}
+
+.service-category-actions .cta:hover {
+  border-color: #184368;
+  background: #184368;
+}
+
+.service-category-actions a.cta {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+}
+
 .coverage-map-card {
   border: 1px solid var(--line);
   border-radius: 14px;

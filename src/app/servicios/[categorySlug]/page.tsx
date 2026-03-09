@@ -147,11 +147,11 @@ export default function ServicioCategoriaPage() {
                   required
                 />
               </label>
-              <div className="cta-row">
+              <div className="cta-row service-category-actions">
                 <button type="submit" className="cta">
                   Ver profesionales disponibles
                 </button>
-                <Link href="/services" className="cta ghost small">
+                <Link href="/services" className="cta small">
                   Ver todas las categorias
                 </Link>
               </div>
