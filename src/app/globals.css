@@ -575,9 +575,7 @@ body {
 }
 
 .collage-two {
-  background-image:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0.12) 100%),
-    url("/how-works-choose-pro.svg");
+  background-image: url("/how-works-house-cutaway.svg");
 }
 
 .collage-three {
