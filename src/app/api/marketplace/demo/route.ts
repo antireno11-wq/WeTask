@@ -8,9 +8,8 @@ export async function GET() {
   try {
     const seed = await ensureMarketplaceDemoData();
 
-    const [customer, admin, pros] = await Promise.all([
+    const [customer, pros] = await Promise.all([
       prisma.user.findUnique({ where: { id: seed.customerId }, select: { id: true, fullName: true, email: true } }),
-      prisma.user.findUnique({ where: { email: "admin-demo@wetask.cl" }, select: { id: true, fullName: true, email: true } }),
       prisma.user.findMany({
         where: { role: "PRO", email: { contains: "pro." } },
         select: { id: true, fullName: true, email: true },
@@ -20,7 +19,6 @@ export async function GET() {
 
     return NextResponse.json({
       customer,
-      admin,
       professionals: pros
     });
   } catch (error) {

@@ -66,8 +66,8 @@ function hasRequiredRole(role: UserRole | null, allowed: UserRole[]) {
   return allowed.includes(role);
 }
 
-function redirectToLogin(req: NextRequest) {
-  const loginUrl = new URL("/ingresar", req.url);
+function redirectToLogin(req: NextRequest, mode: "cliente" | "tasker" = "cliente") {
+  const loginUrl = new URL(`/ingresar/${mode}`, req.url);
   loginUrl.searchParams.set("next", req.nextUrl.pathname);
   return NextResponse.redirect(loginUrl);
 }
@@ -79,19 +79,15 @@ export async function middleware(req: NextRequest) {
   const session = signedSession.userId ? signedSession : decodeLegacySessionCookie(rawSession);
 
   if (pathname.startsWith("/cliente")) {
-    if (!hasRequiredRole(session.role, ["CUSTOMER", "ADMIN"])) return redirectToLogin(req);
+    if (!hasRequiredRole(session.role, ["CUSTOMER", "ADMIN"])) return redirectToLogin(req, "cliente");
   }
 
   if (pathname.startsWith("/pro") && !pathname.startsWith("/profesionales")) {
-    if (!hasRequiredRole(session.role, ["PRO", "ADMIN"])) return redirectToLogin(req);
-  }
-
-  if (pathname.startsWith("/admin")) {
-    if (!hasRequiredRole(session.role, ["ADMIN"])) return redirectToLogin(req);
+    if (!hasRequiredRole(session.role, ["PRO", "ADMIN"])) return redirectToLogin(req, "tasker");
   }
 
   if (pathname.startsWith("/reservar") || pathname.startsWith("/booking")) {
-    if (!hasRequiredRole(session.role, ["CUSTOMER", "ADMIN"])) return redirectToLogin(req);
+    if (!hasRequiredRole(session.role, ["CUSTOMER", "ADMIN"])) return redirectToLogin(req, "cliente");
   }
 
   if (pathname.startsWith("/api/marketplace") && !isPublicMarketplaceApi(pathname)) {
@@ -116,5 +112,5 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/cliente/:path*", "/pro/:path*", "/admin/:path*", "/reservar/:path*", "/booking/:path*", "/api/marketplace/:path*"]
+  matcher: ["/cliente/:path*", "/pro/:path*", "/reservar/:path*", "/booking/:path*", "/api/marketplace/:path*"]
 };

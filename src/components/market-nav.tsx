@@ -81,7 +81,7 @@ export function MarketNav() {
   };
 
   const role = session?.role ?? null;
-  const accountHref = role === "PRO" ? "/pro" : role === "ADMIN" ? "/admin" : "/cliente";
+  const accountHref = role === "PRO" ? "/pro" : "/cliente";
   const links = [
     { href: "/services", label: "Servicios" },
     { href: "/profesionales", label: "Profesionales" },
