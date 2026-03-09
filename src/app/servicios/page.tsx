@@ -12,6 +12,8 @@ type Category = {
   services: Array<{ id: string; basePriceClp: number }>;
 };
 
+const VISIBLE_CATEGORY_SLUGS = ["limpieza", "maestro-polifuncional", "clases-colegio"] as const;
+
 export default function ServiciosPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
@@ -26,7 +28,9 @@ export default function ServiciosPage() {
         if (!response.ok || !data.categories) {
           throw new Error(data.detail || data.error || "No se pudieron cargar las categorias");
         }
-        setCategories(data.categories);
+
+        const visible = data.categories.filter((category) => VISIBLE_CATEGORY_SLUGS.includes(category.slug as (typeof VISIBLE_CATEGORY_SLUGS)[number]));
+        setCategories(visible);
       } catch (e) {
         setError(e instanceof Error ? e.message : "Error inesperado");
       } finally {
@@ -42,7 +46,7 @@ export default function ServiciosPage() {
       <section className="panel">
         <div className="panel-head">
           <h2>Servicios</h2>
-          <p>Primero elige una categoria para ver profesionales disponibles.</p>
+          <p>Partimos simple: limpieza, maestro y clases.</p>
         </div>
       </section>
 
@@ -52,7 +56,7 @@ export default function ServiciosPage() {
       <section className="service-grid">
         {categories.map((category) => (
           <Link key={category.id} href={`/services/${category.slug}`} className="service-card module-link">
-            <strong>{category.name}</strong>
+            <strong>{category.slug === "clases-colegio" ? "Clases" : category.name}</strong>
             <span>{category.description ?? "Servicios disponibles en esta categoria."}</span>
             <span>
               {category.services.length > 0

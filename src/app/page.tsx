@@ -8,16 +8,7 @@ import { MarketNav } from "@/components/market-nav";
 const homeCategories = [
   { emoji: "🧹", label: "Limpieza", href: "/services/limpieza", image: "https://images.unsplash.com/photo-1581578731548-c64695cc6952?auto=format&fit=crop&w=120&q=80" },
   { emoji: "🧰", label: "Maestro", href: "/services/maestro-polifuncional", image: "https://images.unsplash.com/photo-1621905251918-48416bd8575a?auto=format&fit=crop&w=120&q=80" },
-  { emoji: "⚡", label: "Electricidad", href: "/services/electricidad", image: "https://images.unsplash.com/photo-1621905252507-b35492cc74b4?auto=format&fit=crop&w=120&q=80" },
-  { emoji: "📚", label: "Clases colegio", href: "/services/clases-colegio", image: "https://images.unsplash.com/photo-1503676260728-1c00da094a0b?auto=format&fit=crop&w=120&q=80" },
-  { emoji: "🎵", label: "Clases musica", href: "/services/clases-musica", image: "https://images.unsplash.com/photo-1511379938547-c1f69419868d?auto=format&fit=crop&w=120&q=80" },
-  { emoji: "🌿", label: "Jardineria", href: "/services/jardineria", image: "https://images.unsplash.com/photo-1416879595882-3373a0480b5b?auto=format&fit=crop&w=120&q=80" },
-  { emoji: "👶", label: "Baby sitter", href: "/services/baby-sitter", image: "https://images.unsplash.com/photo-1503919545889-aef636e10ad4?auto=format&fit=crop&w=120&q=80" },
-  { emoji: "💇", label: "Peluqueria", href: "/services/peluqueria", image: "https://images.unsplash.com/photo-1521590832167-7bcbfaa6381f?auto=format&fit=crop&w=120&q=80" },
-  { emoji: "💅", label: "Manicure", href: "/services/manicure", image: "https://images.unsplash.com/photo-1604654894610-df63bc536371?auto=format&fit=crop&w=120&q=80" },
-  { emoji: "🐾", label: "Veterinario", href: "/services/veterinario", image: "https://images.unsplash.com/photo-1516734212186-a967f81ad0d7?auto=format&fit=crop&w=120&q=80" },
-  { emoji: "🐕", label: "Paseadores de perro", href: "/services/paseadores-de-perro", image: "https://images.unsplash.com/photo-1517849845537-4d257902454a?auto=format&fit=crop&w=120&q=80" },
-  { emoji: "🦴", label: "Cuidadores de animales", href: "/services/cuidadores-de-animales", image: "https://images.unsplash.com/photo-1450778869180-41d0601e046e?auto=format&fit=crop&w=120&q=80" }
+  { emoji: "📚", label: "Clases", href: "/services/clases-colegio", image: "https://images.unsplash.com/photo-1503676260728-1c00da094a0b?auto=format&fit=crop&w=120&q=80" }
 ];
 
 export default function HomePage() {
@@ -48,16 +39,7 @@ export default function HomePage() {
               <option value="/services">Servicio</option>
               <option value="/services/limpieza">Limpieza</option>
               <option value="/services/maestro-polifuncional">Maestro (polifuncional)</option>
-              <option value="/services/electricidad">Electricidad</option>
-              <option value="/services/clases-colegio">Clases de colegio</option>
-              <option value="/services/clases-musica">Clases de musica</option>
-              <option value="/services/jardineria">Jardineria</option>
-              <option value="/services/baby-sitter">Baby sitter</option>
-              <option value="/services/peluqueria">Peluqueria</option>
-              <option value="/services/manicure">Manicure</option>
-              <option value="/services/veterinario">Veterinario</option>
-              <option value="/services/paseadores-de-perro">Paseadores de perro</option>
-              <option value="/services/cuidadores-de-animales">Cuidadores de animales</option>
+              <option value="/services/clases-colegio">Clases</option>
             </select>
             <input
               value={addressQuery}
