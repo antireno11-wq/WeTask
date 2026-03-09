@@ -1,0 +1,73 @@
+<svg width="1600" height="900" viewBox="0 0 1600 900" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bgSky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0F9EC5"/>
+      <stop offset="1" stop-color="#39B6D2"/>
+    </linearGradient>
+    <linearGradient id="grass" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#DFF4E7"/>
+      <stop offset="1" stop-color="#CBEEDB"/>
+    </linearGradient>
+    <filter id="soft" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="8" stdDeviation="10" flood-opacity="0.15"/>
+    </filter>
+  </defs>
+
+  <rect width="1600" height="900" fill="#EAF7FF"/>
+  <rect x="0" y="0" width="1600" height="420" fill="url(#bgSky)"/>
+  <rect x="0" y="690" width="1600" height="210" fill="url(#grass)"/>
+
+  <circle cx="190" cy="120" r="74" fill="#FFFFFF" fill-opacity="0.18"/>
+  <circle cx="1430" cy="150" r="56" fill="#FFFFFF" fill-opacity="0.16"/>
+
+  <g filter="url(#soft)">
+    <rect x="170" y="260" width="1260" height="520" rx="30" fill="#FFFFFF" stroke="#D5E7F4" stroke-width="5"/>
+  </g>
+
+  <path d="M170 260L800 120L1430 260" fill="#F1F8FD" stroke="#D4E6F3" stroke-width="5"/>
+  <path d="M560 330V780" stroke="#D7E6F2" stroke-width="4"/>
+  <path d="M1020 330V780" stroke="#D7E6F2" stroke-width="4"/>
+
+  <rect x="205" y="330" width="330" height="430" rx="20" fill="#FAFCFF"/>
+  <rect x="220" y="700" width="300" height="48" rx="10" fill="#E9F4FC"/>
+  <rect x="235" y="354" width="130" height="90" rx="14" fill="#E9F4FC"/>
+  <rect x="385" y="384" width="130" height="14" rx="7" fill="#BED4E7"/>
+  <rect x="385" y="408" width="110" height="11" rx="5" fill="#D4E4F2"/>
+  <circle cx="315" cy="585" r="34" fill="#FFD9B7"/>
+  <rect x="289" y="620" width="52" height="84" rx="16" fill="#20A8D6"/>
+  <rect x="275" y="646" width="14" height="66" rx="7" fill="#20A8D6"/>
+  <rect x="341" y="646" width="14" height="66" rx="7" fill="#20A8D6"/>
+  <rect x="365" y="656" width="102" height="10" rx="5" fill="#89A9C4"/>
+  <rect x="464" y="644" width="10" height="74" rx="5" fill="#89A9C4"/>
+  <circle cx="469" cy="641" r="13" fill="#FF7A1A"/>
+  <text x="240" y="742" font-family="Arial, sans-serif" font-size="30" font-weight="800" fill="#183C5F">Limpieza</text>
+
+  <rect x="605" y="330" width="380" height="430" rx="20" fill="#FAFCFF"/>
+  <rect x="628" y="430" width="334" height="270" rx="16" fill="#F2F8FD"/>
+  <rect x="664" y="480" width="262" height="30" rx="12" fill="#D8E8F4"/>
+  <rect x="695" y="520" width="200" height="20" rx="10" fill="#C5DAEC"/>
+  <rect x="680" y="558" width="230" height="126" rx="14" fill="#E3EEF8"/>
+  <circle cx="730" cy="616" r="31" fill="#FFD9B7"/>
+  <rect x="706" y="648" width="48" height="80" rx="15" fill="#FF7A1A"/>
+  <rect x="692" y="674" width="14" height="56" rx="7" fill="#FF7A1A"/>
+  <rect x="754" y="674" width="14" height="56" rx="7" fill="#FF7A1A"/>
+  <rect x="816" y="606" width="13" height="84" rx="6" fill="#6F8EA8"/>
+  <rect x="820" y="596" width="98" height="12" rx="6" fill="#6F8EA8"/>
+  <circle cx="920" cy="602" r="12" fill="#2BB7D0"/>
+  <circle cx="920" cy="602" r="5" fill="#FFFFFF"/>
+  <path d="M936 602C958 602 958 648 936 648" stroke="#2BB7D0" stroke-width="7" stroke-linecap="round"/>
+  <text x="640" y="742" font-family="Arial, sans-serif" font-size="30" font-weight="800" fill="#183C5F">Gasfiter</text>
+
+  <rect x="1060" y="330" width="330" height="430" rx="20" fill="#FAFCFF"/>
+  <rect x="1082" y="410" width="286" height="220" rx="16" fill="#F2F8FD"/>
+  <rect x="1103" y="432" width="244" height="168" rx="14" fill="#E3EEF8"/>
+  <path d="M1120 468H1332" stroke="#9AB7CD" stroke-width="4"/>
+  <path d="M1120 500H1298" stroke="#B0C7D9" stroke-width="4"/>
+  <path d="M1120 532H1260" stroke="#C1D4E2" stroke-width="4"/>
+  <circle cx="1138" cy="666" r="27" fill="#FFD9B7"/>
+  <rect x="1117" y="693" width="42" height="66" rx="14" fill="#183C5F"/>
+  <circle cx="1270" cy="687" r="25" fill="#FFD9B7"/>
+  <rect x="1252" y="712" width="36" height="55" rx="12" fill="#20A8D6"/>
+  <rect x="1165" y="664" width="82" height="8" rx="4" fill="#7D9AB4"/>
+  <text x="1103" y="742" font-family="Arial, sans-serif" font-size="30" font-weight="800" fill="#183C5F">Clases</text>
+</svg>
