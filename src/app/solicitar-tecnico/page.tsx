@@ -1,8 +1,8 @@
 "use client";
 
-import { FormEvent, useMemo, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import { FormEvent, Suspense, useMemo, useState } from "react";
 import { MarketNav } from "@/components/market-nav";
 
 const serviceOptions = [
@@ -14,7 +14,7 @@ const serviceOptions = [
   "Reparaciones del hogar"
 ];
 
-export default function SolicitarTecnicoPage() {
+function SolicitarTecnicoContent() {
   const search = useSearchParams();
   const prefilledService = search.get("servicio") ?? "";
   const source = search.get("source") ?? "direct";
@@ -28,10 +28,7 @@ export default function SolicitarTecnicoPage() {
   const [okMessage, setOkMessage] = useState("");
   const [error, setError] = useState("");
 
-  const availableComunas = useMemo(
-    () => ["Las Condes", "Vitacura", "Providencia", "Nunoa", "Lo Barnechea"],
-    []
-  );
+  const availableComunas = useMemo(() => ["Las Condes", "Vitacura", "Providencia", "Nunoa", "Lo Barnechea"], []);
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
@@ -137,5 +134,24 @@ export default function SolicitarTecnicoPage() {
         {error ? <p className="feedback error">{error}</p> : null}
       </section>
     </main>
+  );
+}
+
+function LoadingState() {
+  return (
+    <main className="page market-shell">
+      <MarketNav />
+      <section className="panel mvp-lead-panel">
+        <p className="empty">Cargando formulario...</p>
+      </section>
+    </main>
+  );
+}
+
+export default function SolicitarTecnicoPage() {
+  return (
+    <Suspense fallback={<LoadingState />}>
+      <SolicitarTecnicoContent />
+    </Suspense>
   );
 }

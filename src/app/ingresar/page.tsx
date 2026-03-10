@@ -32,7 +32,7 @@ export default function IngresarPage() {
             <Link href="/ingresar/tasker" className="cta small">
               Ingresar como tasker
             </Link>
-            <Link href="/registro?role=PRO" className="cta ghost small">
+            <Link href="/registro-profesionales" className="cta ghost small">
               Crear cuenta tasker
             </Link>
           </article>
