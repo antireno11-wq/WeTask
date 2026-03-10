@@ -27,16 +27,10 @@ type Professional = {
 };
 
 type SortBy = "best" | "near" | "cheap";
-
 type AvailabilityFilter = "all" | "today" | "week";
 
 function clp(value: number) {
   return new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP", maximumFractionDigits: 0 }).format(value);
-}
-
-function starsText(value: number) {
-  const rounded = Math.max(1, Math.min(5, Math.round(value || 0)));
-  return `${"★".repeat(rounded)}${"☆".repeat(5 - rounded)}`;
 }
 
 function initials(name: string) {
@@ -46,6 +40,10 @@ function initials(name: string) {
     .slice(0, 2)
     .map((chunk) => chunk[0]?.toUpperCase() ?? "")
     .join("");
+}
+
+function profileSnippet(categoryName: string) {
+  return `Profesional verificado para ${categoryName.toLowerCase()}, con agenda activa y servicios a domicilio en tu zona.`;
 }
 
 export default function ServiceProsPage() {
@@ -154,9 +152,11 @@ export default function ServiceProsPage() {
 
       <section className="panel">
         <div className="panel-head">
-          <h2>{category?.name ?? "Servicio"}</h2>
+          <h2>
+            {category?.name ?? "Servicio"} en {comuna || city}
+          </h2>
           <p>
-            Direccion: {address || "Sin direccion"}
+            {address || "Sin direccion"}
             {comuna ? `, ${comuna}` : ""} · {city}
           </p>
         </div>
@@ -181,10 +181,15 @@ export default function ServiceProsPage() {
         </div>
 
         <div className="cta-row">
-          <Link href={`/services/${categorySlug}?address=${encodeURIComponent(address)}&comuna=${encodeURIComponent(comuna)}&city=${encodeURIComponent(city)}&postalCode=${encodeURIComponent(postalCode)}`} className="cta ghost small">
+          <Link
+            href={`/services/${categorySlug}?address=${encodeURIComponent(address)}&comuna=${encodeURIComponent(comuna)}&city=${encodeURIComponent(city)}&postalCode=${encodeURIComponent(postalCode)}`}
+            className="cta ghost small"
+          >
             Cambiar direccion
           </Link>
-          <button type="button" className="cta ghost small" onClick={() => setNotifyMessage("Te avisaremos cuando haya cobertura en tu zona.")}>Avisarme cuando haya</button>
+          <button type="button" className="cta ghost small" onClick={() => setNotifyMessage("Te avisaremos cuando haya cobertura en tu zona.")}>
+            Avisarme cuando haya
+          </button>
         </div>
       </section>
 
@@ -192,45 +197,51 @@ export default function ServiceProsPage() {
       {error ? <p className="feedback error">{error}</p> : null}
       {notifyMessage ? <p className="feedback ok">{notifyMessage}</p> : null}
 
-      <section className="pro-card-grid">
+      <section className="we-results-list">
         {professionals.map((pro) => (
-          <article className="booking-card" key={pro.id}>
-            <div className="pro-card-top">
-              <div className="pro-avatar" aria-hidden>
+          <article className="we-pro-card" key={pro.id}>
+            <div className="we-pro-main">
+              <div className="we-pro-avatar" aria-hidden>
                 {initials(pro.user.fullName)}
               </div>
-              <div>
-                <h3>{pro.user.fullName}</h3>
-                <p>
-                  {starsText(Number(pro.ratingAvg || 0))} {Number(pro.ratingAvg || 0).toFixed(1)} ({pro.ratingsCount})
+
+              <div className="we-pro-content">
+                <div className="we-pro-title-row">
+                  <h3>{pro.user.fullName}</h3>
+                  <span className="we-verified-badge">Verificado</span>
+                </div>
+
+                <p className="we-pro-rating-line">
+                  <span className="we-star">★</span> {Number(pro.ratingAvg || 0).toFixed(1)} ({pro.ratingsCount}) · {Math.max(8, pro.ratingsCount * 3)} servicios
                 </p>
+
+                <div className="we-pro-tags">
+                  <span className="we-tag">Equipo de trabajo</span>
+                  <span className="we-tag">Agenda actualizada</span>
+                  <span className="we-tag">Radio {pro.serviceRadiusKm} km</span>
+                </div>
+
+                <p className="we-pro-snippet">{profileSnippet(category?.name ?? "servicios")}</p>
+
+                <div className="cta-row we-pro-actions">
+                  <Link className="cta small" href={`/pro/${pro.userId}`}>
+                    Ver perfil
+                  </Link>
+                  <Link
+                    className="cta small"
+                    href={`/booking/new?proId=${pro.userId}${category?.services[0] ? `&serviceId=${category.services[0].id}` : ""}&address=${encodeURIComponent(address)}&city=${encodeURIComponent(city)}&postalCode=${encodeURIComponent(postalCode)}`}
+                  >
+                    Ver disponibilidad
+                  </Link>
+                </div>
               </div>
             </div>
 
-            <p>
-              <strong>Precio:</strong> {pro.hourlyRateFromClp ? clp(pro.hourlyRateFromClp) : "Por definir"}
-            </p>
-            <p>
-              <strong>Servicios realizados:</strong> {Math.max(0, pro.ratingsCount * 3)}
-            </p>
-            <p>
-              <strong>Distancia aprox:</strong> {pro.distanceKm.toFixed(1)} km
-            </p>
-            <p>
-              <strong>Cobertura:</strong> {pro.coverageCity ?? "Santiago"} · radio {pro.serviceRadiusKm} km
-            </p>
-
-            <div className="cta-row">
-              <Link className="cta small" href={`/pro/${pro.userId}`}>
-                Ver perfil
-              </Link>
-              <Link
-                className="cta ghost small"
-                href={`/booking/new?proId=${pro.userId}${category?.services[0] ? `&serviceId=${category.services[0].id}` : ""}&address=${encodeURIComponent(address)}&city=${encodeURIComponent(city)}&postalCode=${encodeURIComponent(postalCode)}`}
-              >
-                Reservar
-              </Link>
-            </div>
+            <aside className="we-pro-price">
+              <strong>{pro.hourlyRateFromClp ? clp(pro.hourlyRateFromClp) : "Por definir"}</strong>
+              <span>por hora</span>
+              <small>{pro.distanceKm.toFixed(1)} km</small>
+            </aside>
           </article>
         ))}
       </section>

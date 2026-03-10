@@ -1608,3 +1608,395 @@ textarea {
     grid-template-columns: 1fr;
   }
 }
+
+/* Webel-like professional listing and detail */
+.we-results-list {
+  margin-top: 14px;
+  display: grid;
+  gap: 14px;
+}
+
+.we-pro-card {
+  border: 1px solid #d3e3f0;
+  border-radius: 22px;
+  background: #ffffff;
+  box-shadow: 0 10px 24px rgba(18, 48, 78, 0.08);
+  padding: 18px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 14px;
+}
+
+.we-pro-main {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 12px;
+}
+
+.we-pro-avatar {
+  width: 72px;
+  height: 72px;
+  border-radius: 999px;
+  border: 2px solid #d4e5f2;
+  background: linear-gradient(150deg, #eaf4ff 0%, #ffffff 100%);
+  display: grid;
+  place-items: center;
+  font-weight: 900;
+  color: #173c63;
+}
+
+.we-pro-avatar.large {
+  width: 86px;
+  height: 86px;
+  font-size: 1.1rem;
+}
+
+.we-pro-content {
+  display: grid;
+  gap: 8px;
+}
+
+.we-pro-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.we-pro-title-row h3 {
+  margin: 0;
+  font-size: 1.75rem;
+}
+
+.we-verified-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border-radius: 999px;
+  padding: 4px 10px;
+  background: #e7f5ff;
+  color: #145591;
+  border: 1px solid #b9d8ee;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.we-pro-rating-line {
+  margin: 0;
+  color: #243550;
+  font-weight: 700;
+}
+
+.we-star {
+  color: #f4b73f;
+  font-weight: 900;
+}
+
+.we-pro-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.we-tag {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 10px;
+  border: 1px solid #d6e4ef;
+  background: #f4f9fd;
+  color: #233954;
+  padding: 6px 10px;
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+
+.we-pro-snippet {
+  margin: 2px 0 0;
+  color: #293544;
+  line-height: 1.38;
+}
+
+.we-pro-actions {
+  margin-top: 2px;
+}
+
+.we-pro-actions .cta {
+  border: 1px solid #103154;
+  background: #103154;
+  color: #ffffff;
+}
+
+.we-pro-actions .cta:hover {
+  background: #184368;
+  border-color: #184368;
+}
+
+.we-pro-price {
+  min-width: 132px;
+  display: grid;
+  align-content: start;
+  justify-items: end;
+  gap: 4px;
+}
+
+.we-pro-price strong {
+  font-size: 1.95rem;
+  line-height: 1;
+}
+
+.we-pro-price span {
+  color: #5b6880;
+  font-weight: 700;
+}
+
+.we-pro-price small {
+  color: #6f7d93;
+  font-weight: 700;
+}
+
+.we-pro-detail-layout {
+  margin-top: 14px;
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(280px, 0.65fr);
+  gap: 14px;
+  align-items: start;
+}
+
+.we-pro-detail-main {
+  display: grid;
+  gap: 12px;
+}
+
+.we-pro-sticky-card {
+  position: sticky;
+  top: 84px;
+}
+
+.we-sticky-head {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.we-sticky-head h3 {
+  margin: 0;
+  font-size: 1.95rem;
+}
+
+.we-sticky-head p {
+  margin: 6px 0 0;
+  color: #2b3c59;
+  font-weight: 700;
+}
+
+.we-sticky-price {
+  margin: 16px 0 0;
+  font-size: 3rem;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.we-sticky-meta {
+  margin: 6px 0 0;
+  color: #4f5f75;
+  font-weight: 700;
+}
+
+.we-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.we-section-head h2 {
+  margin: 0;
+}
+
+.we-text-link {
+  border: 0;
+  background: none;
+  padding: 0;
+  color: #0a8d87;
+  text-decoration: underline;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.we-gallery-strip {
+  margin-top: 8px;
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.we-gallery-item {
+  margin: 0;
+  min-width: 130px;
+  display: grid;
+  gap: 5px;
+}
+
+.we-gallery-pic {
+  display: block;
+  width: 130px;
+  height: 150px;
+  border-radius: 12px;
+  border: 1px solid #d7e6f3;
+  background-size: cover;
+  background-position: center;
+}
+
+.we-gallery-item figcaption {
+  font-size: 0.78rem;
+  color: #5b6880;
+  font-weight: 700;
+}
+
+.we-info-grid {
+  margin-top: 8px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.we-info-grid h3 {
+  margin: 0;
+  font-size: 1.02rem;
+}
+
+.we-info-grid p {
+  margin: 6px 0 0;
+  color: #2a3545;
+}
+
+.we-score-big {
+  margin: 4px 0 0;
+  font-size: 1.1rem;
+  font-weight: 800;
+}
+
+.we-metrics-grid {
+  margin-top: 10px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.we-metrics-grid p {
+  margin: 0;
+  border: 1px solid #d7e6f3;
+  background: #f6fbff;
+  border-radius: 10px;
+  padding: 8px 10px;
+  font-weight: 700;
+}
+
+.we-comments-list {
+  margin-top: 12px;
+  display: grid;
+  gap: 8px;
+}
+
+.we-comment-item {
+  border: 1px solid #d8e6f2;
+  border-radius: 12px;
+  background: #ffffff;
+  padding: 10px;
+}
+
+.we-comment-item p {
+  margin: 0;
+}
+
+.we-comment-item p + p {
+  margin-top: 4px;
+  color: #2f3a4a;
+}
+
+.we-check-list {
+  margin: 10px 0 0;
+  padding-left: 20px;
+}
+
+.we-check-list li + li {
+  margin-top: 6px;
+}
+
+.we-faq-list {
+  display: grid;
+  gap: 8px;
+}
+
+.we-faq-list details {
+  border: 1px solid #d7e5f2;
+  border-radius: 10px;
+  padding: 8px 10px;
+  background: #ffffff;
+}
+
+.we-faq-list summary {
+  cursor: pointer;
+  font-weight: 800;
+}
+
+.we-faq-list p {
+  margin: 8px 0 0;
+  color: #314055;
+}
+
+.we-cancel-table {
+  margin-top: 10px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  border: 1px solid #d7e5f2;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.we-cancel-table > div {
+  display: grid;
+}
+
+.we-cancel-table strong,
+.we-cancel-table span {
+  padding: 8px 10px;
+  border-bottom: 1px solid #e6eff7;
+}
+
+.we-cancel-table strong {
+  background: #f5faff;
+}
+
+@media (max-width: 960px) {
+  .we-pro-card {
+    grid-template-columns: 1fr;
+  }
+
+  .we-pro-main {
+    grid-template-columns: 1fr;
+  }
+
+  .we-pro-price {
+    justify-items: start;
+  }
+
+  .we-pro-price strong {
+    font-size: 2rem;
+  }
+
+  .we-pro-detail-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .we-pro-sticky-card {
+    position: static;
+  }
+
+  .we-info-grid,
+  .we-metrics-grid,
+  .we-cancel-table {
+    grid-template-columns: 1fr;
+  }
+}
