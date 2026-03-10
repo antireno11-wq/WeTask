@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { FormEvent, MouseEvent, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { MarketNav } from "@/components/market-nav";
@@ -159,30 +158,6 @@ export default function RegistroPage() {
       }
 
       setFeedback(`Cuenta creada para ${data.session.fullName}`);
-      router.push(data.session.role === "PRO" ? "/pro" : "/cliente");
-      router.refresh();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Error inesperado");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const oauthRegister = async (provider: "GOOGLE" | "APPLE") => {
-    setLoading(true);
-    setFeedback("");
-    setError("");
-    try {
-      if (!fullName || !email) throw new Error("Completa nombre y email para continuar.");
-      if (!acceptTerms) throw new Error("Debes aceptar terminos y condiciones.");
-
-      const response = await fetch("/api/auth/oauth", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ provider, email, fullName, role, acceptTerms })
-      });
-      const data = (await response.json()) as { error?: string; detail?: string; session?: { role: "CUSTOMER" | "PRO" | "ADMIN" } };
-      if (!response.ok || !data.session) throw new Error(data.detail || data.error || "No se pudo continuar con proveedor");
       router.push(data.session.role === "PRO" ? "/pro" : "/cliente");
       router.refresh();
     } catch (e) {
@@ -384,15 +359,6 @@ export default function RegistroPage() {
             </span>
           </label>
 
-          <div className="cta-row">
-            <button type="button" className="cta ghost" onClick={() => void oauthRegister("GOOGLE")} disabled={loading}>
-              Continuar con Google
-            </button>
-            <button type="button" className="cta ghost" onClick={() => void oauthRegister("APPLE")} disabled={loading}>
-              Continuar con Apple
-            </button>
-          </div>
-
           {role !== "PRO" ? (
             <div className="full coverage-map-card">
               <div className="coverage-map-head">
@@ -406,9 +372,6 @@ export default function RegistroPage() {
             <button type="submit" className="cta" disabled={loading}>
               {loading ? "Creando cuenta..." : "Crear cuenta"}
             </button>
-            <Link href="/ingresar" className="cta ghost">
-              Ya tengo cuenta
-            </Link>
           </div>
         </form>
 
