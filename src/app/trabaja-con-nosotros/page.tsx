@@ -1,34 +1,51 @@
 import Link from "next/link";
 import { MarketNav } from "@/components/market-nav";
 
+const taskerServices = [
+  {
+    slug: "limpieza",
+    title: "Limpieza",
+    description: "Onboarding completo con cobertura, tarifas y verificacion."
+  },
+  {
+    slug: "maestro",
+    title: "Maestro",
+    description: "Registro para trabajos de reparaciones y mantenciones."
+  },
+  {
+    slug: "clases",
+    title: "Clases",
+    description: "Registro para profes de apoyo escolar y clases personalizadas."
+  }
+] as const;
+
 export default function TrabajaConNosotrosPage() {
   return (
     <main className="page market-shell">
       <MarketNav />
 
       <section className="panel mvp-hero">
-        <p className="mvp-kicker">Onboarding limpieza por hora</p>
-        <h1>Gana dinero ofreciendo servicios de limpieza</h1>
-        <p className="lead">Registro por etapas: crea cuenta rapido, completa perfil y activa tu servicio con revision manual.</p>
-
-        <div className="cta-row mvp-hero-actions">
-          <Link href="/trabaja-con-nosotros/registro" className="cta">
-            Iniciar onboarding
-          </Link>
-        </div>
+        <p className="mvp-kicker">Registro de profesionales</p>
+        <h1>Elige el servicio que ofreces</h1>
+        <p className="lead">Cada servicio tiene preguntas distintas en el onboarding.</p>
       </section>
 
       <section className="panel">
         <div className="panel-head">
-          <h2>Que vas a configurar</h2>
-          <p>Perfil profesional, servicios, cobertura, agenda, tarifas, verificacion y capacitacion obligatoria.</p>
+          <h2>Selecciona tu especialidad</h2>
+          <p>Entraras al registro del servicio que elijas y luego completas todo en una sola pagina (hacia abajo).</p>
         </div>
-        <ul className="mvp-trust-list">
-          <li>✔ Servicio base por hora con reserva minima</li>
-          <li>✔ Cobertura por comunas y radio de desplazamiento</li>
-          <li>✔ Verificacion de identidad y antecedentes</li>
-          <li>✔ Activacion manual por administrador</li>
-        </ul>
+        <div className="mvp-why-grid">
+          {taskerServices.map((service) => (
+            <article key={service.slug} className="mvp-why-card">
+              <h3>{service.title}</h3>
+              <p>{service.description}</p>
+              <Link href={`/trabaja-con-nosotros/registro?service=${service.slug}`} className="cta small">
+                Continuar con {service.title}
+              </Link>
+            </article>
+          ))}
+        </div>
       </section>
     </main>
   );

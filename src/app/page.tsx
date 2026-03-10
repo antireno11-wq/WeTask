@@ -71,7 +71,7 @@ export default function HomePage() {
             <Link href="/solicitar-tecnico?source=hero_primary" className="cta">
               Buscar servicio
             </Link>
-            <Link href="/trabaja-con-nosotros/registro?service=limpieza&source=hero_secondary" className="cta ghost">
+            <Link href="/trabaja-con-nosotros?source=hero_secondary" className="cta ghost">
               Ofrecer servicios
             </Link>
           </div>
@@ -155,7 +155,7 @@ export default function HomePage() {
       <footer className="panel mvp-footer" id="footer">
         <Link href="/sobre-nosotros">Sobre nosotros</Link>
         <a href="#como-funciona">Como funciona</a>
-        <Link href="/trabaja-con-nosotros/registro?service=limpieza">Convertirse en tecnico</Link>
+        <Link href="/trabaja-con-nosotros">Convertirse en tecnico</Link>
         <Link href="/sobre-nosotros">Contacto</Link>
         <Link href="/legal">Terminos y privacidad</Link>
       </footer>

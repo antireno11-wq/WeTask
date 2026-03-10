@@ -1,14 +1,12 @@
 "use client";
 
+import Link from "next/link";
 import { FormEvent, MouseEvent, useEffect, useMemo, useState } from "react";
 import { MarketNav } from "@/components/market-nav";
 import { geocodeAddress } from "@/lib/geo";
 import {
   CHILE_TOP_COMMUNES,
-  CLEANING_EXPERIENCE_TYPES,
   CLEANING_LANGUAGE_OPTIONS,
-  CLEANING_ONBOARDING_STEPS,
-  CLEANING_SERVICE_TYPES,
   CLEANING_STATUS_LABELS,
   CLEANING_TRAINING_TOPICS,
   CLEANING_WEEK_DAYS
@@ -98,6 +96,73 @@ const SANTIAGO_BOUNDS = {
   maxLng: -70.45
 };
 
+const TASKER_SERVICE_OPTIONS = [
+  { slug: "limpieza", label: "Limpieza" },
+  { slug: "maestro", label: "Maestro" },
+  { slug: "clases", label: "Clases" }
+] as const;
+
+type TaskerServiceSlug = (typeof TASKER_SERVICE_OPTIONS)[number]["slug"];
+
+const EXPERIENCE_OPTIONS_BY_SERVICE: Record<TaskerServiceSlug, string[]> = {
+  limpieza: ["casas", "departamentos", "oficinas_pequenas", "airbnb", "limpieza_profunda", "planchado"],
+  maestro: ["mantenciones_hogar", "instalaciones", "reparaciones", "casas", "departamentos"],
+  clases: ["clases_escolares", "clases_musica", "clases_idiomas", "clases_online"]
+};
+
+const OFFERED_SERVICES_BY_SERVICE: Record<TaskerServiceSlug, string[]> = {
+  limpieza: [
+    "limpieza_general",
+    "limpieza_profunda",
+    "limpieza_recurrente",
+    "limpieza_puntual",
+    "planchado",
+    "orden_organizacion",
+    "lavado_loza",
+    "limpieza_oficina_pequena",
+    "post_evento"
+  ],
+  maestro: ["maestro_reparaciones", "maestro_instalaciones", "maestro_urgencias"],
+  clases: ["clases_apoyo_escolar", "clases_musica", "clases_idiomas", "clases_online"]
+};
+
+const DYNAMIC_QUESTION_LABELS: Record<
+  TaskerServiceSlug,
+  {
+    first: string;
+    second: string;
+    third: string;
+    products: string;
+    ownProducts: string;
+    ownTools: string;
+  }
+> = {
+  limpieza: {
+    first: "Acepto casas con mascotas",
+    second: "Acepto hogares con ninos",
+    third: "Acepto hogares con adultos mayores",
+    products: "Trabajo con productos del cliente",
+    ownProducts: "Llevo productos propios",
+    ownTools: "Llevo implementos propios"
+  },
+  maestro: {
+    first: "Acepto trabajos en casas con mascotas",
+    second: "Acepto trabajos en hogares con ninos",
+    third: "Acepto trabajos en hogares con adultos mayores",
+    products: "Trabajo con materiales del cliente",
+    ownProducts: "Llevo repuestos basicos",
+    ownTools: "Llevo herramientas propias"
+  },
+  clases: {
+    first: "Acepto clases en hogares con mascotas",
+    second: "Acepto clases para ninos",
+    third: "Acepto clases para adultos mayores",
+    products: "Trabajo con material del alumno",
+    ownProducts: "Llevo material de apoyo",
+    ownTools: "Llevo implementos propios para la clase"
+  }
+};
+
 function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
 }
@@ -137,6 +202,7 @@ export default function CleaningOnboardingPage() {
   const [session, setSession] = useState<SessionPayload | null>(null);
   const [onboarding, setOnboarding] = useState<OnboardingPayload | null>(null);
   const [activeStep, setActiveStep] = useState(1);
+  const [selectedService, setSelectedService] = useState<TaskerServiceSlug>("limpieza");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [feedback, setFeedback] = useState("");
@@ -213,10 +279,6 @@ export default function CleaningOnboardingPage() {
   const [confirmsCleaningScope, setConfirmsCleaningScope] = useState(false);
 
   const phoneValidated = Boolean(onboarding?.phoneValidatedAt);
-  const canAccessStep = useMemo(() => {
-    if (!session || session.role !== "PRO") return 1;
-    return Math.max(2, onboarding?.currentStep ?? 2);
-  }, [onboarding?.currentStep, session]);
 
   const parsedMapLat = Number(coverageLatitude);
   const parsedMapLng = Number(coverageLongitude);
@@ -321,6 +383,26 @@ export default function CleaningOnboardingPage() {
       clearTimeout(timer);
     };
   }, [baseCommune, geocodedCenter.lat, geocodedCenter.lng, manualCoveragePoint, referenceAddress]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const service = params.get("service");
+    if (!service) return;
+    if (service === "limpieza" || service === "maestro" || service === "clases") {
+      setSelectedService(service);
+    }
+  }, []);
+
+  const selectedServiceLabel =
+    TASKER_SERVICE_OPTIONS.find((item) => item.slug === selectedService)?.label ?? "Limpieza";
+  const activeExperienceOptions = EXPERIENCE_OPTIONS_BY_SERVICE[selectedService];
+  const activeOfferedServices = OFFERED_SERVICES_BY_SERVICE[selectedService];
+  const activeDynamicLabels = DYNAMIC_QUESTION_LABELS[selectedService];
+
+  useEffect(() => {
+    setExperienceTypes((current) => current.filter((item) => activeExperienceOptions.includes(item)));
+    setOfferedServices((current) => current.filter((item) => activeOfferedServices.includes(item)));
+  }, [activeExperienceOptions, activeOfferedServices]);
 
   const hydrateFromOnboarding = (next: OnboardingPayload) => {
     setOnboarding(next);
@@ -670,21 +752,6 @@ export default function CleaningOnboardingPage() {
     }
   };
 
-  const stepButtons = (
-    <div className="cta-row full">
-      {activeStep > 1 ? (
-        <button type="button" className="cta ghost" onClick={() => setActiveStep((current) => Math.max(1, current - 1))} disabled={saving}>
-          Volver
-        </button>
-      ) : null}
-      {activeStep >= 2 && activeStep <= 8 ? (
-        <button type="button" className="cta" onClick={() => void saveStep(activeStep)} disabled={saving}>
-          {saving ? "Guardando..." : "Guardar y continuar"}
-        </button>
-      ) : null}
-    </div>
-  );
-
   if (loading) {
     return (
       <main className="page market-shell">
@@ -702,28 +769,20 @@ export default function CleaningOnboardingPage() {
 
       <section className="panel mvp-lead-panel">
         <div className="panel-head">
-          <h2>Onboarding profesional de limpieza</h2>
-          <p>Completa las 9 etapas para activar tu perfil y comenzar a recibir reservas por hora.</p>
-        </div>
-
-        <div className="inline-checks">
-          {CLEANING_ONBOARDING_STEPS.map((item) => (
-            <button
-              key={item.step}
-              type="button"
-              className={item.step === activeStep ? "cta small" : "cta ghost small"}
-              onClick={() => setActiveStep(item.step)}
-              disabled={item.step > canAccessStep}
-            >
-              {item.step}. {item.label}
-            </button>
-          ))}
+          <h2>Onboarding profesional · {selectedServiceLabel}</h2>
+          <p>Completa el onboarding de arriba hacia abajo para activar tu perfil y comenzar a recibir reservas.</p>
         </div>
 
         {onboarding ? (
           <p className="minimal-note">
             Estado actual: <strong>{CLEANING_STATUS_LABELS[onboarding.status]}</strong>
             {onboarding.adminReviewNotes ? ` · Nota admin: ${onboarding.adminReviewNotes}` : ""}
+          </p>
+        ) : null}
+
+        {selectedService !== "limpieza" ? (
+          <p className="minimal-note">
+            Seleccionaste <strong>{selectedServiceLabel}</strong>. Las preguntas de experiencia y servicios se adaptan a esta especialidad.
           </p>
         ) : null}
 
@@ -759,7 +818,10 @@ export default function CleaningOnboardingPage() {
               <div className="inline-checks">
                 <label>
                   <input type="checkbox" checked={regTerms} onChange={(event) => setRegTerms(event.target.checked)} required />
-                  Acepto terminos y condiciones
+                  Acepto los{" "}
+                  <Link href="/legal#terminos" target="_blank" rel="noreferrer">
+                    terminos y condiciones
+                  </Link>
                 </label>
               </div>
             </label>
@@ -775,8 +837,9 @@ export default function CleaningOnboardingPage() {
           <p className="feedback error">Tu cuenta actual no es de profesional. Inicia sesion como tasker para continuar.</p>
         ) : null}
 
-        {session?.role === "PRO" && activeStep === 2 ? (
+        {session?.role === "PRO" ? (
           <div className="grid-form">
+            <h3 className="full">1. Perfil profesional</h3>
             <label>
               Foto de perfil
               <input type="file" accept="image/png,image/jpeg" onChange={(event) => void uploadAsDataUrl(event.target.files?.[0] ?? null, setProfilePhotoUrl)} />
@@ -799,7 +862,7 @@ export default function CleaningOnboardingPage() {
             <label className="full">
               Tipo de experiencia
               <div className="inline-checks">
-                {CLEANING_EXPERIENCE_TYPES.map((item) => (
+                {activeExperienceOptions.map((item) => (
                   <label key={item}>
                     <input type="checkbox" checked={experienceTypes.includes(item)} onChange={() => toggleInList(item, experienceTypes, setExperienceTypes)} />
                     {item.replace(/_/g, " ")}
@@ -811,16 +874,21 @@ export default function CleaningOnboardingPage() {
               Direccion referencial
               <input value={referenceAddress} onChange={(event) => setReferenceAddress(event.target.value)} placeholder="Ej: Av. Apoquindo 1234, depto 45" />
             </label>
-            {stepButtons}
+            <div className="cta-row full">
+              <button type="button" className="cta" onClick={() => void saveStep(2)} disabled={saving}>
+                {saving ? "Guardando..." : "Guardar perfil profesional"}
+              </button>
+            </div>
           </div>
         ) : null}
 
-        {session?.role === "PRO" && activeStep === 3 ? (
+        {session?.role === "PRO" ? (
           <div className="grid-form">
+            <h3 className="full">2. Servicios que ofreces</h3>
             <label className="full">
               Servicios ofrecidos
               <div className="inline-checks">
-                {CLEANING_SERVICE_TYPES.map((item) => (
+                {activeOfferedServices.map((item) => (
                   <label key={item}>
                     <input type="checkbox" checked={offeredServices.includes(item)} onChange={() => toggleInList(item, offeredServices, setOfferedServices)} />
                     {item.replace(/_/g, " ")}
@@ -832,7 +900,7 @@ export default function CleaningOnboardingPage() {
               <div className="inline-checks">
                 <label>
                   <input type="checkbox" checked={acceptsHomesWithPets} onChange={(event) => setAcceptsHomesWithPets(event.target.checked)} />
-                  Acepto casas con mascotas
+                  {activeDynamicLabels.first}
                 </label>
               </div>
             </label>
@@ -840,7 +908,7 @@ export default function CleaningOnboardingPage() {
               <div className="inline-checks">
                 <label>
                   <input type="checkbox" checked={acceptsHomesWithChildren} onChange={(event) => setAcceptsHomesWithChildren(event.target.checked)} />
-                  Acepto hogares con ninos
+                  {activeDynamicLabels.second}
                 </label>
               </div>
             </label>
@@ -848,7 +916,7 @@ export default function CleaningOnboardingPage() {
               <div className="inline-checks">
                 <label>
                   <input type="checkbox" checked={acceptsHomesWithElderly} onChange={(event) => setAcceptsHomesWithElderly(event.target.checked)} />
-                  Acepto hogares con adultos mayores
+                  {activeDynamicLabels.third}
                 </label>
               </div>
             </label>
@@ -856,7 +924,7 @@ export default function CleaningOnboardingPage() {
               <div className="inline-checks">
                 <label>
                   <input type="checkbox" checked={worksWithClientProducts} onChange={(event) => setWorksWithClientProducts(event.target.checked)} />
-                  Trabajo con productos del cliente
+                  {activeDynamicLabels.products}
                 </label>
               </div>
             </label>
@@ -864,7 +932,7 @@ export default function CleaningOnboardingPage() {
               <div className="inline-checks">
                 <label>
                   <input type="checkbox" checked={bringsOwnProducts} onChange={(event) => setBringsOwnProducts(event.target.checked)} />
-                  Llevo productos propios
+                  {activeDynamicLabels.ownProducts}
                 </label>
               </div>
             </label>
@@ -872,7 +940,7 @@ export default function CleaningOnboardingPage() {
               <div className="inline-checks">
                 <label>
                   <input type="checkbox" checked={bringsOwnTools} onChange={(event) => setBringsOwnTools(event.target.checked)} />
-                  Llevo implementos propios
+                  {activeDynamicLabels.ownTools}
                 </label>
               </div>
             </label>
@@ -887,12 +955,17 @@ export default function CleaningOnboardingPage() {
                 ))}
               </div>
             </label>
-            {stepButtons}
+            <div className="cta-row full">
+              <button type="button" className="cta" onClick={() => void saveStep(3)} disabled={saving}>
+                {saving ? "Guardando..." : "Guardar servicios"}
+              </button>
+            </div>
           </div>
         ) : null}
 
-        {session?.role === "PRO" && activeStep === 4 ? (
+        {session?.role === "PRO" ? (
           <div className="grid-form">
+            <h3 className="full">3. Cobertura geografica</h3>
             <label>
               Comuna base
               <input value={baseCommune} onChange={(event) => setBaseCommune(event.target.value)} />
@@ -980,12 +1053,17 @@ export default function CleaningOnboardingPage() {
                 </label>
               </div>
             </label>
-            {stepButtons}
+            <div className="cta-row full">
+              <button type="button" className="cta" onClick={() => void saveStep(4)} disabled={saving}>
+                {saving ? "Guardando..." : "Guardar cobertura"}
+              </button>
+            </div>
           </div>
         ) : null}
 
-        {session?.role === "PRO" && activeStep === 5 ? (
+        {session?.role === "PRO" ? (
           <div className="grid-form">
+            <h3 className="full">4. Disponibilidad</h3>
             <label>
               Tipo de disponibilidad
               <select value={availabilityMode} onChange={(event) => setAvailabilityMode(event.target.value as "FIJA" | "VARIABLE") }>
@@ -1076,12 +1154,17 @@ export default function CleaningOnboardingPage() {
                 </label>
               </div>
             </label>
-            {stepButtons}
+            <div className="cta-row full">
+              <button type="button" className="cta" onClick={() => void saveStep(5)} disabled={saving}>
+                {saving ? "Guardando..." : "Guardar disponibilidad"}
+              </button>
+            </div>
           </div>
         ) : null}
 
-        {session?.role === "PRO" && activeStep === 6 ? (
+        {session?.role === "PRO" ? (
           <div className="grid-form">
+            <h3 className="full">5. Tarifas</h3>
             <label>
               Tarifa por hora (CLP)
               <input type="number" min={5000} value={hourlyRateClp} onChange={(event) => setHourlyRateClp(Number(event.target.value) || 5000)} />
@@ -1126,12 +1209,17 @@ export default function CleaningOnboardingPage() {
                 />
               </label>
             ) : null}
-            {stepButtons}
+            <div className="cta-row full">
+              <button type="button" className="cta" onClick={() => void saveStep(6)} disabled={saving}>
+                {saving ? "Guardando..." : "Guardar tarifas"}
+              </button>
+            </div>
           </div>
         ) : null}
 
-        {session?.role === "PRO" && activeStep === 7 ? (
+        {session?.role === "PRO" ? (
           <div className="grid-form">
+            <h3 className="full">6. Verificacion y pagos</h3>
             <label>
               RUT o documento
               <input value={documentId} onChange={(event) => setDocumentId(event.target.value)} placeholder="12.345.678-9" />
@@ -1229,12 +1317,17 @@ export default function CleaningOnboardingPage() {
               <span className="minimal-note">Telefono validado: {phoneValidated ? "si" : "no"}</span>
             </div>
 
-            {stepButtons}
+            <div className="cta-row full">
+              <button type="button" className="cta" onClick={() => void saveStep(7)} disabled={saving}>
+                {saving ? "Guardando..." : "Guardar verificacion"}
+              </button>
+            </div>
           </div>
         ) : null}
 
-        {session?.role === "PRO" && activeStep === 8 ? (
+        {session?.role === "PRO" ? (
           <div className="grid-form">
+            <h3 className="full">7. Capacitacion y politicas</h3>
             <label className="full">
               Mini induccion obligatoria
               <div className="inline-checks">
@@ -1270,14 +1363,18 @@ export default function CleaningOnboardingPage() {
                 </label>
               </div>
             </label>
-            {stepButtons}
+            <div className="cta-row full">
+              <button type="button" className="cta" onClick={() => void saveStep(8)} disabled={saving}>
+                {saving ? "Guardando..." : "Guardar capacitacion"}
+              </button>
+            </div>
           </div>
         ) : null}
 
-        {session?.role === "PRO" && activeStep === 9 ? (
+        {session?.role === "PRO" ? (
           <div className="grid-form">
             <div className="full module-card">
-              <h3>Revision y activacion</h3>
+              <h3>8. Revision y activacion</h3>
               <p>
                 Estado actual: <strong>{onboarding ? CLEANING_STATUS_LABELS[onboarding.status] : "borrador"}</strong>
               </p>

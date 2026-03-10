@@ -4,7 +4,14 @@ export const CLEANING_EXPERIENCE_TYPES = [
   "oficinas_pequenas",
   "airbnb",
   "limpieza_profunda",
-  "planchado"
+  "planchado",
+  "mantenciones_hogar",
+  "instalaciones",
+  "reparaciones",
+  "clases_escolares",
+  "clases_musica",
+  "clases_idiomas",
+  "clases_online"
 ] as const;
 
 export const CLEANING_SERVICE_TYPES = [
@@ -16,7 +23,14 @@ export const CLEANING_SERVICE_TYPES = [
   "orden_organizacion",
   "lavado_loza",
   "limpieza_oficina_pequena",
-  "post_evento"
+  "post_evento",
+  "maestro_reparaciones",
+  "maestro_instalaciones",
+  "maestro_urgencias",
+  "clases_apoyo_escolar",
+  "clases_musica",
+  "clases_idiomas",
+  "clases_online"
 ] as const;
 
 export const CLEANING_WEEK_DAYS = [

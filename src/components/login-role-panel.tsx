@@ -40,7 +40,7 @@ export function LoginRolePanel({ role }: LoginRolePanelProps) {
     ? "Gestiona tus servicios, disponibilidad y reservas."
     : "Reserva servicios y haz seguimiento de tus solicitudes.";
 
-  const createAccountHref = isTasker ? "/registro?role=PRO" : "/registro?role=CUSTOMER";
+  const createAccountHref = isTasker ? "/trabaja-con-nosotros" : "/registro?role=CUSTOMER";
   const createAccountLabel = isTasker ? "Crear cuenta tasker" : "Crear cuenta cliente";
 
   const demoUser = useMemo(() => {
