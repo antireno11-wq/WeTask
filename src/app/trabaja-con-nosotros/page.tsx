@@ -15,9 +15,6 @@ export default function TrabajaConNosotrosPage() {
           <Link href="/trabaja-con-nosotros/registro" className="cta">
             Iniciar onboarding
           </Link>
-          <Link href="/ingresar/tasker" className="cta ghost">
-            Ya tengo cuenta
-          </Link>
         </div>
       </section>
 

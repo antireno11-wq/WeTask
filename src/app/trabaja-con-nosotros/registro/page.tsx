@@ -1,16 +1,17 @@
 "use client";
 
-import Link from "next/link";
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, MouseEvent, useEffect, useMemo, useState } from "react";
 import { MarketNav } from "@/components/market-nav";
+import { geocodeAddress } from "@/lib/geo";
 import {
   CHILE_TOP_COMMUNES,
   CLEANING_EXPERIENCE_TYPES,
+  CLEANING_LANGUAGE_OPTIONS,
   CLEANING_ONBOARDING_STEPS,
   CLEANING_SERVICE_TYPES,
+  CLEANING_STATUS_LABELS,
   CLEANING_TRAINING_TOPICS,
-  CLEANING_WEEK_DAYS,
-  CLEANING_STATUS_LABELS
+  CLEANING_WEEK_DAYS
 } from "@/lib/cleaning-onboarding";
 
 type SessionPayload = {
@@ -25,6 +26,14 @@ type OnboardingPayload = {
   status: "BORRADOR" | "PENDIENTE_REVISION" | "REQUIERE_CORRECCION" | "APROBADO" | "ACTIVO";
   currentStep: number;
   baseCommune: string | null;
+  referenceAddress: string | null;
+  documentId: string | null;
+  birthDate: string | null;
+  nationality: string | null;
+  migrationStatus: string | null;
+  emergencyContactName: string | null;
+  emergencyContactPhone: string | null;
+  workReferences: string | null;
   profilePhotoUrl: string | null;
   shortDescription: string | null;
   yearsExperience: number | null;
@@ -33,10 +42,14 @@ type OnboardingPayload = {
   offeredServices: unknown;
   acceptsHomesWithPets: boolean | null;
   acceptsHomesWithChildren: boolean | null;
+  acceptsHomesWithElderly: boolean | null;
   worksWithClientProducts: boolean | null;
   bringsOwnProducts: boolean | null;
   bringsOwnTools: boolean | null;
+  languages: unknown;
   serviceCommunes: unknown;
+  coverageLatitude: number | null;
+  coverageLongitude: number | null;
   maxTravelKm: number | null;
   chargesTravelExtra: boolean | null;
   availabilityMode: "FIJA" | "VARIABLE" | null;
@@ -50,15 +63,23 @@ type OnboardingPayload = {
   remoteCommuneSurchargeClp: number | null;
   deepCleaningHourlyRateClp: number | null;
   identityDocumentFile: string | null;
+  identityDocumentFrontFile: string | null;
+  identityDocumentBackFile: string | null;
   identitySelfieFile: string | null;
   criminalRecordFile: string | null;
   bankAccountHolder: string | null;
+  bankAccountHolderRut: string | null;
   bankName: string | null;
   bankAccountType: string | null;
   bankAccountNumber: string | null;
+  billingType: string | null;
   phoneValidatedAt: string | null;
   trainingTopics: unknown;
   trainingCompletedAt: string | null;
+  acceptsCancellationPolicy: boolean | null;
+  acceptsServiceProtocol: boolean | null;
+  acceptsDataProcessing: boolean | null;
+  confirmsCleaningScope: boolean | null;
   submittedAt: string | null;
   adminReviewNotes: string | null;
 };
@@ -68,6 +89,18 @@ type AvailabilityBlock = {
   start: string;
   end: string;
 };
+
+
+const SANTIAGO_BOUNDS = {
+  minLat: -33.62,
+  maxLat: -33.3,
+  minLng: -70.82,
+  maxLng: -70.45
+};
+
+function clamp(value: number, min: number, max: number) {
+  return Math.min(Math.max(value, min), max);
+}
 
 function toStringArray(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
@@ -113,7 +146,6 @@ export default function CleaningOnboardingPage() {
   const [regPhone, setRegPhone] = useState("");
   const [regEmail, setRegEmail] = useState("");
   const [regPassword, setRegPassword] = useState("");
-  const [regAuthProvider, setRegAuthProvider] = useState<"EMAIL" | "GOOGLE" | "APPLE">("EMAIL");
   const [regBaseCommune, setRegBaseCommune] = useState("Las Condes");
   const [regTerms, setRegTerms] = useState(false);
 
@@ -122,16 +154,23 @@ export default function CleaningOnboardingPage() {
   const [yearsExperience, setYearsExperience] = useState(2);
   const [workMode, setWorkMode] = useState<"SOLO" | "EQUIPO">("SOLO");
   const [experienceTypes, setExperienceTypes] = useState<string[]>([]);
+  const [referenceAddress, setReferenceAddress] = useState("");
 
   const [offeredServices, setOfferedServices] = useState<string[]>([]);
   const [acceptsHomesWithPets, setAcceptsHomesWithPets] = useState(true);
   const [acceptsHomesWithChildren, setAcceptsHomesWithChildren] = useState(true);
+  const [acceptsHomesWithElderly, setAcceptsHomesWithElderly] = useState(true);
   const [worksWithClientProducts, setWorksWithClientProducts] = useState(true);
   const [bringsOwnProducts, setBringsOwnProducts] = useState(false);
   const [bringsOwnTools, setBringsOwnTools] = useState(false);
+  const [languages, setLanguages] = useState<string[]>(["espanol"]);
 
   const [baseCommune, setBaseCommune] = useState("Las Condes");
   const [serviceCommunes, setServiceCommunes] = useState<string[]>([]);
+  const [coverageLatitude, setCoverageLatitude] = useState("-33.448900");
+  const [coverageLongitude, setCoverageLongitude] = useState("-70.669300");
+  const [manualCoveragePoint, setManualCoveragePoint] = useState(false);
+  const [addressValidationState, setAddressValidationState] = useState<"idle" | "validating" | "verified" | "fallback">("idle");
   const [maxTravelKm, setMaxTravelKm] = useState(12);
   const [chargesTravelExtra, setChargesTravelExtra] = useState(false);
 
@@ -148,22 +187,140 @@ export default function CleaningOnboardingPage() {
   const [hasDeepCleaningRate, setHasDeepCleaningRate] = useState(false);
   const [deepCleaningHourlyRateClp, setDeepCleaningHourlyRateClp] = useState(15000);
 
-  const [identityDocumentFile, setIdentityDocumentFile] = useState("");
+  const [documentId, setDocumentId] = useState("");
+  const [birthDate, setBirthDate] = useState("");
+  const [nationality, setNationality] = useState("chilena");
+  const [migrationStatus, setMigrationStatus] = useState("");
+  const [emergencyContactName, setEmergencyContactName] = useState("");
+  const [emergencyContactPhone, setEmergencyContactPhone] = useState("");
+  const [workReferences, setWorkReferences] = useState("");
+  const [identityDocumentFrontFile, setIdentityDocumentFrontFile] = useState("");
+  const [identityDocumentBackFile, setIdentityDocumentBackFile] = useState("");
   const [identitySelfieFile, setIdentitySelfieFile] = useState("");
   const [criminalRecordFile, setCriminalRecordFile] = useState("");
   const [bankAccountHolder, setBankAccountHolder] = useState("");
+  const [bankAccountHolderRut, setBankAccountHolderRut] = useState("");
   const [bankName, setBankName] = useState("");
   const [bankAccountType, setBankAccountType] = useState("cuenta_corriente");
   const [bankAccountNumber, setBankAccountNumber] = useState("");
+  const [billingType, setBillingType] = useState("persona_natural");
   const [phoneCode, setPhoneCode] = useState("");
 
   const [completedTopics, setCompletedTopics] = useState<string[]>([]);
+  const [acceptsCancellationPolicy, setAcceptsCancellationPolicy] = useState(false);
+  const [acceptsServiceProtocol, setAcceptsServiceProtocol] = useState(false);
+  const [acceptsDataProcessing, setAcceptsDataProcessing] = useState(false);
+  const [confirmsCleaningScope, setConfirmsCleaningScope] = useState(false);
 
   const phoneValidated = Boolean(onboarding?.phoneValidatedAt);
   const canAccessStep = useMemo(() => {
     if (!session || session.role !== "PRO") return 1;
     return Math.max(2, onboarding?.currentStep ?? 2);
   }, [onboarding?.currentStep, session]);
+
+  const parsedMapLat = Number(coverageLatitude);
+  const parsedMapLng = Number(coverageLongitude);
+  const geocodedCenter = useMemo(
+    () =>
+      geocodeAddress({
+        city: "Santiago",
+        postalCode: "7500000",
+        street: `${referenceAddress} ${baseCommune}`.trim(),
+        fallback: { lat: -33.4489, lng: -70.6693 }
+      }),
+    [referenceAddress, baseCommune]
+  );
+  const mapLat = clamp(
+    Number.isFinite(parsedMapLat) ? parsedMapLat : geocodedCenter.lat,
+    SANTIAGO_BOUNDS.minLat,
+    SANTIAGO_BOUNDS.maxLat
+  );
+  const mapLng = clamp(
+    Number.isFinite(parsedMapLng) ? parsedMapLng : geocodedCenter.lng,
+    SANTIAGO_BOUNDS.minLng,
+    SANTIAGO_BOUNDS.maxLng
+  );
+  const markerLeftPct = clamp(
+    ((mapLng - SANTIAGO_BOUNDS.minLng) / (SANTIAGO_BOUNDS.maxLng - SANTIAGO_BOUNDS.minLng)) * 100,
+    0,
+    100
+  );
+  const markerTopPct = clamp(
+    (1 - (mapLat - SANTIAGO_BOUNDS.minLat) / (SANTIAGO_BOUNDS.maxLat - SANTIAGO_BOUNDS.minLat)) * 100,
+    0,
+    100
+  );
+  const radiusPx = Math.max(30, maxTravelKm * 10);
+  const mapEmbedUrl = `https://www.openstreetmap.org/export/embed.html?bbox=${SANTIAGO_BOUNDS.minLng}%2C${SANTIAGO_BOUNDS.minLat}%2C${SANTIAGO_BOUNDS.maxLng}%2C${SANTIAGO_BOUNDS.maxLat}&layer=hot&marker=${mapLat}%2C${mapLng}`;
+
+  const updateCoverageFromPointer = (clientX: number, clientY: number, rect: DOMRect) => {
+    const x = clamp((clientX - rect.left) / rect.width, 0, 1);
+    const y = clamp((clientY - rect.top) / rect.height, 0, 1);
+    const lng = SANTIAGO_BOUNDS.minLng + x * (SANTIAGO_BOUNDS.maxLng - SANTIAGO_BOUNDS.minLng);
+    const lat = SANTIAGO_BOUNDS.maxLat - y * (SANTIAGO_BOUNDS.maxLat - SANTIAGO_BOUNDS.minLat);
+    setCoverageLatitude(lat.toFixed(6));
+    setCoverageLongitude(lng.toFixed(6));
+    setManualCoveragePoint(true);
+    setAddressValidationState("verified");
+  };
+
+  const onCoverageMapClick = (event: MouseEvent<HTMLDivElement>) => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    updateCoverageFromPointer(event.clientX, event.clientY, rect);
+  };
+
+  useEffect(() => {
+    if (!referenceAddress.trim()) {
+      if (!manualCoveragePoint) {
+        setCoverageLatitude(geocodedCenter.lat.toFixed(6));
+        setCoverageLongitude(geocodedCenter.lng.toFixed(6));
+      }
+      setAddressValidationState("idle");
+      return;
+    }
+
+    if (!manualCoveragePoint) {
+      setCoverageLatitude(geocodedCenter.lat.toFixed(6));
+      setCoverageLongitude(geocodedCenter.lng.toFixed(6));
+    }
+
+    const controller = new AbortController();
+    const timer = setTimeout(async () => {
+      setAddressValidationState("validating");
+      try {
+        const query = `${referenceAddress}, ${baseCommune}, Santiago, Chile`;
+        const response = await fetch(`/api/maps/validate-address?address=${encodeURIComponent(query)}`, {
+          signal: controller.signal
+        });
+        const data = (await response.json()) as {
+          valid?: boolean;
+          skipped?: boolean;
+          location?: { lat?: number | null; lng?: number | null };
+        };
+
+        if (!response.ok || !data.valid) {
+          setAddressValidationState("fallback");
+          return;
+        }
+
+        if (!manualCoveragePoint && data.location?.lat != null && data.location?.lng != null) {
+          setCoverageLatitude(Number(data.location.lat).toFixed(6));
+          setCoverageLongitude(Number(data.location.lng).toFixed(6));
+        }
+
+        setAddressValidationState(data.skipped ? "fallback" : "verified");
+      } catch {
+        if (!controller.signal.aborted) {
+          setAddressValidationState("fallback");
+        }
+      }
+    }, 500);
+
+    return () => {
+      controller.abort();
+      clearTimeout(timer);
+    };
+  }, [baseCommune, geocodedCenter.lat, geocodedCenter.lng, manualCoveragePoint, referenceAddress]);
 
   const hydrateFromOnboarding = (next: OnboardingPayload) => {
     setOnboarding(next);
@@ -174,15 +331,29 @@ export default function CleaningOnboardingPage() {
     setYearsExperience(next.yearsExperience ?? 2);
     setWorkMode(next.workMode ?? "SOLO");
     setExperienceTypes(toStringArray(next.experienceTypes));
+    setReferenceAddress(next.referenceAddress ?? "");
 
     setOfferedServices(toStringArray(next.offeredServices));
     setAcceptsHomesWithPets(next.acceptsHomesWithPets ?? true);
     setAcceptsHomesWithChildren(next.acceptsHomesWithChildren ?? true);
+    setAcceptsHomesWithElderly(next.acceptsHomesWithElderly ?? true);
     setWorksWithClientProducts(next.worksWithClientProducts ?? true);
     setBringsOwnProducts(next.bringsOwnProducts ?? false);
     setBringsOwnTools(next.bringsOwnTools ?? false);
+    setLanguages(toStringArray(next.languages).length > 0 ? toStringArray(next.languages) : ["espanol"]);
 
     setServiceCommunes(toStringArray(next.serviceCommunes));
+    if (next.coverageLatitude != null && next.coverageLongitude != null) {
+      setCoverageLatitude(next.coverageLatitude.toFixed(6));
+      setCoverageLongitude(next.coverageLongitude.toFixed(6));
+      setManualCoveragePoint(true);
+      setAddressValidationState("verified");
+    } else {
+      setCoverageLatitude("-33.448900");
+      setCoverageLongitude("-70.669300");
+      setManualCoveragePoint(false);
+      setAddressValidationState("idle");
+    }
     setMaxTravelKm(next.maxTravelKm ?? 12);
     setChargesTravelExtra(next.chargesTravelExtra ?? false);
 
@@ -199,15 +370,29 @@ export default function CleaningOnboardingPage() {
     setHasDeepCleaningRate((next.deepCleaningHourlyRateClp ?? 0) > 0);
     setDeepCleaningHourlyRateClp(next.deepCleaningHourlyRateClp ?? 15000);
 
-    setIdentityDocumentFile(next.identityDocumentFile ?? "");
+    setDocumentId(next.documentId ?? "");
+    setBirthDate(next.birthDate ? new Date(next.birthDate).toISOString().slice(0, 10) : "");
+    setNationality(next.nationality ?? "chilena");
+    setMigrationStatus(next.migrationStatus ?? "");
+    setEmergencyContactName(next.emergencyContactName ?? "");
+    setEmergencyContactPhone(next.emergencyContactPhone ?? "");
+    setWorkReferences(next.workReferences ?? "");
+    setIdentityDocumentFrontFile(next.identityDocumentFrontFile ?? next.identityDocumentFile ?? "");
+    setIdentityDocumentBackFile(next.identityDocumentBackFile ?? "");
     setIdentitySelfieFile(next.identitySelfieFile ?? "");
     setCriminalRecordFile(next.criminalRecordFile ?? "");
     setBankAccountHolder(next.bankAccountHolder ?? "");
+    setBankAccountHolderRut(next.bankAccountHolderRut ?? "");
     setBankName(next.bankName ?? "");
     setBankAccountType(next.bankAccountType ?? "cuenta_corriente");
     setBankAccountNumber(next.bankAccountNumber ?? "");
+    setBillingType(next.billingType ?? "persona_natural");
 
     setCompletedTopics(toStringArray(next.trainingTopics));
+    setAcceptsCancellationPolicy(Boolean(next.acceptsCancellationPolicy));
+    setAcceptsServiceProtocol(Boolean(next.acceptsServiceProtocol));
+    setAcceptsDataProcessing(Boolean(next.acceptsDataProcessing));
+    setConfirmsCleaningScope(Boolean(next.confirmsCleaningScope));
     setActiveStep(Math.min(9, Math.max(2, next.currentStep ?? 2)));
   };
 
@@ -272,8 +457,8 @@ export default function CleaningOnboardingPage() {
           fullName: regFullName,
           phone: regPhone,
           email: regEmail,
-          password: regAuthProvider === "EMAIL" ? regPassword : undefined,
-          authProvider: regAuthProvider,
+          password: regPassword,
+          authProvider: "EMAIL",
           baseCommune: regBaseCommune,
           acceptTerms: regTerms
         })
@@ -314,7 +499,8 @@ export default function CleaningOnboardingPage() {
           shortDescription,
           yearsExperience,
           workMode,
-          experienceTypes
+          experienceTypes,
+          referenceAddress
         };
       }
 
@@ -323,16 +509,29 @@ export default function CleaningOnboardingPage() {
           offeredServices,
           acceptsHomesWithPets,
           acceptsHomesWithChildren,
+          acceptsHomesWithElderly,
           worksWithClientProducts,
           bringsOwnProducts,
-          bringsOwnTools
+          bringsOwnTools,
+          languages
         };
       }
 
       if (step === 4) {
+        const lat = Number(coverageLatitude);
+        const lng = Number(coverageLongitude);
+        if (!referenceAddress.trim()) {
+          throw new Error("Ingresa una direccion para definir la cobertura.");
+        }
+        if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+          throw new Error("Debes seleccionar una ubicacion valida en el mapa.");
+        }
         payload = {
           baseCommune,
+          referenceAddress,
           serviceCommunes,
+          coverageLatitude: lat,
+          coverageLongitude: lng,
           maxTravelKm,
           chargesTravelExtra
         };
@@ -361,19 +560,33 @@ export default function CleaningOnboardingPage() {
 
       if (step === 7) {
         payload = {
-          identityDocumentFile,
+          documentId,
+          birthDate,
+          nationality,
+          migrationStatus,
+          emergencyContactName,
+          emergencyContactPhone,
+          workReferences,
+          identityDocumentFrontFile,
+          identityDocumentBackFile,
           identitySelfieFile,
           criminalRecordFile,
           bankAccountHolder,
+          bankAccountHolderRut,
           bankName,
           bankAccountType,
-          bankAccountNumber
+          bankAccountNumber,
+          billingType
         };
       }
 
       if (step === 8) {
         payload = {
-          completedTopics
+          completedTopics,
+          acceptsCancellationPolicy,
+          acceptsServiceProtocol,
+          acceptsDataProcessing,
+          confirmsCleaningScope
         };
       }
 
@@ -529,19 +742,9 @@ export default function CleaningOnboardingPage() {
               <input type="email" value={regEmail} onChange={(event) => setRegEmail(event.target.value)} required />
             </label>
             <label>
-              Tipo de acceso
-              <select value={regAuthProvider} onChange={(event) => setRegAuthProvider(event.target.value as "EMAIL" | "GOOGLE" | "APPLE") }>
-                <option value="EMAIL">Email + contrasena</option>
-                <option value="GOOGLE">Google</option>
-                <option value="APPLE">Apple</option>
-              </select>
+              Contrasena
+              <input type="password" value={regPassword} onChange={(event) => setRegPassword(event.target.value)} minLength={8} required />
             </label>
-            {regAuthProvider === "EMAIL" ? (
-              <label>
-                Contrasena
-                <input type="password" value={regPassword} onChange={(event) => setRegPassword(event.target.value)} minLength={8} required />
-              </label>
-            ) : null}
             <label>
               Comuna base
               <select value={regBaseCommune} onChange={(event) => setRegBaseCommune(event.target.value)}>
@@ -564,9 +767,6 @@ export default function CleaningOnboardingPage() {
               <button type="submit" className="cta" disabled={saving}>
                 {saving ? "Creando cuenta..." : "Continuar onboarding"}
               </button>
-              <Link href="/ingresar/tasker" className="cta ghost">
-                Ya tengo cuenta
-              </Link>
             </div>
           </form>
         ) : null}
@@ -607,6 +807,10 @@ export default function CleaningOnboardingPage() {
                 ))}
               </div>
             </label>
+            <label className="full">
+              Direccion referencial
+              <input value={referenceAddress} onChange={(event) => setReferenceAddress(event.target.value)} placeholder="Ej: Av. Apoquindo 1234, depto 45" />
+            </label>
             {stepButtons}
           </div>
         ) : null}
@@ -643,6 +847,14 @@ export default function CleaningOnboardingPage() {
             <label>
               <div className="inline-checks">
                 <label>
+                  <input type="checkbox" checked={acceptsHomesWithElderly} onChange={(event) => setAcceptsHomesWithElderly(event.target.checked)} />
+                  Acepto hogares con adultos mayores
+                </label>
+              </div>
+            </label>
+            <label>
+              <div className="inline-checks">
+                <label>
                   <input type="checkbox" checked={worksWithClientProducts} onChange={(event) => setWorksWithClientProducts(event.target.checked)} />
                   Trabajo con productos del cliente
                 </label>
@@ -664,6 +876,17 @@ export default function CleaningOnboardingPage() {
                 </label>
               </div>
             </label>
+            <label className="full">
+              Idiomas
+              <div className="inline-checks">
+                {CLEANING_LANGUAGE_OPTIONS.map((item) => (
+                  <label key={item}>
+                    <input type="checkbox" checked={languages.includes(item)} onChange={() => toggleInList(item, languages, setLanguages)} />
+                    {item}
+                  </label>
+                ))}
+              </div>
+            </label>
             {stepButtons}
           </div>
         ) : null}
@@ -679,6 +902,27 @@ export default function CleaningOnboardingPage() {
               <input type="number" min={1} max={80} value={maxTravelKm} onChange={(event) => setMaxTravelKm(Number(event.target.value) || 1)} />
             </label>
             <label className="full">
+              Direccion base para mapa de cobertura
+              <input
+                value={referenceAddress}
+                onChange={(event) => {
+                  setReferenceAddress(event.target.value);
+                  setManualCoveragePoint(false);
+                }}
+                placeholder="Ej: Av. Apoquindo 1234"
+              />
+              <small className="input-hint">
+                {addressValidationState === "idle" ? "Escribe una direccion para ubicar tu casa en el mapa." : null}
+                {addressValidationState === "validating" ? "Validando direccion..." : null}
+                {addressValidationState === "verified"
+                  ? "Direccion validada. Puedes ajustar el pin con un clic sobre el mapa."
+                  : null}
+                {addressValidationState === "fallback"
+                  ? "No hubo validacion exacta de Google. Usamos una ubicacion estimada por comuna."
+                  : null}
+              </small>
+            </label>
+            <label className="full">
               Comunas donde atiendes
               <div className="inline-checks">
                 {CHILE_TOP_COMMUNES.map((item) => (
@@ -689,6 +933,45 @@ export default function CleaningOnboardingPage() {
                 ))}
               </div>
             </label>
+            <article className="coverage-map-card full">
+              <header className="coverage-map-head">
+                <h3>Mapa en tiempo real de tu zona de servicio</h3>
+                <p>El icono de casa marca tu base y el circulo muestra el radio donde prestaras servicios.</p>
+              </header>
+              <div className="coverage-map-wrap">
+                <div className="coverage-map-interactive" onClick={onCoverageMapClick} role="presentation">
+                  <iframe
+                    title="Mapa cobertura profesional"
+                    className="coverage-map-frame"
+                    src={mapEmbedUrl}
+                    loading="lazy"
+                    referrerPolicy="no-referrer-when-downgrade"
+                  />
+                  <div className="coverage-pin" style={{ left: `${markerLeftPct}%`, top: `${markerTopPct}%` }}>
+                    <span
+                      className="coverage-pin-radius"
+                      style={{ width: `${radiusPx * 2}px`, height: `${radiusPx * 2}px` }}
+                    />
+                    <span
+                      className="coverage-pin-dot"
+                      style={{
+                        width: "26px",
+                        height: "26px",
+                        display: "grid",
+                        placeItems: "center",
+                        fontSize: "12px",
+                        background: "#0f7cab"
+                      }}
+                    >
+                      🏠
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <p className="coverage-meta">
+                Coordenadas base: {mapLat.toFixed(6)}, {mapLng.toFixed(6)} · Radio activo: {maxTravelKm} km
+              </p>
+            </article>
             <label className="full">
               <div className="inline-checks">
                 <label>
@@ -850,20 +1133,56 @@ export default function CleaningOnboardingPage() {
         {session?.role === "PRO" && activeStep === 7 ? (
           <div className="grid-form">
             <label>
-              Documento identidad
-              <input type="file" accept="application/pdf,image/png,image/jpeg" onChange={(event) => void uploadAsDataUrl(event.target.files?.[0] ?? null, setIdentityDocumentFile)} />
+              RUT o documento
+              <input value={documentId} onChange={(event) => setDocumentId(event.target.value)} placeholder="12.345.678-9" />
             </label>
             <label>
-              Selfie validacion
+              Fecha de nacimiento
+              <input type="date" value={birthDate} onChange={(event) => setBirthDate(event.target.value)} />
+            </label>
+            <label>
+              Nacionalidad
+              <input value={nationality} onChange={(event) => setNationality(event.target.value)} />
+            </label>
+            <label>
+              Situacion migratoria (si aplica)
+              <input value={migrationStatus} onChange={(event) => setMigrationStatus(event.target.value)} placeholder="Residencia definitiva / temporal" />
+            </label>
+            <label>
+              Contacto de emergencia (nombre)
+              <input value={emergencyContactName} onChange={(event) => setEmergencyContactName(event.target.value)} />
+            </label>
+            <label>
+              Contacto de emergencia (telefono)
+              <input value={emergencyContactPhone} onChange={(event) => setEmergencyContactPhone(event.target.value)} />
+            </label>
+            <label className="full">
+              Referencias laborales o personales
+              <textarea value={workReferences} onChange={(event) => setWorkReferences(event.target.value)} placeholder="Nombre, relacion y telefono de al menos una referencia" />
+            </label>
+            <label>
+              Cedula (frente)
+              <input type="file" accept="image/png,image/jpeg" onChange={(event) => void uploadAsDataUrl(event.target.files?.[0] ?? null, setIdentityDocumentFrontFile)} />
+            </label>
+            <label>
+              Cedula (reverso)
+              <input type="file" accept="image/png,image/jpeg" onChange={(event) => void uploadAsDataUrl(event.target.files?.[0] ?? null, setIdentityDocumentBackFile)} />
+            </label>
+            <label>
+              Selfie de validacion
               <input type="file" accept="image/png,image/jpeg" onChange={(event) => void uploadAsDataUrl(event.target.files?.[0] ?? null, setIdentitySelfieFile)} />
             </label>
             <label>
-              Certificado antecedentes
+              Certificado de antecedentes
               <input type="file" accept="application/pdf,image/png,image/jpeg" onChange={(event) => void uploadAsDataUrl(event.target.files?.[0] ?? null, setCriminalRecordFile)} />
             </label>
             <label>
               Titular cuenta bancaria
               <input value={bankAccountHolder} onChange={(event) => setBankAccountHolder(event.target.value)} />
+            </label>
+            <label>
+              RUT titular cuenta
+              <input value={bankAccountHolderRut} onChange={(event) => setBankAccountHolderRut(event.target.value)} />
             </label>
             <label>
               Banco
@@ -881,6 +1200,13 @@ export default function CleaningOnboardingPage() {
             <label>
               Numero de cuenta
               <input value={bankAccountNumber} onChange={(event) => setBankAccountNumber(event.target.value)} />
+            </label>
+            <label>
+              Tipo de facturacion
+              <select value={billingType} onChange={(event) => setBillingType(event.target.value)}>
+                <option value="persona_natural">Persona natural</option>
+                <option value="boleta_honorarios">Emito boleta</option>
+              </select>
             </label>
 
             <label>
@@ -922,6 +1248,26 @@ export default function CleaningOnboardingPage() {
                     {topic.replace(/_/g, " ")}
                   </label>
                 ))}
+              </div>
+            </label>
+            <label className="full">
+              <div className="inline-checks">
+                <label>
+                  <input type="checkbox" checked={acceptsCancellationPolicy} onChange={(event) => setAcceptsCancellationPolicy(event.target.checked)} />
+                  Acepto politica de cancelacion
+                </label>
+                <label>
+                  <input type="checkbox" checked={acceptsServiceProtocol} onChange={(event) => setAcceptsServiceProtocol(event.target.checked)} />
+                  Acepto protocolo de servicio
+                </label>
+                <label>
+                  <input type="checkbox" checked={acceptsDataProcessing} onChange={(event) => setAcceptsDataProcessing(event.target.checked)} />
+                  Autorizo tratamiento de datos
+                </label>
+                <label>
+                  <input type="checkbox" checked={confirmsCleaningScope} onChange={(event) => setConfirmsCleaningScope(event.target.checked)} />
+                  Confirmo que entiendo que incluye y que no incluye una limpieza
+                </label>
               </div>
             </label>
             {stepButtons}
