@@ -2004,7 +2004,7 @@ textarea {
 /* MVP landing */
 .mvp-landing {
   display: grid;
-  gap: 14px;
+  gap: 16px;
 }
 
 .mvp-top {
@@ -2015,9 +2015,13 @@ textarea {
 }
 
 .mvp-hero {
+  display: grid;
+  gap: 12px;
   text-align: center;
-  padding: 34px 22px;
-  border: 1px solid #d6e6f2;
+  padding: 26px 20px 24px;
+  border: 1px solid #d7e5f2;
+  border-radius: 18px;
+  background: #ffffff;
   box-shadow: none;
 }
 
@@ -2044,6 +2048,33 @@ textarea {
 
 .mvp-hero-actions {
   justify-content: center;
+}
+
+.mvp-category-top-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 2px;
+}
+
+.mvp-category-top-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 14px;
+  border-radius: 999px;
+  border: 1px solid #c7d9ea;
+  background: #f8fbff;
+  color: #13345c;
+  font-weight: 800;
+  text-decoration: none;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.mvp-category-top-pill:hover {
+  background: #eef6ff;
+  border-color: #adc7df;
 }
 
 .mvp-coverage-note {
@@ -2112,6 +2143,62 @@ textarea {
   color: #324660;
 }
 
+.mvp-how-grid {
+  margin-top: 8px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.mvp-intro {
+  background: linear-gradient(180deg, #f8fcff 0%, #f1f7fd 100%);
+}
+
+.mvp-intro-copy {
+  max-width: 860px;
+  margin: 0 auto;
+  display: grid;
+  gap: 10px;
+  text-align: center;
+}
+
+.mvp-intro-copy h2 {
+  margin: 0;
+  font-family: "Space Grotesk", sans-serif;
+  font-size: clamp(1.5rem, 3.4vw, 2.3rem);
+}
+
+.mvp-intro-copy p {
+  margin: 0;
+  color: #334861;
+  font-size: 1.03rem;
+}
+
+.mvp-why-grid {
+  margin-top: 8px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.mvp-why-card {
+  border: 1px solid #d6e6f2;
+  border-radius: 14px;
+  background: #ffffff;
+  padding: 16px;
+  display: grid;
+  gap: 8px;
+}
+
+.mvp-why-card h3 {
+  margin: 0;
+}
+
+.mvp-why-card p {
+  margin: 0;
+  color: #334861;
+}
+
 .mvp-trust-list {
   margin: 8px 0 0;
   padding-left: 0;
@@ -2139,6 +2226,10 @@ textarea {
 
 .mvp-final-cta .cta {
   margin-top: 14px;
+}
+
+.mvp-guarantee-final {
+  background: linear-gradient(180deg, #f7fcff 0%, #edf7fb 100%);
 }
 
 .mvp-footer {
@@ -2191,8 +2282,18 @@ textarea {
 
 @media (max-width: 960px) {
   .mvp-service-grid,
-  .mvp-steps-grid {
+  .mvp-steps-grid,
+  .mvp-how-grid,
+  .mvp-why-grid {
     grid-template-columns: 1fr;
+  }
+
+  .mvp-category-top-row {
+    justify-content: flex-start;
+  }
+
+  .mvp-intro-copy {
+    text-align: left;
   }
 
   .mvp-footer {

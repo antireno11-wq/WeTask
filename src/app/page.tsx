@@ -1,35 +1,51 @@
 import Link from "next/link";
 import { MarketNav } from "@/components/market-nav";
 
-const landingServices = [
-  { key: "gasfiter", icon: "🔧", label: "Gasfiter" },
-  { key: "electricista", icon: "⚡", label: "Electricista" },
-  { key: "maestro-multiuso", icon: "🧰", label: "Maestro multiuso" },
-  { key: "aire-acondicionado", icon: "❄️", label: "Aire acondicionado" },
-  { key: "jardineria", icon: "🌿", label: "Jardineria" },
-  { key: "reparaciones-hogar", icon: "🏠", label: "Reparaciones del hogar" }
+const topCategories = [
+  { key: "hogar", icon: "🏠", label: "Hogar", service: "Limpieza general" },
+  { key: "clases", icon: "📚", label: "Clases", service: "Clases particulares" },
+  { key: "deportes", icon: "💪", label: "Deportes", service: "Entrenamiento" },
+  { key: "otros", icon: "🧰", label: "Otros", service: "Maestro multiuso" },
+  { key: "cuidados", icon: "❤️", label: "Cuidados", service: "Cuidado de personas" },
+  { key: "belleza", icon: "💇", label: "Belleza", service: "Peluqueria" },
+  { key: "mascotas", icon: "🐶", label: "Mascotas", service: "Cuidado de mascotas" }
 ];
 
 const howItWorks = [
   {
-    title: "1. Describe tu problema",
-    text: "Cuentanos que necesitas reparar o instalar."
+    title: "Busca lo que necesitas",
+    text: "Selecciona la categoria y cuentanos que servicio necesitas en tu domicilio."
   },
   {
-    title: "2. Encuentra tecnicos cerca",
-    text: "Te mostramos tecnicos disponibles en tu zona."
+    title: "Escoge a tu profesional",
+    text: "Compara perfiles, precios por hora y disponibilidad antes de reservar."
   },
   {
-    title: "3. Agenda una visita",
-    text: "Elige horario y confirma el servicio."
-  },
-  {
-    title: "4. Trabajo realizado",
-    text: "El tecnico realiza el trabajo y puedes calificarlo."
+    title: "Contratalo en pocos clics",
+    text: "Reserva online y coordina todo desde WeTask con pago protegido."
   }
 ];
 
-const trustItems = ["Tecnicos verificados", "Calificaciones de clientes", "Pago seguro", "Soporte al cliente"];
+const whyWetask = [
+  {
+    title: "Precio",
+    text: "Servicios al mejor precio."
+  },
+  {
+    title: "Tranquilidad",
+    text: "Profesionales de confianza. Soporte 365 dias del ano. Tu dinero protegido hasta el final."
+  },
+  {
+    title: "Comodidad",
+    text: "Recibe cualquier servicio sin tener que salir de casa."
+  }
+];
+
+const guaranteeItems = [
+  "Pago seguro",
+  "Garantia de reembolso",
+  "Atencion 365 dias del ano"
+];
 
 export default function HomePage() {
   return (
@@ -38,49 +54,39 @@ export default function HomePage() {
         <MarketNav />
 
         <section className="panel mvp-hero" id="inicio">
-          <p className="mvp-kicker">MVP WeTask Chile</p>
-          <h1>Encuentra tecnicos confiables a domicilio en minutos</h1>
-          <p className="lead">Gasfiter, electricistas y maestros cerca de ti. Agenda en linea y recibe ayuda hoy mismo.</p>
+          <div className="mvp-category-top-row" aria-label="Categorias principales">
+            {topCategories.map((item) => (
+              <Link
+                key={item.key}
+                href={`/solicitar-tecnico?servicio=${encodeURIComponent(item.service)}&source=home_category_${item.key}`}
+                className="mvp-category-top-pill"
+              >
+                <span aria-hidden>{item.icon}</span>
+                {item.label}
+              </Link>
+            ))}
+          </div>
+
+          <p className="mvp-kicker">WeTask Chile</p>
+          <h1>Haz tu vida mas facil</h1>
+          <p className="lead">Disfruta cualquier servicio en la comodidad de tu hogar.</p>
 
           <div className="cta-row mvp-hero-actions">
             <Link href="/solicitar-tecnico?source=hero_primary" className="cta">
-              Buscar tecnico
+              Buscar servicio
             </Link>
             <Link href="/registro?role=PRO&source=hero_secondary" className="cta ghost">
               Ofrecer servicios
             </Link>
           </div>
-
-          <p className="mvp-coverage-note">
-            Disponible actualmente en: Las Condes, Vitacura, Providencia, Nunoa y Lo Barnechea.
-          </p>
         </section>
-      </section>
-
-      <section className="panel mvp-section" id="servicios">
-        <div className="panel-head">
-          <h2>Servicios disponibles</h2>
-        </div>
-        <div className="mvp-service-grid">
-          {landingServices.map((service) => (
-            <article key={service.key} className="mvp-service-card">
-              <span className="mvp-service-icon" aria-hidden>
-                {service.icon}
-              </span>
-              <h3>{service.label}</h3>
-              <Link href={`/solicitar-tecnico?servicio=${encodeURIComponent(service.label)}&source=service_${service.key}`} className="cta small">
-                Ver tecnicos
-              </Link>
-            </article>
-          ))}
-        </div>
       </section>
 
       <section className="panel mvp-section" id="como-funciona">
         <div className="panel-head">
           <h2>Como funciona</h2>
         </div>
-        <div className="mvp-steps-grid">
+        <div className="mvp-how-grid">
           {howItWorks.map((step) => (
             <article key={step.title} className="mvp-step-card">
               <h3>{step.title}</h3>
@@ -90,21 +96,39 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="panel mvp-section" id="confianza">
-        <div className="panel-head">
-          <h2>Tecnicos verificados y servicio seguro</h2>
+      <section className="panel mvp-section mvp-intro" id="sobre-nosotros-home">
+        <div className="mvp-intro-copy">
+          <h2>Pedimos de todo a casa: comida, paquetes, la compra… pero, ¿y los servicios?</h2>
+          <p>
+            Con WeTask puedes disfrutar de casi cualquier servicio (clases, belleza, fisioterapia y mas) sin tener que salir de casa.
+          </p>
         </div>
+      </section>
+
+      <section className="panel mvp-section" id="por-que">
+        <div className="panel-head">
+          <h2>¿Por que WeTask?</h2>
+        </div>
+        <div className="mvp-why-grid">
+          {whyWetask.map((item) => (
+            <article key={item.title} className="mvp-why-card">
+              <h3>{item.title}</h3>
+              <p>{item.text}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="panel mvp-final-cta mvp-guarantee-final" id="garantia-wetask">
+        <p className="mvp-kicker">Garantia WeTask</p>
+        <h2>No te preocupes, tu servicio esta protegido</h2>
+        <p>El profesional recibe el pago cuando confirmas que el servicio fue correcto.</p>
         <ul className="mvp-trust-list">
-          {trustItems.map((item) => (
+          {guaranteeItems.map((item) => (
             <li key={item}>✔ {item}</li>
           ))}
         </ul>
-      </section>
-
-      <section className="panel mvp-final-cta" id="cta-final">
-        <h2>¿Necesitas ayuda en casa?</h2>
-        <p>Encuentra un tecnico confiable en minutos.</p>
-        <Link href="/solicitar-tecnico?source=final_cta" className="cta">
+        <Link href="/solicitar-tecnico?source=garantia_cta" className="cta">
           Buscar tecnico ahora
         </Link>
       </section>
