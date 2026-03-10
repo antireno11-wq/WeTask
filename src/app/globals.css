@@ -487,6 +487,15 @@ body {
   color: #0d2844;
 }
 
+.home-hero-main .mvp-category-top-pill {
+  background: rgba(255, 255, 255, 0.86);
+  border-color: rgba(255, 255, 255, 0.7);
+}
+
+.home-hero-main .mvp-category-top-pill:hover {
+  background: #ffffff;
+}
+
 .minimal-main h1 {
   margin: 0;
   font-family: "Space Grotesk", sans-serif;
