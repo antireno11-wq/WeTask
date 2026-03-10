@@ -463,37 +463,28 @@ body {
   position: relative;
   overflow: hidden;
   border-color: #9bd9ec;
-  background:
-    linear-gradient(180deg, rgba(8, 18, 32, 0.08) 0%, rgba(8, 18, 32, 0.02) 100%),
-    url("/hero-wetask-gemini-house.png?v=1");
-  background-size: cover;
-  background-position: center 58%;
-  color: #ffffff;
-}
-
-.home-hero-main .lead,
-.home-hero-main .minimal-note {
-  color: rgba(255, 255, 255, 0.92);
-}
-
-.home-hero-main .cta {
-  background: #ffffff;
-  color: #103154;
-  border: 1px solid #d6e6f3;
-}
-
-.home-hero-main .cta:hover {
-  background: #f4f9ff;
-  color: #0d2844;
+  background: linear-gradient(180deg, #f8fcff 0%, #eef6ff 100%);
 }
 
 .home-hero-main .mvp-category-top-pill {
-  background: rgba(255, 255, 255, 0.86);
-  border-color: rgba(255, 255, 255, 0.7);
+  background: #f0f7ff;
+  border-color: #c2d7ea;
 }
 
 .home-hero-main .mvp-category-top-pill:hover {
-  background: #ffffff;
+  background: #e6f1ff;
+}
+
+.mvp-hero-scene {
+  width: 100%;
+  height: clamp(260px, 42vw, 430px);
+  border-radius: 16px;
+  border: 1px solid #9bd9ec;
+  background-color: #eaf6ff;
+  background-image: url("/hero-wetask-gemini-house.png?v=2");
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center bottom;
 }
 
 .minimal-main h1 {
@@ -1512,6 +1503,11 @@ textarea {
 
   .how-works-visual {
     height: 260px;
+  }
+
+  .mvp-hero-scene {
+    height: 220px;
+    background-size: cover;
   }
 
   .home-guarantee-grid {
