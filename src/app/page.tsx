@@ -1,205 +1,121 @@
-"use client";
-
 import Link from "next/link";
-import { FormEvent, useState } from "react";
-import { useRouter } from "next/navigation";
 import { MarketNav } from "@/components/market-nav";
 
-const homeCategories = [
-  { emoji: "🧹", label: "Limpieza", href: "/services/limpieza" },
-  { emoji: "🧰", label: "Maestro", href: "/services/maestro-polifuncional" },
-  { emoji: "📚", label: "Clases", href: "/services/clases-colegio" }
+const landingServices = [
+  { key: "gasfiter", icon: "🔧", label: "Gasfiter" },
+  { key: "electricista", icon: "⚡", label: "Electricista" },
+  { key: "maestro-multiuso", icon: "🧰", label: "Maestro multiuso" },
+  { key: "aire-acondicionado", icon: "❄️", label: "Aire acondicionado" },
+  { key: "jardineria", icon: "🌿", label: "Jardineria" },
+  { key: "reparaciones-hogar", icon: "🏠", label: "Reparaciones del hogar" }
 ];
 
+const howItWorks = [
+  {
+    title: "1. Describe tu problema",
+    text: "Cuentanos que necesitas reparar o instalar."
+  },
+  {
+    title: "2. Encuentra tecnicos cerca",
+    text: "Te mostramos tecnicos disponibles en tu zona."
+  },
+  {
+    title: "3. Agenda una visita",
+    text: "Elige horario y confirma el servicio."
+  },
+  {
+    title: "4. Trabajo realizado",
+    text: "El tecnico realiza el trabajo y puedes calificarlo."
+  }
+];
+
+const trustItems = ["Tecnicos verificados", "Calificaciones de clientes", "Pago seguro", "Soporte al cliente"];
+
 export default function HomePage() {
-  const router = useRouter();
-  const [servicePath, setServicePath] = useState("/services");
-  const [addressQuery, setAddressQuery] = useState("");
-  const [addressError, setAddressError] = useState("");
-  const [searching, setSearching] = useState(false);
-
-  const search = async (event: FormEvent) => {
-    event.preventDefault();
-    const typedAddress = addressQuery.trim();
-    setAddressError("");
-
-    if (typedAddress) {
-      try {
-        setSearching(true);
-        const response = await fetch(`/api/maps/validate-address?address=${encodeURIComponent(typedAddress)}`);
-        const data = (await response.json()) as { valid?: boolean; error?: string };
-        if (!response.ok || !data.valid) {
-          setAddressError(data.error ?? "No pudimos validar esa direccion con Google Maps.");
-          return;
-        }
-      } catch {
-        setAddressError("No pudimos validar esa direccion. Intenta nuevamente.");
-        return;
-      } finally {
-        setSearching(false);
-      }
-    }
-
-    const params = new URLSearchParams();
-    if (typedAddress) params.set("address", typedAddress);
-    const target = servicePath && servicePath !== "/services" ? servicePath : "/services";
-    router.push(`${target}${params.toString() ? `?${params.toString()}` : ""}`);
-  };
-
   return (
-    <main className="page market-shell">
-      <section className="home-top">
+    <main className="page market-shell mvp-landing">
+      <section className="home-top mvp-top">
         <MarketNav />
 
-        <section className="home-hero-shell">
-          <form className="home-search-bar" onSubmit={search}>
-            <select value={servicePath} onChange={(event) => setServicePath(event.target.value)} aria-label="Servicio">
-              <option value="/services">Servicio</option>
-              <option value="/services/limpieza">Limpieza</option>
-              <option value="/services/maestro-polifuncional">Maestro (polifuncional)</option>
-              <option value="/services/clases-colegio">Clases</option>
-            </select>
-            <input
-              value={addressQuery}
-              onChange={(event) => setAddressQuery(event.target.value)}
-              placeholder="Direccion o comuna"
-              aria-label="Direccion o comuna"
-            />
-            <button type="submit" className="cta" disabled={searching}>
-              {searching ? "Validando..." : "Buscar"}
-            </button>
-          </form>
-          {addressError ? <p className="feedback error">{addressError}</p> : null}
+        <section className="panel mvp-hero" id="inicio">
+          <p className="mvp-kicker">MVP WeTask Chile</p>
+          <h1>Encuentra tecnicos confiables a domicilio en minutos</h1>
+          <p className="lead">Gasfiter, electricistas y maestros cerca de ti. Agenda en linea y recibe ayuda hoy mismo.</p>
 
-          <div className="home-category-row">
-            {homeCategories.map((category) => (
-              <Link key={category.label} href={category.href} className="home-category-pill">
-                <span aria-hidden>{category.emoji}</span>
-                <span>{category.label}</span>
-              </Link>
-            ))}
+          <div className="cta-row mvp-hero-actions">
+            <Link href="/solicitar-tecnico?source=hero_primary" className="cta">
+              Buscar tecnico
+            </Link>
+            <Link href="/registro?role=PRO&source=hero_secondary" className="cta ghost">
+              Ofrecer servicios
+            </Link>
           </div>
 
-          <div className="panel minimal-main home-hero-main">
-            <h1>Haz tu vida mas facil</h1>
-            <p className="lead">Disfruta cualquier servicio en la comodidad de tu hogar.</p>
-            <div className="cta-row minimal-main-actions">
-              <Link href="/services" className="cta">
-                Pedir servicio
-              </Link>
-              <Link href="/registro?role=PRO" className="cta">
-                Ofrecer servicios
-              </Link>
-            </div>
-            <p className="minimal-note">Santiago de Chile. Reserva por hora con precio claro.</p>
-          </div>
+          <p className="mvp-coverage-note">
+            Disponible actualmente en: Las Condes, Vitacura, Providencia, Nunoa y Lo Barnechea.
+          </p>
         </section>
       </section>
 
-      <section className="panel minimal-info how-works">
-        <h2>¿Como funciona?</h2>
-        <div className="how-works-grid">
-          <article className="how-works-step">
-            <div className="how-works-visual collage-one" aria-hidden />
-            <h3>Busca lo que necesitas</h3>
-            <p>Tenemos servicios para hogar, clases, oficios y mas categorias en un solo lugar.</p>
-          </article>
-
-          <article className="how-works-step">
-            <div className="how-works-visual collage-two" aria-hidden />
-            <h3>Escoge a tu profesional ideal</h3>
-            <p>Compara perfiles, disponibilidad y calificaciones para elegir el mejor match.</p>
-          </article>
-
-          <article className="how-works-step">
-            <div className="how-works-visual collage-three" aria-hidden />
-            <h3>Contratalo en 1 click</h3>
-            <p>Reserva y paga en plataforma con seguimiento de tu servicio de principio a fin.</p>
-          </article>
+      <section className="panel mvp-section" id="servicios">
+        <div className="panel-head">
+          <h2>Servicios disponibles</h2>
+        </div>
+        <div className="mvp-service-grid">
+          {landingServices.map((service) => (
+            <article key={service.key} className="mvp-service-card">
+              <span className="mvp-service-icon" aria-hidden>
+                {service.icon}
+              </span>
+              <h3>{service.label}</h3>
+              <Link href={`/solicitar-tecnico?servicio=${encodeURIComponent(service.label)}&source=service_${service.key}`} className="cta small">
+                Ver tecnicos
+              </Link>
+            </article>
+          ))}
         </div>
       </section>
 
-      <section className="panel home-guarantee-panel">
-        <div className="home-guarantee-grid">
-          <article className="home-guarantee-copy">
-            <p className="home-guarantee-eyebrow">GARANTIA WETASK</p>
-            <h2>
-              No te preocupes, tu servicio esta <span>siempre protegido</span>
-            </h2>
-            <p>El profesional solo recibira el dinero cuando confirmes que todo fue segun lo esperado.</p>
-            <p>Si algo sale mal, te devolvemos el total del servicio.</p>
-          </article>
-
-          <article className="home-guarantee-visual" aria-hidden>
-            <div className="home-guarantee-ring">
-              <div className="home-guarantee-badge">100% PROTEGIDO</div>
-            </div>
-            <div className="home-guarantee-card card-top-left">
-              <strong>Pago seguro</strong>
-              <span>Tu dinero esta protegido hasta que recibas el servicio.</span>
-            </div>
-            <div className="home-guarantee-card card-top-right">
-              <strong>Garantia de reembolso</strong>
-              <span>Si algo sale mal, te devolvemos el dinero.</span>
-            </div>
-            <div className="home-guarantee-card card-bottom">
-              <strong>Atencion 365 dias</strong>
-              <span>Siempre disponibles para ayudarte cuando lo necesites.</span>
-            </div>
-          </article>
+      <section className="panel mvp-section" id="como-funciona">
+        <div className="panel-head">
+          <h2>Como funciona</h2>
+        </div>
+        <div className="mvp-steps-grid">
+          {howItWorks.map((step) => (
+            <article key={step.title} className="mvp-step-card">
+              <h3>{step.title}</h3>
+              <p>{step.text}</p>
+            </article>
+          ))}
         </div>
       </section>
 
-      <section className="panel home-footer-panel">
-        <div className="home-footer-grid">
-          <article className="home-footer-col">
-            <h3>WeTask Chile</h3>
-            <p>
-              WeTask nace para hacer tu vida mas facil, conectandote con profesionales verificados para servicios a
-              domicilio.
-            </p>
-          </article>
-
-          <article className="home-footer-col">
-            <h3>Sobre nosotros</h3>
-            <div className="home-footer-links">
-              <Link href="/sobre-nosotros" className="home-link-item">
-                Contacta con nosotros
-              </Link>
-            </div>
-            <h3>Empleo</h3>
-            <div className="home-footer-links">
-              <Link href="/registro?role=PRO" className="home-link-item">
-                Ofrece tus servicios como profesional
-              </Link>
-              <Link href="/empleo" className="home-link-item">
-                Trabaja en nuestro equipo
-              </Link>
-            </div>
-          </article>
-
-          <article className="home-footer-col">
-            <h3>Legal</h3>
-            <div className="home-footer-links">
-              <Link href="/legal" className="home-link-item">
-                Terminos y condiciones
-              </Link>
-              <Link href="/legal" className="home-link-item">
-                Politica de privacidad
-              </Link>
-              <Link href="/legal" className="home-link-item">
-                Politica de cookies
-              </Link>
-              <Link href="/legal" className="home-link-item">
-                Politica de cancelacion
-              </Link>
-              <Link href="/legal" className="home-link-item">
-                Aviso legal
-              </Link>
-            </div>
-          </article>
+      <section className="panel mvp-section" id="confianza">
+        <div className="panel-head">
+          <h2>Tecnicos verificados y servicio seguro</h2>
         </div>
+        <ul className="mvp-trust-list">
+          {trustItems.map((item) => (
+            <li key={item}>✔ {item}</li>
+          ))}
+        </ul>
       </section>
+
+      <section className="panel mvp-final-cta" id="cta-final">
+        <h2>¿Necesitas ayuda en casa?</h2>
+        <p>Encuentra un tecnico confiable en minutos.</p>
+        <Link href="/solicitar-tecnico?source=final_cta" className="cta">
+          Buscar tecnico ahora
+        </Link>
+      </section>
+
+      <footer className="panel mvp-footer" id="footer">
+        <Link href="/sobre-nosotros">Sobre nosotros</Link>
+        <a href="#como-funciona">Como funciona</a>
+        <Link href="/registro?role=PRO">Convertirse en tecnico</Link>
+        <Link href="/sobre-nosotros">Contacto</Link>
+        <Link href="/legal">Terminos y privacidad</Link>
+      </footer>
     </main>
   );
 }

@@ -144,3 +144,12 @@ export const marketplaceProSlotCreateSchema = z.object({
 export const marketplaceProSlotUpdateSchema = z.object({
   isAvailable: z.boolean()
 });
+
+export const serviceLeadCreateSchema = z.object({
+  fullName: z.string().min(3).max(120),
+  phone: z.string().min(7).max(30),
+  comuna: z.string().min(2).max(120),
+  serviceNeeded: z.string().min(2).max(120),
+  problemDescription: z.string().min(10).max(1000),
+  source: z.string().max(100).optional()
+});
