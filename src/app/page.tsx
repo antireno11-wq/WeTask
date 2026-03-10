@@ -64,7 +64,6 @@ export default function HomePage() {
             ))}
           </div>
 
-          <p className="mvp-kicker">WeTask Chile</p>
           <h1>Haz tu vida mas facil</h1>
           <p className="lead">Disfruta cualquier servicio en la comodidad de tu hogar.</p>
 
@@ -126,9 +125,6 @@ export default function HomePage() {
             </h2>
             <p>El profesional solo recibe el dinero cuando confirmas que todo fue segun lo esperado.</p>
             <p>Si algo sale mal, te devolvemos el importe total del servicio.</p>
-            <Link href="/solicitar-tecnico?source=garantia_cta" className="cta">
-              Buscar tecnico ahora
-            </Link>
           </div>
 
           <div className="home-guarantee-visual" aria-hidden>
