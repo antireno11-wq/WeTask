@@ -14,6 +14,7 @@ export const CLEANING_SERVICE_TYPES = [
   "limpieza_puntual",
   "planchado",
   "orden_organizacion",
+  "lavado_loza",
   "limpieza_oficina_pequena",
   "post_evento"
 ] as const;
@@ -71,4 +72,13 @@ export const CHILE_TOP_COMMUNES = [
   "Macul",
   "Penalolen",
   "San Miguel"
+] as const;
+
+
+export const CLEANING_LANGUAGE_OPTIONS = [
+  "espanol",
+  "ingles",
+  "portugues",
+  "frances",
+  "otro"
 ] as const;
