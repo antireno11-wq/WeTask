@@ -7,13 +7,13 @@ export default function TrabajaConNosotrosPage() {
       <MarketNav />
 
       <section className="panel mvp-hero">
-        <p className="mvp-kicker">Registro de tecnicos</p>
-        <h1>Gana dinero ofreciendo tus servicios</h1>
-        <p className="lead">Conecta con clientes en tu zona y recibe solicitudes de trabajo.</p>
+        <p className="mvp-kicker">Onboarding limpieza por hora</p>
+        <h1>Gana dinero ofreciendo servicios de limpieza</h1>
+        <p className="lead">Registro por etapas: crea cuenta rapido, completa perfil y activa tu servicio con revision manual.</p>
 
         <div className="cta-row mvp-hero-actions">
           <Link href="/trabaja-con-nosotros/registro" className="cta">
-            Comenzar registro
+            Iniciar onboarding
           </Link>
           <Link href="/ingresar/tasker" className="cta ghost">
             Ya tengo cuenta
@@ -23,14 +23,14 @@ export default function TrabajaConNosotrosPage() {
 
       <section className="panel">
         <div className="panel-head">
-          <h2>Documentacion obligatoria</h2>
-          <p>Para proteger a clientes y tecnicos, revisamos identidad y antecedentes.</p>
+          <h2>Que vas a configurar</h2>
+          <p>Perfil profesional, servicios, cobertura, agenda, tarifas, verificacion y capacitacion obligatoria.</p>
         </div>
         <ul className="mvp-trust-list">
-          <li>✔ Cedula de identidad (frontal)</li>
-          <li>✔ Selfie sosteniendo la cedula</li>
-          <li>✔ Certificado de antecedentes</li>
-          <li>✔ Portafolio de trabajos</li>
+          <li>✔ Servicio base por hora con reserva minima</li>
+          <li>✔ Cobertura por comunas y radio de desplazamiento</li>
+          <li>✔ Verificacion de identidad y antecedentes</li>
+          <li>✔ Activacion manual por administrador</li>
         </ul>
       </section>
     </main>

@@ -19,6 +19,24 @@ enum AuthProvider {
   APPLE
 }
 
+enum CleaningOnboardingStatus {
+  BORRADOR
+  PENDIENTE_REVISION
+  REQUIERE_CORRECCION
+  APROBADO
+  ACTIVO
+}
+
+enum CleaningWorkMode {
+  SOLO
+  EQUIPO
+}
+
+enum CleaningAvailabilityMode {
+  FIJA
+  VARIABLE
+}
+
 enum BookingStatus {
   CREATED
   PENDING
@@ -73,6 +91,7 @@ model User {
   sentMessages        Message[]             @relation("SenderMessages")
   reviewsGiven        Review[]              @relation("ReviewAuthor")
   professionalProfile ProfessionalProfile?
+  cleaningOnboarding  CleaningOnboarding?
   payouts             Payout[]
   notifications       Notification[]
   roleAssignments     UserRoleAssignment[]
@@ -413,4 +432,105 @@ model ServiceLead {
 
   @@index([createdAt])
   @@index([comuna, serviceNeeded])
+}
+
+enum TechnicianVerificationStatus {
+  PENDING
+  UNDER_REVIEW
+  APPROVED
+  REJECTED
+}
+
+model Technician {
+  id                   String                       @id @default(cuid())
+  fullName             String                       @map("full_name")
+  rut                  String                       @unique
+  birthDate            DateTime                     @map("birth_date")
+  phone                String
+  email                String
+  address              String
+  commune              String
+  lat                  Float?
+  lng                  Float?
+  specialties          Json
+  yearsExperience      Int                          @map("years_experience")
+  description          String
+  certifications       Json?
+  portfolioImages      Json                         @map("portfolio_images")
+  criminalRecordFile   String                       @map("criminal_record_file")
+  identityDocument     String                       @map("identity_document")
+  identitySelfie       String                       @map("identity_selfie")
+  affidavitAccepted    Boolean                      @default(false) @map("affidavit_accepted")
+  references           String?
+  coverageRadiusKm     Int                          @map("coverage_radius_km")
+  availableCommunes    Json                         @map("available_communes")
+  availabilitySchedule String                       @map("availability_schedule")
+  transportType        String                       @map("transport_type")
+  verificationStatus   TechnicianVerificationStatus @default(PENDING) @map("verification_status")
+  score                Int                          @default(0)
+  reviewNotes          String?                      @map("review_notes")
+  source               String                       @default("trabaja-con-nosotros")
+  createdAt            DateTime                     @default(now()) @map("created_at")
+  updatedAt            DateTime                     @updatedAt @map("updated_at")
+
+  @@index([createdAt])
+  @@index([commune, verificationStatus])
+  @@index([score])
+  @@map("technicians")
+}
+
+model CleaningOnboarding {
+  id                         String                   @id @default(cuid())
+  userId                     String                   @unique
+  status                     CleaningOnboardingStatus @default(BORRADOR)
+  currentStep                Int                      @default(1)
+  categorySlug               String                   @default("limpieza")
+  baseCommune                String?
+  profilePhotoUrl            String?
+  shortDescription           String?
+  yearsExperience            Int?
+  workMode                   CleaningWorkMode?
+  experienceTypes            Json?
+  offeredServices            Json?
+  acceptsHomesWithPets       Boolean?
+  acceptsHomesWithChildren   Boolean?
+  worksWithClientProducts    Boolean?
+  bringsOwnProducts          Boolean?
+  bringsOwnTools             Boolean?
+  serviceCommunes            Json?
+  maxTravelKm                Int?
+  chargesTravelExtra         Boolean?
+  availabilityMode           CleaningAvailabilityMode?
+  availabilityBlocks         Json?
+  maxServicesPerDay          Int?
+  acceptsUrgentBookings      Boolean?
+  hourlyRateClp              Int?
+  minBookingHours            Int?
+  weekendSurchargePct        Int?
+  holidaySurchargePct        Int?
+  remoteCommuneSurchargeClp  Int?
+  deepCleaningHourlyRateClp  Int?
+  identityDocumentFile       String?
+  identitySelfieFile         String?
+  criminalRecordFile         String?
+  bankAccountHolder          String?
+  bankName                   String?
+  bankAccountType            String?
+  bankAccountNumber          String?
+  phoneVerificationCodeHash  String?
+  phoneVerificationExpiresAt DateTime?
+  phoneValidatedAt           DateTime?
+  trainingTopics             Json?
+  trainingCompletedAt        DateTime?
+  submittedAt                DateTime?
+  reviewedAt                 DateTime?
+  approvedAt                 DateTime?
+  activatedAt                DateTime?
+  adminReviewNotes           String?
+  createdAt                  DateTime                 @default(now())
+  updatedAt                  DateTime                 @updatedAt
+  user                       User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([status, createdAt])
+  @@index([baseCommune])
 }

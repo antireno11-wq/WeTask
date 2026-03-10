@@ -1,5 +1,6 @@
 import { BookingStatus } from "@prisma/client";
 import { z } from "zod";
+import { CLEANING_EXPERIENCE_TYPES, CLEANING_SERVICE_TYPES, CLEANING_TRAINING_TOPICS, CLEANING_WEEK_DAYS } from "@/lib/cleaning-onboarding";
 
 export const createBookingSchema = z.object({
   customerId: z.string().min(1),
@@ -152,4 +153,159 @@ export const serviceLeadCreateSchema = z.object({
   serviceNeeded: z.string().min(2).max(120),
   problemDescription: z.string().min(10).max(1000),
   source: z.string().max(100).optional()
+});
+
+const dataUrlSchema = z
+  .string()
+  .startsWith("data:")
+  .max(8_000_000, "Archivo demasiado grande para el MVP");
+
+const imageDataUrlSchema = dataUrlSchema.refine((value) => /^data:image\/(png|jpe?g);base64,/i.test(value), {
+  message: "Debe ser una imagen JPG o PNG"
+});
+
+const pdfOrImageDataUrlSchema = dataUrlSchema.refine(
+  (value) => /^data:(application\/pdf|image\/(png|jpe?g));base64,/i.test(value),
+  {
+    message: "Debe ser PDF o imagen"
+  }
+);
+
+export const technicianRegistrationSchema = z.object({
+  fullName: z.string().min(3).max(120),
+  rut: z.string().min(8).max(16),
+  birthDate: z.coerce.date(),
+  phone: z.string().min(7).max(30),
+  email: z.string().email(),
+  commune: z.string().min(2).max(120),
+  address: z.string().min(5).max(180),
+  lat: z.coerce.number().min(-90).max(90).optional(),
+  lng: z.coerce.number().min(-180).max(180).optional(),
+
+  specialties: z.array(z.string().min(2)).min(1),
+  yearsExperience: z.coerce.number().int().min(0).max(60),
+  description: z.string().min(20).max(1500),
+  certificationsText: z.string().max(1200).optional(),
+  certificationFiles: z.array(pdfOrImageDataUrlSchema).max(8).optional().default([]),
+
+  portfolioImages: z.array(imageDataUrlSchema).min(3).max(6),
+
+  criminalRecordFile: pdfOrImageDataUrlSchema,
+  identityDocument: imageDataUrlSchema,
+  identitySelfie: imageDataUrlSchema,
+  affidavitAccepted: z.boolean().refine((v) => v, { message: "Debes aceptar la declaracion jurada" }),
+
+  availableCommunes: z.array(z.string().min(2)).min(1),
+  coverageRadiusKm: z.coerce.number().int().min(1).max(80),
+  availabilitySchedule: z.string().min(3).max(600),
+  transportType: z.enum(["auto", "moto", "bicicleta", "transporte_publico"]),
+  references: z.string().max(800).optional(),
+  source: z.string().max(120).optional()
+});
+
+export const adminTechnicianReviewSchema = z.object({
+  technicianId: z.string().min(1),
+  action: z.enum(["approve", "reject", "request_info"]),
+  reviewNotes: z.string().max(1000).optional()
+});
+
+const hhmmSchema = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Formato horario invalido (HH:mm)");
+
+const cleaningAvailabilityBlockSchema = z
+  .object({
+    day: z.enum(CLEANING_WEEK_DAYS),
+    start: hhmmSchema,
+    end: hhmmSchema
+  })
+  .refine((value) => value.end > value.start, {
+    message: "El bloque horario debe tener hora de termino mayor que inicio"
+  });
+
+export const cleaningOnboardingStartSchema = z.object({
+  fullName: z.string().min(3).max(120),
+  phone: z.string().min(7).max(30),
+  email: z.string().email(),
+  password: z.string().min(8).max(120).optional(),
+  authProvider: z.enum(["EMAIL", "GOOGLE", "APPLE"]).default("EMAIL"),
+  baseCommune: z.string().min(2).max(120),
+  acceptTerms: z.boolean().refine((v) => v, { message: "Debes aceptar terminos" })
+});
+
+export const cleaningOnboardingStage2Schema = z.object({
+  profilePhotoUrl: imageDataUrlSchema,
+  shortDescription: z.string().min(20).max(700),
+  yearsExperience: z.coerce.number().int().min(0).max(60),
+  workMode: z.enum(["SOLO", "EQUIPO"]),
+  experienceTypes: z.array(z.enum(CLEANING_EXPERIENCE_TYPES)).min(1)
+});
+
+export const cleaningOnboardingStage3Schema = z.object({
+  offeredServices: z.array(z.enum(CLEANING_SERVICE_TYPES)).min(1),
+  acceptsHomesWithPets: z.boolean(),
+  acceptsHomesWithChildren: z.boolean(),
+  worksWithClientProducts: z.boolean(),
+  bringsOwnProducts: z.boolean(),
+  bringsOwnTools: z.boolean()
+});
+
+export const cleaningOnboardingStage4Schema = z.object({
+  baseCommune: z.string().min(2).max(120),
+  serviceCommunes: z.array(z.string().min(2).max(120)).min(1),
+  maxTravelKm: z.coerce.number().int().min(1).max(80),
+  chargesTravelExtra: z.boolean()
+});
+
+export const cleaningOnboardingStage5Schema = z.object({
+  availabilityMode: z.enum(["FIJA", "VARIABLE"]),
+  availabilityBlocks: z.array(cleaningAvailabilityBlockSchema).min(1).max(42),
+  maxServicesPerDay: z.coerce.number().int().min(1).max(12),
+  acceptsUrgentBookings: z.boolean()
+});
+
+export const cleaningOnboardingStage6Schema = z.object({
+  hourlyRateClp: z.coerce.number().int().min(5000).max(200000),
+  minBookingHours: z.coerce.number().int().min(1).max(12),
+  weekendSurchargePct: z.coerce.number().int().min(0).max(100),
+  holidaySurchargePct: z.coerce.number().int().min(0).max(100),
+  remoteCommuneSurchargeClp: z.coerce.number().int().min(0).max(50000),
+  hasDeepCleaningRate: z.boolean().optional().default(false),
+  deepCleaningHourlyRateClp: z.coerce.number().int().min(5000).max(250000).optional().nullable()
+});
+
+export const cleaningOnboardingStage7Schema = z.object({
+  identityDocumentFile: pdfOrImageDataUrlSchema,
+  identitySelfieFile: imageDataUrlSchema,
+  criminalRecordFile: pdfOrImageDataUrlSchema,
+  bankAccountHolder: z.string().min(3).max(120),
+  bankName: z.string().min(2).max(120),
+  bankAccountType: z.enum(["cuenta_corriente", "cuenta_vista", "cuenta_rut", "cuenta_ahorro"]),
+  bankAccountNumber: z.string().min(4).max(40)
+});
+
+export const cleaningOnboardingStage8Schema = z
+  .object({
+    completedTopics: z.array(z.enum(CLEANING_TRAINING_TOPICS)).min(CLEANING_TRAINING_TOPICS.length)
+  })
+  .refine((value) => {
+    const selected = new Set(value.completedTopics);
+    return CLEANING_TRAINING_TOPICS.every((topic) => selected.has(topic));
+  }, "Debes completar todos los puntos de la capacitacion");
+
+export const cleaningOnboardingSaveSchema = z.object({
+  step: z.coerce.number().int().min(2).max(8),
+  payload: z.record(z.any())
+});
+
+export const cleaningOnboardingPhoneSendSchema = z.object({
+  phone: z.string().min(7).max(30).optional()
+});
+
+export const cleaningOnboardingPhoneVerifySchema = z.object({
+  code: z.string().regex(/^\d{6}$/, "Codigo invalido")
+});
+
+export const cleaningOnboardingAdminActionSchema = z.object({
+  onboardingId: z.string().min(1),
+  action: z.enum(["request_correction", "approve", "activate", "set_pending"]),
+  notes: z.string().max(1200).optional()
 });
