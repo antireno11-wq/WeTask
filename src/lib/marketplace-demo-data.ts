@@ -364,7 +364,7 @@ export async function ensureMarketplaceDemoData() {
     babysitterHoras: await prisma.category.upsert({
       where: { slug: "babysitter-por-horas" },
       update: {
-        name: "Babysitter por horas",
+        name: "Babysitter",
         description: "Cuidado infantil a domicilio por bloques horarios",
         minHours: 3,
         slotMinutes: 60,
@@ -375,7 +375,7 @@ export async function ensureMarketplaceDemoData() {
       },
       create: {
         slug: "babysitter-por-horas",
-        name: "Babysitter por horas",
+        name: "Babysitter",
         description: "Cuidado infantil a domicilio por bloques horarios",
         minHours: 3,
         slotMinutes: 60,
@@ -429,30 +429,6 @@ export async function ensureMarketplaceDemoData() {
         slotMinutes: 60,
         basePlatformFeePct: 11,
         urgencyFeeClp: 0,
-        materialFeeDefaultClp: 0,
-        isActive: true
-      }
-    }),
-    pinturaBasica: await prisma.category.upsert({
-      where: { slug: "pintura-basica" },
-      update: {
-        name: "Pintura basica",
-        description: "Pintura interior, retoques y terminaciones basicas",
-        minHours: 2,
-        slotMinutes: 60,
-        basePlatformFeePct: 12,
-        urgencyFeeClp: 6000,
-        materialFeeDefaultClp: 0,
-        isActive: true
-      },
-      create: {
-        slug: "pintura-basica",
-        name: "Pintura basica",
-        description: "Pintura interior, retoques y terminaciones basicas",
-        minHours: 2,
-        slotMinutes: 60,
-        basePlatformFeePct: 12,
-        urgencyFeeClp: 6000,
         materialFeeDefaultClp: 0,
         isActive: true
       }
@@ -598,7 +574,7 @@ export async function ensureMarketplaceDemoData() {
     },
     {
       slug: "babysitter-por-horas-standard",
-      name: "Babysitter por horas",
+      name: "Babysitter",
       description: "Cuidado infantil por hora con reserva minima",
       basePriceClp: 21000,
       categoryId: categories.babysitterHoras.id
@@ -616,13 +592,6 @@ export async function ensureMarketplaceDemoData() {
       description: "Entrenamiento personalizado en casa o areas comunes",
       basePriceClp: 24000,
       categoryId: categories.personalTrainer.id
-    },
-    {
-      slug: "pintura-basica-muros",
-      name: "Pintura basica de muros",
-      description: "Retoques y pintura interior por bloque",
-      basePriceClp: 23000,
-      categoryId: categories.pinturaBasica.id
     },
     {
       slug: "planchado-por-hora",
@@ -683,7 +652,7 @@ export async function ensureMarketplaceDemoData() {
       rate: 27000,
       rating: 4.8,
       count: 129,
-      serviceSlugs: ["pintura-basica-muros", "limpieza-hogar", "paseo-cuidado-mascotas"]
+      serviceSlugs: ["limpieza-hogar", "paseo-cuidado-mascotas", "planchado-por-hora"]
     },
     {
       email: "pro.javier@wetask.cl",

@@ -54,7 +54,7 @@ export default function ServiciosPage() {
       <section className="panel">
         <div className="panel-head">
           <h2>Servicios</h2>
-          <p>Partimos simple: limpieza, maestro y clases.</p>
+          <p>Servicios activos para el MVP: limpieza, mascotas, babysitter, profesor particular, personal trainer y planchado.</p>
         </div>
       </section>
 

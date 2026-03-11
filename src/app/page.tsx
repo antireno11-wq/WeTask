@@ -35,22 +35,6 @@ const whyWetask = [
   }
 ];
 
-const SERVICE_IMAGE_BY_SLUG: Record<string, string> = {
-  limpieza: "https://images.unsplash.com/photo-1581578731548-c64695cc6952?auto=format&fit=crop&w=1400&q=80",
-  maestro: "https://images.unsplash.com/photo-1621905251918-48416bd8575a?auto=format&fit=crop&w=1400&q=80",
-  clases: "https://images.unsplash.com/photo-1503676260728-1c00da094a0b?auto=format&fit=crop&w=1400&q=80",
-  mascotas: "https://images.unsplash.com/photo-1516734212186-a967f81ad0d7?auto=format&fit=crop&w=1400&q=80",
-  babysitter: "https://images.unsplash.com/photo-1596461404969-9ae70f2830c1?auto=format&fit=crop&w=1400&q=80",
-  "profesor-particular": "https://images.unsplash.com/photo-1503676260728-1c00da094a0b?auto=format&fit=crop&w=1400&q=80",
-  "personal-trainer": "https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?auto=format&fit=crop&w=1400&q=80",
-  "pintura-basica": "https://images.unsplash.com/photo-1562259949-e8e7689d7828?auto=format&fit=crop&w=1400&q=80",
-  planchado: "https://images.unsplash.com/photo-1604335399105-a0c585fd81a1?auto=format&fit=crop&w=1400&q=80"
-};
-
-function homeServiceImage(slug: string) {
-  return SERVICE_IMAGE_BY_SLUG[slug] ?? "https://images.unsplash.com/photo-1484154218962-a197022b5858?auto=format&fit=crop&w=1400&q=80";
-}
-
 export default function HomePage() {
   return (
     <main className="page market-shell mvp-landing">
@@ -84,7 +68,10 @@ export default function HomePage() {
           </div>
 
           <div className="mvp-hero-scene" aria-hidden>
-            <img src="/hero-webel-twofloor.webp" alt="" />
+            <picture>
+              <source srcSet="/hero-webel-twofloor.webp" type="image/webp" />
+              <img src="/hero-webel-reference.webp" alt="" />
+            </picture>
           </div>
         </section>
       </section>
@@ -113,7 +100,7 @@ export default function HomePage() {
         <div className="mvp-service-gallery">
           {CORE_SERVICES.map((service) => (
             <Link key={service.slug} href={`/services/${service.categorySlug}`} className="mvp-service-media-card">
-              <div className="mvp-service-media" style={{ backgroundImage: `url("${homeServiceImage(service.slug)}")` }} aria-hidden />
+              <div className="mvp-service-media" style={{ backgroundImage: `url("${service.image}")` }} aria-hidden />
               <div className="mvp-service-copy">
                 <strong>
                   {service.icon} {service.label}
