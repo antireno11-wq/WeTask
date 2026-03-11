@@ -46,7 +46,7 @@ export default function HomePage() {
             {CORE_SERVICES.map((item) => (
               <Link
                 key={item.slug}
-                href={`/solicitar-tecnico?servicio=${encodeURIComponent(item.requestService)}&source=home_category_${item.slug}`}
+                href={`/services/${item.categorySlug}?source=home_category_${item.slug}`}
                 className="mvp-category-top-pill"
               >
                 <span aria-hidden>{item.icon}</span>

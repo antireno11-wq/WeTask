@@ -46,6 +46,19 @@ function profileSnippet(categoryName: string) {
   return `Profesional verificado para ${categoryName.toLowerCase()}, con agenda activa y servicios a domicilio en tu zona.`;
 }
 
+function localYmd(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function timeToMinutes(value: string) {
+  const [hh, mm] = value.split(":").map((chunk) => Number(chunk));
+  if (!Number.isFinite(hh) || !Number.isFinite(mm)) return null;
+  return hh * 60 + mm;
+}
+
 export default function ServiceProsPage() {
   const params = useParams<{ categorySlug: string }>();
   const search = useSearchParams();
@@ -63,6 +76,15 @@ export default function ServiceProsPage() {
   const comuna = search.get("comuna") ?? "";
   const city = search.get("city") ?? "Santiago";
   const postalCode = search.get("postalCode") ?? "7500000";
+  const requestedDate = search.get("requestedDate") ?? "";
+  const requestedTime = search.get("requestedTime") ?? "";
+  const requestedMinutes = requestedTime ? timeToMinutes(requestedTime) : null;
+  const requestedIso = useMemo(() => {
+    if (!requestedDate || !requestedTime) return undefined;
+    const parsed = new Date(`${requestedDate}T${requestedTime}:00`);
+    if (Number.isNaN(parsed.getTime())) return undefined;
+    return parsed.toISOString();
+  }, [requestedDate, requestedTime]);
 
   useEffect(() => {
     const load = async () => {
@@ -89,6 +111,7 @@ export default function ServiceProsPage() {
         });
         const streetQuery = `${address}${comuna ? `, ${comuna}` : ""}`.trim();
         if (streetQuery) qs.set("street", streetQuery);
+        if (requestedIso) qs.set("date", requestedIso);
 
         const prosRes = await fetch(`/api/marketplace/search-professionals?${qs.toString()}`);
         const prosData = (await prosRes.json()) as { professionals?: Professional[]; error?: string; detail?: string };
@@ -109,10 +132,21 @@ export default function ServiceProsPage() {
     };
 
     if (categorySlug) void load();
-  }, [address, categorySlug, city, comuna, postalCode]);
+  }, [address, categorySlug, city, comuna, postalCode, requestedIso]);
 
   const professionals = useMemo(() => {
     let filtered = [...allPros];
+
+    if (requestedDate && requestedMinutes != null) {
+      filtered = filtered.filter((pro) =>
+        pro.slots.some((slot) => {
+          const startsAt = new Date(slot.startsAt);
+          const sameDay = localYmd(startsAt) === requestedDate;
+          const slotMinutes = startsAt.getHours() * 60 + startsAt.getMinutes();
+          return sameDay && slotMinutes >= requestedMinutes;
+        })
+      );
+    }
 
     if (availability !== "all") {
       const now = new Date();
@@ -144,7 +178,7 @@ export default function ServiceProsPage() {
     }
 
     return filtered;
-  }, [allPros, availability, sortBy]);
+  }, [allPros, availability, requestedDate, requestedMinutes, sortBy]);
 
   return (
     <main className="page market-shell">
@@ -159,6 +193,11 @@ export default function ServiceProsPage() {
             {address || "Sin direccion"}
             {comuna ? `, ${comuna}` : ""} · {city}
           </p>
+          {requestedDate && requestedTime ? (
+            <p>
+              Horario solicitado: <strong>{requestedDate}</strong> a las <strong>{requestedTime}</strong>
+            </p>
+          ) : null}
         </div>
 
         <div className="query-row">
@@ -182,10 +221,10 @@ export default function ServiceProsPage() {
 
         <div className="cta-row">
           <Link
-            href={`/services/${categorySlug}?address=${encodeURIComponent(address)}&comuna=${encodeURIComponent(comuna)}&city=${encodeURIComponent(city)}&postalCode=${encodeURIComponent(postalCode)}`}
+            href={`/services/${categorySlug}?address=${encodeURIComponent(address)}&comuna=${encodeURIComponent(comuna)}&city=${encodeURIComponent(city)}&postalCode=${encodeURIComponent(postalCode)}&requestedDate=${encodeURIComponent(requestedDate)}&requestedTime=${encodeURIComponent(requestedTime)}`}
             className="cta ghost small"
           >
-            Cambiar direccion
+            Cambiar direccion y horario
           </Link>
           <button type="button" className="cta ghost small" onClick={() => setNotifyMessage("Te avisaremos cuando haya cobertura en tu zona.")}>
             Avisarme cuando haya
@@ -196,6 +235,9 @@ export default function ServiceProsPage() {
       {loading ? <p className="empty">Buscando profesionales...</p> : null}
       {error ? <p className="feedback error">{error}</p> : null}
       {notifyMessage ? <p className="feedback ok">{notifyMessage}</p> : null}
+      {!loading && !error && professionals.length === 0 ? (
+        <p className="feedback error">No encontramos taskers en esa zona y horario. Prueba otro horario o direccion.</p>
+      ) : null}
 
       <section className="we-results-list">
         {professionals.map((pro) => (

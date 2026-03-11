@@ -17,6 +17,18 @@ function clp(value: number) {
   return new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP", maximumFractionDigits: 0 }).format(value);
 }
 
+function defaultDateValue() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function defaultTimeValue() {
+  const now = new Date();
+  now.setMinutes(now.getMinutes() + 60);
+  const hours = String(now.getHours()).padStart(2, "0");
+  const minutes = now.getMinutes() < 30 ? "30" : "00";
+  return `${hours}:${minutes}`;
+}
+
 export default function ServicioCategoriaPage() {
   const params = useParams<{ categorySlug: string }>();
   const categorySlug = params?.categorySlug ?? "";
@@ -32,7 +44,9 @@ export default function ServicioCategoriaPage() {
     street: query.get("address") ?? "",
     comuna: query.get("comuna") ?? "",
     city: query.get("city") ?? "Santiago",
-    postalCode: query.get("postalCode") ?? "7500000"
+    postalCode: query.get("postalCode") ?? "7500000",
+    requestedDate: query.get("requestedDate") ?? defaultDateValue(),
+    requestedTime: query.get("requestedTime") ?? defaultTimeValue()
   });
 
   useEffect(() => {
@@ -71,8 +85,14 @@ export default function ServicioCategoriaPage() {
   const openPros = (event: FormEvent) => {
     event.preventDefault();
     if (!category) return;
-    if (!address.city.trim() || !address.postalCode.trim() || !address.street.trim()) {
-      setCoverageNote("Completa direccion, comuna y ciudad para validar cobertura.");
+    if (!address.city.trim() || !address.postalCode.trim() || !address.street.trim() || !address.requestedDate || !address.requestedTime) {
+      setCoverageNote("Completa direccion, fecha y hora para ver taskers disponibles.");
+      return;
+    }
+
+    const requestedAt = new Date(`${address.requestedDate}T${address.requestedTime}:00`);
+    if (Number.isNaN(requestedAt.getTime())) {
+      setCoverageNote("Ingresa una fecha y hora validas.");
       return;
     }
 
@@ -80,7 +100,10 @@ export default function ServicioCategoriaPage() {
       address: address.street.trim(),
       comuna: address.comuna.trim(),
       city: address.city.trim(),
-      postalCode: address.postalCode.trim()
+      postalCode: address.postalCode.trim(),
+      requestedDate: address.requestedDate,
+      requestedTime: address.requestedTime,
+      date: requestedAt.toISOString()
     });
 
     router.push(`/services/${category.slug}/pros?${qs.toString()}`);
@@ -144,6 +167,24 @@ export default function ServicioCategoriaPage() {
                 <input
                   value={address.postalCode}
                   onChange={(event) => setAddress((prev) => ({ ...prev, postalCode: event.target.value }))}
+                  required
+                />
+              </label>
+              <label>
+                Fecha del servicio
+                <input
+                  type="date"
+                  value={address.requestedDate}
+                  onChange={(event) => setAddress((prev) => ({ ...prev, requestedDate: event.target.value }))}
+                  required
+                />
+              </label>
+              <label>
+                Hora del servicio
+                <input
+                  type="time"
+                  value={address.requestedTime}
+                  onChange={(event) => setAddress((prev) => ({ ...prev, requestedTime: event.target.value }))}
                   required
                 />
               </label>
