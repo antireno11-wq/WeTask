@@ -292,6 +292,7 @@ export const cleaningOnboardingStage7Schema = z.object({
   emergencyContactName: z.string().min(3).max(120),
   emergencyContactPhone: z.string().min(7).max(30),
   workReferences: z.string().min(8).max(1400),
+  identityDocumentFile: imageDataUrlSchema.optional(),
   identityDocumentFrontFile: imageDataUrlSchema,
   identityDocumentBackFile: imageDataUrlSchema,
   identitySelfieFile: imageDataUrlSchema,
