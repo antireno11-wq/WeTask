@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, MouseEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import { MarketNav } from "@/components/market-nav";
 import { geocodeAddress } from "@/lib/geo";
 import {
@@ -88,13 +88,6 @@ type AvailabilityBlock = {
   end: string;
 };
 
-
-const SANTIAGO_BOUNDS = {
-  minLat: -33.62,
-  maxLat: -33.3,
-  minLng: -70.82,
-  maxLng: -70.45
-};
 
 const TASKER_SERVICE_OPTIONS = [
   { slug: "limpieza", label: "Limpieza" },
@@ -233,10 +226,12 @@ export default function CleaningOnboardingPage() {
 
   const [baseCommune, setBaseCommune] = useState("Las Condes");
   const [serviceCommunes, setServiceCommunes] = useState<string[]>([]);
+  const [communeToAdd, setCommuneToAdd] = useState<string>(CHILE_TOP_COMMUNES[0] ?? "Las Condes");
   const [coverageLatitude, setCoverageLatitude] = useState("-33.448900");
   const [coverageLongitude, setCoverageLongitude] = useState("-70.669300");
-  const [manualCoveragePoint, setManualCoveragePoint] = useState(false);
   const [addressValidationState, setAddressValidationState] = useState<"idle" | "validating" | "verified" | "fallback">("idle");
+  const [validatedAddress, setValidatedAddress] = useState("");
+  const [mapZoom, setMapZoom] = useState(14);
   const [maxTravelKm, setMaxTravelKm] = useState(12);
   const [chargesTravelExtra, setChargesTravelExtra] = useState(false);
 
@@ -294,61 +289,30 @@ export default function CleaningOnboardingPage() {
   );
   const mapLat = clamp(
     Number.isFinite(parsedMapLat) ? parsedMapLat : geocodedCenter.lat,
-    SANTIAGO_BOUNDS.minLat,
-    SANTIAGO_BOUNDS.maxLat
+    -90,
+    90
   );
   const mapLng = clamp(
     Number.isFinite(parsedMapLng) ? parsedMapLng : geocodedCenter.lng,
-    SANTIAGO_BOUNDS.minLng,
-    SANTIAGO_BOUNDS.maxLng
+    -180,
+    180
   );
-  const markerLeftPct = clamp(
-    ((mapLng - SANTIAGO_BOUNDS.minLng) / (SANTIAGO_BOUNDS.maxLng - SANTIAGO_BOUNDS.minLng)) * 100,
-    0,
-    100
-  );
-  const markerTopPct = clamp(
-    (1 - (mapLat - SANTIAGO_BOUNDS.minLat) / (SANTIAGO_BOUNDS.maxLat - SANTIAGO_BOUNDS.minLat)) * 100,
-    0,
-    100
-  );
-  const radiusPx = Math.max(30, maxTravelKm * 10);
-  const mapEmbedUrl = `https://www.openstreetmap.org/export/embed.html?bbox=${SANTIAGO_BOUNDS.minLng}%2C${SANTIAGO_BOUNDS.minLat}%2C${SANTIAGO_BOUNDS.maxLng}%2C${SANTIAGO_BOUNDS.maxLat}&layer=hot&marker=${mapLat}%2C${mapLng}`;
-
-  const updateCoverageFromPointer = (clientX: number, clientY: number, rect: DOMRect) => {
-    const x = clamp((clientX - rect.left) / rect.width, 0, 1);
-    const y = clamp((clientY - rect.top) / rect.height, 0, 1);
-    const lng = SANTIAGO_BOUNDS.minLng + x * (SANTIAGO_BOUNDS.maxLng - SANTIAGO_BOUNDS.minLng);
-    const lat = SANTIAGO_BOUNDS.maxLat - y * (SANTIAGO_BOUNDS.maxLat - SANTIAGO_BOUNDS.minLat);
-    setCoverageLatitude(lat.toFixed(6));
-    setCoverageLongitude(lng.toFixed(6));
-    setManualCoveragePoint(true);
-    setAddressValidationState("verified");
-  };
-
-  const onCoverageMapClick = (event: MouseEvent<HTMLDivElement>) => {
-    const rect = event.currentTarget.getBoundingClientRect();
-    updateCoverageFromPointer(event.clientX, event.clientY, rect);
-  };
+  const radiusPx = Math.min(230, Math.max(44, maxTravelKm * 11));
+  const mapEmbedUrl = `https://maps.google.com/maps?hl=es&q=${encodeURIComponent(`${mapLat},${mapLng}`)}&z=${mapZoom}&t=m&output=embed`;
 
   useEffect(() => {
     if (!referenceAddress.trim()) {
-      if (!manualCoveragePoint) {
-        setCoverageLatitude(geocodedCenter.lat.toFixed(6));
-        setCoverageLongitude(geocodedCenter.lng.toFixed(6));
-      }
-      setAddressValidationState("idle");
-      return;
-    }
-
-    if (!manualCoveragePoint) {
       setCoverageLatitude(geocodedCenter.lat.toFixed(6));
       setCoverageLongitude(geocodedCenter.lng.toFixed(6));
+      setAddressValidationState("idle");
+      setValidatedAddress("");
+      return;
     }
 
     const controller = new AbortController();
     const timer = setTimeout(async () => {
       setAddressValidationState("validating");
+      setValidatedAddress("");
       try {
         const query = `${referenceAddress}, ${baseCommune}, Santiago, Chile`;
         const response = await fetch(`/api/maps/validate-address?address=${encodeURIComponent(query)}`, {
@@ -357,6 +321,7 @@ export default function CleaningOnboardingPage() {
         const data = (await response.json()) as {
           valid?: boolean;
           skipped?: boolean;
+          normalizedAddress?: string;
           location?: { lat?: number | null; lng?: number | null };
         };
 
@@ -365,11 +330,13 @@ export default function CleaningOnboardingPage() {
           return;
         }
 
-        if (!manualCoveragePoint && data.location?.lat != null && data.location?.lng != null) {
+        if (data.location?.lat != null && data.location?.lng != null) {
           setCoverageLatitude(Number(data.location.lat).toFixed(6));
           setCoverageLongitude(Number(data.location.lng).toFixed(6));
         }
 
+        setValidatedAddress((data.normalizedAddress || query).trim());
+        setMapZoom(15);
         setAddressValidationState(data.skipped ? "fallback" : "verified");
       } catch {
         if (!controller.signal.aborted) {
@@ -382,7 +349,7 @@ export default function CleaningOnboardingPage() {
       controller.abort();
       clearTimeout(timer);
     };
-  }, [baseCommune, geocodedCenter.lat, geocodedCenter.lng, manualCoveragePoint, referenceAddress]);
+  }, [baseCommune, geocodedCenter.lat, geocodedCenter.lng, referenceAddress]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -424,16 +391,18 @@ export default function CleaningOnboardingPage() {
     setBringsOwnTools(next.bringsOwnTools ?? false);
     setLanguages(toStringArray(next.languages).length > 0 ? toStringArray(next.languages) : ["espanol"]);
 
-    setServiceCommunes(toStringArray(next.serviceCommunes));
+    const loadedCommunes = toStringArray(next.serviceCommunes);
+    setServiceCommunes(loadedCommunes);
+    if (loadedCommunes.length > 0) {
+      setCommuneToAdd(loadedCommunes[0]);
+    }
     if (next.coverageLatitude != null && next.coverageLongitude != null) {
       setCoverageLatitude(next.coverageLatitude.toFixed(6));
       setCoverageLongitude(next.coverageLongitude.toFixed(6));
-      setManualCoveragePoint(true);
       setAddressValidationState("verified");
     } else {
       setCoverageLatitude("-33.448900");
       setCoverageLongitude("-70.669300");
-      setManualCoveragePoint(false);
       setAddressValidationState("idle");
     }
     setMaxTravelKm(next.maxTravelKm ?? 12);
@@ -814,17 +783,17 @@ export default function CleaningOnboardingPage() {
                 ))}
               </select>
             </label>
-            <label className="full">
-              <div className="inline-checks">
-                <label>
-                  <input type="checkbox" checked={regTerms} onChange={(event) => setRegTerms(event.target.checked)} required />
+            <div className="full inline-option-row">
+              <label className="inline-check-option">
+                <input type="checkbox" checked={regTerms} onChange={(event) => setRegTerms(event.target.checked)} required />
+                <span>
                   Acepto los{" "}
                   <Link href="/legal#terminos" target="_blank" rel="noreferrer">
                     terminos y condiciones
                   </Link>
-                </label>
-              </div>
-            </label>
+                </span>
+              </label>
+            </div>
             <div className="cta-row full">
               <button type="submit" className="cta" disabled={saving}>
                 {saving ? "Creando cuenta..." : "Continuar onboarding"}
@@ -978,41 +947,80 @@ export default function CleaningOnboardingPage() {
               Direccion base para mapa de cobertura
               <input
                 value={referenceAddress}
-                onChange={(event) => {
-                  setReferenceAddress(event.target.value);
-                  setManualCoveragePoint(false);
-                }}
+                onChange={(event) => setReferenceAddress(event.target.value)}
                 placeholder="Ej: Av. Apoquindo 1234"
               />
               <small className="input-hint">
                 {addressValidationState === "idle" ? "Escribe una direccion para ubicar tu casa en el mapa." : null}
                 {addressValidationState === "validating" ? "Validando direccion..." : null}
                 {addressValidationState === "verified"
-                  ? "Direccion validada. Puedes ajustar el pin con un clic sobre el mapa."
+                  ? "Direccion validada por Google Maps."
                   : null}
                 {addressValidationState === "fallback"
                   ? "No hubo validacion exacta de Google. Usamos una ubicacion estimada por comuna."
                   : null}
               </small>
             </label>
-            <label className="full">
-              Comunas donde atiendes
-              <div className="inline-checks">
-                {CHILE_TOP_COMMUNES.map((item) => (
-                  <label key={item}>
-                    <input type="checkbox" checked={serviceCommunes.includes(item)} onChange={() => toggleInList(item, serviceCommunes, setServiceCommunes)} />
-                    {item}
-                  </label>
+            {addressValidationState === "verified" && validatedAddress ? (
+              <p className="address-confirmation full">
+                Direccion confirmada: <strong>{validatedAddress}</strong>
+              </p>
+            ) : null}
+            {addressValidationState === "fallback" ? (
+              <p className="address-warning full">No se pudo confirmar exacto con Google Maps. Revisa calle y numeracion.</p>
+            ) : null}
+            <div className="full">
+              <p className="field-label">Comunas donde atiendes</p>
+              <div className="commune-picker-row">
+                <select value={communeToAdd} onChange={(event) => setCommuneToAdd(event.target.value)}>
+                  {CHILE_TOP_COMMUNES.map((commune) => (
+                    <option key={commune} value={commune}>
+                      {commune}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  className="cta ghost small compact-btn"
+                  onClick={() =>
+                    setServiceCommunes((current) => (current.includes(communeToAdd) ? current : [...current, communeToAdd]))
+                  }
+                >
+                  Agregar comuna
+                </button>
+              </div>
+              <div className="commune-chip-list">
+                {serviceCommunes.length === 0 ? <span className="commune-empty">Aun no agregas comunas.</span> : null}
+                {serviceCommunes.map((commune) => (
+                  <span key={commune} className="commune-chip">
+                    {commune}
+                    <button
+                      type="button"
+                      onClick={() => setServiceCommunes((current) => current.filter((item) => item !== commune))}
+                      aria-label={`Quitar ${commune}`}
+                    >
+                      ×
+                    </button>
+                  </span>
                 ))}
               </div>
-            </label>
+            </div>
             <article className="coverage-map-card full">
               <header className="coverage-map-head">
                 <h3>Mapa en tiempo real de tu zona de servicio</h3>
-                <p>El icono de casa marca tu base y el circulo muestra el radio donde prestaras servicios.</p>
+                <p>La casa marca tu direccion base. Usa + y - para acercar o alejar el mapa.</p>
               </header>
+              <div className="coverage-map-toolbar">
+                <button type="button" className="map-zoom-btn" onClick={() => setMapZoom((current) => Math.max(11, current - 1))} aria-label="Alejar mapa">
+                  -
+                </button>
+                <span>Zoom {mapZoom}</span>
+                <button type="button" className="map-zoom-btn" onClick={() => setMapZoom((current) => Math.min(18, current + 1))} aria-label="Acercar mapa">
+                  +
+                </button>
+              </div>
               <div className="coverage-map-wrap">
-                <div className="coverage-map-interactive" onClick={onCoverageMapClick} role="presentation">
+                <div className="coverage-map-interactive">
                   <iframe
                     title="Mapa cobertura profesional"
                     className="coverage-map-frame"
@@ -1020,7 +1028,7 @@ export default function CleaningOnboardingPage() {
                     loading="lazy"
                     referrerPolicy="no-referrer-when-downgrade"
                   />
-                  <div className="coverage-pin" style={{ left: `${markerLeftPct}%`, top: `${markerTopPct}%` }}>
+                  <div className="coverage-pin coverage-pin-center">
                     <span
                       className="coverage-pin-radius"
                       style={{ width: `${radiusPx * 2}px`, height: `${radiusPx * 2}px` }}
@@ -1045,14 +1053,12 @@ export default function CleaningOnboardingPage() {
                 Coordenadas base: {mapLat.toFixed(6)}, {mapLng.toFixed(6)} · Radio activo: {maxTravelKm} km
               </p>
             </article>
-            <label className="full">
-              <div className="inline-checks">
-                <label>
-                  <input type="checkbox" checked={chargesTravelExtra} onChange={(event) => setChargesTravelExtra(event.target.checked)} />
-                  Cobro extra por traslado
-                </label>
-              </div>
-            </label>
+            <div className="full inline-option-row">
+              <label className="inline-check-option">
+                <input type="checkbox" checked={chargesTravelExtra} onChange={(event) => setChargesTravelExtra(event.target.checked)} />
+                <span>Cobro extra por traslado</span>
+              </label>
+            </div>
             <div className="cta-row full">
               <button type="button" className="cta" onClick={() => void saveStep(4)} disabled={saving}>
                 {saving ? "Guardando..." : "Guardar cobertura"}
@@ -1080,7 +1086,7 @@ export default function CleaningOnboardingPage() {
               <div className="list">
                 {availabilityBlocks.map((block, index) => (
                   <article key={`${block.day}-${index}`} className="module-card">
-                    <div className="query-row query-single">
+                    <div className="query-row query-availability">
                       <label>
                         Dia
                         <select
@@ -1124,7 +1130,7 @@ export default function CleaningOnboardingPage() {
                       </label>
                       <button
                         type="button"
-                        className="cta ghost small"
+                        className="cta ghost small compact-btn"
                         onClick={() => setAvailabilityBlocks((current) => current.filter((_, blockIndex) => blockIndex !== index))}
                         disabled={availabilityBlocks.length === 1}
                       >
@@ -1138,7 +1144,7 @@ export default function CleaningOnboardingPage() {
             <div className="cta-row full">
               <button
                 type="button"
-                className="cta ghost small"
+                className="cta ghost small compact-btn"
                 onClick={() =>
                   setAvailabilityBlocks((current) => [...current, { day: "lunes", start: "14:00", end: "18:00" }])
                 }
@@ -1146,14 +1152,12 @@ export default function CleaningOnboardingPage() {
                 Agregar bloque
               </button>
             </div>
-            <label className="full">
-              <div className="inline-checks">
-                <label>
-                  <input type="checkbox" checked={acceptsUrgentBookings} onChange={(event) => setAcceptsUrgentBookings(event.target.checked)} />
-                  Acepto reservas urgentes
-                </label>
-              </div>
-            </label>
+            <div className="full inline-option-row">
+              <label className="inline-check-option">
+                <input type="checkbox" checked={acceptsUrgentBookings} onChange={(event) => setAcceptsUrgentBookings(event.target.checked)} />
+                <span>Acepto reservas urgentes</span>
+              </label>
+            </div>
             <div className="cta-row full">
               <button type="button" className="cta" onClick={() => void saveStep(5)} disabled={saving}>
                 {saving ? "Guardando..." : "Guardar disponibilidad"}
@@ -1343,26 +1347,24 @@ export default function CleaningOnboardingPage() {
                 ))}
               </div>
             </label>
-            <label className="full">
-              <div className="inline-checks">
-                <label>
-                  <input type="checkbox" checked={acceptsCancellationPolicy} onChange={(event) => setAcceptsCancellationPolicy(event.target.checked)} />
-                  Acepto politica de cancelacion
-                </label>
-                <label>
-                  <input type="checkbox" checked={acceptsServiceProtocol} onChange={(event) => setAcceptsServiceProtocol(event.target.checked)} />
-                  Acepto protocolo de servicio
-                </label>
-                <label>
-                  <input type="checkbox" checked={acceptsDataProcessing} onChange={(event) => setAcceptsDataProcessing(event.target.checked)} />
-                  Autorizo tratamiento de datos
-                </label>
-                <label>
-                  <input type="checkbox" checked={confirmsCleaningScope} onChange={(event) => setConfirmsCleaningScope(event.target.checked)} />
-                  Confirmo que entiendo que incluye y que no incluye una limpieza
-                </label>
-              </div>
-            </label>
+            <div className="full inline-options-stack">
+              <label className="inline-check-option">
+                <input type="checkbox" checked={acceptsCancellationPolicy} onChange={(event) => setAcceptsCancellationPolicy(event.target.checked)} />
+                <span>Acepto politica de cancelacion</span>
+              </label>
+              <label className="inline-check-option">
+                <input type="checkbox" checked={acceptsServiceProtocol} onChange={(event) => setAcceptsServiceProtocol(event.target.checked)} />
+                <span>Acepto protocolo de servicio</span>
+              </label>
+              <label className="inline-check-option">
+                <input type="checkbox" checked={acceptsDataProcessing} onChange={(event) => setAcceptsDataProcessing(event.target.checked)} />
+                <span>Autorizo tratamiento de datos</span>
+              </label>
+              <label className="inline-check-option">
+                <input type="checkbox" checked={confirmsCleaningScope} onChange={(event) => setConfirmsCleaningScope(event.target.checked)} />
+                <span>Confirmo que entiendo que incluye y que no incluye una limpieza</span>
+              </label>
+            </div>
             <div className="cta-row full">
               <button type="button" className="cta" onClick={() => void saveStep(8)} disabled={saving}>
                 {saving ? "Guardando..." : "Guardar capacitacion"}
