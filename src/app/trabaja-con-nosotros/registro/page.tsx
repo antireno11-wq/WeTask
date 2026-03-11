@@ -160,6 +160,21 @@ function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
 }
 
+function calculateMapRadiusPixels(km: number, lat: number, zoom: number) {
+  const meters = Math.max(0, km) * 1000;
+  const metersPerPixel = (156543.03392 * Math.cos((lat * Math.PI) / 180)) / Math.pow(2, zoom);
+  if (!Number.isFinite(metersPerPixel) || metersPerPixel <= 0) return 0;
+  return meters / metersPerPixel;
+}
+
+function estimateZoomForRadius(km: number, lat: number) {
+  const meters = Math.max(0.5, km) * 1000;
+  const targetRadiusPx = 120;
+  const metersPerPixel = meters / targetRadiusPx;
+  const zoom = Math.log2((156543.03392 * Math.cos((lat * Math.PI) / 180)) / metersPerPixel);
+  return clamp(Math.round(zoom), 10, 18);
+}
+
 function toStringArray(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
   return value.map((item) => String(item));
@@ -205,7 +220,6 @@ export default function CleaningOnboardingPage() {
   const [regPhone, setRegPhone] = useState("");
   const [regEmail, setRegEmail] = useState("");
   const [regPassword, setRegPassword] = useState("");
-  const [regBaseCommune, setRegBaseCommune] = useState("Las Condes");
   const [regTerms, setRegTerms] = useState(false);
 
   const [profilePhotoUrl, setProfilePhotoUrl] = useState("");
@@ -232,6 +246,9 @@ export default function CleaningOnboardingPage() {
   const [addressValidationState, setAddressValidationState] = useState<"idle" | "validating" | "verified" | "fallback">("idle");
   const [validatedAddress, setValidatedAddress] = useState("");
   const [mapZoom, setMapZoom] = useState(14);
+  const [addressSuggestions, setAddressSuggestions] = useState<string[]>([]);
+  const [autocompleteLoading, setAutocompleteLoading] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(false);
   const [maxTravelKm, setMaxTravelKm] = useState(12);
   const [chargesTravelExtra, setChargesTravelExtra] = useState(false);
 
@@ -297,7 +314,7 @@ export default function CleaningOnboardingPage() {
     -180,
     180
   );
-  const radiusPx = Math.min(230, Math.max(44, maxTravelKm * 11));
+  const radiusPx = calculateMapRadiusPixels(maxTravelKm, mapLat, mapZoom);
   const mapEmbedUrl = `https://maps.google.com/maps?hl=es&q=${encodeURIComponent(`${mapLat},${mapLng}`)}&z=${mapZoom}&t=m&output=embed`;
 
   useEffect(() => {
@@ -306,6 +323,8 @@ export default function CleaningOnboardingPage() {
       setCoverageLongitude(geocodedCenter.lng.toFixed(6));
       setAddressValidationState("idle");
       setValidatedAddress("");
+      setAddressSuggestions([]);
+      setShowSuggestions(false);
       return;
     }
 
@@ -333,10 +352,10 @@ export default function CleaningOnboardingPage() {
         if (data.location?.lat != null && data.location?.lng != null) {
           setCoverageLatitude(Number(data.location.lat).toFixed(6));
           setCoverageLongitude(Number(data.location.lng).toFixed(6));
+          setMapZoom(estimateZoomForRadius(maxTravelKm, Number(data.location.lat)));
         }
 
         setValidatedAddress((data.normalizedAddress || query).trim());
-        setMapZoom(15);
         setAddressValidationState(data.skipped ? "fallback" : "verified");
       } catch {
         if (!controller.signal.aborted) {
@@ -349,7 +368,55 @@ export default function CleaningOnboardingPage() {
       controller.abort();
       clearTimeout(timer);
     };
-  }, [baseCommune, geocodedCenter.lat, geocodedCenter.lng, referenceAddress]);
+  }, [baseCommune, geocodedCenter.lat, geocodedCenter.lng, maxTravelKm, referenceAddress]);
+
+  useEffect(() => {
+    const query = referenceAddress.trim();
+    if (query.length < 4) {
+      setAddressSuggestions([]);
+      setShowSuggestions(false);
+      setAutocompleteLoading(false);
+      return;
+    }
+
+    const controller = new AbortController();
+    const timer = setTimeout(async () => {
+      setAutocompleteLoading(true);
+      try {
+        const response = await fetch(`/api/maps/autocomplete?input=${encodeURIComponent(`${query}, ${baseCommune}, Santiago, Chile`)}`, {
+          signal: controller.signal
+        });
+        const data = (await response.json()) as { predictions?: string[] };
+        if (!response.ok) {
+          setAddressSuggestions([]);
+          setShowSuggestions(false);
+          return;
+        }
+        const suggestions = Array.isArray(data.predictions) ? data.predictions : [];
+        setAddressSuggestions(suggestions);
+        setShowSuggestions(suggestions.length > 0);
+      } catch {
+        if (!controller.signal.aborted) {
+          setAddressSuggestions([]);
+          setShowSuggestions(false);
+        }
+      } finally {
+        if (!controller.signal.aborted) {
+          setAutocompleteLoading(false);
+        }
+      }
+    }, 300);
+
+    return () => {
+      controller.abort();
+      clearTimeout(timer);
+    };
+  }, [baseCommune, referenceAddress]);
+
+  useEffect(() => {
+    if (addressValidationState !== "verified") return;
+    setMapZoom(estimateZoomForRadius(maxTravelKm, mapLat));
+  }, [addressValidationState, mapLat, maxTravelKm]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -489,6 +556,12 @@ export default function CleaningOnboardingPage() {
     else setter([...list, value]);
   };
 
+  const selectSuggestedAddress = (value: string) => {
+    setReferenceAddress(value);
+    setAddressSuggestions([]);
+    setShowSuggestions(false);
+  };
+
   const uploadAsDataUrl = async (file: File | null, setter: (value: string) => void) => {
     if (!file) return;
     const content = await fileToDataUrl(file);
@@ -510,7 +583,7 @@ export default function CleaningOnboardingPage() {
           email: regEmail,
           password: regPassword,
           authProvider: "EMAIL",
-          baseCommune: regBaseCommune,
+          baseCommune,
           acceptTerms: regTerms
         })
       });
@@ -773,16 +846,6 @@ export default function CleaningOnboardingPage() {
               Contrasena
               <input type="password" value={regPassword} onChange={(event) => setRegPassword(event.target.value)} minLength={8} required />
             </label>
-            <label>
-              Comuna base
-              <select value={regBaseCommune} onChange={(event) => setRegBaseCommune(event.target.value)}>
-                {CHILE_TOP_COMMUNES.map((commune) => (
-                  <option key={commune} value={commune}>
-                    {commune}
-                  </option>
-                ))}
-              </select>
-            </label>
             <div className="full inline-option-row">
               <label className="inline-check-option">
                 <input type="checkbox" checked={regTerms} onChange={(event) => setRegTerms(event.target.checked)} required />
@@ -936,10 +999,6 @@ export default function CleaningOnboardingPage() {
           <div className="grid-form">
             <h3 className="full">3. Cobertura geografica</h3>
             <label>
-              Comuna base
-              <input value={baseCommune} onChange={(event) => setBaseCommune(event.target.value)} />
-            </label>
-            <label>
               Radio maximo de desplazamiento (km)
               <input type="number" min={1} max={80} value={maxTravelKm} onChange={(event) => setMaxTravelKm(Number(event.target.value) || 1)} />
             </label>
@@ -947,9 +1006,34 @@ export default function CleaningOnboardingPage() {
               Direccion base para mapa de cobertura
               <input
                 value={referenceAddress}
-                onChange={(event) => setReferenceAddress(event.target.value)}
+                onChange={(event) => {
+                  setReferenceAddress(event.target.value);
+                  setShowSuggestions(true);
+                }}
+                onFocus={() => {
+                  if (addressSuggestions.length > 0) setShowSuggestions(true);
+                }}
+                onBlur={() => {
+                  setTimeout(() => setShowSuggestions(false), 120);
+                }}
                 placeholder="Ej: Av. Apoquindo 1234"
+                autoComplete="off"
               />
+              {showSuggestions && addressSuggestions.length > 0 ? (
+                <div className="address-suggestions">
+                  {addressSuggestions.map((suggestion) => (
+                    <button
+                      key={suggestion}
+                      type="button"
+                      className="address-suggestion-btn"
+                      onMouseDown={() => selectSuggestedAddress(suggestion)}
+                    >
+                      {suggestion}
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+              {autocompleteLoading ? <small className="input-hint">Buscando direcciones en Google...</small> : null}
               <small className="input-hint">
                 {addressValidationState === "idle" ? "Escribe una direccion para ubicar tu casa en el mapa." : null}
                 {addressValidationState === "validating" ? "Validando direccion..." : null}
@@ -960,6 +1044,16 @@ export default function CleaningOnboardingPage() {
                   ? "No hubo validacion exacta de Google. Usamos una ubicacion estimada por comuna."
                   : null}
               </small>
+            </label>
+            <label>
+              Comuna de referencia
+              <select value={baseCommune} onChange={(event) => setBaseCommune(event.target.value)}>
+                {CHILE_TOP_COMMUNES.map((commune) => (
+                  <option key={commune} value={commune}>
+                    {commune}
+                  </option>
+                ))}
+              </select>
             </label>
             {addressValidationState === "verified" && validatedAddress ? (
               <p className="address-confirmation full">

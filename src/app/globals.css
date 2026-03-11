@@ -1089,6 +1089,35 @@ textarea {
   font-weight: 600;
 }
 
+.address-suggestions {
+  margin-top: 6px;
+  border: 1px solid #c7daef;
+  border-radius: 10px;
+  background: #ffffff;
+  max-height: 220px;
+  overflow-y: auto;
+  display: grid;
+}
+
+.address-suggestion-btn {
+  border: 0;
+  border-bottom: 1px solid #e5eff8;
+  background: #ffffff;
+  color: #173b5f;
+  text-align: left;
+  padding: 9px 10px;
+  font-size: 0.84rem;
+  cursor: pointer;
+}
+
+.address-suggestion-btn:last-child {
+  border-bottom: 0;
+}
+
+.address-suggestion-btn:hover {
+  background: #f3f8fc;
+}
+
 .coverage-map-toolbar {
   display: inline-flex;
   align-items: center;
