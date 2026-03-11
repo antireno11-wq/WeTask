@@ -5,7 +5,7 @@ import { CORE_SERVICES } from "@/lib/core-services";
 const howItWorks = [
   {
     title: "Busca lo que necesitas",
-    text: "Selecciona la categoria y cuentanos que servicio necesitas en tu domicilio.",
+    text: "Elige una categoria, agrega direccion y horario para ver cobertura real.",
     visual: "collage-one"
   },
   {
@@ -67,7 +67,9 @@ export default function HomePage() {
             </Link>
           </div>
 
-          <div className="mvp-hero-scene" aria-hidden />
+          <div className="mvp-hero-scene" aria-hidden>
+            <img src="/hero-webel-twofloor.webp" alt="" />
+          </div>
         </section>
       </section>
 
@@ -86,12 +88,37 @@ export default function HomePage() {
         </div>
       </section>
 
+      <section className="panel mvp-section mvp-service-showcase" id="servicios-disponibles">
+        <div className="panel-head">
+          <h2>Servicios que ya puedes reservar</h2>
+          <p>Partimos con las categorias de mayor demanda para validar WeTask en Chile.</p>
+        </div>
+
+        <div className="mvp-service-gallery">
+          {CORE_SERVICES.map((service) => (
+            <Link key={service.slug} href={`/services/${service.categorySlug}`} className="mvp-service-media-card">
+              <div className="mvp-service-media" style={{ backgroundImage: `url("${service.image}")` }} aria-hidden />
+              <div className="mvp-service-copy">
+                <strong>
+                  {service.icon} {service.label}
+                </strong>
+                <span>{service.taskerDescription}</span>
+              </div>
+            </Link>
+          ))}
+        </div>
+      </section>
+
       <section className="panel mvp-section mvp-intro" id="sobre-nosotros-home">
         <div className="mvp-intro-copy">
           <h2>Pedimos de todo a casa: comida, paquetes, la compra... pero, y los servicios?</h2>
           <p>
             Con WeTask puedes disfrutar de casi cualquier servicio (clases, belleza, fisioterapia y mas) sin tener que salir de casa.
           </p>
+        </div>
+        <div className="mvp-intro-visual-grid" aria-hidden>
+          <div className="mvp-intro-visual main" />
+          <div className="mvp-intro-visual secondary" />
         </div>
       </section>
 

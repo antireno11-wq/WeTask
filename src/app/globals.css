@@ -488,16 +488,19 @@ body {
 
 .mvp-hero-scene {
   width: 100%;
-  aspect-ratio: 1366 / 768;
-  min-height: 220px;
-  max-height: 430px;
   border-radius: 16px;
   border: 1px solid #9bd9ec;
-  background-color: #eaf6ff;
-  background-image: url("/hero-wetask-gemini-house.png?v=3");
-  background-size: contain;
-  background-repeat: no-repeat;
-  background-position: center center;
+  background: #eaf6ff;
+  overflow: hidden;
+  padding: 8px;
+}
+
+.mvp-hero-scene img {
+  width: 100%;
+  height: auto;
+  display: block;
+  object-fit: contain;
+  border-radius: 12px;
 }
 
 .minimal-main h1 {
@@ -1704,9 +1707,7 @@ textarea {
   }
 
   .mvp-hero-scene {
-    height: 220px;
-    background-size: contain;
-    background-position: center center;
+    padding: 6px;
   }
 
   .home-guarantee-grid {
