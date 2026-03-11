@@ -1,15 +1,6 @@
 import Link from "next/link";
 import { MarketNav } from "@/components/market-nav";
-
-const topCategories = [
-  { key: "hogar", icon: "🏠", label: "Hogar", service: "Limpieza general" },
-  { key: "clases", icon: "📚", label: "Clases", service: "Clases particulares" },
-  { key: "deportes", icon: "💪", label: "Deportes", service: "Entrenamiento" },
-  { key: "otros", icon: "🧰", label: "Otros", service: "Maestro multiuso" },
-  { key: "cuidados", icon: "❤️", label: "Cuidados", service: "Cuidado de personas" },
-  { key: "belleza", icon: "💇", label: "Belleza", service: "Peluqueria" },
-  { key: "mascotas", icon: "🐶", label: "Mascotas", service: "Cuidado de mascotas" }
-];
+import { CORE_SERVICES } from "@/lib/core-services";
 
 const howItWorks = [
   {
@@ -52,10 +43,10 @@ export default function HomePage() {
 
         <section className="panel mvp-hero home-hero-main" id="inicio">
           <div className="mvp-category-top-row" aria-label="Categorias principales">
-            {topCategories.map((item) => (
+            {CORE_SERVICES.map((item) => (
               <Link
-                key={item.key}
-                href={`/solicitar-tecnico?servicio=${encodeURIComponent(item.service)}&source=home_category_${item.key}`}
+                key={item.slug}
+                href={`/solicitar-tecnico?servicio=${encodeURIComponent(item.requestService)}&source=home_category_${item.slug}`}
                 className="mvp-category-top-pill"
               >
                 <span aria-hidden>{item.icon}</span>

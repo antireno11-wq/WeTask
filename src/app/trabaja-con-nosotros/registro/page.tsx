@@ -4,6 +4,7 @@ import Link from "next/link";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { MarketNav } from "@/components/market-nav";
 import { geocodeAddress } from "@/lib/geo";
+import { CORE_SERVICES, type CoreTaskerServiceSlug } from "@/lib/core-services";
 import {
   CHILE_TOP_COMMUNES,
   CLEANING_LANGUAGE_OPTIONS,
@@ -88,14 +89,12 @@ type AvailabilityBlock = {
   end: string;
 };
 
+type TaskerServiceSlug = CoreTaskerServiceSlug;
 
-const TASKER_SERVICE_OPTIONS = [
-  { slug: "limpieza", label: "Limpieza" },
-  { slug: "maestro", label: "Maestro" },
-  { slug: "clases", label: "Clases" }
-] as const;
-
-type TaskerServiceSlug = (typeof TASKER_SERVICE_OPTIONS)[number]["slug"];
+const TASKER_SERVICE_OPTIONS: ReadonlyArray<{ slug: TaskerServiceSlug; label: string }> = CORE_SERVICES.map((service) => ({
+  slug: service.slug,
+  label: service.label
+}));
 
 const EXPERIENCE_OPTIONS_BY_SERVICE: Record<TaskerServiceSlug, string[]> = {
   limpieza: ["casas", "departamentos", "oficinas_pequenas", "airbnb", "limpieza_profunda", "planchado"],
@@ -422,9 +421,8 @@ export default function CleaningOnboardingPage() {
     const params = new URLSearchParams(window.location.search);
     const service = params.get("service");
     if (!service) return;
-    if (service === "limpieza" || service === "maestro" || service === "clases") {
-      setSelectedService(service);
-    }
+    const selected = TASKER_SERVICE_OPTIONS.find((item) => item.slug === service);
+    if (selected) setSelectedService(selected.slug);
   }, []);
 
   const selectedServiceLabel =

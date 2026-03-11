@@ -1,23 +1,6 @@
 import Link from "next/link";
 import { MarketNav } from "@/components/market-nav";
-
-const taskerServices = [
-  {
-    slug: "limpieza",
-    title: "Limpieza",
-    description: "Onboarding completo con cobertura, tarifas y verificacion."
-  },
-  {
-    slug: "maestro",
-    title: "Maestro",
-    description: "Registro para trabajos de reparaciones y mantenciones."
-  },
-  {
-    slug: "clases",
-    title: "Clases",
-    description: "Registro para profes de apoyo escolar y clases personalizadas."
-  }
-] as const;
+import { CORE_SERVICES } from "@/lib/core-services";
 
 export default function TrabajaConNosotrosPage() {
   return (
@@ -36,12 +19,12 @@ export default function TrabajaConNosotrosPage() {
           <p>Entraras al registro del servicio que elijas y luego completas todo en una sola pagina (hacia abajo).</p>
         </div>
         <div className="mvp-why-grid">
-          {taskerServices.map((service) => (
+          {CORE_SERVICES.map((service) => (
             <article key={service.slug} className="mvp-why-card">
-              <h3>{service.title}</h3>
-              <p>{service.description}</p>
+              <h3>{service.label}</h3>
+              <p>{service.taskerDescription}</p>
               <Link href={`/trabaja-con-nosotros/registro?service=${service.slug}`} className="cta small">
-                Continuar con {service.title}
+                Continuar con {service.label}
               </Link>
             </article>
           ))}

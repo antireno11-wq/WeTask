@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { MarketNav } from "@/components/market-nav";
+import { CORE_CATEGORY_SLUGS, CORE_SERVICES } from "@/lib/core-services";
 
 type Category = {
   id: string;
@@ -11,8 +12,6 @@ type Category = {
   description: string | null;
   services: Array<{ id: string; basePriceClp: number }>;
 };
-
-const VISIBLE_CATEGORY_SLUGS = ["limpieza", "maestro-polifuncional", "clases-colegio"] as const;
 
 export default function ServiciosPage() {
   const [categories, setCategories] = useState<Category[]>([]);
@@ -29,7 +28,16 @@ export default function ServiciosPage() {
           throw new Error(data.detail || data.error || "No se pudieron cargar las categorias");
         }
 
-        const visible = data.categories.filter((category) => VISIBLE_CATEGORY_SLUGS.includes(category.slug as (typeof VISIBLE_CATEGORY_SLUGS)[number]));
+        const labelByCategorySlug = new Map<string, string>(CORE_SERVICES.map((service) => [service.categorySlug, service.label]));
+        const visibleSlugSet = new Set<string>(CORE_CATEGORY_SLUGS);
+        const orderBySlug = new Map<string, number>(CORE_CATEGORY_SLUGS.map((slug, index) => [slug, index]));
+        const visible = data.categories
+          .filter((category) => visibleSlugSet.has(category.slug))
+          .sort((a, b) => (orderBySlug.get(a.slug) ?? 999) - (orderBySlug.get(b.slug) ?? 999))
+          .map((category) => ({
+            ...category,
+            name: labelByCategorySlug.get(category.slug) ?? category.name
+          }));
         setCategories(visible);
       } catch (e) {
         setError(e instanceof Error ? e.message : "Error inesperado");
@@ -56,7 +64,7 @@ export default function ServiciosPage() {
       <section className="service-grid">
         {categories.map((category) => (
           <Link key={category.id} href={`/services/${category.slug}`} className="service-card module-link">
-            <strong>{category.slug === "clases-colegio" ? "Clases" : category.name}</strong>
+            <strong>{category.name}</strong>
             <span>{category.description ?? "Servicios disponibles en esta categoria."}</span>
             <span>
               {category.services.length > 0
