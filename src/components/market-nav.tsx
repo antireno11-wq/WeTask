@@ -84,8 +84,7 @@ export function MarketNav() {
   const accountHref = role === "PRO" ? "/pro" : "/cliente";
   const links = [
     { href: "/services", label: "Servicios" },
-    { href: "/profesionales", label: "Profesionales" },
-    { href: "/sobre-nosotros", label: "Sobre nosotros" }
+    { href: "/como-funciona", label: "Como funciona?" }
   ];
 
   return (
@@ -93,34 +92,36 @@ export function MarketNav() {
       <Link href="/" className="brand-link">
         <img alt="WeTask" className="brand-logo" src={logoSrc} width={170} height={68} />
       </Link>
-      <nav>
-        {links.map((item) => (
-          <Link key={item.href} href={item.href} className="nav-link">
-            {item.label}
-          </Link>
-        ))}
-      </nav>
-      <div className="auth-nav">
-        {session?.role ? <span className="auth-badge">{session.fullName ?? "Usuario"} · {session.role}</span> : null}
-        {session?.role ? (
-          <>
-            <Link href={accountHref} className="nav-link auth-btn">
-              Mi cuenta
+      <div className="nav-right">
+        <nav>
+          {links.map((item) => (
+            <Link key={item.href} href={item.href} className="nav-link">
+              {item.label}
             </Link>
-            <button type="button" className="nav-link auth-btn" onClick={logout}>
-              Salir
-            </button>
-          </>
-        ) : (
-          <>
-            <Link href="/trabaja-con-nosotros" className="nav-link auth-btn">
-              Ofrecer servicios
-            </Link>
-            <Link href="/ingresar" className="nav-link auth-btn auth-login-pill">
-              Acceder
-            </Link>
-          </>
-        )}
+          ))}
+        </nav>
+        <div className="auth-nav">
+          {session?.role ? <span className="auth-badge">{session.fullName ?? "Usuario"} · {session.role}</span> : null}
+          {session?.role ? (
+            <>
+              <Link href={accountHref} className="nav-link auth-btn">
+                Mi cuenta
+              </Link>
+              <button type="button" className="nav-link auth-btn" onClick={logout}>
+                Salir
+              </button>
+            </>
+          ) : (
+            <>
+              <Link href="/trabaja-con-nosotros" className="nav-link auth-btn">
+                Ofrecer servicios
+              </Link>
+              <Link href="/ingresar" className="nav-link auth-btn auth-login-pill">
+                Acceder
+              </Link>
+            </>
+          )}
+        </div>
       </div>
     </header>
   );

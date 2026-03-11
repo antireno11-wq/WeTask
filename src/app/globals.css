@@ -43,6 +43,15 @@ body {
   flex-wrap: wrap;
 }
 
+.nav-right {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 .brand-link {
   display: inline-flex;
   align-items: center;
@@ -56,6 +65,7 @@ body {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 .auth-nav {
@@ -63,6 +73,7 @@ body {
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 .auth-badge {
