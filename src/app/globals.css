@@ -1244,6 +1244,34 @@ textarea {
   white-space: nowrap;
 }
 
+.time-quick-row {
+  margin: 6px 0 8px;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.time-quick-btn {
+  border: 1px solid #c6d8ea;
+  background: #f7fbff;
+  color: #173b5f;
+  border-radius: 999px;
+  padding: 6px 10px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.time-quick-btn:hover {
+  background: #edf5fc;
+}
+
+.time-quick-btn.active {
+  border-color: #173b5f;
+  background: #173b5f;
+  color: #ffffff;
+}
+
 .query-row {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr)) auto;
@@ -2332,14 +2360,15 @@ textarea {
 
 .mvp-intro {
   background: linear-gradient(180deg, #f8fcff 0%, #f1f7fd 100%);
+  display: grid;
+  grid-template-columns: 1.15fr 0.85fr;
+  gap: 14px;
+  align-items: center;
 }
 
 .mvp-intro-copy {
-  max-width: 860px;
-  margin: 0 auto;
   display: grid;
   gap: 10px;
-  text-align: center;
 }
 
 .mvp-intro-copy h2 {
@@ -2352,6 +2381,80 @@ textarea {
   margin: 0;
   color: #334861;
   font-size: 1.03rem;
+}
+
+.mvp-intro-visual-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: 1fr;
+}
+
+.mvp-intro-visual {
+  border-radius: 14px;
+  border: 1px solid #cfe1ef;
+  min-height: 160px;
+  background-size: cover;
+  background-position: center;
+}
+
+.mvp-intro-visual.main {
+  min-height: 210px;
+  background-image: url("/hero-webel-twofloor.webp");
+}
+
+.mvp-intro-visual.secondary {
+  min-height: 140px;
+  background-image:
+    linear-gradient(140deg, rgba(16, 46, 79, 0.35) 0%, rgba(16, 46, 79, 0.08) 100%),
+    url("/hero-wetask-gemini-house.png");
+}
+
+.mvp-service-showcase .panel-head p {
+  max-width: 70ch;
+}
+
+.mvp-service-gallery {
+  margin-top: 10px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.mvp-service-media-card {
+  border: 1px solid #d4e6f2;
+  border-radius: 14px;
+  overflow: hidden;
+  text-decoration: none;
+  color: inherit;
+  background: #ffffff;
+  display: grid;
+}
+
+.mvp-service-media {
+  min-height: 170px;
+  background-size: cover;
+  background-position: center;
+}
+
+.mvp-service-copy {
+  padding: 12px;
+  display: grid;
+  gap: 6px;
+}
+
+.mvp-service-copy strong {
+  font-size: 1.02rem;
+}
+
+.mvp-service-copy span {
+  color: #3a506d;
+  font-size: 0.9rem;
+}
+
+.mvp-service-media-card:hover {
+  border-color: #b8d0e4;
+  transform: translateY(-1px);
+  box-shadow: 0 12px 24px rgba(19, 42, 87, 0.08);
 }
 
 .mvp-why-grid {
@@ -2464,12 +2567,17 @@ textarea {
   .mvp-service-grid,
   .mvp-steps-grid,
   .mvp-how-grid,
-  .mvp-why-grid {
+  .mvp-why-grid,
+  .mvp-service-gallery {
     grid-template-columns: 1fr;
   }
 
   .mvp-category-top-row {
     justify-content: flex-start;
+  }
+
+  .mvp-intro {
+    grid-template-columns: 1fr;
   }
 
   .mvp-intro-copy {

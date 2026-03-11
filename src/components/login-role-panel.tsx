@@ -12,6 +12,7 @@ type DemoUser = {
 
 type DemoPayload = {
   customer?: DemoUser;
+  customers?: DemoUser[];
   professionals?: DemoUser[];
 };
 
@@ -25,7 +26,6 @@ export function LoginRolePanel({ role }: LoginRolePanelProps) {
   const router = useRouter();
   const isTasker = role === "PRO";
 
-  const [nextPath, setNextPath] = useState<string>(isTasker ? "/pro" : "/cliente");
   const [demoPayload, setDemoPayload] = useState<DemoPayload | null>(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -34,11 +34,10 @@ export function LoginRolePanel({ role }: LoginRolePanelProps) {
   const [loading, setLoading] = useState(false);
   const [feedback, setFeedback] = useState("");
   const [error, setError] = useState("");
+  const demoPassword = "WetaskDemo2026!";
 
-  const roleTitle = isTasker ? "Ingreso Tasker" : "Ingreso Cliente";
-  const roleDescription = isTasker
-    ? "Gestiona tus servicios, disponibilidad y reservas."
-    : "Reserva servicios y haz seguimiento de tus solicitudes.";
+  const roleTitle = "Acceder";
+  const roleDescription = "Ingresa tus datos o crea una cuenta.";
 
   const createAccountHref = isTasker ? "/trabaja-con-nosotros" : "/registro?role=CUSTOMER";
   const createAccountLabel = isTasker ? "Crear cuenta tasker" : "Crear cuenta cliente";
@@ -46,13 +45,14 @@ export function LoginRolePanel({ role }: LoginRolePanelProps) {
   const demoUser = useMemo(() => {
     if (!demoPayload) return null;
     if (isTasker) return demoPayload.professionals?.[0] ?? null;
-    return demoPayload.customer ?? null;
+    return demoPayload.customers?.[0] ?? demoPayload.customer ?? null;
   }, [demoPayload, isTasker]);
 
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    setNextPath(params.get("next") ?? (isTasker ? "/pro" : "/cliente"));
-  }, [isTasker]);
+  const demoEmails = useMemo(() => {
+    if (!demoPayload) return [];
+    if (isTasker) return (demoPayload.professionals ?? []).map((item) => item.email);
+    return (demoPayload.customers ?? (demoPayload.customer ? [demoPayload.customer] : [])).map((item) => item.email);
+  }, [demoPayload, isTasker]);
 
   useEffect(() => {
     const load = async () => {
@@ -67,7 +67,7 @@ export function LoginRolePanel({ role }: LoginRolePanelProps) {
     void load();
   }, []);
 
-  const login = async (payload: { userId?: string; email?: string; password?: string; role: LoginRole }) => {
+  const login = async (payload: { userId?: string; email?: string; password?: string }) => {
     setLoading(true);
     setError("");
     setFeedback("");
@@ -77,12 +77,17 @@ export function LoginRolePanel({ role }: LoginRolePanelProps) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
       });
-      const data = (await response.json()) as { error?: string; detail?: string; session?: { fullName: string } };
+      const data = (await response.json()) as {
+        error?: string;
+        detail?: string;
+        session?: { fullName: string; role: "CUSTOMER" | "PRO" | "ADMIN" };
+      };
       if (!response.ok || !data.session) {
         throw new Error(data.detail || data.error || "No se pudo iniciar sesion");
       }
       setFeedback(`Sesion iniciada como ${data.session.fullName}`);
-      router.push(nextPath);
+      const profileRoute = data.session.role === "PRO" ? "/pro" : data.session.role === "ADMIN" ? "/admin" : "/cliente";
+      router.push(profileRoute);
       router.refresh();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error inesperado");
@@ -94,7 +99,7 @@ export function LoginRolePanel({ role }: LoginRolePanelProps) {
   const submitByEmail = async (event: FormEvent) => {
     event.preventDefault();
     if (!email.trim()) return;
-    await login({ email: email.trim(), password, role });
+    await login({ email: email.trim(), password });
   };
 
   const forgotPassword = async () => {
@@ -151,7 +156,7 @@ export function LoginRolePanel({ role }: LoginRolePanelProps) {
 
       <div className="cta-row">
         {demoUser ? (
-          <button className="cta small" type="button" onClick={() => void login({ userId: demoUser.id, role })} disabled={loading}>
+          <button className="cta small" type="button" onClick={() => void login({ userId: demoUser.id })} disabled={loading}>
             Entrar como {isTasker ? "tasker" : "cliente"} demo
           </button>
         ) : null}
@@ -162,6 +167,12 @@ export function LoginRolePanel({ role }: LoginRolePanelProps) {
           Cambiar tipo de ingreso
         </Link>
       </div>
+
+      {demoEmails.length > 0 ? (
+        <p className="minimal-note">
+          Demo para pruebas: <strong>{demoEmails.join(" · ")}</strong> | contraseña: <strong>{demoPassword}</strong>
+        </p>
+      ) : null}
 
       <form className="query-row query-single" onSubmit={submitByEmail}>
         <label>

@@ -1,6 +1,12 @@
 import { BookingStatus } from "@prisma/client";
 import { z } from "zod";
-import { CLEANING_EXPERIENCE_TYPES, CLEANING_SERVICE_TYPES, CLEANING_TRAINING_TOPICS, CLEANING_WEEK_DAYS } from "@/lib/cleaning-onboarding";
+import {
+  CLEANING_EXPERIENCE_TYPES,
+  CLEANING_LANGUAGE_OPTIONS,
+  CLEANING_SERVICE_TYPES,
+  CLEANING_TRAINING_TOPICS,
+  CLEANING_WEEK_DAYS
+} from "@/lib/cleaning-onboarding";
 
 export const createBookingSchema = z.object({
   customerId: z.string().min(1),
@@ -112,7 +118,7 @@ export const marketplaceAvailabilityQuerySchema = z.object({
 
 export const marketplaceSearchProsSchema = z.object({
   city: z.string().min(2),
-  postalCode: z.string().min(4).max(10),
+  postalCode: z.string().min(4).max(10).optional(),
   street: z.string().min(3).optional(),
   latitude: z.coerce.number().min(-90).max(90).optional(),
   longitude: z.coerce.number().min(-180).max(180).optional(),
@@ -236,21 +242,27 @@ export const cleaningOnboardingStage2Schema = z.object({
   shortDescription: z.string().min(20).max(700),
   yearsExperience: z.coerce.number().int().min(0).max(60),
   workMode: z.enum(["SOLO", "EQUIPO"]),
-  experienceTypes: z.array(z.enum(CLEANING_EXPERIENCE_TYPES)).min(1)
+  experienceTypes: z.array(z.enum(CLEANING_EXPERIENCE_TYPES)).min(1),
+  referenceAddress: z.string().min(5).max(240)
 });
 
 export const cleaningOnboardingStage3Schema = z.object({
   offeredServices: z.array(z.enum(CLEANING_SERVICE_TYPES)).min(1),
   acceptsHomesWithPets: z.boolean(),
   acceptsHomesWithChildren: z.boolean(),
+  acceptsHomesWithElderly: z.boolean(),
   worksWithClientProducts: z.boolean(),
   bringsOwnProducts: z.boolean(),
-  bringsOwnTools: z.boolean()
+  bringsOwnTools: z.boolean(),
+  languages: z.array(z.enum(CLEANING_LANGUAGE_OPTIONS)).max(5).optional().default([])
 });
 
 export const cleaningOnboardingStage4Schema = z.object({
   baseCommune: z.string().min(2).max(120),
+  referenceAddress: z.string().min(5).max(240),
   serviceCommunes: z.array(z.string().min(2).max(120)).min(1),
+  coverageLatitude: z.coerce.number().min(-90).max(90),
+  coverageLongitude: z.coerce.number().min(-180).max(180),
   maxTravelKm: z.coerce.number().int().min(1).max(80),
   chargesTravelExtra: z.boolean()
 });
@@ -273,18 +285,32 @@ export const cleaningOnboardingStage6Schema = z.object({
 });
 
 export const cleaningOnboardingStage7Schema = z.object({
-  identityDocumentFile: pdfOrImageDataUrlSchema,
+  documentId: z.string().trim().min(6).max(24),
+  birthDate: z.coerce.date().max(new Date(), "Fecha de nacimiento invalida"),
+  nationality: z.string().min(2).max(80),
+  migrationStatus: z.string().max(120).optional().nullable(),
+  emergencyContactName: z.string().min(3).max(120),
+  emergencyContactPhone: z.string().min(7).max(30),
+  workReferences: z.string().min(8).max(1400),
+  identityDocumentFrontFile: imageDataUrlSchema,
+  identityDocumentBackFile: imageDataUrlSchema,
   identitySelfieFile: imageDataUrlSchema,
   criminalRecordFile: pdfOrImageDataUrlSchema,
   bankAccountHolder: z.string().min(3).max(120),
+  bankAccountHolderRut: z.string().trim().min(6).max(24),
   bankName: z.string().min(2).max(120),
   bankAccountType: z.enum(["cuenta_corriente", "cuenta_vista", "cuenta_rut", "cuenta_ahorro"]),
-  bankAccountNumber: z.string().min(4).max(40)
+  bankAccountNumber: z.string().min(4).max(40),
+  billingType: z.enum(["boleta_honorarios", "persona_natural"])
 });
 
 export const cleaningOnboardingStage8Schema = z
   .object({
-    completedTopics: z.array(z.enum(CLEANING_TRAINING_TOPICS)).min(CLEANING_TRAINING_TOPICS.length)
+    completedTopics: z.array(z.enum(CLEANING_TRAINING_TOPICS)).min(CLEANING_TRAINING_TOPICS.length),
+    acceptsCancellationPolicy: z.boolean().refine((v) => v, { message: "Debes aceptar politica de cancelacion" }),
+    acceptsServiceProtocol: z.boolean().refine((v) => v, { message: "Debes aceptar protocolo de servicio" }),
+    acceptsDataProcessing: z.boolean().refine((v) => v, { message: "Debes autorizar tratamiento de datos" }),
+    confirmsCleaningScope: z.boolean().refine((v) => v, { message: "Debes confirmar alcance del servicio" })
   })
   .refine((value) => {
     const selected = new Set(value.completedTopics);

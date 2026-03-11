@@ -11,7 +11,7 @@ export default function IngresarPage() {
       <section className="panel">
         <div className="panel-head">
           <h2>Ingresar</h2>
-          <p>Elige tu tipo de cuenta para continuar.</p>
+          <p>Ingresa tus datos o crea una cuenta para continuar.</p>
         </div>
 
         <div className="login-split">

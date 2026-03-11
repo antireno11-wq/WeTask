@@ -75,7 +75,6 @@ export default function ServiceProsPage() {
   const address = search.get("address") ?? "";
   const comuna = search.get("comuna") ?? "";
   const city = search.get("city") ?? "Santiago";
-  const postalCode = search.get("postalCode") ?? "7500000";
   const requestedDate = search.get("requestedDate") ?? "";
   const requestedTime = search.get("requestedTime") ?? "";
   const requestedMinutes = requestedTime ? timeToMinutes(requestedTime) : null;
@@ -105,7 +104,6 @@ export default function ServiceProsPage() {
 
         const qs = new URLSearchParams({
           city,
-          postalCode,
           categoryId: match.id,
           limit: "40"
         });
@@ -132,7 +130,7 @@ export default function ServiceProsPage() {
     };
 
     if (categorySlug) void load();
-  }, [address, categorySlug, city, comuna, postalCode, requestedIso]);
+  }, [address, categorySlug, city, comuna, requestedIso]);
 
   const professionals = useMemo(() => {
     let filtered = [...allPros];
@@ -221,7 +219,7 @@ export default function ServiceProsPage() {
 
         <div className="cta-row">
           <Link
-            href={`/services/${categorySlug}?address=${encodeURIComponent(address)}&comuna=${encodeURIComponent(comuna)}&city=${encodeURIComponent(city)}&postalCode=${encodeURIComponent(postalCode)}&requestedDate=${encodeURIComponent(requestedDate)}&requestedTime=${encodeURIComponent(requestedTime)}`}
+            href={`/services/${categorySlug}?address=${encodeURIComponent(address)}&comuna=${encodeURIComponent(comuna)}&city=${encodeURIComponent(city)}&requestedDate=${encodeURIComponent(requestedDate)}&requestedTime=${encodeURIComponent(requestedTime)}`}
             className="cta ghost small"
           >
             Cambiar direccion y horario
@@ -271,7 +269,7 @@ export default function ServiceProsPage() {
                   </Link>
                   <Link
                     className="cta small"
-                    href={`/booking/new?proId=${pro.userId}${category?.services[0] ? `&serviceId=${category.services[0].id}` : ""}&address=${encodeURIComponent(address)}&city=${encodeURIComponent(city)}&postalCode=${encodeURIComponent(postalCode)}`}
+                    href={`/booking/new?proId=${pro.userId}${category?.services[0] ? `&serviceId=${category.services[0].id}` : ""}&address=${encodeURIComponent(address)}&city=${encodeURIComponent(city)}`}
                   >
                     Ver disponibilidad
                   </Link>

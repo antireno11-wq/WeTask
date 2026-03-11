@@ -21,14 +21,14 @@ function hashToOffset(seed: string): number {
 
 export function geocodeAddress(input: {
   city: string;
-  postalCode: string;
+  postalCode?: string;
   street?: string;
   fallback?: Coordinates;
 }): Coordinates {
   const cityKey = input.city.trim().toLowerCase();
   const center = cityCenters[cityKey] ?? input.fallback ?? cityCenters.madrid;
 
-  const seed = `${input.postalCode}-${input.street ?? ""}-${cityKey}`;
+  const seed = `${input.postalCode ?? ""}-${input.street ?? ""}-${cityKey}`;
   const latOffset = hashToOffset(`lat-${seed}`);
   const lngOffset = hashToOffset(`lng-${seed}`);
 

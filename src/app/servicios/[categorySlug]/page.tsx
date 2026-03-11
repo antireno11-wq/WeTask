@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { MarketNav } from "@/components/market-nav";
+import { CHILE_TOP_COMMUNES } from "@/lib/cleaning-onboarding";
 
 type Category = {
   id: string;
@@ -29,6 +30,20 @@ function defaultTimeValue() {
   return `${hours}:${minutes}`;
 }
 
+const TIME_QUICK_OPTIONS = [
+  { id: "morning", label: "Manana", time: "09:00" },
+  { id: "afternoon", label: "Tarde", time: "15:00" },
+  { id: "night", label: "Noche", time: "19:00" }
+] as const;
+
+function inferTimeBlock(timeValue: string) {
+  const hour = Number(timeValue.split(":")[0]);
+  if (!Number.isFinite(hour)) return "";
+  if (hour < 12) return "morning";
+  if (hour < 18) return "afternoon";
+  return "night";
+}
+
 export default function ServicioCategoriaPage() {
   const params = useParams<{ categorySlug: string }>();
   const categorySlug = params?.categorySlug ?? "";
@@ -39,12 +54,14 @@ export default function ServicioCategoriaPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [coverageNote, setCoverageNote] = useState("");
+  const [addressSuggestions, setAddressSuggestions] = useState<string[]>([]);
+  const [autocompleteLoading, setAutocompleteLoading] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(false);
 
   const [address, setAddress] = useState({
     street: query.get("address") ?? "",
     comuna: query.get("comuna") ?? "",
     city: query.get("city") ?? "Santiago",
-    postalCode: query.get("postalCode") ?? "7500000",
     requestedDate: query.get("requestedDate") ?? defaultDateValue(),
     requestedTime: query.get("requestedTime") ?? defaultTimeValue()
   });
@@ -81,11 +98,60 @@ export default function ServicioCategoriaPage() {
     if (!category || category.services.length === 0) return null;
     return Math.min(...category.services.map((item) => item.basePriceClp));
   }, [category]);
+  const activeTimeBlock = useMemo(() => inferTimeBlock(address.requestedTime), [address.requestedTime]);
+
+  useEffect(() => {
+    const queryAddress = address.street.trim();
+    if (queryAddress.length < 4) {
+      setAddressSuggestions([]);
+      setShowSuggestions(false);
+      setAutocompleteLoading(false);
+      return;
+    }
+
+    const controller = new AbortController();
+    const timer = setTimeout(async () => {
+      setAutocompleteLoading(true);
+      try {
+        const input = `${queryAddress}${address.comuna ? `, ${address.comuna}` : ""}, ${address.city}, Chile`;
+        const response = await fetch(`/api/maps/autocomplete?input=${encodeURIComponent(input)}`, { signal: controller.signal });
+        const data = (await response.json()) as { predictions?: string[] };
+        if (!response.ok) {
+          setAddressSuggestions([]);
+          setShowSuggestions(false);
+          return;
+        }
+        const suggestions = Array.isArray(data.predictions) ? data.predictions : [];
+        setAddressSuggestions(suggestions);
+        setShowSuggestions(suggestions.length > 0);
+      } catch {
+        if (!controller.signal.aborted) {
+          setAddressSuggestions([]);
+          setShowSuggestions(false);
+        }
+      } finally {
+        if (!controller.signal.aborted) {
+          setAutocompleteLoading(false);
+        }
+      }
+    }, 320);
+
+    return () => {
+      controller.abort();
+      clearTimeout(timer);
+    };
+  }, [address.street, address.comuna, address.city]);
+
+  const selectAddressSuggestion = (value: string) => {
+    setAddress((prev) => ({ ...prev, street: value }));
+    setAddressSuggestions([]);
+    setShowSuggestions(false);
+  };
 
   const openPros = (event: FormEvent) => {
     event.preventDefault();
     if (!category) return;
-    if (!address.city.trim() || !address.postalCode.trim() || !address.street.trim() || !address.requestedDate || !address.requestedTime) {
+    if (!address.city.trim() || !address.street.trim() || !address.requestedDate || !address.requestedTime) {
       setCoverageNote("Completa direccion, fecha y hora para ver taskers disponibles.");
       return;
     }
@@ -100,7 +166,6 @@ export default function ServicioCategoriaPage() {
       address: address.street.trim(),
       comuna: address.comuna.trim(),
       city: address.city.trim(),
-      postalCode: address.postalCode.trim(),
       requestedDate: address.requestedDate,
       requestedTime: address.requestedTime,
       date: requestedAt.toISOString()
@@ -141,32 +206,49 @@ export default function ServicioCategoriaPage() {
                 Direccion
                 <input
                   value={address.street}
-                  onChange={(event) => setAddress((prev) => ({ ...prev, street: event.target.value }))}
+                  onChange={(event) => {
+                    setAddress((prev) => ({ ...prev, street: event.target.value }));
+                    setShowSuggestions(true);
+                  }}
+                  onFocus={() => setShowSuggestions(addressSuggestions.length > 0)}
                   placeholder="Calle y numero"
                   required
                 />
+                {autocompleteLoading ? <p className="input-hint">Buscando direcciones...</p> : null}
+                {showSuggestions && addressSuggestions.length > 0 ? (
+                  <div className="address-suggestions">
+                    {addressSuggestions.map((suggestion) => (
+                      <button
+                        key={suggestion}
+                        type="button"
+                        className="address-suggestion-btn"
+                        onClick={() => selectAddressSuggestion(suggestion)}
+                      >
+                        {suggestion}
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
               </label>
               <label>
                 Comuna
-                <input
+                <select
                   value={address.comuna}
                   onChange={(event) => setAddress((prev) => ({ ...prev, comuna: event.target.value }))}
-                  placeholder="Providencia"
-                />
+                >
+                  <option value="">Selecciona comuna</option>
+                  {CHILE_TOP_COMMUNES.map((commune) => (
+                    <option key={commune} value={commune}>
+                      {commune}
+                    </option>
+                  ))}
+                </select>
               </label>
               <label>
                 Ciudad
                 <input
                   value={address.city}
                   onChange={(event) => setAddress((prev) => ({ ...prev, city: event.target.value }))}
-                  required
-                />
-              </label>
-              <label>
-                Codigo postal
-                <input
-                  value={address.postalCode}
-                  onChange={(event) => setAddress((prev) => ({ ...prev, postalCode: event.target.value }))}
                   required
                 />
               </label>
@@ -181,6 +263,18 @@ export default function ServicioCategoriaPage() {
               </label>
               <label>
                 Hora del servicio
+                <div className="time-quick-row" role="group" aria-label="Seleccion rapida de horario">
+                  {TIME_QUICK_OPTIONS.map((option) => (
+                    <button
+                      key={option.id}
+                      type="button"
+                      className={`time-quick-btn ${activeTimeBlock === option.id ? "active" : ""}`}
+                      onClick={() => setAddress((prev) => ({ ...prev, requestedTime: option.time }))}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
                 <input
                   type="time"
                   value={address.requestedTime}
