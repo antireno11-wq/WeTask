@@ -48,12 +48,6 @@ export function LoginRolePanel({ role }: LoginRolePanelProps) {
     return demoPayload.customers?.[0] ?? demoPayload.customer ?? null;
   }, [demoPayload, isTasker]);
 
-  const demoEmails = useMemo(() => {
-    if (!demoPayload) return [];
-    if (isTasker) return (demoPayload.professionals ?? []).map((item) => item.email);
-    return (demoPayload.customers ?? (demoPayload.customer ? [demoPayload.customer] : [])).map((item) => item.email);
-  }, [demoPayload, isTasker]);
-
   useEffect(() => {
     const load = async () => {
       try {
@@ -168,9 +162,9 @@ export function LoginRolePanel({ role }: LoginRolePanelProps) {
         </Link>
       </div>
 
-      {demoEmails.length > 0 ? (
+      {demoUser ? (
         <p className="minimal-note">
-          Demo para pruebas: <strong>{demoEmails.join(" · ")}</strong> | contraseña: <strong>{demoPassword}</strong>
+          Demo para pruebas: <strong>{demoUser.email}</strong> | contraseña: <strong>{demoPassword}</strong>
         </p>
       ) : null}
 

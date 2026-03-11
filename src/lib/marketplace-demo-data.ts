@@ -1,6 +1,8 @@
 import { PaymentStatus, UserRole } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 
+const DEMO_PASSWORD_HASH = "$2a$12$LX3eD21fpfkg/xsBDNBrkeBrgQdo9iLcWaG1jOOMonHmBMChElxva";
+
 type DemoPro = {
   email: string;
   fullName: string;
@@ -334,6 +336,150 @@ export async function ensureMarketplaceDemoData() {
         materialFeeDefaultClp: 0,
         isActive: true
       }
+    }),
+    mascotas: await prisma.category.upsert({
+      where: { slug: "paseo-cuidado-mascotas" },
+      update: {
+        name: "Paseo y cuidado mascotas",
+        description: "Paseo de perros, visitas y cuidado diario de mascotas",
+        minHours: 1,
+        slotMinutes: 60,
+        basePlatformFeePct: 12,
+        urgencyFeeClp: 4000,
+        materialFeeDefaultClp: 0,
+        isActive: true
+      },
+      create: {
+        slug: "paseo-cuidado-mascotas",
+        name: "Paseo y cuidado mascotas",
+        description: "Paseo de perros, visitas y cuidado diario de mascotas",
+        minHours: 1,
+        slotMinutes: 60,
+        basePlatformFeePct: 12,
+        urgencyFeeClp: 4000,
+        materialFeeDefaultClp: 0,
+        isActive: true
+      }
+    }),
+    babysitterHoras: await prisma.category.upsert({
+      where: { slug: "babysitter-por-horas" },
+      update: {
+        name: "Babysitter por horas",
+        description: "Cuidado infantil a domicilio por bloques horarios",
+        minHours: 3,
+        slotMinutes: 60,
+        basePlatformFeePct: 12,
+        urgencyFeeClp: 9000,
+        materialFeeDefaultClp: 0,
+        isActive: true
+      },
+      create: {
+        slug: "babysitter-por-horas",
+        name: "Babysitter por horas",
+        description: "Cuidado infantil a domicilio por bloques horarios",
+        minHours: 3,
+        slotMinutes: 60,
+        basePlatformFeePct: 12,
+        urgencyFeeClp: 9000,
+        materialFeeDefaultClp: 0,
+        isActive: true
+      }
+    }),
+    profesorParticular: await prisma.category.upsert({
+      where: { slug: "profesor-particular" },
+      update: {
+        name: "Profesor particular",
+        description: "Refuerzo escolar personalizado y clases de apoyo",
+        minHours: 1,
+        slotMinutes: 60,
+        basePlatformFeePct: 10,
+        urgencyFeeClp: 0,
+        materialFeeDefaultClp: 0,
+        isActive: true
+      },
+      create: {
+        slug: "profesor-particular",
+        name: "Profesor particular",
+        description: "Refuerzo escolar personalizado y clases de apoyo",
+        minHours: 1,
+        slotMinutes: 60,
+        basePlatformFeePct: 10,
+        urgencyFeeClp: 0,
+        materialFeeDefaultClp: 0,
+        isActive: true
+      }
+    }),
+    personalTrainer: await prisma.category.upsert({
+      where: { slug: "personal-trainer" },
+      update: {
+        name: "Personal trainer",
+        description: "Entrenamiento funcional y asesoria personalizada",
+        minHours: 1,
+        slotMinutes: 60,
+        basePlatformFeePct: 11,
+        urgencyFeeClp: 0,
+        materialFeeDefaultClp: 0,
+        isActive: true
+      },
+      create: {
+        slug: "personal-trainer",
+        name: "Personal trainer",
+        description: "Entrenamiento funcional y asesoria personalizada",
+        minHours: 1,
+        slotMinutes: 60,
+        basePlatformFeePct: 11,
+        urgencyFeeClp: 0,
+        materialFeeDefaultClp: 0,
+        isActive: true
+      }
+    }),
+    pinturaBasica: await prisma.category.upsert({
+      where: { slug: "pintura-basica" },
+      update: {
+        name: "Pintura basica",
+        description: "Pintura interior, retoques y terminaciones basicas",
+        minHours: 2,
+        slotMinutes: 60,
+        basePlatformFeePct: 12,
+        urgencyFeeClp: 6000,
+        materialFeeDefaultClp: 0,
+        isActive: true
+      },
+      create: {
+        slug: "pintura-basica",
+        name: "Pintura basica",
+        description: "Pintura interior, retoques y terminaciones basicas",
+        minHours: 2,
+        slotMinutes: 60,
+        basePlatformFeePct: 12,
+        urgencyFeeClp: 6000,
+        materialFeeDefaultClp: 0,
+        isActive: true
+      }
+    }),
+    planchado: await prisma.category.upsert({
+      where: { slug: "planchado" },
+      update: {
+        name: "Planchado",
+        description: "Planchado por hora, doblado y orden de prendas",
+        minHours: 2,
+        slotMinutes: 60,
+        basePlatformFeePct: 10,
+        urgencyFeeClp: 4000,
+        materialFeeDefaultClp: 0,
+        isActive: true
+      },
+      create: {
+        slug: "planchado",
+        name: "Planchado",
+        description: "Planchado por hora, doblado y orden de prendas",
+        minHours: 2,
+        slotMinutes: 60,
+        basePlatformFeePct: 10,
+        urgencyFeeClp: 4000,
+        materialFeeDefaultClp: 0,
+        isActive: true
+      }
     })
   };
 
@@ -442,6 +588,48 @@ export async function ensureMarketplaceDemoData() {
       description: "Alimentacion y cuidados basicos por visita",
       basePriceClp: 15000,
       categoryId: categories.cuidadoresAnimales.id
+    },
+    {
+      slug: "paseo-cuidado-mascotas",
+      name: "Paseo y cuidado de mascotas",
+      description: "Paseo de perros, visitas y cuidado de mascotas en domicilio",
+      basePriceClp: 17000,
+      categoryId: categories.mascotas.id
+    },
+    {
+      slug: "babysitter-por-horas-standard",
+      name: "Babysitter por horas",
+      description: "Cuidado infantil por hora con reserva minima",
+      basePriceClp: 21000,
+      categoryId: categories.babysitterHoras.id
+    },
+    {
+      slug: "profesor-particular-clase",
+      name: "Profesor particular por hora",
+      description: "Apoyo escolar y clases personalizadas a domicilio",
+      basePriceClp: 19000,
+      categoryId: categories.profesorParticular.id
+    },
+    {
+      slug: "personal-trainer-sesion",
+      name: "Sesion de personal trainer",
+      description: "Entrenamiento personalizado en casa o areas comunes",
+      basePriceClp: 24000,
+      categoryId: categories.personalTrainer.id
+    },
+    {
+      slug: "pintura-basica-muros",
+      name: "Pintura basica de muros",
+      description: "Retoques y pintura interior por bloque",
+      basePriceClp: 23000,
+      categoryId: categories.pinturaBasica.id
+    },
+    {
+      slug: "planchado-por-hora",
+      name: "Planchado por hora",
+      description: "Planchado, doblado y orden de prendas",
+      basePriceClp: 14000,
+      categoryId: categories.planchado.id
     }
   ];
 
@@ -482,7 +670,7 @@ export async function ensureMarketplaceDemoData() {
       rate: 22000,
       rating: 4.9,
       count: 184,
-      serviceSlugs: ["limpieza-hogar", "limpieza-profunda", "manicure-clasica"]
+      serviceSlugs: ["limpieza-hogar", "limpieza-profunda", "planchado-por-hora"]
     },
     {
       email: "pro.carlos@wetask.cl",
@@ -495,7 +683,7 @@ export async function ensureMarketplaceDemoData() {
       rate: 27000,
       rating: 4.8,
       count: 129,
-      serviceSlugs: ["maestro-hogar", "electricista-domicilio", "jardineria-mantencion"]
+      serviceSlugs: ["pintura-basica-muros", "limpieza-hogar", "paseo-cuidado-mascotas"]
     },
     {
       email: "pro.javier@wetask.cl",
@@ -508,7 +696,7 @@ export async function ensureMarketplaceDemoData() {
       rate: 30000,
       rating: 4.7,
       count: 97,
-      serviceSlugs: ["electricista-domicilio", "veterinario-control"]
+      serviceSlugs: ["personal-trainer-sesion", "paseo-cuidado-mascotas"]
     },
     {
       email: "pro.paula@wetask.cl",
@@ -521,7 +709,7 @@ export async function ensureMarketplaceDemoData() {
       rate: 24000,
       rating: 4.9,
       count: 210,
-      serviceSlugs: ["limpieza-hogar", "maestro-hogar", "peluqueria-corte"]
+      serviceSlugs: ["limpieza-hogar", "babysitter-por-horas-standard", "planchado-por-hora"]
     },
     {
       email: "pro.mario@wetask.cl",
@@ -534,7 +722,7 @@ export async function ensureMarketplaceDemoData() {
       rate: 18000,
       rating: 4.8,
       count: 75,
-      serviceSlugs: ["clases-matematicas", "clases-lenguaje", "paseo-perro-60"]
+      serviceSlugs: ["profesor-particular-clase", "paseo-cuidado-mascotas"]
     },
     {
       email: "pro.camila@wetask.cl",
@@ -547,15 +735,32 @@ export async function ensureMarketplaceDemoData() {
       rate: 21000,
       rating: 4.9,
       count: 143,
-      serviceSlugs: ["clases-guitarra", "clases-piano", "baby-sitter-4h", "cuidado-animales-visita"]
+      serviceSlugs: ["babysitter-por-horas-standard", "profesor-particular-clase", "personal-trainer-sesion"]
     }
   ];
 
   for (const [index, pro] of pros.entries()) {
     const user = await prisma.user.upsert({
       where: { email: pro.email },
-      update: { fullName: pro.fullName, role: UserRole.PRO, emailVerifiedAt: new Date(), termsAcceptedAt: new Date() },
-      create: { email: pro.email, fullName: pro.fullName, role: UserRole.PRO, emailVerifiedAt: new Date(), termsAcceptedAt: new Date() }
+      update: {
+        fullName: pro.fullName,
+        role: UserRole.PRO,
+        authProvider: "EMAIL",
+        passwordHash: DEMO_PASSWORD_HASH,
+        phone: `+5697000${String(index + 1).padStart(4, "0")}`,
+        emailVerifiedAt: new Date(),
+        termsAcceptedAt: new Date()
+      },
+      create: {
+        email: pro.email,
+        fullName: pro.fullName,
+        role: UserRole.PRO,
+        authProvider: "EMAIL",
+        passwordHash: DEMO_PASSWORD_HASH,
+        phone: `+5697000${String(index + 1).padStart(4, "0")}`,
+        emailVerifiedAt: new Date(),
+        termsAcceptedAt: new Date()
+      }
     });
     await ensureRoleAssignment(user.id, UserRole.PRO, "Tasker");
 
@@ -641,16 +846,52 @@ export async function ensureMarketplaceDemoData() {
           isActive: true
         }
       });
+
+      const futureSlots = await prisma.availabilitySlot.count({
+        where: {
+          professionalProfileId: profile.id,
+          serviceId: service.id,
+          isAvailable: true,
+          startsAt: { gte: new Date() }
+        }
+      });
+
+      if (futureSlots === 0) {
+        const startsAt = new Date();
+        startsAt.setDate(startsAt.getDate() + 1 + (index % 2));
+        startsAt.setHours(10 + (index % 3), 0, 0, 0);
+        const endsAt = new Date(startsAt.getTime() + 2 * 60 * 60 * 1000);
+
+        await prisma.availabilitySlot.create({
+          data: {
+            professionalProfileId: profile.id,
+            serviceId: service.id,
+            startsAt,
+            endsAt,
+            isAvailable: true
+          }
+        });
+      }
     }
   }
 
   const customer = await prisma.user.upsert({
     where: { email: "cliente-demo@wetask.cl" },
-    update: { fullName: "Camila Soto", role: UserRole.CUSTOMER, phone: "+56981234567", emailVerifiedAt: new Date(), termsAcceptedAt: new Date() },
+    update: {
+      fullName: "Camila Soto",
+      role: UserRole.CUSTOMER,
+      authProvider: "EMAIL",
+      passwordHash: DEMO_PASSWORD_HASH,
+      phone: "+56981234567",
+      emailVerifiedAt: new Date(),
+      termsAcceptedAt: new Date()
+    },
     create: {
       email: "cliente-demo@wetask.cl",
       fullName: "Camila Soto",
       role: UserRole.CUSTOMER,
+      authProvider: "EMAIL",
+      passwordHash: DEMO_PASSWORD_HASH,
       phone: "+56981234567",
       emailVerifiedAt: new Date(),
       termsAcceptedAt: new Date()
@@ -658,13 +899,27 @@ export async function ensureMarketplaceDemoData() {
   });
   await ensureRoleAssignment(customer.id, UserRole.CUSTOMER, "Cliente");
 
+  // Cleanup old extra demo account to keep a single visible demo customer.
+  await prisma.user.deleteMany({
+    where: { email: "cliente2-demo@wetask.cl" }
+  });
+
   const admin = await prisma.user.upsert({
     where: { email: "admin-demo@wetask.cl" },
-    update: { fullName: "Admin Demo", role: UserRole.ADMIN, emailVerifiedAt: new Date(), termsAcceptedAt: new Date() },
+    update: {
+      fullName: "Admin Demo",
+      role: UserRole.ADMIN,
+      authProvider: "EMAIL",
+      passwordHash: DEMO_PASSWORD_HASH,
+      emailVerifiedAt: new Date(),
+      termsAcceptedAt: new Date()
+    },
     create: {
       email: "admin-demo@wetask.cl",
       fullName: "Admin Demo",
       role: UserRole.ADMIN,
+      authProvider: "EMAIL",
+      passwordHash: DEMO_PASSWORD_HASH,
       emailVerifiedAt: new Date(),
       termsAcceptedAt: new Date()
     }
