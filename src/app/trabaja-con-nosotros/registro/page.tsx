@@ -98,8 +98,12 @@ const TASKER_SERVICE_OPTIONS: ReadonlyArray<{ slug: TaskerServiceSlug; label: st
 
 const EXPERIENCE_OPTIONS_BY_SERVICE: Record<TaskerServiceSlug, string[]> = {
   limpieza: ["casas", "departamentos", "oficinas_pequenas", "airbnb", "limpieza_profunda", "planchado"],
-  maestro: ["mantenciones_hogar", "instalaciones", "reparaciones", "casas", "departamentos"],
-  clases: ["clases_escolares", "clases_musica", "clases_idiomas", "clases_online"]
+  mascotas: ["cuidado_mascotas", "paseo_perros", "casas", "departamentos"],
+  babysitter: ["cuidado_infantil", "casas", "departamentos", "airbnb"],
+  "profesor-particular": ["clases_escolares", "clases_musica", "clases_idiomas", "clases_online"],
+  "personal-trainer": ["entrenamiento_funcional", "casas", "departamentos"],
+  "pintura-basica": ["pintura_interior", "casas", "departamentos", "oficinas_pequenas"],
+  planchado: ["planchado", "casas", "departamentos"]
 };
 
 const OFFERED_SERVICES_BY_SERVICE: Record<TaskerServiceSlug, string[]> = {
@@ -114,8 +118,12 @@ const OFFERED_SERVICES_BY_SERVICE: Record<TaskerServiceSlug, string[]> = {
     "limpieza_oficina_pequena",
     "post_evento"
   ],
-  maestro: ["maestro_reparaciones", "maestro_instalaciones", "maestro_urgencias"],
-  clases: ["clases_apoyo_escolar", "clases_musica", "clases_idiomas", "clases_online"]
+  mascotas: ["paseo_perros", "cuidado_mascotas"],
+  babysitter: ["babysitter_horas"],
+  "profesor-particular": ["profesor_particular", "clases_apoyo_escolar", "clases_musica", "clases_idiomas", "clases_online"],
+  "personal-trainer": ["personal_trainer"],
+  "pintura-basica": ["pintura_basica"],
+  planchado: ["planchado_por_hora", "orden_organizacion"]
 };
 
 const DYNAMIC_QUESTION_LABELS: Record<
@@ -137,21 +145,53 @@ const DYNAMIC_QUESTION_LABELS: Record<
     ownProducts: "Llevo productos propios",
     ownTools: "Llevo implementos propios"
   },
-  maestro: {
-    first: "Acepto trabajos en casas con mascotas",
-    second: "Acepto trabajos en hogares con ninos",
-    third: "Acepto trabajos en hogares con adultos mayores",
-    products: "Trabajo con materiales del cliente",
-    ownProducts: "Llevo repuestos basicos",
-    ownTools: "Llevo herramientas propias"
+  mascotas: {
+    first: "Acepto hogares con mascotas grandes",
+    second: "Acepto hogares con ninos",
+    third: "Acepto hogares con adultos mayores",
+    products: "Trabajo con implementos del cliente",
+    ownProducts: "Llevo snacks o insumos propios para mascotas",
+    ownTools: "Llevo correa o implementos propios"
   },
-  clases: {
+  babysitter: {
+    first: "Acepto hogares con mascotas",
+    second: "Acepto ninos pequenos",
+    third: "Acepto apoyo con adultos mayores en casa",
+    products: "Trabajo con implementos del hogar",
+    ownProducts: "Llevo materiales de apoyo (cuentos/juegos)",
+    ownTools: "Llevo implementos propios para actividades"
+  },
+  "profesor-particular": {
     first: "Acepto clases en hogares con mascotas",
     second: "Acepto clases para ninos",
     third: "Acepto clases para adultos mayores",
     products: "Trabajo con material del alumno",
     ownProducts: "Llevo material de apoyo",
     ownTools: "Llevo implementos propios para la clase"
+  },
+  "personal-trainer": {
+    first: "Acepto entrenar en hogares con mascotas",
+    second: "Acepto entrenar ninos y adolescentes",
+    third: "Acepto entrenar adultos mayores",
+    products: "Trabajo con implementos del cliente",
+    ownProducts: "Llevo rutinas y material de apoyo",
+    ownTools: "Llevo implementos deportivos propios"
+  },
+  "pintura-basica": {
+    first: "Acepto hogares con mascotas",
+    second: "Acepto trabajar con ninos en casa",
+    third: "Acepto trabajar con adultos mayores en casa",
+    products: "Trabajo con materiales del cliente",
+    ownProducts: "Puedo llevar pintura y materiales basicos",
+    ownTools: "Llevo herramientas propias"
+  },
+  planchado: {
+    first: "Acepto hogares con mascotas",
+    second: "Acepto hogares con ninos",
+    third: "Acepto hogares con adultos mayores",
+    products: "Trabajo con productos del cliente",
+    ownProducts: "Llevo productos propios para planchado",
+    ownTools: "Llevo implementos propios"
   }
 };
 
@@ -889,8 +929,8 @@ export default function CleaningOnboardingPage() {
                 <option value="EQUIPO">Trabajo en equipo</option>
               </select>
             </label>
-            <label className="full">
-              Tipo de experiencia
+            <div className="full">
+              <p className="field-label">Tipo de experiencia</p>
               <div className="inline-checks">
                 {activeExperienceOptions.map((item) => (
                   <label key={item}>
@@ -899,7 +939,7 @@ export default function CleaningOnboardingPage() {
                   </label>
                 ))}
               </div>
-            </label>
+            </div>
             <label className="full">
               Direccion referencial
               <input value={referenceAddress} onChange={(event) => setReferenceAddress(event.target.value)} placeholder="Ej: Av. Apoquindo 1234, depto 45" />
@@ -915,8 +955,8 @@ export default function CleaningOnboardingPage() {
         {session?.role === "PRO" ? (
           <div className="grid-form">
             <h3 className="full">2. Servicios que ofreces</h3>
-            <label className="full">
-              Servicios ofrecidos
+            <div className="full">
+              <p className="field-label">Servicios ofrecidos</p>
               <div className="inline-checks">
                 {activeOfferedServices.map((item) => (
                   <label key={item}>
@@ -925,57 +965,35 @@ export default function CleaningOnboardingPage() {
                   </label>
                 ))}
               </div>
-            </label>
-            <label>
-              <div className="inline-checks">
-                <label>
-                  <input type="checkbox" checked={acceptsHomesWithPets} onChange={(event) => setAcceptsHomesWithPets(event.target.checked)} />
-                  {activeDynamicLabels.first}
-                </label>
-              </div>
-            </label>
-            <label>
-              <div className="inline-checks">
-                <label>
-                  <input type="checkbox" checked={acceptsHomesWithChildren} onChange={(event) => setAcceptsHomesWithChildren(event.target.checked)} />
-                  {activeDynamicLabels.second}
-                </label>
-              </div>
-            </label>
-            <label>
-              <div className="inline-checks">
-                <label>
-                  <input type="checkbox" checked={acceptsHomesWithElderly} onChange={(event) => setAcceptsHomesWithElderly(event.target.checked)} />
-                  {activeDynamicLabels.third}
-                </label>
-              </div>
-            </label>
-            <label>
-              <div className="inline-checks">
-                <label>
-                  <input type="checkbox" checked={worksWithClientProducts} onChange={(event) => setWorksWithClientProducts(event.target.checked)} />
-                  {activeDynamicLabels.products}
-                </label>
-              </div>
-            </label>
-            <label>
-              <div className="inline-checks">
-                <label>
-                  <input type="checkbox" checked={bringsOwnProducts} onChange={(event) => setBringsOwnProducts(event.target.checked)} />
-                  {activeDynamicLabels.ownProducts}
-                </label>
-              </div>
-            </label>
-            <label>
-              <div className="inline-checks">
-                <label>
-                  <input type="checkbox" checked={bringsOwnTools} onChange={(event) => setBringsOwnTools(event.target.checked)} />
-                  {activeDynamicLabels.ownTools}
-                </label>
-              </div>
-            </label>
-            <label className="full">
-              Idiomas
+            </div>
+            <div className="full inline-options-stack">
+              <label className="inline-check-option">
+                <input type="checkbox" checked={acceptsHomesWithPets} onChange={(event) => setAcceptsHomesWithPets(event.target.checked)} />
+                <span>{activeDynamicLabels.first}</span>
+              </label>
+              <label className="inline-check-option">
+                <input type="checkbox" checked={acceptsHomesWithChildren} onChange={(event) => setAcceptsHomesWithChildren(event.target.checked)} />
+                <span>{activeDynamicLabels.second}</span>
+              </label>
+              <label className="inline-check-option">
+                <input type="checkbox" checked={acceptsHomesWithElderly} onChange={(event) => setAcceptsHomesWithElderly(event.target.checked)} />
+                <span>{activeDynamicLabels.third}</span>
+              </label>
+              <label className="inline-check-option">
+                <input type="checkbox" checked={worksWithClientProducts} onChange={(event) => setWorksWithClientProducts(event.target.checked)} />
+                <span>{activeDynamicLabels.products}</span>
+              </label>
+              <label className="inline-check-option">
+                <input type="checkbox" checked={bringsOwnProducts} onChange={(event) => setBringsOwnProducts(event.target.checked)} />
+                <span>{activeDynamicLabels.ownProducts}</span>
+              </label>
+              <label className="inline-check-option">
+                <input type="checkbox" checked={bringsOwnTools} onChange={(event) => setBringsOwnTools(event.target.checked)} />
+                <span>{activeDynamicLabels.ownTools}</span>
+              </label>
+            </div>
+            <div className="full">
+              <p className="field-label">Idiomas</p>
               <div className="inline-checks">
                 {CLEANING_LANGUAGE_OPTIONS.map((item) => (
                   <label key={item}>
@@ -984,7 +1002,7 @@ export default function CleaningOnboardingPage() {
                   </label>
                 ))}
               </div>
-            </label>
+            </div>
             <div className="cta-row full">
               <button type="button" className="cta" onClick={() => void saveStep(3)} disabled={saving}>
                 {saving ? "Guardando..." : "Guardar servicios"}
@@ -1424,8 +1442,8 @@ export default function CleaningOnboardingPage() {
         {session?.role === "PRO" ? (
           <div className="grid-form">
             <h3 className="full">7. Capacitacion y politicas</h3>
-            <label className="full">
-              Mini induccion obligatoria
+            <div className="full">
+              <p className="field-label">Mini induccion obligatoria</p>
               <div className="inline-checks">
                 {CLEANING_TRAINING_TOPICS.map((topic) => (
                   <label key={topic}>
@@ -1438,7 +1456,7 @@ export default function CleaningOnboardingPage() {
                   </label>
                 ))}
               </div>
-            </label>
+            </div>
             <div className="full inline-options-stack">
               <label className="inline-check-option">
                 <input type="checkbox" checked={acceptsCancellationPolicy} onChange={(event) => setAcceptsCancellationPolicy(event.target.checked)} />

@@ -1241,6 +1241,14 @@ textarea {
   font-weight: 600;
 }
 
+.inline-check-option input[type="checkbox"],
+.inline-checks input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  flex: 0 0 auto;
+}
+
 .compact-btn {
   padding: 7px 10px;
   font-size: 0.82rem;
