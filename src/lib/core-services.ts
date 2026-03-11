@@ -6,8 +6,7 @@ export const CORE_SERVICES = [
     requestService: "Limpieza",
     categorySlug: "limpieza",
     taskerDescription: "Limpieza general, profunda, recurrente y por horas.",
-    image:
-      "https://images.unsplash.com/photo-1527515637462-daf3c4d5f065?auto=format&fit=crop&w=1400&q=80"
+    image: "/services/limpieza.png"
   },
   {
     slug: "mascotas",
@@ -16,8 +15,7 @@ export const CORE_SERVICES = [
     requestService: "Paseo y cuidado de mascotas",
     categorySlug: "paseo-cuidado-mascotas",
     taskerDescription: "Paseo de perros, visitas, cuidado diario y apoyo para mascotas.",
-    image:
-      "https://images.unsplash.com/photo-1517849845537-4d257902454a?auto=format&fit=crop&w=1400&q=80"
+    image: "/services/mascotas.png"
   },
   {
     slug: "babysitter",
@@ -26,8 +24,7 @@ export const CORE_SERVICES = [
     requestService: "Babysitter",
     categorySlug: "babysitter-por-horas",
     taskerDescription: "Cuidado infantil en casa con enfoque en seguridad y rutina.",
-    image:
-      "https://images.unsplash.com/photo-1503454537195-1dcabb73ffb9?auto=format&fit=crop&w=1400&q=80"
+    image: "/services/babysitter.png"
   },
   {
     slug: "profesor-particular",
@@ -36,8 +33,7 @@ export const CORE_SERVICES = [
     requestService: "Profesor particular",
     categorySlug: "profesor-particular",
     taskerDescription: "Refuerzo escolar y apoyo personalizado a domicilio o en linea.",
-    image:
-      "https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&w=1400&q=80"
+    image: "/services/profesor-particular.jpg"
   },
   {
     slug: "personal-trainer",
@@ -46,8 +42,7 @@ export const CORE_SERVICES = [
     requestService: "Personal trainer",
     categorySlug: "personal-trainer",
     taskerDescription: "Entrenamiento funcional y planes adaptados por objetivo.",
-    image:
-      "https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?auto=format&fit=crop&w=1400&q=80"
+    image: "/services/personal-trainer.png"
   },
   {
     slug: "planchado",
