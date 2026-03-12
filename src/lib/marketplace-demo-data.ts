@@ -457,6 +457,30 @@ export async function ensureMarketplaceDemoData() {
         isActive: true
       }
     }),
+    maquillajeDomicilio: await prisma.category.upsert({
+      where: { slug: "maquillaje-a-domicilio" },
+      update: {
+        name: "Maquillaje a domicilio",
+        description: "Maquillaje social, eventos y ocasiones especiales en tu hogar",
+        minHours: 1,
+        slotMinutes: 60,
+        basePlatformFeePct: 12,
+        urgencyFeeClp: 4000,
+        materialFeeDefaultClp: 0,
+        isActive: true
+      },
+      create: {
+        slug: "maquillaje-a-domicilio",
+        name: "Maquillaje a domicilio",
+        description: "Maquillaje social, eventos y ocasiones especiales en tu hogar",
+        minHours: 1,
+        slotMinutes: 60,
+        basePlatformFeePct: 12,
+        urgencyFeeClp: 4000,
+        materialFeeDefaultClp: 0,
+        isActive: true
+      }
+    }),
     planchado: await prisma.category.upsert({
       where: { slug: "planchado" },
       update: {
@@ -625,6 +649,13 @@ export async function ensureMarketplaceDemoData() {
       categoryId: categories.chefDomicilio.id
     },
     {
+      slug: "maquillaje-a-domicilio-sesion",
+      name: "Maquillaje a domicilio por sesión",
+      description: "Maquillaje social, de día o de noche en tu domicilio",
+      basePriceClp: 26000,
+      categoryId: categories.maquillajeDomicilio.id
+    },
+    {
       slug: "planchado-por-hora",
       name: "Planchado por hora",
       description: "Planchado, doblado y orden de prendas",
@@ -683,7 +714,13 @@ export async function ensureMarketplaceDemoData() {
       rate: 27000,
       rating: 4.8,
       count: 129,
-      serviceSlugs: ["limpieza-hogar", "paseo-cuidado-mascotas", "chef-a-domicilio-sesion", "planchado-por-hora"]
+      serviceSlugs: [
+        "limpieza-hogar",
+        "paseo-cuidado-mascotas",
+        "chef-a-domicilio-sesion",
+        "maquillaje-a-domicilio-sesion",
+        "planchado-por-hora"
+      ]
     },
     {
       email: "pro.javier@wetask.cl",
@@ -722,7 +759,7 @@ export async function ensureMarketplaceDemoData() {
       rate: 18000,
       rating: 4.8,
       count: 75,
-      serviceSlugs: ["profesor-particular-clase", "paseo-cuidado-mascotas"]
+      serviceSlugs: ["profesor-particular-clase", "paseo-cuidado-mascotas", "maquillaje-a-domicilio-sesion"]
     },
     {
       email: "pro.camila@wetask.cl",
@@ -735,7 +772,13 @@ export async function ensureMarketplaceDemoData() {
       rate: 21000,
       rating: 4.9,
       count: 143,
-      serviceSlugs: ["babysitter-por-horas-standard", "profesor-particular-clase", "personal-trainer-sesion", "chef-a-domicilio-sesion"]
+      serviceSlugs: [
+        "babysitter-por-horas-standard",
+        "profesor-particular-clase",
+        "personal-trainer-sesion",
+        "chef-a-domicilio-sesion",
+        "maquillaje-a-domicilio-sesion"
+      ]
     }
   ];
 

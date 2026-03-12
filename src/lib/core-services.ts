@@ -54,6 +54,15 @@ export const CORE_SERVICES = [
     image: "/services/chef-opt.jpg"
   },
   {
+    slug: "maquillaje",
+    label: "Maquillaje",
+    icon: "💄",
+    requestService: "Maquillaje a domicilio",
+    categorySlug: "maquillaje-a-domicilio",
+    taskerDescription: "Maquillaje social, para eventos y asesoría personalizada en tu domicilio.",
+    image: "/services/maquillaje-opt.svg"
+  },
+  {
     slug: "planchado",
     label: "Planchado",
     icon: "👕",

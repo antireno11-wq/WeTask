@@ -103,6 +103,7 @@ const EXPERIENCE_OPTIONS_BY_SERVICE: Record<TaskerServiceSlug, string[]> = {
   "profesor-particular": ["clases_escolares", "clases_musica", "clases_idiomas", "clases_online"],
   "personal-trainer": ["entrenamiento_funcional", "casas", "departamentos"],
   chef: ["cocina_hogar", "eventos", "meal_prep", "dietas_especiales"],
+  maquillaje: ["maquillaje_social", "maquillaje_eventos", "novias", "pieles_sensibles"],
   planchado: ["planchado", "casas", "departamentos"]
 };
 
@@ -123,6 +124,7 @@ const OFFERED_SERVICES_BY_SERVICE: Record<TaskerServiceSlug, string[]> = {
   "profesor-particular": ["profesor_particular", "clases_apoyo_escolar", "clases_musica", "clases_idiomas", "clases_online"],
   "personal-trainer": ["personal_trainer"],
   chef: ["chef_a_domicilio", "preparacion_menu", "cocina_eventos", "meal_prep"],
+  maquillaje: ["maquillaje_social", "maquillaje_eventos", "maquillaje_novias", "asesoria_look"],
   planchado: ["planchado_por_hora", "orden_organizacion"]
 };
 
@@ -184,6 +186,14 @@ const DYNAMIC_QUESTION_LABELS: Record<
     products: "Trabajo con insumos del cliente",
     ownProducts: "Puedo llevar algunos insumos propios",
     ownTools: "Llevo utensilios y herramientas de cocina"
+  },
+  maquillaje: {
+    first: "Acepto trabajar en hogares con mascotas",
+    second: "Acepto servicios para adolescentes",
+    third: "Acepto servicios para adultos mayores",
+    products: "Trabajo con productos del cliente",
+    ownProducts: "Llevo kit de maquillaje propio",
+    ownTools: "Llevo herramientas y brochas profesionales"
   },
   planchado: {
     first: "Acepto hogares con mascotas",

@@ -66,6 +66,8 @@ export default function ServiciosPage() {
               <li>👶 Babysitter - cuidado responsable de niños cuando lo necesites.</li>
               <li>📚 Profesor particular - apoyo escolar y clases personalizadas.</li>
               <li>💪 Personal trainer - entrenamiento físico adaptado a tus objetivos.</li>
+              <li>👨‍🍳 Chef - menús personalizados y cocina en tu domicilio.</li>
+              <li>💄 Maquillaje - looks para eventos, celebraciones y ocasiones especiales.</li>
               <li>👕 Planchado - ayuda con ropa y tareas domésticas específicas.</li>
             </ul>
             <p>
