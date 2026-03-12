@@ -24,7 +24,7 @@ export const CORE_SERVICES = [
     requestService: "Babysitter",
     categorySlug: "babysitter-por-horas",
     taskerDescription: "Cuidado infantil en casa con enfoque en seguridad y rutina.",
-    image: "/services/babysitter.jpg"
+    image: "/services/babysitter.png"
   },
   {
     slug: "profesor-particular",
@@ -42,7 +42,7 @@ export const CORE_SERVICES = [
     requestService: "Personal trainer",
     categorySlug: "personal-trainer",
     taskerDescription: "Entrenamiento funcional y planes adaptados por objetivo.",
-    image: "/services/personal-trainer-h.jpg"
+    image: "/services/personal-trainer.png"
   },
   {
     slug: "chef",
@@ -60,7 +60,7 @@ export const CORE_SERVICES = [
     requestService: "Planchado",
     categorySlug: "planchado",
     taskerDescription: "Planchado por hora, orden y cuidado de prendas.",
-    image: "/services/planchado-h.jpg"
+    image: "/services/planchado.png"
   }
 ] as const;
 
