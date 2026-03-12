@@ -6,7 +6,7 @@ export const CORE_SERVICES = [
     requestService: "Limpieza",
     categorySlug: "limpieza",
     taskerDescription: "Limpieza general, profunda, recurrente y por horas.",
-    image: "/services/limpieza.png"
+    image: "/services/limpieza.jpg"
   },
   {
     slug: "mascotas",
@@ -15,7 +15,7 @@ export const CORE_SERVICES = [
     requestService: "Paseo y cuidado de mascotas",
     categorySlug: "paseo-cuidado-mascotas",
     taskerDescription: "Paseo de perros, visitas, cuidado diario y apoyo para mascotas.",
-    image: "/services/mascotas.png"
+    image: "/services/mascotas.jpg"
   },
   {
     slug: "babysitter",
@@ -24,7 +24,7 @@ export const CORE_SERVICES = [
     requestService: "Babysitter",
     categorySlug: "babysitter-por-horas",
     taskerDescription: "Cuidado infantil en casa con enfoque en seguridad y rutina.",
-    image: "/services/babysitter.png"
+    image: "/services/babysitter.jpg"
   },
   {
     slug: "profesor-particular",
@@ -42,7 +42,7 @@ export const CORE_SERVICES = [
     requestService: "Personal trainer",
     categorySlug: "personal-trainer",
     taskerDescription: "Entrenamiento funcional y planes adaptados por objetivo.",
-    image: "/services/personal-trainer.png"
+    image: "/services/personal-trainer.jpg"
   },
   {
     slug: "planchado",
@@ -51,8 +51,7 @@ export const CORE_SERVICES = [
     requestService: "Planchado",
     categorySlug: "planchado",
     taskerDescription: "Planchado por hora, orden y cuidado de prendas.",
-    image:
-      "https://images.unsplash.com/photo-1604335399105-a0c585fd81a1?auto=format&fit=crop&w=1400&q=80"
+    image: "/services/planchado.jpg"
   }
 ] as const;
 
