@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { MarketNav } from "@/components/market-nav";
 import { CORE_SERVICES } from "@/lib/core-services";
 
@@ -7,28 +6,30 @@ export default function TrabajaConNosotrosPage() {
     <main className="page market-shell">
       <MarketNav />
 
-      <section className="panel mvp-hero">
-        <p className="mvp-kicker">Registro de profesionales</p>
-        <h1>Elige el servicio que ofreces</h1>
-        <p className="lead">Cada servicio tiene preguntas distintas en el onboarding.</p>
-      </section>
-
       <section className="panel">
         <div className="panel-head">
-          <h2>Selecciona tu especialidad</h2>
-          <p>Entraras al registro del servicio que elijas y luego completas todo en una sola pagina (hacia abajo).</p>
+          <h2>Ofrecer servicios</h2>
+          <p>Selecciona el servicio que ofreces para continuar con su onboarding correspondiente.</p>
         </div>
-        <div className="mvp-why-grid">
-          {CORE_SERVICES.map((service) => (
-            <article key={service.slug} className="mvp-why-card">
-              <h3>{service.label}</h3>
-              <p>{service.taskerDescription}</p>
-              <Link href={`/trabaja-con-nosotros/registro?service=${service.slug}`} className="cta small">
-                Continuar con {service.label}
-              </Link>
-            </article>
-          ))}
-        </div>
+
+        <form action="/trabaja-con-nosotros/registro" method="GET" className="grid-form">
+          <label className="full">
+            Servicio
+            <select name="service" required defaultValue="">
+              <option value="" disabled>
+                Selecciona un servicio
+              </option>
+              {CORE_SERVICES.map((service) => (
+                <option key={service.slug} value={service.slug}>
+                  {service.icon} {service.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <button type="submit" className="cta">
+            Continuar
+          </button>
+        </form>
       </section>
     </main>
   );
