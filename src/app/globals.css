@@ -862,6 +862,40 @@ body {
   cursor: pointer;
 }
 
+.services-list-card {
+  padding: 0;
+  gap: 0;
+  overflow: hidden;
+}
+
+.services-list-card-title,
+.services-list-card span {
+  padding-left: 12px;
+  padding-right: 12px;
+}
+
+.services-list-card-title {
+  padding-top: 10px;
+}
+
+.services-list-card span {
+  padding-bottom: 4px;
+}
+
+.services-list-card-price {
+  padding-bottom: 12px !important;
+  font-weight: 700;
+  color: #26415d !important;
+}
+
+.services-list-card-media {
+  aspect-ratio: 16 / 9;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-color: #eef4fa;
+}
+
 .service-card span {
   color: var(--ink-soft);
   font-size: 0.88rem;
@@ -881,6 +915,22 @@ body {
 .service-card.compact {
   padding: 10px;
   gap: 3px;
+}
+
+.services-page-copy {
+  display: grid;
+  gap: 8px;
+}
+
+.services-page-copy p {
+  margin: 0;
+}
+
+.services-page-copy ul {
+  margin: 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 6px;
 }
 
 .pro-card-top {

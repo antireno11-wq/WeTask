@@ -17,6 +17,9 @@ export default function ServiciosPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const serviceByCategorySlug = new Map(
+    CORE_SERVICES.map((service) => [service.categorySlug, { image: service.image, icon: service.icon }])
+  );
 
   useEffect(() => {
     const load = async () => {
@@ -54,7 +57,21 @@ export default function ServiciosPage() {
       <section className="panel">
         <div className="panel-head">
           <h2>Servicios</h2>
-          <p>Servicios activos para el MVP: limpieza, mascotas, babysitter, profesor particular, personal trainer y planchado.</p>
+          <div className="services-page-copy">
+            <p>En WeTask puedes encontrar personas confiables para ayudarte con tareas del dia a dia.</p>
+            <p>Estos son algunos de los servicios activos en nuestra etapa inicial:</p>
+            <ul>
+              <li>🧹 Limpieza del hogar - ayuda para mantener tu casa ordenada y limpia.</li>
+              <li>🐶 Cuidado de mascotas - paseos, cuidado por horas o visitas a domicilio.</li>
+              <li>👶 Babysitter - cuidado responsable de ninos cuando lo necesites.</li>
+              <li>📚 Profesor particular - apoyo escolar y clases personalizadas.</li>
+              <li>💪 Personal trainer - entrenamiento fisico adaptado a tus objetivos.</li>
+              <li>👕 Planchado - ayuda con ropa y tareas domesticas especificas.</li>
+            </ul>
+            <p>
+              Estamos comenzando con estos servicios y iremos agregando mas categorias a medida que crezca la comunidad.
+            </p>
+          </div>
         </div>
       </section>
 
@@ -63,10 +80,17 @@ export default function ServiciosPage() {
 
       <section className="service-grid">
         {categories.map((category) => (
-          <Link key={category.id} href={`/services/${category.slug}`} className="service-card module-link">
-            <strong>{category.name}</strong>
+          <Link key={category.id} href={`/services/${category.slug}`} className="service-card services-list-card module-link">
+            <div
+              className="services-list-card-media"
+              style={{ backgroundImage: `url("${serviceByCategorySlug.get(category.slug)?.image ?? ""}")` }}
+              aria-hidden
+            />
+            <strong className="services-list-card-title">
+              {serviceByCategorySlug.get(category.slug)?.icon ?? "🛠️"} {category.name}
+            </strong>
             <span>{category.description ?? "Servicios disponibles en esta categoria."}</span>
-            <span>
+            <span className="services-list-card-price">
               {category.services.length > 0
                 ? `Desde ${new Intl.NumberFormat("es-CL", {
                     style: "currency",
