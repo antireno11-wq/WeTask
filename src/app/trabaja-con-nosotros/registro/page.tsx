@@ -102,6 +102,7 @@ const EXPERIENCE_OPTIONS_BY_SERVICE: Record<TaskerServiceSlug, string[]> = {
   babysitter: ["cuidado_infantil", "casas", "departamentos", "airbnb"],
   "profesor-particular": ["clases_escolares", "clases_musica", "clases_idiomas", "clases_online"],
   "personal-trainer": ["entrenamiento_funcional", "casas", "departamentos"],
+  chef: ["cocina_hogar", "eventos", "meal_prep", "dietas_especiales"],
   planchado: ["planchado", "casas", "departamentos"]
 };
 
@@ -121,6 +122,7 @@ const OFFERED_SERVICES_BY_SERVICE: Record<TaskerServiceSlug, string[]> = {
   babysitter: ["babysitter_horas"],
   "profesor-particular": ["profesor_particular", "clases_apoyo_escolar", "clases_musica", "clases_idiomas", "clases_online"],
   "personal-trainer": ["personal_trainer"],
+  chef: ["chef_a_domicilio", "preparacion_menu", "cocina_eventos", "meal_prep"],
   planchado: ["planchado_por_hora", "orden_organizacion"]
 };
 
@@ -174,6 +176,14 @@ const DYNAMIC_QUESTION_LABELS: Record<
     products: "Trabajo con implementos del cliente",
     ownProducts: "Llevo rutinas y material de apoyo",
     ownTools: "Llevo implementos deportivos propios"
+  },
+  chef: {
+    first: "Acepto cocinar en hogares con mascotas",
+    second: "Acepto preparar menus para ninos",
+    third: "Acepto preparar menus para adultos mayores",
+    products: "Trabajo con insumos del cliente",
+    ownProducts: "Puedo llevar algunos insumos propios",
+    ownTools: "Llevo utensilios y herramientas de cocina"
   },
   planchado: {
     first: "Acepto hogares con mascotas",

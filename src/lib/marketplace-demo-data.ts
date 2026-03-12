@@ -433,6 +433,30 @@ export async function ensureMarketplaceDemoData() {
         isActive: true
       }
     }),
+    chefDomicilio: await prisma.category.upsert({
+      where: { slug: "chef-a-domicilio" },
+      update: {
+        name: "Chef a domicilio",
+        description: "Menu personalizado y cocina en casa para eventos o dia a dia",
+        minHours: 2,
+        slotMinutes: 60,
+        basePlatformFeePct: 12,
+        urgencyFeeClp: 6000,
+        materialFeeDefaultClp: 0,
+        isActive: true
+      },
+      create: {
+        slug: "chef-a-domicilio",
+        name: "Chef a domicilio",
+        description: "Menu personalizado y cocina en casa para eventos o dia a dia",
+        minHours: 2,
+        slotMinutes: 60,
+        basePlatformFeePct: 12,
+        urgencyFeeClp: 6000,
+        materialFeeDefaultClp: 0,
+        isActive: true
+      }
+    }),
     planchado: await prisma.category.upsert({
       where: { slug: "planchado" },
       update: {
@@ -594,6 +618,13 @@ export async function ensureMarketplaceDemoData() {
       categoryId: categories.personalTrainer.id
     },
     {
+      slug: "chef-a-domicilio-sesion",
+      name: "Chef a domicilio por sesion",
+      description: "Preparacion de menu personalizado en tu hogar",
+      basePriceClp: 48000,
+      categoryId: categories.chefDomicilio.id
+    },
+    {
       slug: "planchado-por-hora",
       name: "Planchado por hora",
       description: "Planchado, doblado y orden de prendas",
@@ -652,7 +683,7 @@ export async function ensureMarketplaceDemoData() {
       rate: 27000,
       rating: 4.8,
       count: 129,
-      serviceSlugs: ["limpieza-hogar", "paseo-cuidado-mascotas", "planchado-por-hora"]
+      serviceSlugs: ["limpieza-hogar", "paseo-cuidado-mascotas", "chef-a-domicilio-sesion", "planchado-por-hora"]
     },
     {
       email: "pro.javier@wetask.cl",
@@ -704,7 +735,7 @@ export async function ensureMarketplaceDemoData() {
       rate: 21000,
       rating: 4.9,
       count: 143,
-      serviceSlugs: ["babysitter-por-horas-standard", "profesor-particular-clase", "personal-trainer-sesion"]
+      serviceSlugs: ["babysitter-por-horas-standard", "profesor-particular-clase", "personal-trainer-sesion", "chef-a-domicilio-sesion"]
     }
   ];
 

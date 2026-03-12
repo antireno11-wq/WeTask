@@ -2440,9 +2440,12 @@ textarea {
 }
 
 .mvp-service-media {
-  min-height: 170px;
-  background-size: cover;
+  aspect-ratio: 3 / 2;
+  min-height: 0;
+  background-size: contain;
   background-position: center;
+  background-repeat: no-repeat;
+  background-color: #eef4fa;
 }
 
 .mvp-service-copy {
