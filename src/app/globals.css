@@ -2510,10 +2510,10 @@ textarea {
 .mvp-service-media {
   aspect-ratio: 3 / 2;
   min-height: 0;
-  background-size: contain;
+  background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
-  background-color: #eef4fa;
+  background-color: transparent;
 }
 
 .mvp-service-copy {
