@@ -60,7 +60,7 @@ export const CORE_SERVICES = [
     requestService: "Maquillaje a domicilio",
     categorySlug: "maquillaje-a-domicilio",
     taskerDescription: "Maquillaje social, para eventos y asesoría personalizada en tu domicilio.",
-    image: "/services/maquillaje-opt.svg"
+    image: "/services/maquillaje-opt.jpg"
   },
   {
     slug: "planchado",
