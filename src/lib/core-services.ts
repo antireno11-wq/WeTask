@@ -24,7 +24,7 @@ export const CORE_SERVICES = [
     requestService: "Babysitter",
     categorySlug: "babysitter-por-horas",
     taskerDescription: "Cuidado infantil en casa con enfoque en seguridad y rutina.",
-    image: "/services/babysitter-h.jpg"
+    image: "/services/babysitter.jpg"
   },
   {
     slug: "profesor-particular",
@@ -51,7 +51,7 @@ export const CORE_SERVICES = [
     requestService: "Chef a domicilio",
     categorySlug: "chef-a-domicilio",
     taskerDescription: "Menu personalizado, cocina en casa y preparacion para eventos.",
-    image: "/services/chef-h.svg"
+    image: "/services/chef.png"
   },
   {
     slug: "planchado",
