@@ -17,7 +17,7 @@ export default function ServiciosPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const serviceByCategorySlug = new Map(
+  const serviceByCategorySlug = new Map<string, { image: string; icon: string }>(
     CORE_SERVICES.map((service) => [service.categorySlug, { image: service.image, icon: service.icon }])
   );
 
