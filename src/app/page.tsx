@@ -5,7 +5,7 @@ import { CORE_SERVICES } from "@/lib/core-services";
 const howItWorks = [
   {
     title: "Busca lo que necesitas",
-    text: "Elige una categoria, agrega direccion y horario para ver cobertura real.",
+    text: "Elige una categoría, agrega dirección y horario para ver cobertura real.",
     visual: "collage-one"
   },
   {
@@ -14,7 +14,7 @@ const howItWorks = [
     visual: "collage-two"
   },
   {
-    title: "Contratalo en 1 click",
+    title: "Contrátalo en 1 click",
     text: "Reserva online y coordina todo desde WeTask con pago protegido.",
     visual: "collage-three"
   }
@@ -27,7 +27,7 @@ const whyWetask = [
   },
   {
     title: "Tranquilidad",
-    text: "Profesionales de confianza, soporte 365 dias del ano y dinero protegido hasta el final."
+    text: "Profesionales de confianza, soporte 365 días del año y dinero protegido hasta el final."
   },
   {
     title: "Comodidad",
@@ -42,7 +42,7 @@ export default function HomePage() {
         <MarketNav />
 
         <section className="panel mvp-hero home-hero-main" id="inicio">
-          <div className="mvp-category-top-row" aria-label="Categorias principales">
+          <div className="mvp-category-top-row" aria-label="Categorías principales">
             {CORE_SERVICES.map((item) => (
               <Link
                 key={item.slug}
@@ -55,7 +55,7 @@ export default function HomePage() {
             ))}
           </div>
 
-          <h1>Haz tu vida mas facil</h1>
+          <h1>Haz tu vida más fácil</h1>
           <p className="lead">Disfruta cualquier servicio en la comodidad de tu hogar.</p>
 
           <div className="cta-row mvp-hero-actions">
@@ -78,7 +78,7 @@ export default function HomePage() {
 
       <section className="panel mvp-section how-works" id="como-funciona">
         <div className="panel-head">
-          <h2>Como funciona</h2>
+          <h2>¿Cómo funciona?</h2>
         </div>
         <div className="how-works-grid">
           {howItWorks.map((step) => (
@@ -94,7 +94,7 @@ export default function HomePage() {
       <section className="panel mvp-section mvp-service-showcase" id="servicios-disponibles">
         <div className="panel-head">
           <h2>Servicios que ya puedes reservar</h2>
-          <p>Partimos con las categorias de mayor demanda para validar WeTask en Chile.</p>
+          <p>Partimos con las categorías de mayor demanda para validar WeTask en Chile.</p>
         </div>
 
         <div className="mvp-service-gallery">
@@ -114,9 +114,9 @@ export default function HomePage() {
 
       <section className="panel mvp-section mvp-intro" id="sobre-nosotros-home">
         <div className="mvp-intro-copy">
-          <h2>Pedimos de todo a casa: comida, paquetes, la compra... pero, y los servicios?</h2>
+          <h2>Pedimos de todo a casa: comida, paquetes, la compra... pero, ¿y los servicios?</h2>
           <p>
-            Con WeTask puedes disfrutar de casi cualquier servicio (clases, belleza, fisioterapia y mas) sin tener que salir de casa.
+            Con WeTask puedes disfrutar de casi cualquier servicio (clases, belleza, fisioterapia y más) sin tener que salir de casa.
           </p>
         </div>
         <div className="mvp-intro-visual-grid" aria-hidden>
@@ -127,7 +127,7 @@ export default function HomePage() {
 
       <section className="panel mvp-section" id="por-que">
         <div className="panel-head">
-          <h2>Por que WeTask?</h2>
+          <h2>¿Por qué WeTask?</h2>
         </div>
         <div className="mvp-why-grid">
           {whyWetask.map((item) => (
@@ -142,11 +142,11 @@ export default function HomePage() {
       <section className="panel mvp-section home-guarantee-panel mvp-guarantee-final" id="garantia-wetask">
         <div className="home-guarantee-grid">
           <div className="home-guarantee-copy">
-            <p className="home-guarantee-eyebrow">GARANTIA WETASK</p>
+            <p className="home-guarantee-eyebrow">GARANTÍA WETASK</p>
             <h2>
-              No te preocupes, tu servicio esta <span>siempre protegido</span>
+              No te preocupes, tu servicio está <span>siempre protegido</span>
             </h2>
-            <p>El profesional solo recibe el dinero cuando confirmas que todo fue segun lo esperado.</p>
+            <p>El profesional solo recibe el dinero cuando confirmas que todo fue según lo esperado.</p>
             <p>Si algo sale mal, te devolvemos el importe total del servicio.</p>
           </div>
 
@@ -161,12 +161,12 @@ export default function HomePage() {
             </article>
 
             <article className="home-guarantee-card card-top-right">
-              <strong>Garantia de reembolso</strong>
+              <strong>Garantía de reembolso</strong>
               <span>Si algo sale mal, te devolvemos el dinero.</span>
             </article>
 
             <article className="home-guarantee-card card-bottom">
-              <strong>Atencion 365 dias</strong>
+              <strong>Atención 365 días</strong>
               <span>Soporte disponible para lo que necesites.</span>
             </article>
           </div>
@@ -174,11 +174,11 @@ export default function HomePage() {
       </section>
 
       <footer className="panel mvp-footer" id="footer">
-        <Link href="/como-funciona">Como funciona?</Link>
-        <Link href="/como-funciona">Que es WeTask</Link>
-        <Link href="/trabaja-con-nosotros">Convertirse en tecnico</Link>
+        <Link href="/como-funciona">¿Cómo funciona?</Link>
+        <Link href="/como-funciona">¿Qué es WeTask?</Link>
+        <Link href="/trabaja-con-nosotros">Convertirse en técnico</Link>
         <Link href="/como-funciona">Servicios</Link>
-        <Link href="/legal">Terminos y privacidad</Link>
+        <Link href="/legal">Términos y privacidad</Link>
       </footer>
     </main>
   );

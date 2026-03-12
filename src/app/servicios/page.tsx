@@ -28,7 +28,7 @@ export default function ServiciosPage() {
         const response = await fetch("/api/marketplace/catalog");
         const data = (await response.json()) as { categories?: Category[]; error?: string; detail?: string };
         if (!response.ok || !data.categories) {
-          throw new Error(data.detail || data.error || "No se pudieron cargar las categorias");
+          throw new Error(data.detail || data.error || "No se pudieron cargar las categorías");
         }
 
         const labelByCategorySlug = new Map<string, string>(CORE_SERVICES.map((service) => [service.categorySlug, service.label]));
@@ -58,24 +58,24 @@ export default function ServiciosPage() {
         <div className="panel-head">
           <h2>Servicios</h2>
           <div className="services-page-copy">
-            <p>En WeTask puedes encontrar personas confiables para ayudarte con tareas del dia a dia.</p>
+            <p>En WeTask puedes encontrar personas confiables para ayudarte con tareas del día a día.</p>
             <p>Estos son algunos de los servicios activos en nuestra etapa inicial:</p>
             <ul>
               <li>🧹 Limpieza del hogar - ayuda para mantener tu casa ordenada y limpia.</li>
               <li>🐶 Cuidado de mascotas - paseos, cuidado por horas o visitas a domicilio.</li>
-              <li>👶 Babysitter - cuidado responsable de ninos cuando lo necesites.</li>
+              <li>👶 Babysitter - cuidado responsable de niños cuando lo necesites.</li>
               <li>📚 Profesor particular - apoyo escolar y clases personalizadas.</li>
-              <li>💪 Personal trainer - entrenamiento fisico adaptado a tus objetivos.</li>
-              <li>👕 Planchado - ayuda con ropa y tareas domesticas especificas.</li>
+              <li>💪 Personal trainer - entrenamiento físico adaptado a tus objetivos.</li>
+              <li>👕 Planchado - ayuda con ropa y tareas domésticas específicas.</li>
             </ul>
             <p>
-              Estamos comenzando con estos servicios y iremos agregando mas categorias a medida que crezca la comunidad.
+              Estamos comenzando con estos servicios y iremos agregando más categorías a medida que crezca la comunidad.
             </p>
           </div>
         </div>
       </section>
 
-      {loading ? <p className="empty">Cargando categorias...</p> : null}
+      {loading ? <p className="empty">Cargando categorías...</p> : null}
       {error ? <p className="feedback error">{error}</p> : null}
 
       <section className="service-grid">
@@ -89,7 +89,7 @@ export default function ServiciosPage() {
             <strong className="services-list-card-title">
               {serviceByCategorySlug.get(category.slug)?.icon ?? "🛠️"} {category.name}
             </strong>
-            <span>{category.description ?? "Servicios disponibles en esta categoria."}</span>
+            <span>{category.description ?? "Servicios disponibles en esta categoría."}</span>
             <span className="services-list-card-price">
               {category.services.length > 0
                 ? `Desde ${new Intl.NumberFormat("es-CL", {

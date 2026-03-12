@@ -32,7 +32,7 @@ export const CORE_SERVICES = [
     icon: "📚",
     requestService: "Profesor particular",
     categorySlug: "profesor-particular",
-    taskerDescription: "Refuerzo escolar y apoyo personalizado a domicilio o en linea.",
+    taskerDescription: "Refuerzo escolar y apoyo personalizado a domicilio o en línea.",
     image: "/services/profesor-particular-opt.jpg"
   },
   {
@@ -50,7 +50,7 @@ export const CORE_SERVICES = [
     icon: "👨‍🍳",
     requestService: "Chef a domicilio",
     categorySlug: "chef-a-domicilio",
-    taskerDescription: "Menu personalizado, cocina en casa y preparacion para eventos.",
+    taskerDescription: "Menú personalizado, cocina en casa y preparación para eventos.",
     image: "/services/chef-opt.jpg"
   },
   {
