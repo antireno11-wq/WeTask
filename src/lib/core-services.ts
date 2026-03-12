@@ -6,7 +6,7 @@ export const CORE_SERVICES = [
     requestService: "Limpieza",
     categorySlug: "limpieza",
     taskerDescription: "Limpieza general, profunda, recurrente y por horas.",
-    image: "/services/limpieza.png"
+    image: "/services/limpieza-opt.jpg"
   },
   {
     slug: "mascotas",
@@ -15,7 +15,7 @@ export const CORE_SERVICES = [
     requestService: "Paseo y cuidado de mascotas",
     categorySlug: "paseo-cuidado-mascotas",
     taskerDescription: "Paseo de perros, visitas, cuidado diario y apoyo para mascotas.",
-    image: "/services/mascotas.png"
+    image: "/services/mascotas-opt.jpg"
   },
   {
     slug: "babysitter",
@@ -24,7 +24,7 @@ export const CORE_SERVICES = [
     requestService: "Babysitter",
     categorySlug: "babysitter-por-horas",
     taskerDescription: "Cuidado infantil en casa con enfoque en seguridad y rutina.",
-    image: "/services/babysitter.png"
+    image: "/services/babysitter-opt.jpg"
   },
   {
     slug: "profesor-particular",
@@ -33,7 +33,7 @@ export const CORE_SERVICES = [
     requestService: "Profesor particular",
     categorySlug: "profesor-particular",
     taskerDescription: "Refuerzo escolar y apoyo personalizado a domicilio o en linea.",
-    image: "/services/profesor-particular.png"
+    image: "/services/profesor-particular-opt.jpg"
   },
   {
     slug: "personal-trainer",
@@ -42,7 +42,7 @@ export const CORE_SERVICES = [
     requestService: "Personal trainer",
     categorySlug: "personal-trainer",
     taskerDescription: "Entrenamiento funcional y planes adaptados por objetivo.",
-    image: "/services/personal-trainer.png"
+    image: "/services/personal-trainer-opt.jpg"
   },
   {
     slug: "chef",
@@ -51,7 +51,7 @@ export const CORE_SERVICES = [
     requestService: "Chef a domicilio",
     categorySlug: "chef-a-domicilio",
     taskerDescription: "Menu personalizado, cocina en casa y preparacion para eventos.",
-    image: "/services/chef.png"
+    image: "/services/chef-opt.jpg"
   },
   {
     slug: "planchado",
@@ -60,7 +60,7 @@ export const CORE_SERVICES = [
     requestService: "Planchado",
     categorySlug: "planchado",
     taskerDescription: "Planchado por hora, orden y cuidado de prendas.",
-    image: "/services/planchado.png"
+    image: "/services/planchado-opt.jpg"
   }
 ] as const;
 
