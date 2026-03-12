@@ -2138,6 +2138,24 @@ textarea {
   color: #2a3545;
 }
 
+.we-step-card {
+  border: 1px solid #d8e6f2;
+  border-radius: 12px;
+  background: #ffffff;
+  padding: 10px;
+}
+
+.we-step-photo {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: 10px;
+  border: 1px solid #d4e4f3;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-color: #eef4fa;
+}
+
 .we-score-big {
   margin: 4px 0 0;
   font-size: 1.1rem;
