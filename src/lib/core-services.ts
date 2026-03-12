@@ -6,7 +6,7 @@ export const CORE_SERVICES = [
     requestService: "Limpieza",
     categorySlug: "limpieza",
     taskerDescription: "Limpieza general, profunda, recurrente y por horas.",
-    image: "/services/limpieza-h.jpg"
+    image: "/services/limpieza.png"
   },
   {
     slug: "mascotas",
@@ -15,7 +15,7 @@ export const CORE_SERVICES = [
     requestService: "Paseo y cuidado de mascotas",
     categorySlug: "paseo-cuidado-mascotas",
     taskerDescription: "Paseo de perros, visitas, cuidado diario y apoyo para mascotas.",
-    image: "/services/mascotas-h.jpg"
+    image: "/services/mascotas.png"
   },
   {
     slug: "babysitter",
