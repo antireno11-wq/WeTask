@@ -176,9 +176,11 @@ export default function HomePage() {
       <footer className="panel mvp-footer" id="footer">
         <Link href="/como-funciona">¿Cómo funciona?</Link>
         <Link href="/como-funciona">¿Qué es WeTask?</Link>
-        <Link href="/trabaja-con-nosotros">Convertirse en técnico</Link>
         <Link href="/como-funciona">Servicios</Link>
         <Link href="/legal">Términos y privacidad</Link>
+        <Link href="/trabaja-con-nosotros" className="mvp-footer-tech-link">
+          Convertirse en técnico
+        </Link>
       </footer>
     </main>
   );

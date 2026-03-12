@@ -2613,6 +2613,12 @@ textarea {
   text-decoration: underline;
 }
 
+.mvp-footer .mvp-footer-tech-link {
+  flex-basis: 100%;
+  text-align: center;
+  margin-top: 4px;
+}
+
 .mvp-landing .cta,
 .mvp-lead-panel .cta {
   border: 1px solid #173b5f;
