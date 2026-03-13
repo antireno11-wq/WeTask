@@ -33,7 +33,7 @@ export default function ComoFuncionaPage() {
       <section className="panel">
         <div className="panel-head">
           <h2>¿Cómo funciona WeTask?</h2>
-          <p>WeTask conecta personas que necesitan ayuda en casa con profesionales listos para atender por hora.</p>
+          <p>WeTask conecta a personas que necesitan ayuda en casa con profesionales confiables cerca de ti. Elige, reserva y paga en minutos, todo desde un solo lugar.</p>
         </div>
         <div className="we-info-grid">
           {howItWorksSteps.map((step) => (

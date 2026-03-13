@@ -1289,10 +1289,18 @@ textarea {
 }
 
 .inline-check-option {
-  display: inline-flex;
+  display: flex;
+  flex-direction: row;
   align-items: center;
   gap: 8px;
   font-weight: 600;
+  width: fit-content;
+  line-height: 1.2;
+}
+
+.inline-check-option span,
+.inline-check-option a {
+  display: inline;
 }
 
 .inline-check-option input[type="checkbox"],
