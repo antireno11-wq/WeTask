@@ -1,9 +1,14 @@
 "use client";
 
-import Link from "next/link";
+import { useState } from "react";
 import { MarketNav } from "@/components/market-nav";
+import { LoginRolePanel } from "@/components/login-role-panel";
+
+type LoginRole = "CUSTOMER" | "PRO";
 
 export default function IngresarPage() {
+  const [role, setRole] = useState<LoginRole>("CUSTOMER");
+
   return (
     <main className="page market-shell">
       <MarketNav />
@@ -11,33 +16,21 @@ export default function IngresarPage() {
       <section className="panel">
         <div className="panel-head">
           <h2>Ingresar</h2>
-          <p>Ingresa tus datos o crea una cuenta para continuar.</p>
+          <p>Elige cómo quieres iniciar sesión y continúa con un solo formulario.</p>
         </div>
 
-        <div className="login-split">
-          <article className="module-card">
-            <h3>Cliente</h3>
-            <p>Para pedir servicios y gestionar tus reservas.</p>
-            <Link href="/ingresar/cliente" className="cta small">
-              Ingresar como cliente
-            </Link>
-            <Link href="/registro?role=CUSTOMER" className="cta ghost small">
-              Crear cuenta cliente
-            </Link>
-          </article>
-
-          <article className="module-card">
-            <h3>Tasker (Profesional)</h3>
-            <p>Para ofrecer servicios y administrar tu agenda.</p>
-            <Link href="/ingresar/tasker" className="cta small">
-              Ingresar como tasker
-            </Link>
-            <Link href="/trabaja-con-nosotros" className="cta ghost small">
-              Crear cuenta tasker
-            </Link>
-          </article>
+        <div className="query-row query-single">
+          <label>
+            Tipo de sesión
+            <select value={role} onChange={(event) => setRole(event.target.value as LoginRole)}>
+              <option value="CUSTOMER">Cliente</option>
+              <option value="PRO">Tasker (Profesional)</option>
+            </select>
+          </label>
         </div>
       </section>
+
+      <LoginRolePanel role={role} showRoleSwitchLink={false} />
     </main>
   );
 }

@@ -20,9 +20,10 @@ type LoginRole = "CUSTOMER" | "PRO";
 
 type LoginRolePanelProps = {
   role: LoginRole;
+  showRoleSwitchLink?: boolean;
 };
 
-export function LoginRolePanel({ role }: LoginRolePanelProps) {
+export function LoginRolePanel({ role, showRoleSwitchLink = true }: LoginRolePanelProps) {
   const router = useRouter();
   const isTasker = role === "PRO";
 
@@ -157,9 +158,11 @@ export function LoginRolePanel({ role }: LoginRolePanelProps) {
         <Link href={createAccountHref} className="cta ghost small">
           {createAccountLabel}
         </Link>
-        <Link href="/ingresar" className="cta ghost small">
-          Cambiar tipo de ingreso
-        </Link>
+        {showRoleSwitchLink ? (
+          <Link href="/ingresar" className="cta ghost small">
+            Cambiar tipo de ingreso
+          </Link>
+        ) : null}
       </div>
 
       {demoUser ? (

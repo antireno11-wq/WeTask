@@ -1356,6 +1356,48 @@ textarea {
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
+.service-search-form {
+  display: grid;
+  gap: 8px;
+}
+
+.service-search-row {
+  display: grid;
+  grid-template-columns: minmax(180px, 0.42fr) minmax(170px, 0.34fr) minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: end;
+}
+
+.service-search-row .cta {
+  min-height: 44px;
+}
+
+.service-search-meta {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+
+.taskers-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.taskers-head h3 {
+  margin: 0;
+  font-family: "Space Grotesk", sans-serif;
+}
+
+.taskers-head p {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: 0.9rem;
+}
+
 .feedback {
   margin: 12px 0 0;
   padding: 10px 12px;
@@ -1797,6 +1839,10 @@ textarea {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .service-search-row {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
   .query-calendar {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -1842,6 +1888,10 @@ textarea {
   }
 
   .query-row {
+    grid-template-columns: 1fr;
+  }
+
+  .service-search-row {
     grid-template-columns: 1fr;
   }
 
