@@ -5,22 +5,22 @@ import { CORE_SERVICES } from "@/lib/core-services";
 const howItWorksSteps = [
   {
     title: "1. Eliges un servicio",
-    image: "/services/limpieza-opt.jpg",
+    image: "/services/1.png",
     text: "Seleccionas la categoría que necesitas y escribes tu dirección."
   },
   {
     title: "2. Comparas profesionales",
-    image: "/services/profesor-particular-opt.jpg",
+    image: "/services/2.png",
     text: "Ves perfiles, valoraciones, precios y disponibilidad real."
   },
   {
     title: "3. Reservas en línea",
-    image: "/services/chef-opt.jpg",
+    image: "/services/3.png",
     text: "Confirmas fecha y hora con pago protegido hasta terminar el servicio."
   },
   {
     title: "4. Evalúas el resultado",
-    image: "/services/personal-trainer-opt.jpg",
+    image: "/services/4.png",
     text: "Calificas al profesional y ayudas a mantener la calidad de la plataforma."
   }
 ];
