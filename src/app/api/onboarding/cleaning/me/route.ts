@@ -1,6 +1,7 @@
 import { CleaningOnboardingStatus, Prisma, UserRole } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { getRequestIdentity, hasRole } from "@/lib/auth";
+import { CLEANING_TRAINING_TOPICS } from "@/lib/cleaning-onboarding";
 import { prisma } from "@/lib/prisma";
 import {
   cleaningOnboardingSaveSchema,
@@ -9,8 +10,7 @@ import {
   cleaningOnboardingStage4Schema,
   cleaningOnboardingStage5Schema,
   cleaningOnboardingStage6Schema,
-  cleaningOnboardingStage7Schema,
-  cleaningOnboardingStage8Schema
+  cleaningOnboardingStage7Schema
 } from "@/lib/validators";
 
 export const dynamic = "force-dynamic";
@@ -207,19 +207,24 @@ export async function PATCH(req: NextRequest) {
         bankAccountType: parsed.bankAccountType,
         bankAccountNumber: parsed.bankAccountNumber.trim(),
         billingType: parsed.billingType,
-        currentStep: Math.max(onboarding.currentStep, 8)
+        trainingTopics: [...CLEANING_TRAINING_TOPICS],
+        trainingCompletedAt: new Date(),
+        acceptsCancellationPolicy: true,
+        acceptsServiceProtocol: true,
+        acceptsDataProcessing: true,
+        confirmsCleaningScope: true,
+        currentStep: Math.max(onboarding.currentStep, 9)
       };
     }
 
     if (input.step === 8) {
-      const parsed = cleaningOnboardingStage8Schema.parse(input.payload);
       data = {
-        trainingTopics: parsed.completedTopics,
+        trainingTopics: [...CLEANING_TRAINING_TOPICS],
         trainingCompletedAt: new Date(),
-        acceptsCancellationPolicy: parsed.acceptsCancellationPolicy,
-        acceptsServiceProtocol: parsed.acceptsServiceProtocol,
-        acceptsDataProcessing: parsed.acceptsDataProcessing,
-        confirmsCleaningScope: parsed.confirmsCleaningScope,
+        acceptsCancellationPolicy: true,
+        acceptsServiceProtocol: true,
+        acceptsDataProcessing: true,
+        confirmsCleaningScope: true,
         currentStep: Math.max(onboarding.currentStep, 9)
       };
     }

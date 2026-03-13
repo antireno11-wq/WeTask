@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
         phoneValidatedAt: new Date(),
         phoneVerificationCodeHash: null,
         phoneVerificationExpiresAt: null,
-        currentStep: Math.max(onboarding.currentStep, 8)
+        currentStep: Math.max(onboarding.currentStep, 9)
       }
     });
 

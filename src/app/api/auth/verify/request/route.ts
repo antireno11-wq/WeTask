@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { sendPlatformEmail } from "@/lib/notifications";
 import { prisma } from "@/lib/prisma";
 import { randomToken, sha256 } from "@/lib/security";
 
@@ -15,19 +16,26 @@ export async function POST(req: NextRequest) {
     if (user.authProvider !== "EMAIL") return NextResponse.json({ ok: true }, { status: 200 });
     if (user.emailVerifiedAt) return NextResponse.json({ ok: true, alreadyVerified: true }, { status: 200 });
 
-    const token = randomToken(24);
+    const code = randomToken(6).replace(/[^0-9]/g, "").slice(0, 6).padEnd(6, "0");
     await prisma.emailVerificationToken.create({
       data: {
         userId: user.id,
-        tokenHash: sha256(token),
-        expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24)
+        tokenHash: sha256(code),
+        expiresAt: new Date(Date.now() + 1000 * 60 * 10)
       }
+    });
+
+    await sendPlatformEmail({
+      to: email,
+      subject: "Tu codigo de verificacion WeTask",
+      text: `Tu codigo de verificacion es ${code}. Expira en 10 minutos.`
     });
 
     return NextResponse.json(
       {
         ok: true,
-        tokenPreview: process.env.NODE_ENV !== "production" ? token : undefined
+        codePreview: process.env.NODE_ENV !== "production" ? code : undefined,
+        tokenPreview: process.env.NODE_ENV !== "production" ? code : undefined
       },
       { status: 200 }
     );

@@ -9,7 +9,6 @@ import {
   CHILE_TOP_COMMUNES,
   CLEANING_LANGUAGE_OPTIONS,
   CLEANING_STATUS_LABELS,
-  CLEANING_TRAINING_TOPICS,
   CLEANING_WEEK_DAYS
 } from "@/lib/cleaning-onboarding";
 
@@ -18,6 +17,8 @@ type SessionPayload = {
   fullName?: string | null;
   email?: string | null;
   role: "CUSTOMER" | "PRO" | "ADMIN";
+  authProvider?: "EMAIL" | "GOOGLE" | "APPLE";
+  emailVerified?: boolean;
 };
 
 type OnboardingPayload = {
@@ -205,6 +206,24 @@ const DYNAMIC_QUESTION_LABELS: Record<
   }
 };
 
+const CHILE_BANK_OPTIONS = [
+  "Banco de Chile",
+  "Banco Internacional",
+  "Banco Scotiabank",
+  "Banco de Credito e Inversiones (BCI)",
+  "Banco BICE",
+  "HSBC Bank Chile",
+  "Banco Santander",
+  "Banco Itau",
+  "Banco Security",
+  "Banco Falabella",
+  "Banco Ripley",
+  "Banco Consorcio",
+  "BancoEstado",
+  "Banco BTG Pactual Chile",
+  "Banco Coopeuch"
+] as const;
+
 function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
 }
@@ -244,6 +263,31 @@ function toAvailabilityBlocks(value: unknown): AvailabilityBlock[] {
       };
     })
     .filter(Boolean) as AvailabilityBlock[];
+}
+
+function formatOptionLabel(value: string) {
+  const clean = value.replace(/_/g, " ").trim();
+  if (!clean) return "";
+  return clean.charAt(0).toUpperCase() + clean.slice(1);
+}
+
+function normalizeMatchText(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+}
+
+function inferCommuneFromAddress(value: string) {
+  const normalizedAddress = normalizeMatchText(value);
+  return CHILE_TOP_COMMUNES.find((commune) => normalizedAddress.includes(normalizeMatchText(commune))) ?? null;
+}
+
+function buildChileAddressQuery(value: string) {
+  const trimmed = value.trim();
+  if (!trimmed) return "";
+  if (/chile/i.test(trimmed)) return trimmed;
+  return `${trimmed}, Santiago, Chile`;
 }
 
 function fileToDataUrl(file: File): Promise<string> {
@@ -289,7 +333,6 @@ export default function CleaningOnboardingPage() {
 
   const [baseCommune, setBaseCommune] = useState("Las Condes");
   const [serviceCommunes, setServiceCommunes] = useState<string[]>([]);
-  const [communeToAdd, setCommuneToAdd] = useState<string>(CHILE_TOP_COMMUNES[0] ?? "Las Condes");
   const [coverageLatitude, setCoverageLatitude] = useState("-33.448900");
   const [coverageLongitude, setCoverageLongitude] = useState("-70.669300");
   const [addressValidationState, setAddressValidationState] = useState<"idle" | "validating" | "verified" | "fallback">("idle");
@@ -298,6 +341,7 @@ export default function CleaningOnboardingPage() {
   const [addressSuggestions, setAddressSuggestions] = useState<string[]>([]);
   const [autocompleteLoading, setAutocompleteLoading] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [selectedFromAutocomplete, setSelectedFromAutocomplete] = useState(false);
   const [maxTravelKm, setMaxTravelKm] = useState(12);
   const [chargesTravelExtra, setChargesTravelExtra] = useState(false);
 
@@ -310,7 +354,6 @@ export default function CleaningOnboardingPage() {
   const [minBookingHours, setMinBookingHours] = useState(2);
   const [weekendSurchargePct, setWeekendSurchargePct] = useState(15);
   const [holidaySurchargePct, setHolidaySurchargePct] = useState(25);
-  const [remoteCommuneSurchargeClp, setRemoteCommuneSurchargeClp] = useState(4000);
   const [hasDeepCleaningRate, setHasDeepCleaningRate] = useState(false);
   const [deepCleaningHourlyRateClp, setDeepCleaningHourlyRateClp] = useState(15000);
 
@@ -332,6 +375,7 @@ export default function CleaningOnboardingPage() {
   const [bankAccountNumber, setBankAccountNumber] = useState("");
   const [billingType, setBillingType] = useState("persona_natural");
   const [phoneCode, setPhoneCode] = useState("");
+  const [emailCode, setEmailCode] = useState("");
 
   const [completedTopics, setCompletedTopics] = useState<string[]>([]);
   const [acceptsCancellationPolicy, setAcceptsCancellationPolicy] = useState(false);
@@ -340,6 +384,7 @@ export default function CleaningOnboardingPage() {
   const [confirmsCleaningScope, setConfirmsCleaningScope] = useState(false);
 
   const phoneValidated = Boolean(onboarding?.phoneValidatedAt);
+  const emailVerified = Boolean(session?.authProvider !== "EMAIL" || session?.emailVerified);
 
   const parsedMapLat = Number(coverageLatitude);
   const parsedMapLng = Number(coverageLongitude);
@@ -348,7 +393,7 @@ export default function CleaningOnboardingPage() {
       geocodeAddress({
         city: "Santiago",
         postalCode: "7500000",
-        street: `${referenceAddress} ${baseCommune}`.trim(),
+        street: referenceAddress.trim() || `${baseCommune}, Santiago`,
         fallback: { lat: -33.4489, lng: -70.6693 }
       }),
     [referenceAddress, baseCommune]
@@ -382,7 +427,7 @@ export default function CleaningOnboardingPage() {
       setAddressValidationState("validating");
       setValidatedAddress("");
       try {
-        const query = `${referenceAddress}, ${baseCommune}, Santiago, Chile`;
+        const query = buildChileAddressQuery(referenceAddress);
         const response = await fetch(`/api/maps/validate-address?address=${encodeURIComponent(query)}`, {
           signal: controller.signal
         });
@@ -405,10 +450,18 @@ export default function CleaningOnboardingPage() {
         }
 
         setValidatedAddress((data.normalizedAddress || query).trim());
+        const detectedCommune = inferCommuneFromAddress(data.normalizedAddress || query);
+        if (detectedCommune && detectedCommune !== baseCommune) {
+          setBaseCommune(detectedCommune);
+        }
         setAddressValidationState(data.skipped ? "fallback" : "verified");
       } catch {
         if (!controller.signal.aborted) {
           setAddressValidationState("fallback");
+          const detectedCommune = inferCommuneFromAddress(referenceAddress);
+          if (detectedCommune && detectedCommune !== baseCommune) {
+            setBaseCommune(detectedCommune);
+          }
         }
       }
     }, 500);
@@ -421,6 +474,12 @@ export default function CleaningOnboardingPage() {
 
   useEffect(() => {
     const query = referenceAddress.trim();
+    if (selectedFromAutocomplete) {
+      setAddressSuggestions([]);
+      setShowSuggestions(false);
+      setAutocompleteLoading(false);
+      return;
+    }
     if (query.length < 4) {
       setAddressSuggestions([]);
       setShowSuggestions(false);
@@ -432,7 +491,7 @@ export default function CleaningOnboardingPage() {
     const timer = setTimeout(async () => {
       setAutocompleteLoading(true);
       try {
-        const response = await fetch(`/api/maps/autocomplete?input=${encodeURIComponent(`${query}, ${baseCommune}, Santiago, Chile`)}`, {
+        const response = await fetch(`/api/maps/autocomplete?input=${encodeURIComponent(buildChileAddressQuery(query))}`, {
           signal: controller.signal
         });
         const data = (await response.json()) as { predictions?: string[] };
@@ -460,7 +519,7 @@ export default function CleaningOnboardingPage() {
       controller.abort();
       clearTimeout(timer);
     };
-  }, [baseCommune, referenceAddress]);
+  }, [referenceAddress, selectedFromAutocomplete]);
 
   useEffect(() => {
     if (addressValidationState !== "verified") return;
@@ -480,6 +539,11 @@ export default function CleaningOnboardingPage() {
   const activeExperienceOptions = EXPERIENCE_OPTIONS_BY_SERVICE[selectedService];
   const activeOfferedServices = OFFERED_SERVICES_BY_SERVICE[selectedService];
   const activeDynamicLabels = DYNAMIC_QUESTION_LABELS[selectedService];
+  const bankOptions = useMemo(() => {
+    if (!bankName) return CHILE_BANK_OPTIONS;
+    if (CHILE_BANK_OPTIONS.includes(bankName as (typeof CHILE_BANK_OPTIONS)[number])) return CHILE_BANK_OPTIONS;
+    return [bankName, ...CHILE_BANK_OPTIONS];
+  }, [bankName]);
 
   useEffect(() => {
     setExperienceTypes((current) => current.filter((item) => activeExperienceOptions.includes(item)));
@@ -508,9 +572,6 @@ export default function CleaningOnboardingPage() {
 
     const loadedCommunes = toStringArray(next.serviceCommunes);
     setServiceCommunes(loadedCommunes);
-    if (loadedCommunes.length > 0) {
-      setCommuneToAdd(loadedCommunes[0]);
-    }
     if (next.coverageLatitude != null && next.coverageLongitude != null) {
       setCoverageLatitude(next.coverageLatitude.toFixed(6));
       setCoverageLongitude(next.coverageLongitude.toFixed(6));
@@ -532,7 +593,6 @@ export default function CleaningOnboardingPage() {
     setMinBookingHours(next.minBookingHours ?? 2);
     setWeekendSurchargePct(next.weekendSurchargePct ?? 15);
     setHolidaySurchargePct(next.holidaySurchargePct ?? 25);
-    setRemoteCommuneSurchargeClp(next.remoteCommuneSurchargeClp ?? 4000);
     setHasDeepCleaningRate((next.deepCleaningHourlyRateClp ?? 0) > 0);
     setDeepCleaningHourlyRateClp(next.deepCleaningHourlyRateClp ?? 15000);
 
@@ -606,14 +666,77 @@ export default function CleaningOnboardingPage() {
 
   const selectSuggestedAddress = (value: string) => {
     setReferenceAddress(value);
+    setSelectedFromAutocomplete(true);
     setAddressSuggestions([]);
     setShowSuggestions(false);
+    const detectedCommune = inferCommuneFromAddress(value);
+    if (detectedCommune) {
+      setBaseCommune(detectedCommune);
+      setServiceCommunes([detectedCommune]);
+    }
   };
 
   const uploadAsDataUrl = async (file: File | null, setter: (value: string) => void) => {
     if (!file) return;
     const content = await fileToDataUrl(file);
     setter(content);
+  };
+
+  const sendEmailCode = async (emailOverride?: string) => {
+    setSaving(true);
+    setFeedback("");
+    setError("");
+    try {
+      const targetEmail = (emailOverride ?? regEmail ?? session?.email ?? "").trim().toLowerCase();
+      if (!targetEmail) throw new Error("Ingresa un correo para enviar el codigo.");
+
+      const response = await fetch("/api/auth/verify/request", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: targetEmail })
+      });
+      const data = (await response.json()) as { ok?: boolean; alreadyVerified?: boolean; codePreview?: string; tokenPreview?: string; error?: string; detail?: string };
+      if (!response.ok || !data.ok) throw new Error(data.detail || data.error || "No se pudo enviar codigo de correo");
+
+      if (data.alreadyVerified) {
+        setFeedback("Tu correo ya esta verificado.");
+      } else {
+        const preview = data.codePreview || data.tokenPreview;
+        setFeedback(preview ? `Codigo enviado al correo. Codigo dev: ${preview}` : "Codigo enviado al correo.");
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Error inesperado");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const verifyEmailCode = async () => {
+    setSaving(true);
+    setFeedback("");
+    setError("");
+    try {
+      const trimmedCode = emailCode.trim();
+      if (!trimmedCode) throw new Error("Ingresa el codigo que recibiste por correo.");
+
+      const response = await fetch("/api/auth/verify/confirm", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: trimmedCode })
+      });
+      const data = (await response.json()) as { ok?: boolean; error?: string; detail?: string };
+      if (!response.ok || !data.ok) throw new Error(data.detail || data.error || "No se pudo verificar correo");
+
+      const sessionResponse = await fetch("/api/auth/session");
+      const sessionData = (await sessionResponse.json()) as { session?: SessionPayload | null };
+      setSession(sessionData.session ?? null);
+      setEmailCode("");
+      setFeedback("Correo verificado correctamente.");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Error inesperado");
+    } finally {
+      setSaving(false);
+    }
   };
 
   const registerStage1 = async (event: FormEvent) => {
@@ -646,10 +769,13 @@ export default function CleaningOnboardingPage() {
 
       setFeedback(
         data.emailVerificationRequired
-          ? `Cuenta creada. Verifica tu email para seguridad.${data.verificationTokenPreview ? ` Token dev: ${data.verificationTokenPreview}` : ""}`
+          ? "Cuenta creada. Te enviaremos un codigo corto al correo para verificar tu cuenta."
           : "Cuenta creada. Continuemos con tu onboarding profesional."
       );
       await loadSessionAndOnboarding();
+      if (data.emailVerificationRequired) {
+        await sendEmailCode(regEmail);
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error inesperado");
     } finally {
@@ -657,7 +783,14 @@ export default function CleaningOnboardingPage() {
     }
   };
 
-  const saveStep = async (step: number) => {
+  const persistStep = async (
+    step: number,
+    options: {
+      showSuccess?: boolean;
+      advanceStep?: boolean;
+    } = {}
+  ) => {
+    const { showSuccess = true, advanceStep = true } = options;
     setSaving(true);
     setFeedback("");
     setError("");
@@ -666,13 +799,14 @@ export default function CleaningOnboardingPage() {
       let payload: Record<string, unknown> = {};
 
       if (step === 2) {
+        const referenceAddressForProfile = referenceAddress.trim() || `${baseCommune}, Santiago`;
         payload = {
           profilePhotoUrl,
           shortDescription,
           yearsExperience,
           workMode,
           experienceTypes,
-          referenceAddress
+          referenceAddress: referenceAddressForProfile
         };
       }
 
@@ -698,10 +832,15 @@ export default function CleaningOnboardingPage() {
         if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
           throw new Error("Debes seleccionar una ubicacion valida en el mapa.");
         }
+        const detectedCommune = inferCommuneFromAddress(validatedAddress || referenceAddress) ?? baseCommune;
+        const coverageCommune = detectedCommune?.trim() || "Las Condes";
+        setBaseCommune(coverageCommune);
+        const communes = [coverageCommune];
+        setServiceCommunes(communes);
         payload = {
-          baseCommune,
+          baseCommune: coverageCommune,
           referenceAddress,
-          serviceCommunes,
+          serviceCommunes: communes,
           coverageLatitude: lat,
           coverageLongitude: lng,
           maxTravelKm,
@@ -724,7 +863,7 @@ export default function CleaningOnboardingPage() {
           minBookingHours,
           weekendSurchargePct,
           holidaySurchargePct,
-          remoteCommuneSurchargeClp,
+          remoteCommuneSurchargeClp: 0,
           hasDeepCleaningRate,
           deepCleaningHourlyRateClp: hasDeepCleaningRate ? deepCleaningHourlyRateClp : null
         };
@@ -770,14 +909,30 @@ export default function CleaningOnboardingPage() {
 
       const data = (await response.json()) as { ok?: boolean; error?: string; detail?: string; onboarding?: OnboardingPayload };
       if (!response.ok || !data.ok || !data.onboarding) throw new Error(data.detail || data.error || "No se pudo guardar etapa");
+      const savedOnboarding = data.onboarding;
 
-      hydrateFromOnboarding(data.onboarding);
-      setActiveStep(Math.min(9, Math.max(activeStep + 1, data.onboarding.currentStep)));
-      setFeedback("Etapa guardada correctamente.");
+      hydrateFromOnboarding(savedOnboarding);
+      if (advanceStep) {
+        setActiveStep((current) => Math.min(9, Math.max(current + 1, savedOnboarding.currentStep)));
+      }
+      if (showSuccess) {
+        setFeedback("Etapa guardada correctamente.");
+      }
+      return savedOnboarding;
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Error inesperado");
+      const message = e instanceof Error ? e.message : "Error inesperado";
+      setError(message);
+      throw new Error(message);
     } finally {
       setSaving(false);
+    }
+  };
+
+  const saveStep = async (step: number) => {
+    try {
+      await persistStep(step);
+    } catch {
+      // El error ya se muestra en pantalla desde persistStep.
     }
   };
 
@@ -823,10 +978,14 @@ export default function CleaningOnboardingPage() {
   };
 
   const submitForReview = async () => {
-    setSaving(true);
     setFeedback("");
     setError("");
     try {
+      for (const step of [2, 3, 4, 5, 6, 7]) {
+        await persistStep(step, { showSuccess: false, advanceStep: false });
+      }
+
+      setSaving(true);
       const response = await fetch("/api/onboarding/cleaning/submit", { method: "POST" });
       const data = (await response.json()) as { ok?: boolean; error?: string; detail?: string; missingFields?: string[]; onboarding?: OnboardingPayload };
       if (!response.ok || !data.ok) {
@@ -945,15 +1104,11 @@ export default function CleaningOnboardingPage() {
                 {activeExperienceOptions.map((item) => (
                   <label key={item}>
                     <input type="checkbox" checked={experienceTypes.includes(item)} onChange={() => toggleInList(item, experienceTypes, setExperienceTypes)} />
-                    {item.replace(/_/g, " ")}
+                    {formatOptionLabel(item)}
                   </label>
                 ))}
               </div>
             </div>
-            <label className="full">
-              Direccion referencial
-              <input value={referenceAddress} onChange={(event) => setReferenceAddress(event.target.value)} placeholder="Ej: Av. Apoquindo 1234, depto 45" />
-            </label>
             <div className="cta-row full">
               <button type="button" className="cta" onClick={() => void saveStep(2)} disabled={saving}>
                 {saving ? "Guardando..." : "Guardar perfil profesional"}
@@ -966,12 +1121,11 @@ export default function CleaningOnboardingPage() {
           <div className="grid-form">
             <h3 className="full">2. Servicios que ofreces</h3>
             <div className="full">
-              <p className="field-label">Servicios ofrecidos</p>
               <div className="inline-checks">
                 {activeOfferedServices.map((item) => (
                   <label key={item}>
                     <input type="checkbox" checked={offeredServices.includes(item)} onChange={() => toggleInList(item, offeredServices, setOfferedServices)} />
-                    {item.replace(/_/g, " ")}
+                    {formatOptionLabel(item)}
                   </label>
                 ))}
               </div>
@@ -1034,6 +1188,7 @@ export default function CleaningOnboardingPage() {
                 value={referenceAddress}
                 onChange={(event) => {
                   setReferenceAddress(event.target.value);
+                  setSelectedFromAutocomplete(false);
                   setShowSuggestions(true);
                 }}
                 onFocus={() => {
@@ -1071,16 +1226,9 @@ export default function CleaningOnboardingPage() {
                   : null}
               </small>
             </label>
-            <label>
-              Comuna de referencia
-              <select value={baseCommune} onChange={(event) => setBaseCommune(event.target.value)}>
-                {CHILE_TOP_COMMUNES.map((commune) => (
-                  <option key={commune} value={commune}>
-                    {commune}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <p className="input-hint full">
+              Comuna detectada automaticamente: <strong>{baseCommune}</strong>
+            </p>
             {addressValidationState === "verified" && validatedAddress ? (
               <p className="address-confirmation full">
                 Direccion confirmada: <strong>{validatedAddress}</strong>
@@ -1089,42 +1237,6 @@ export default function CleaningOnboardingPage() {
             {addressValidationState === "fallback" ? (
               <p className="address-warning full">No se pudo confirmar exacto con Google Maps. Revisa calle y numeracion.</p>
             ) : null}
-            <div className="full">
-              <p className="field-label">Comunas donde atiendes</p>
-              <div className="commune-picker-row">
-                <select value={communeToAdd} onChange={(event) => setCommuneToAdd(event.target.value)}>
-                  {CHILE_TOP_COMMUNES.map((commune) => (
-                    <option key={commune} value={commune}>
-                      {commune}
-                    </option>
-                  ))}
-                </select>
-                <button
-                  type="button"
-                  className="cta ghost small compact-btn"
-                  onClick={() =>
-                    setServiceCommunes((current) => (current.includes(communeToAdd) ? current : [...current, communeToAdd]))
-                  }
-                >
-                  Agregar comuna
-                </button>
-              </div>
-              <div className="commune-chip-list">
-                {serviceCommunes.length === 0 ? <span className="commune-empty">Aun no agregas comunas.</span> : null}
-                {serviceCommunes.map((commune) => (
-                  <span key={commune} className="commune-chip">
-                    {commune}
-                    <button
-                      type="button"
-                      onClick={() => setServiceCommunes((current) => current.filter((item) => item !== commune))}
-                      aria-label={`Quitar ${commune}`}
-                    >
-                      ×
-                    </button>
-                  </span>
-                ))}
-              </div>
-            </div>
             <article className="coverage-map-card full">
               <header className="coverage-map-head">
                 <h3>Mapa en tiempo real de tu zona de servicio</h3>
@@ -1305,15 +1417,6 @@ export default function CleaningOnboardingPage() {
               Recargo festivos (%)
               <input type="number" min={0} max={100} value={holidaySurchargePct} onChange={(event) => setHolidaySurchargePct(Number(event.target.value) || 0)} />
             </label>
-            <label>
-              Recargo comuna lejana (CLP)
-              <input
-                type="number"
-                min={0}
-                value={remoteCommuneSurchargeClp}
-                onChange={(event) => setRemoteCommuneSurchargeClp(Number(event.target.value) || 0)}
-              />
-            </label>
             <label className="full">
               <div className="inline-checks">
                 <label>
@@ -1369,7 +1472,7 @@ export default function CleaningOnboardingPage() {
               <input value={emergencyContactPhone} onChange={(event) => setEmergencyContactPhone(event.target.value)} />
             </label>
             <label className="full">
-              Referencias laborales o personales
+              Cuentanos tus experiencias en este servicio
               <textarea value={workReferences} onChange={(event) => setWorkReferences(event.target.value)} placeholder="Nombre, relacion y telefono de al menos una referencia" />
             </label>
             <label>
@@ -1398,7 +1501,14 @@ export default function CleaningOnboardingPage() {
             </label>
             <label>
               Banco
-              <input value={bankName} onChange={(event) => setBankName(event.target.value)} />
+              <select value={bankName} onChange={(event) => setBankName(event.target.value)}>
+                <option value="">Selecciona banco</option>
+                {bankOptions.map((bank) => (
+                  <option key={bank} value={bank}>
+                    {bank}
+                  </option>
+                ))}
+              </select>
             </label>
             <label>
               Tipo de cuenta
@@ -1431,6 +1541,16 @@ export default function CleaningOnboardingPage() {
               <input value={phoneCode} onChange={(event) => setPhoneCode(event.target.value)} maxLength={6} placeholder="123456" />
             </label>
 
+            <label>
+              Correo para validacion
+              <input value={(regEmail || session?.email || "").trim()} onChange={(event) => setRegEmail(event.target.value)} placeholder="tu@email.com" />
+            </label>
+
+            <label>
+              Codigo de correo
+              <input value={emailCode} onChange={(event) => setEmailCode(event.target.value.replace(/\s+/g, ""))} maxLength={6} placeholder="123456" />
+            </label>
+
             <div className="cta-row full">
               <button type="button" className="cta ghost small" onClick={() => void sendPhoneCode()} disabled={saving}>
                 Enviar codigo
@@ -1439,6 +1559,16 @@ export default function CleaningOnboardingPage() {
                 Verificar telefono
               </button>
               <span className="minimal-note">Telefono validado: {phoneValidated ? "si" : "no"}</span>
+            </div>
+
+            <div className="cta-row full">
+              <button type="button" className="cta ghost small" onClick={() => void sendEmailCode()} disabled={saving}>
+                Enviar codigo por correo
+              </button>
+              <button type="button" className="cta ghost small" onClick={() => void verifyEmailCode()} disabled={saving || emailCode.trim().length < 6}>
+                Verificar correo
+              </button>
+              <span className="minimal-note">Correo verificado: {emailVerified ? "si" : "no"}</span>
             </div>
 
             <div className="cta-row full">
@@ -1451,52 +1581,8 @@ export default function CleaningOnboardingPage() {
 
         {session?.role === "PRO" ? (
           <div className="grid-form">
-            <h3 className="full">7. Capacitacion y politicas</h3>
-            <div className="full">
-              <p className="field-label">Mini induccion obligatoria</p>
-              <div className="inline-checks">
-                {CLEANING_TRAINING_TOPICS.map((topic) => (
-                  <label key={topic}>
-                    <input
-                      type="checkbox"
-                      checked={completedTopics.includes(topic)}
-                      onChange={() => toggleInList(topic, completedTopics, setCompletedTopics)}
-                    />
-                    {topic.replace(/_/g, " ")}
-                  </label>
-                ))}
-              </div>
-            </div>
-            <div className="full inline-options-stack">
-              <label className="inline-check-option">
-                <input type="checkbox" checked={acceptsCancellationPolicy} onChange={(event) => setAcceptsCancellationPolicy(event.target.checked)} />
-                <span>Acepto politica de cancelacion</span>
-              </label>
-              <label className="inline-check-option">
-                <input type="checkbox" checked={acceptsServiceProtocol} onChange={(event) => setAcceptsServiceProtocol(event.target.checked)} />
-                <span>Acepto protocolo de servicio</span>
-              </label>
-              <label className="inline-check-option">
-                <input type="checkbox" checked={acceptsDataProcessing} onChange={(event) => setAcceptsDataProcessing(event.target.checked)} />
-                <span>Autorizo tratamiento de datos</span>
-              </label>
-              <label className="inline-check-option">
-                <input type="checkbox" checked={confirmsCleaningScope} onChange={(event) => setConfirmsCleaningScope(event.target.checked)} />
-                <span>Confirmo que entiendo que incluye y que no incluye una limpieza</span>
-              </label>
-            </div>
-            <div className="cta-row full">
-              <button type="button" className="cta" onClick={() => void saveStep(8)} disabled={saving}>
-                {saving ? "Guardando..." : "Guardar capacitacion"}
-              </button>
-            </div>
-          </div>
-        ) : null}
-
-        {session?.role === "PRO" ? (
-          <div className="grid-form">
             <div className="full module-card">
-              <h3>8. Revision y activacion</h3>
+              <h3>7. Revision y activacion</h3>
               <p>
                 Estado actual: <strong>{onboarding ? CLEANING_STATUS_LABELS[onboarding.status] : "borrador"}</strong>
               </p>

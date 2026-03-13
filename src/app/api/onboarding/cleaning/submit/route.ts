@@ -60,13 +60,7 @@ function listMissingFields(onboarding: Awaited<ReturnType<typeof prisma.cleaning
     ["bankAccountType", onboarding.bankAccountType],
     ["bankAccountNumber", onboarding.bankAccountNumber],
     ["billingType", onboarding.billingType],
-    ["phoneValidatedAt", onboarding.phoneValidatedAt],
-    ["trainingTopics", onboarding.trainingTopics],
-    ["trainingCompletedAt", onboarding.trainingCompletedAt],
-    ["acceptsCancellationPolicy", onboarding.acceptsCancellationPolicy],
-    ["acceptsServiceProtocol", onboarding.acceptsServiceProtocol],
-    ["acceptsDataProcessing", onboarding.acceptsDataProcessing],
-    ["confirmsCleaningScope", onboarding.confirmsCleaningScope]
+    ["phoneValidatedAt", onboarding.phoneValidatedAt]
   ];
 
   return required.filter(([, value]) => missing(value)).map(([field]) => field);

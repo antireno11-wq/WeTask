@@ -576,7 +576,7 @@ body {
 
 .how-works-visual {
   width: 100%;
-  height: 300px;
+  height: 250px;
   border-radius: 22px;
   border: 1px solid #d8e6ef;
   background-size: cover;
@@ -593,13 +593,13 @@ body {
 .collage-two {
   background-image:
     linear-gradient(180deg, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0.12) 100%),
-    url("https://images.unsplash.com/photo-1621905251918-48416bd8575a?auto=format&fit=crop&w=1200&q=80");
+    url("/services/6.png");
 }
 
 .collage-three {
   background-image:
     linear-gradient(180deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.16) 100%),
-    url("/services/6.png");
+    url("/services/7.png");
 }
 
 .home-guarantee-panel {
@@ -1807,7 +1807,7 @@ textarea {
   }
 
   .how-works-visual {
-    height: 260px;
+    height: 220px;
   }
 
   .mvp-hero-scene {
