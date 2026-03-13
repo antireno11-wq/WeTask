@@ -21,9 +21,16 @@ type LoginRole = "CUSTOMER" | "PRO";
 type LoginRolePanelProps = {
   role: LoginRole;
   showRoleSwitchLink?: boolean;
+  showRoleTabs?: boolean;
+  onRoleChange?: (role: LoginRole) => void;
 };
 
-export function LoginRolePanel({ role, showRoleSwitchLink = true }: LoginRolePanelProps) {
+export function LoginRolePanel({
+  role,
+  showRoleSwitchLink = true,
+  showRoleTabs = false,
+  onRoleChange
+}: LoginRolePanelProps) {
   const router = useRouter();
   const isTasker = role === "PRO";
 
@@ -117,35 +124,52 @@ export function LoginRolePanel({ role, showRoleSwitchLink = true }: LoginRolePan
   };
 
   return (
-    <section className="panel">
-      <div className="panel-head">
-        <h2>{roleTitle}</h2>
-        <p>{roleDescription}</p>
-      </div>
-
-      <div className="cta-row">
-        {demoUser ? (
-          <button className="cta small" type="button" onClick={() => void login({ userId: demoUser.id })} disabled={loading}>
-            Entrar como {isTasker ? "tasker" : "cliente"} demo
-          </button>
-        ) : null}
-        <Link href={createAccountHref} className="cta ghost small">
-          {createAccountLabel}
+    <section className="login-panel-card">
+      <div className="login-panel-head">
+        <Link href="/" className="login-brand-mark" aria-label="Volver a WeTask">
+          <img src="/logo-wetask.png" alt="WeTask" width={210} height={82} />
         </Link>
-        {showRoleSwitchLink ? (
-          <Link href="/ingresar" className="cta ghost small">
-            Cambiar tipo de ingreso
-          </Link>
+        <p className="login-panel-kicker">Tu cuenta WeTask</p>
+        <h1>{roleTitle}</h1>
+        <p>{roleDescription}</p>
+
+        {showRoleTabs ? (
+          <div className="login-role-tabs" role="tablist" aria-label="Tipo de acceso">
+            <button
+              type="button"
+              className={`login-role-tab ${role === "CUSTOMER" ? "active" : ""}`}
+              aria-pressed={role === "CUSTOMER"}
+              onClick={() => onRoleChange?.("CUSTOMER")}
+            >
+              Cliente
+            </button>
+            <button
+              type="button"
+              className={`login-role-tab ${role === "PRO" ? "active" : ""}`}
+              aria-pressed={role === "PRO"}
+              onClick={() => onRoleChange?.("PRO")}
+            >
+              Tasker
+            </button>
+          </div>
         ) : null}
       </div>
 
       {demoUser ? (
-        <p className="minimal-note">
-          Demo para pruebas: <strong>{demoUser.email}</strong> | contraseña: <strong>{demoPassword}</strong>
-        </p>
+        <div className="login-demo-card">
+          <div>
+            <strong>Modo demo</strong>
+            <span>
+              {demoUser.email} · {demoPassword}
+            </span>
+          </div>
+          <button className="login-demo-button" type="button" onClick={() => void login({ userId: demoUser.id })} disabled={loading}>
+            Probar demo
+          </button>
+        </div>
       ) : null}
 
-      <form className="query-row query-single" onSubmit={submitByEmail}>
+      <form id="wetask-login-form" className="login-form-shell" onSubmit={submitByEmail}>
         <label>
           Email
           <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="usuario@wetask.cl" />
@@ -154,16 +178,30 @@ export function LoginRolePanel({ role, showRoleSwitchLink = true }: LoginRolePan
           Contraseña
           <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="********" />
         </label>
-        <button className="cta" type="submit" disabled={loading}>
-          Entrar
-        </button>
+        <div className="login-primary-actions">
+          <button className="cta small" type="submit" disabled={loading}>
+            {loading ? "Ingresando..." : "Iniciar sesion"}
+          </button>
+          <Link href={createAccountHref} className="cta ghost small">
+            {createAccountLabel}
+          </Link>
+        </div>
       </form>
 
-      <div className="cta-row">
-        <button type="button" className="cta ghost small compact-btn" onClick={() => void forgotPassword()} disabled={loading}>
-          Olvide mi contraseña
+      <div className="login-panel-footer">
+        <button type="button" className="login-link-button" onClick={() => void forgotPassword()} disabled={loading}>
+          Olvidé mi contraseña
         </button>
+        {showRoleSwitchLink ? (
+          <Link href="/ingresar" className="login-link-button link-inline">
+            Cambiar tipo de ingreso
+          </Link>
+        ) : null}
       </div>
+
+      <p className="login-legal-copy">
+        Al acceder, aceptas nuestras <Link href="/legal">Condiciones de uso</Link> y <Link href="/legal">Politica de privacidad</Link>.
+      </p>
 
       {feedback ? <p className="feedback ok">{feedback}</p> : null}
       {error ? <p className="feedback error">{error}</p> : null}

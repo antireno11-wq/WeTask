@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { MarketNav } from "@/components/market-nav";
 import { LoginRolePanel } from "@/components/login-role-panel";
 
 type LoginRole = "CUSTOMER" | "PRO";
@@ -10,27 +9,19 @@ export default function IngresarPage() {
   const [role, setRole] = useState<LoginRole>("CUSTOMER");
 
   return (
-    <main className="page market-shell">
-      <MarketNav />
-
-      <section className="panel">
-        <div className="panel-head">
-          <h2>Ingresar</h2>
-          <p>Elige cómo quieres iniciar sesión y continúa con un solo formulario.</p>
+    <main className="login-screen">
+      <div className="login-backdrop" aria-hidden />
+      <section className="login-stage">
+        <div className="login-stage-copy">
+          <p className="login-stage-kicker">WeTask</p>
+          <h2>Servicios confiables, pago protegido y reserva simple.</h2>
+          <p>
+            Accede a tu cuenta para reservar, seguir tus servicios o administrar tu perfil profesional con la identidad visual de WeTask.
+          </p>
         </div>
 
-        <div className="query-row query-single">
-          <label>
-            Tipo de sesión
-            <select value={role} onChange={(event) => setRole(event.target.value as LoginRole)}>
-              <option value="CUSTOMER">Cliente</option>
-              <option value="PRO">Tasker (Profesional)</option>
-            </select>
-          </label>
-        </div>
+        <LoginRolePanel role={role} showRoleSwitchLink={false} showRoleTabs onRoleChange={setRole} />
       </section>
-
-      <LoginRolePanel role={role} showRoleSwitchLink={false} />
     </main>
   );
 }
