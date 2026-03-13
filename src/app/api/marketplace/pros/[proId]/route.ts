@@ -14,7 +14,27 @@ export async function GET(_: Request, context: { params: { proId: string } }) {
         user: { role: "PRO" }
       },
       include: {
-        user: { select: { id: true, fullName: true, email: true, phone: true } },
+        user: {
+          select: {
+            id: true,
+            fullName: true,
+            email: true,
+            phone: true,
+            cleaningOnboarding: {
+              select: {
+                profilePhotoUrl: true,
+                shortDescription: true,
+                yearsExperience: true,
+                workMode: true,
+                offeredServices: true,
+                experienceTypes: true,
+                languages: true,
+                baseCommune: true,
+                maxTravelKm: true
+              }
+            }
+          }
+        },
         slots: {
           where: { isAvailable: true, startsAt: { gte: new Date() } },
           orderBy: [{ startsAt: "asc" }],

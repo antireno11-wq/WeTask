@@ -1,6 +1,7 @@
 import { AuthProvider, CleaningOnboardingStatus, UserRole } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { encodeSessionCookie, SESSION_COOKIE_NAME } from "@/lib/auth";
+import { normalizeCommune } from "@/lib/communes";
 import { prisma } from "@/lib/prisma";
 import { cleaningOnboardingStartSchema } from "@/lib/validators";
 import { hashPassword, randomToken, sha256 } from "@/lib/security";
@@ -11,6 +12,7 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const input = cleaningOnboardingStartSchema.parse(body);
+    const baseCommune = normalizeCommune(input.baseCommune) ?? input.baseCommune.trim();
 
     if (input.authProvider === "EMAIL" && !input.password) {
       return NextResponse.json({ error: "Debes ingresar contraseña para registro por email" }, { status: 400 });
@@ -49,7 +51,7 @@ export async function POST(req: NextRequest) {
           create: {
             isVerified: false,
             verificationStatus: "PENDING_REVIEW",
-            coverageComuna: input.baseCommune.trim(),
+            coverageComuna: baseCommune,
             coverageCity: "Santiago",
             serviceRadiusKm: 8
           }
@@ -58,7 +60,8 @@ export async function POST(req: NextRequest) {
           create: {
             status: CleaningOnboardingStatus.BORRADOR,
             currentStep: 2,
-            baseCommune: input.baseCommune.trim()
+            baseCommune,
+            serviceCommunes: [baseCommune]
           }
         }
       },

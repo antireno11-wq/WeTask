@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { ChangeEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { MarketNav } from "@/components/market-nav";
 
 type Booking = {
@@ -11,6 +11,7 @@ type Booking = {
   totalPriceClp: number;
   service: { name: string };
   pro: { fullName: string } | null;
+  review?: { id: string } | null;
 };
 
 type Notification = {
@@ -20,12 +21,19 @@ type Notification = {
   createdAt: string;
 };
 
+type SessionPayload = {
+  userId: string;
+  fullName?: string | null;
+};
+
 function clp(value: number) {
   return new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP", maximumFractionDigits: 0 }).format(value);
 }
 
 export default function ClientePage() {
-  const [customerId, setCustomerId] = useState("");
+  const [sessionUserId, setSessionUserId] = useState("");
+  const [customerName, setCustomerName] = useState("Cliente");
+  const [customerPhotoUrl, setCustomerPhotoUrl] = useState("");
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [feedback, setFeedback] = useState("");
@@ -39,26 +47,32 @@ export default function ClientePage() {
   const upcomingBookings = sortedBookings.filter((item) => new Date(item.scheduledAt).getTime() >= Date.now());
   const historyBookings = sortedBookings.filter((item) => new Date(item.scheduledAt).getTime() < Date.now());
 
-  const fetchBookings = async (targetCustomerId: string) => {
-    const response = await fetch(`/api/marketplace/client/bookings?customerId=${targetCustomerId}`);
+  const fetchBookings = async () => {
+    const response = await fetch("/api/marketplace/client/bookings");
     const data = (await response.json()) as { bookings?: Booking[]; error?: string; detail?: string };
     if (!response.ok || !data.bookings) throw new Error(data.detail || data.error || "No se pudieron cargar reservas");
     setBookings(data.bookings);
     return data.bookings.length;
   };
 
-  const fetchNotifications = async (targetCustomerId: string) => {
-    const response = await fetch(`/api/marketplace/notifications?userId=${targetCustomerId}`);
+  const fetchNotifications = async () => {
+    const response = await fetch("/api/marketplace/notifications");
     const data = (await response.json()) as { notifications?: Notification[] };
     setNotifications(data.notifications ?? []);
   };
+
+  const loadDashboard = useCallback(async (targetName: string) => {
+    const count = await fetchBookings();
+    await fetchNotifications();
+    setFeedback(`Panel cargado para ${targetName} (${count} reservas).`);
+  }, []);
 
   useEffect(() => {
     const bootstrap = async () => {
       try {
         const sessionRes = await fetch("/api/auth/session");
         const sessionData = (await sessionRes.json()) as {
-          session?: { userId: string; fullName?: string | null };
+          session?: SessionPayload;
           error?: string;
           detail?: string;
         };
@@ -67,29 +81,60 @@ export default function ClientePage() {
           throw new Error(sessionData.detail || sessionData.error || "No se pudo cargar sesion");
         }
 
-        setCustomerId(sessionData.session.userId);
-        const count = await fetchBookings(sessionData.session.userId);
-        await fetchNotifications(sessionData.session.userId);
-        setFeedback(`Panel cargado para ${sessionData.session.fullName ?? "cliente"} (${count} reservas).`);
+        const nextName = sessionData.session.fullName?.trim() || "Cliente";
+        setSessionUserId(sessionData.session.userId);
+        setCustomerName(nextName);
+        await loadDashboard(nextName);
       } catch (e) {
         setError(e instanceof Error ? e.message : "Error inesperado");
       }
     };
 
     bootstrap();
+  }, [loadDashboard]);
+
+  useEffect(() => {
+    try {
+      const savedPhoto = window.localStorage.getItem("wetask_customer_photo") ?? "";
+      if (savedPhoto) setCustomerPhotoUrl(savedPhoto);
+    } catch {
+      // Ignorar errores de almacenamiento local.
+    }
   }, []);
 
-  const loadBookings = async (event: FormEvent) => {
-    event.preventDefault();
+  const handlePhotoChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const next = typeof reader.result === "string" ? reader.result : "";
+      setCustomerPhotoUrl(next);
+      try {
+        window.localStorage.setItem("wetask_customer_photo", next);
+      } catch {
+        // Ignorar errores de almacenamiento local.
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const refreshDashboard = async () => {
     setError("");
     setFeedback("");
     try {
-      const count = await fetchBookings(customerId);
-      await fetchNotifications(customerId);
-      setFeedback(`Reservas cargadas: ${count}`);
+      await loadDashboard(customerName);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error inesperado");
     }
+  };
+
+  const statusClassByBooking = (status: string) => {
+    if (status === "COMPLETED") return "status-completed";
+    if (status === "CANCELLED" || status === "REFUNDED") return "status-cancelled";
+    if (status === "ACCEPTED" || status === "IN_PROGRESS" || status === "ASSIGNED" || status === "CONFIRMED") {
+      return "status-accepted";
+    }
+    return "status-pending";
   };
 
   return (
@@ -98,18 +143,24 @@ export default function ClientePage() {
       <section className="panel">
         <div className="panel-head">
           <h2>Panel Cliente</h2>
-          <p>Mis reservas, proximas, historial, chat, reseña y soporte.</p>
+          <p>Mis reservas próximas, historial y estado de servicios.</p>
         </div>
-
-        <form className="query-row query-single" onSubmit={loadBookings}>
-          <label>
-            Customer ID
-            <input value={customerId} onChange={(e) => setCustomerId(e.target.value)} required placeholder="cuid cliente" />
-          </label>
-          <button className="cta ghost" type="submit">
-            Cargar reservas
-          </button>
-        </form>
+        <div className="client-profile-box">
+          <div className="client-photo-frame" aria-hidden>
+            {customerPhotoUrl ? <img src={customerPhotoUrl} alt="Foto del cliente" className="client-photo-img" /> : <span>Sin foto</span>}
+          </div>
+          <div className="client-profile-copy">
+            <h3>{customerName}</h3>
+            <p>Este espacio muestra la foto de perfil del cliente.</p>
+            <label className="client-photo-upload">
+              Cargar foto
+              <input type="file" accept="image/png,image/jpeg,image/webp" onChange={handlePhotoChange} />
+            </label>
+            <button className="cta ghost small" type="button" onClick={() => void refreshDashboard()} disabled={!sessionUserId}>
+              Actualizar servicios
+            </button>
+          </div>
+        </div>
       </section>
 
       <section className="panel">
@@ -144,56 +195,55 @@ export default function ClientePage() {
             <p>{historyBookings.length} servicio(s) realizado(s)</p>
           </article>
           <article className="module-card">
-            <h3>Soporte</h3>
-            <p>Chat en app + centro de ayuda 24/7</p>
+            <h3>Servicios</h3>
+            <p>{bookings.length} servicio(s) en total</p>
           </article>
         </div>
       </section>
 
       <section className="panel">
         <div className="panel-head">
-          <h2>Direcciones guardadas y favoritos (demo)</h2>
+          <h2>Servicios</h2>
+          <p>Estado y detalle de tus reservas activas e históricas.</p>
         </div>
-        <div className="module-grid">
-          <article className="module-card">
-            <h3>Casa</h3>
-            <p>Av. Providencia 1550, Providencia</p>
-          </article>
-          <article className="module-card">
-            <h3>Favorito</h3>
-            <p>Ana Gonzalez · Limpieza hogar</p>
-          </article>
-          <article className="module-card">
-            <h3>Favorito</h3>
-            <p>Camila Vera · Clases de piano</p>
-          </article>
+        <div className="list">
+          {bookings.map((booking) => (
+            <article className="booking-card" key={booking.id}>
+              <div className="booking-head">
+                <h3>{booking.service.name}</h3>
+                <span className={`status ${statusClassByBooking(booking.status)}`}>{booking.status}</span>
+              </div>
+              <p>
+                <strong>ID:</strong> {booking.id}
+              </p>
+              <p>
+                <strong>Fecha:</strong> {new Date(booking.scheduledAt).toLocaleString("es-ES")}
+              </p>
+              <p>
+                <strong>Profesional:</strong> {booking.pro?.fullName ?? "Pendiente"}
+              </p>
+              <p>
+                <strong>Total:</strong> {clp(booking.totalPriceClp)}
+              </p>
+              <div className="booking-actions">
+                <Link className="cta small" href={`/cliente/reservas/${booking.id}`} target="_blank" rel="noreferrer">
+                  Ver servicio
+                </Link>
+                {booking.status === "COMPLETED" ? (
+                  booking.review?.id ? (
+                    <button type="button" className="cta small cta-rating done" disabled>
+                      Valorado
+                    </button>
+                  ) : (
+                    <Link className="cta small cta-rating" href={`/cliente/reservas/${booking.id}`} target="_blank" rel="noreferrer">
+                      Valorar
+                    </Link>
+                  )
+                ) : null}
+              </div>
+            </article>
+          ))}
         </div>
-      </section>
-
-      <section className="list">
-        {bookings.map((booking) => (
-          <article className="booking-card" key={booking.id}>
-            <div className="booking-head">
-              <h3>{booking.service.name}</h3>
-              <span className="status status-accepted">{booking.status}</span>
-            </div>
-            <p>
-              <strong>ID:</strong> {booking.id}
-            </p>
-            <p>
-              <strong>Fecha:</strong> {new Date(booking.scheduledAt).toLocaleString("es-ES")}
-            </p>
-            <p>
-              <strong>Profesional:</strong> {booking.pro?.fullName ?? "Pendiente"}
-            </p>
-            <p>
-              <strong>Total:</strong> {clp(booking.totalPriceClp)}
-            </p>
-            <Link className="cta small" href={`/cliente/reservas/${booking.id}`} target="_blank" rel="noreferrer">
-              Abrir chat / acciones
-            </Link>
-          </article>
-        ))}
       </section>
 
       {feedback ? <p className="feedback ok">{feedback}</p> : null}

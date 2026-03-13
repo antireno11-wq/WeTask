@@ -1,5 +1,6 @@
 import { UserRole } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
+import { COVERAGE_UNAVAILABLE_MESSAGE, normalizeCommune } from "@/lib/communes";
 import { prisma } from "@/lib/prisma";
 import { publicBookingsQuerySchema, publicCreateBookingSchema } from "@/lib/validators";
 
@@ -81,7 +82,7 @@ export async function POST(req: NextRequest) {
         serviceId: input.serviceId,
         scheduledAt: input.scheduledAt,
         addressLine1: input.addressLine1.trim(),
-        comuna: input.comuna.trim(),
+        comuna: normalizeCommune(input.comuna) ?? input.comuna.trim(),
         region: input.region.trim(),
         notes: input.notes?.trim() || null,
         totalPriceClp: service.basePriceClp
@@ -93,10 +94,14 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ booking }, { status: 201 });
   } catch (error) {
+    const detail = error instanceof Error ? error.message : "Error desconocido";
+    if (detail.includes("Comuna fuera de cobertura MVP")) {
+      return NextResponse.json({ error: COVERAGE_UNAVAILABLE_MESSAGE }, { status: 400 });
+    }
     return NextResponse.json(
       {
         error: "No se pudo crear la reserva",
-        detail: error instanceof Error ? error.message : "Error desconocido"
+        detail
       },
       { status: 400 }
     );

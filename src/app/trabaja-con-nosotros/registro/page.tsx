@@ -3,14 +3,10 @@
 import Link from "next/link";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { MarketNav } from "@/components/market-nav";
+import { ACTIVE_MVP_COMMUNES, inferCommuneFromAddress, normalizeCommune, normalizeCommuneList } from "@/lib/communes";
 import { geocodeAddress } from "@/lib/geo";
 import { CORE_SERVICES, type CoreTaskerServiceSlug } from "@/lib/core-services";
-import {
-  CHILE_TOP_COMMUNES,
-  CLEANING_LANGUAGE_OPTIONS,
-  CLEANING_STATUS_LABELS,
-  CLEANING_WEEK_DAYS
-} from "@/lib/cleaning-onboarding";
+import { CLEANING_LANGUAGE_OPTIONS, CLEANING_STATUS_LABELS, CLEANING_WEEK_DAYS } from "@/lib/cleaning-onboarding";
 
 type SessionPayload = {
   userId: string;
@@ -271,18 +267,6 @@ function formatOptionLabel(value: string) {
   return clean.charAt(0).toUpperCase() + clean.slice(1);
 }
 
-function normalizeMatchText(value: string) {
-  return value
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase();
-}
-
-function inferCommuneFromAddress(value: string) {
-  const normalizedAddress = normalizeMatchText(value);
-  return CHILE_TOP_COMMUNES.find((commune) => normalizedAddress.includes(normalizeMatchText(commune))) ?? null;
-}
-
 function buildChileAddressQuery(value: string) {
   const trimmed = value.trim();
   if (!trimmed) return "";
@@ -332,7 +316,8 @@ export default function CleaningOnboardingPage() {
   const [languages, setLanguages] = useState<string[]>(["espanol"]);
 
   const [baseCommune, setBaseCommune] = useState("Las Condes");
-  const [serviceCommunes, setServiceCommunes] = useState<string[]>([]);
+  const [serviceCommunes, setServiceCommunes] = useState<string[]>(["Las Condes"]);
+  const [communeToAdd, setCommuneToAdd] = useState<string>(ACTIVE_MVP_COMMUNES[0]);
   const [coverageLatitude, setCoverageLatitude] = useState("-33.448900");
   const [coverageLongitude, setCoverageLongitude] = useState("-70.669300");
   const [addressValidationState, setAddressValidationState] = useState<"idle" | "validating" | "verified" | "fallback">("idle");
@@ -570,8 +555,10 @@ export default function CleaningOnboardingPage() {
     setBringsOwnTools(next.bringsOwnTools ?? false);
     setLanguages(toStringArray(next.languages).length > 0 ? toStringArray(next.languages) : ["espanol"]);
 
-    const loadedCommunes = toStringArray(next.serviceCommunes);
-    setServiceCommunes(loadedCommunes);
+    const loadedCommunes = normalizeCommuneList(next.serviceCommunes);
+    const communes = loadedCommunes.length > 0 ? loadedCommunes : [next.baseCommune ?? "Las Condes"];
+    setServiceCommunes(communes);
+    setCommuneToAdd(communes[0] ?? ACTIVE_MVP_COMMUNES[0]);
     if (next.coverageLatitude != null && next.coverageLongitude != null) {
       setCoverageLatitude(next.coverageLatitude.toFixed(6));
       setCoverageLongitude(next.coverageLongitude.toFixed(6));
@@ -664,6 +651,18 @@ export default function CleaningOnboardingPage() {
     else setter([...list, value]);
   };
 
+  const addServiceCommune = () => {
+    if (!communeToAdd) return;
+    setServiceCommunes((current) => {
+      const set = new Set<string>([...current, communeToAdd]);
+      return Array.from(set);
+    });
+  };
+
+  const removeServiceCommune = (commune: string) => {
+    setServiceCommunes((current) => current.filter((item) => item !== commune));
+  };
+
   const selectSuggestedAddress = (value: string) => {
     setReferenceAddress(value);
     setSelectedFromAutocomplete(true);
@@ -672,7 +671,11 @@ export default function CleaningOnboardingPage() {
     const detectedCommune = inferCommuneFromAddress(value);
     if (detectedCommune) {
       setBaseCommune(detectedCommune);
-      setServiceCommunes([detectedCommune]);
+      setCommuneToAdd(detectedCommune);
+      setServiceCommunes((current) => {
+        const set = new Set<string>([...current, detectedCommune]);
+        return Array.from(set);
+      });
     }
   };
 
@@ -833,9 +836,15 @@ export default function CleaningOnboardingPage() {
           throw new Error("Debes seleccionar una ubicacion valida en el mapa.");
         }
         const detectedCommune = inferCommuneFromAddress(validatedAddress || referenceAddress) ?? baseCommune;
-        const coverageCommune = detectedCommune?.trim() || "Las Condes";
+        const coverageCommune = normalizeCommune(detectedCommune) ?? "Las Condes";
+        const normalizedCommunes = normalizeCommuneList(serviceCommunes);
+        const communes = normalizedCommunes.includes(coverageCommune)
+          ? normalizedCommunes
+          : normalizeCommuneList([...normalizedCommunes, coverageCommune]);
+        if (communes.length === 0) {
+          throw new Error("Selecciona al menos una comuna activa donde atiendes.");
+        }
         setBaseCommune(coverageCommune);
-        const communes = [coverageCommune];
         setServiceCommunes(communes);
         payload = {
           baseCommune: coverageCommune,
@@ -1053,6 +1062,16 @@ export default function CleaningOnboardingPage() {
               Contrasena
               <input type="password" value={regPassword} onChange={(event) => setRegPassword(event.target.value)} minLength={8} required />
             </label>
+            <label>
+              Comuna base
+              <select value={baseCommune} onChange={(event) => setBaseCommune(event.target.value)} required>
+                {ACTIVE_MVP_COMMUNES.map((commune) => (
+                  <option key={commune} value={commune}>
+                    {commune}
+                  </option>
+                ))}
+              </select>
+            </label>
             <div className="full inline-option-row">
               <label className="inline-check-option">
                 <input type="checkbox" checked={regTerms} onChange={(event) => setRegTerms(event.target.checked)} required />
@@ -1229,6 +1248,32 @@ export default function CleaningOnboardingPage() {
             <p className="input-hint full">
               Comuna detectada automaticamente: <strong>{baseCommune}</strong>
             </p>
+            <div className="full">
+              <p className="field-label">Comunas donde trabajas</p>
+              <div className="commune-picker-row">
+                <select value={communeToAdd} onChange={(event) => setCommuneToAdd(event.target.value)}>
+                  {ACTIVE_MVP_COMMUNES.map((commune) => (
+                    <option key={commune} value={commune}>
+                      {commune}
+                    </option>
+                  ))}
+                </select>
+                <button type="button" className="cta ghost small compact-btn" onClick={addServiceCommune}>
+                  Agregar comuna
+                </button>
+              </div>
+              {serviceCommunes.length === 0 ? <p className="commune-empty">Selecciona al menos una comuna.</p> : null}
+              <div className="commune-chip-list">
+                {serviceCommunes.map((commune) => (
+                  <span className="commune-chip" key={commune}>
+                    {commune}
+                    <button type="button" aria-label={`Quitar ${commune}`} onClick={() => removeServiceCommune(commune)}>
+                      ×
+                    </button>
+                  </span>
+                ))}
+              </div>
+            </div>
             {addressValidationState === "verified" && validatedAddress ? (
               <p className="address-confirmation full">
                 Direccion confirmada: <strong>{validatedAddress}</strong>

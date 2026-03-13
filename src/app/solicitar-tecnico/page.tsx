@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { MarketNav } from "@/components/market-nav";
+import { COVERAGE_UNAVAILABLE_MESSAGE, inferCommuneFromAddress, normalizeCommune } from "@/lib/communes";
 import { CORE_CATEGORY_SLUGS, CORE_SERVICES } from "@/lib/core-services";
 
 type CatalogCategory = {
@@ -118,6 +119,7 @@ export default function SolicitarTecnicoPage() {
   const [categories, setCategories] = useState<CatalogCategory[]>([]);
   const [selectedCategoryId, setSelectedCategoryId] = useState("");
   const [address, setAddress] = useState("");
+  const [detectedCommune, setDetectedCommune] = useState<string | null>(null);
   const [serviceDate, setServiceDate] = useState(todayYmd());
   const city = "Santiago";
 
@@ -127,6 +129,9 @@ export default function SolicitarTecnicoPage() {
 
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+  const [coverageEmail, setCoverageEmail] = useState("");
+  const [coverageEmailStatus, setCoverageEmailStatus] = useState("");
+  const [savingCoverageEmail, setSavingCoverageEmail] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
   const [searchTaskers, setSearchTaskers] = useState<TaskerCard[]>([]);
   const [sampleTaskers, setSampleTaskers] = useState<TaskerCard[]>([]);
@@ -141,6 +146,11 @@ export default function SolicitarTecnicoPage() {
 
   const visibleTaskers = hasSearched && searchTaskers.length > 0 ? searchTaskers : sampleTaskers;
   const showingExamples = !hasSearched || searchTaskers.length === 0;
+
+  useEffect(() => {
+    const commune = normalizeCommune(address) ?? inferCommuneFromAddress(address);
+    setDetectedCommune(commune);
+  }, [address]);
 
   useEffect(() => {
     const loadCatalog = async () => {
@@ -238,12 +248,19 @@ export default function SolicitarTecnicoPage() {
       setError("Ingresa una dirección para buscar taskers.");
       return;
     }
+    const commune = detectedCommune ?? normalizeCommune(address) ?? inferCommuneFromAddress(address);
+    if (!commune) {
+      setError(COVERAGE_UNAVAILABLE_MESSAGE);
+      setSearchTaskers([]);
+      return;
+    }
 
     try {
       setLoadingSearch(true);
       const params = new URLSearchParams({
         city,
         street: address.trim(),
+        commune,
         categoryId: selectedCategoryId,
         date: serviceDate,
         limit: "12"
@@ -273,8 +290,37 @@ export default function SolicitarTecnicoPage() {
   };
 
   const prosHref = selectedCategory
-    ? `/services/${selectedCategory.slug}/pros?city=${encodeURIComponent(city)}&address=${encodeURIComponent(address)}&requestedDate=${encodeURIComponent(serviceDate)}`
+    ? `/services/${selectedCategory.slug}/pros?city=${encodeURIComponent(city)}&address=${encodeURIComponent(address)}&comuna=${encodeURIComponent(
+        detectedCommune ?? ""
+      )}&requestedDate=${encodeURIComponent(serviceDate)}`
     : "/services";
+
+  const saveCoverageEmail = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setCoverageEmailStatus("");
+    if (!coverageEmail.trim()) return;
+    try {
+      setSavingCoverageEmail(true);
+      const response = await fetch("/api/coverage-waitlist", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: coverageEmail.trim(),
+          commune: detectedCommune ?? undefined,
+          address: address.trim(),
+          source: "solicitar_tecnico"
+        })
+      });
+      const data = (await response.json()) as { ok?: boolean; error?: string; detail?: string };
+      if (!response.ok || !data.ok) throw new Error(data.detail || data.error || "No se pudo registrar tu email");
+      setCoverageEmailStatus("Gracias. Te avisaremos por correo cuando lleguemos a tu comuna.");
+      setCoverageEmail("");
+    } catch (e) {
+      setCoverageEmailStatus(e instanceof Error ? e.message : "No se pudo registrar tu email.");
+    } finally {
+      setSavingCoverageEmail(false);
+    }
+  };
 
   return (
     <main className="page market-shell">
@@ -333,12 +379,31 @@ export default function SolicitarTecnicoPage() {
             </button>
           </div>
           <p className="service-search-meta">
-            Ciudad de búsqueda: <strong>{city}</strong> · Fecha seleccionada: <strong>{serviceDate}</strong>
+            Ciudad de búsqueda: <strong>{city}</strong> · Fecha seleccionada: <strong>{serviceDate}</strong> · Comuna detectada:{" "}
+            <strong>{detectedCommune ?? "Sin detectar"}</strong>
           </p>
         </form>
 
         {message ? <p className="feedback ok">{message}</p> : null}
         {error ? <p className="feedback error">{error}</p> : null}
+        {error === COVERAGE_UNAVAILABLE_MESSAGE ? (
+          <form className="query-row query-single" onSubmit={saveCoverageEmail}>
+            <label>
+              Déjanos tu email
+              <input
+                type="email"
+                value={coverageEmail}
+                onChange={(event) => setCoverageEmail(event.target.value)}
+                placeholder="tuemail@dominio.com"
+                required
+              />
+            </label>
+            <button type="submit" className="cta" disabled={savingCoverageEmail}>
+              {savingCoverageEmail ? "Guardando..." : "Avisarme cuando lleguen"}
+            </button>
+          </form>
+        ) : null}
+        {coverageEmailStatus ? <p className="feedback ok">{coverageEmailStatus}</p> : null}
       </section>
 
       <section className="panel">

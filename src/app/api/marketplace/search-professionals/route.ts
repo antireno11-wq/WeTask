@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { distanceKm, geocodeAddress } from "@/lib/geo";
+import { COVERAGE_UNAVAILABLE_MESSAGE, inferCommuneFromAddress, normalizeCommune, taskerServesCommune } from "@/lib/communes";
 import { ensureMarketplaceDemoData } from "@/lib/marketplace-demo-data";
 import { prisma } from "@/lib/prisma";
 import { marketplaceSearchProsSchema } from "@/lib/validators";
@@ -12,6 +13,7 @@ export async function GET(req: NextRequest) {
 
     const input = marketplaceSearchProsSchema.parse({
       city: req.nextUrl.searchParams.get("city") ?? undefined,
+      commune: req.nextUrl.searchParams.get("commune") ?? undefined,
       postalCode: req.nextUrl.searchParams.get("postalCode") ?? undefined,
       street: req.nextUrl.searchParams.get("street") ?? undefined,
       latitude: req.nextUrl.searchParams.get("latitude") ?? undefined,
@@ -22,13 +24,27 @@ export async function GET(req: NextRequest) {
       limit: req.nextUrl.searchParams.get("limit") ?? undefined
     });
 
+    const clientCommune =
+      normalizeCommune(input.commune) ??
+      inferCommuneFromAddress(`${input.street ?? ""}, ${input.city ?? ""}, Chile`);
+
+    if (!clientCommune) {
+      return NextResponse.json(
+        {
+          error: COVERAGE_UNAVAILABLE_MESSAGE
+        },
+        { status: 400 }
+      );
+    }
+
     const customerCoords =
       typeof input.latitude === "number" && typeof input.longitude === "number"
         ? { lat: input.latitude, lng: input.longitude }
         : geocodeAddress({
             city: input.city,
             postalCode: input.postalCode,
-            street: input.street
+            street: input.street,
+            commune: clientCommune
           });
 
     const startDate = input.date ?? new Date();
@@ -37,10 +53,32 @@ export async function GET(req: NextRequest) {
       where: {
         isVerified: true,
         coverageCity: { equals: input.city, mode: "insensitive" },
-        user: { role: "PRO" }
+        user: { role: "PRO" },
+        taskerServices:
+          input.serviceId || input.categoryId
+            ? {
+                some: {
+                  isActive: true,
+                  serviceId: input.serviceId ?? undefined,
+                  categoryId: input.categoryId ?? undefined
+                }
+              }
+            : undefined
       },
       include: {
-        user: { select: { id: true, fullName: true, email: true } },
+        user: {
+          select: {
+            id: true,
+            fullName: true,
+            email: true,
+            cleaningOnboarding: {
+              select: {
+                serviceCommunes: true,
+                baseCommune: true
+              }
+            }
+          }
+        },
         slots: {
           where: {
             isAvailable: true,
@@ -49,7 +87,7 @@ export async function GET(req: NextRequest) {
             service: input.categoryId && !input.serviceId ? { categoryId: input.categoryId } : undefined
           },
           orderBy: [{ startsAt: "asc" }],
-          take: 8,
+          take: 12,
           include: { service: { select: { id: true, name: true } } }
         }
       }
@@ -57,6 +95,15 @@ export async function GET(req: NextRequest) {
 
     const matched = profiles
       .map((profile) => {
+        const servesCommune = taskerServesCommune(
+          {
+            serviceCommunes: profile.user.cleaningOnboarding?.serviceCommunes,
+            coverageComuna: profile.coverageComuna ?? profile.user.cleaningOnboarding?.baseCommune
+          },
+          clientCommune
+        );
+        if (!servesCommune) return null;
+
         if (profile.coverageLatitude == null || profile.coverageLongitude == null) return null;
 
         const distance = distanceKm(customerCoords, {
@@ -95,6 +142,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({
       customerLocation: {
         city: input.city,
+        commune: clientCommune,
         postalCode: input.postalCode,
         coordinates: customerCoords
       },

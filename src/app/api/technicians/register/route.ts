@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { normalizeCommune, normalizeCommuneList } from "@/lib/communes";
 import { prisma } from "@/lib/prisma";
 import { sendPlatformEmail } from "@/lib/notifications";
 import { calculateTechnicianScore } from "@/lib/technician-scoring";
@@ -17,6 +18,8 @@ export async function POST(req: NextRequest) {
 
     const rut = normalizeRut(input.rut.trim());
     const email = input.email.trim().toLowerCase();
+    const primaryCommune = normalizeCommune(input.commune) ?? input.commune.trim();
+    const normalizedCommunes = normalizeCommuneList(input.availableCommunes);
 
     const existingByRut = await prisma.technician.findUnique({ where: { rut } });
     if (existingByRut) {
@@ -60,7 +63,7 @@ export async function POST(req: NextRequest) {
         phone: input.phone.trim(),
         email,
         address: input.address.trim(),
-        commune: input.commune.trim(),
+        commune: primaryCommune,
         lat: input.lat ?? null,
         lng: input.lng ?? null,
 
@@ -80,7 +83,8 @@ export async function POST(req: NextRequest) {
         references: input.references?.trim() || null,
 
         coverageRadiusKm: input.coverageRadiusKm,
-        availableCommunes: input.availableCommunes,
+        availableCommunes: normalizedCommunes.length > 0 ? normalizedCommunes : [primaryCommune],
+        serviceCommunes: normalizedCommunes.length > 0 ? normalizedCommunes : [primaryCommune],
         availabilitySchedule: input.availabilitySchedule.trim(),
         transportType: input.transportType,
 

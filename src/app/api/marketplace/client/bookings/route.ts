@@ -31,7 +31,8 @@ export async function GET(req: NextRequest) {
         service: { select: { id: true, name: true } },
         pro: { select: { id: true, fullName: true } },
         extras: true,
-        payment: true
+        payment: true,
+        review: { select: { id: true } }
       },
       orderBy: [{ scheduledAt: "desc" }],
       take: 50

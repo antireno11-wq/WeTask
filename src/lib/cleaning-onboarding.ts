@@ -1,3 +1,5 @@
+import { ACTIVE_MVP_COMMUNES } from "@/lib/communes";
+
 export const CLEANING_EXPERIENCE_TYPES = [
   "casas",
   "departamentos",
@@ -88,16 +90,7 @@ export const CLEANING_STATUS_LABELS: Record<string, string> = {
 };
 
 export const CHILE_TOP_COMMUNES = [
-  "Las Condes",
-  "Vitacura",
-  "Providencia",
-  "Nunoa",
-  "Lo Barnechea",
-  "Santiago",
-  "La Reina",
-  "Macul",
-  "Penalolen",
-  "San Miguel"
+  ...ACTIVE_MVP_COMMUNES
 ] as const;
 
 

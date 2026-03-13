@@ -2,6 +2,7 @@
 
 import { FormEvent, MouseEvent, useEffect, useMemo, useState } from "react";
 import { MarketNav } from "@/components/market-nav";
+import { ACTIVE_MVP_COMMUNES, normalizeCommuneList } from "@/lib/communes";
 import { geocodeAddress } from "@/lib/geo";
 
 const statusOptions = ["ACCEPTED", "IN_PROGRESS", "COMPLETED", "CANCELLED"];
@@ -53,6 +54,13 @@ type ProProfile = {
   isVerified: boolean;
 };
 
+type ProProfileResponse = {
+  profile?: ProProfile | null;
+  serviceCommunes?: string[];
+  error?: string;
+  detail?: string;
+};
+
 type ProSlot = {
   id: string;
   startsAt: string;
@@ -94,6 +102,7 @@ export default function ProPage() {
   const [manualCoveragePoint, setManualCoveragePoint] = useState(false);
   const [serviceRadiusKm, setServiceRadiusKm] = useState(8);
   const [hourlyRateFromClp, setHourlyRateFromClp] = useState(12000);
+  const [serviceCommunes, setServiceCommunes] = useState<string[]>([]);
 
   const [slotDate, setSlotDate] = useState(dateInputDefault());
   const [slotTime, setSlotTime] = useState("09:00");
@@ -135,7 +144,7 @@ export default function ProPage() {
     return Array.from(map.entries()).sort(([a], [b]) => a.localeCompare(b));
   }, [slots]);
 
-  const applyProfile = (nextProfile: ProProfile | null) => {
+  const applyProfile = (nextProfile: ProProfile | null, nextServiceCommunes: string[] = []) => {
     setProfile(nextProfile);
     if (!nextProfile) return;
     setBio(nextProfile.bio ?? "");
@@ -149,6 +158,10 @@ export default function ProPage() {
     setManualCoveragePoint(hasCoords);
     setServiceRadiusKm(nextProfile.serviceRadiusKm ?? 8);
     setHourlyRateFromClp(nextProfile.hourlyRateFromClp ?? 12000);
+    const normalizedServiceCommunes = normalizeCommuneList(
+      nextServiceCommunes.length > 0 ? nextServiceCommunes : [nextProfile.coverageComuna ?? ""]
+    );
+    setServiceCommunes(normalizedServiceCommunes);
   };
 
   useEffect(() => {
@@ -170,7 +183,7 @@ export default function ProPage() {
 
     const bookingsData = (await bookingsRes.json()) as { bookings?: Booking[]; error?: string; detail?: string };
     const notificationsData = (await notificationsRes.json()) as { notifications?: Notification[]; error?: string; detail?: string };
-    const profileData = (await profileRes.json()) as { profile?: ProProfile | null; error?: string; detail?: string };
+    const profileData = (await profileRes.json()) as ProProfileResponse;
     const slotsData = (await slotsRes.json()) as { slots?: ProSlot[]; error?: string; detail?: string };
     const catalogData = (await catalogRes.json()) as {
       categories?: Array<{ services: Array<{ id: string; name: string }> }>;
@@ -194,7 +207,7 @@ export default function ProPage() {
     setStatusByBooking(nextStatuses);
 
     setNotifications(notificationsData.notifications);
-    applyProfile(profileData.profile ?? null);
+    applyProfile(profileData.profile ?? null, profileData.serviceCommunes ?? []);
     setSlots(slotsData.slots);
     const list = catalogData.categories.flatMap((category) => category.services);
     setServices(list);
@@ -248,6 +261,10 @@ export default function ProPage() {
     setFeedback("");
     setError("");
     try {
+      const payloadServiceCommunes = normalizeCommuneList(serviceCommunes.length > 0 ? serviceCommunes : [coverageComuna]);
+      if (payloadServiceCommunes.length === 0) {
+        throw new Error("Selecciona al menos una comuna activa donde atiendes.");
+      }
       const response = await fetch("/api/marketplace/pro/profile", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -261,12 +278,13 @@ export default function ProPage() {
           coverageLatitude: coverageLatitude ? Number(coverageLatitude) : null,
           coverageLongitude: coverageLongitude ? Number(coverageLongitude) : null,
           serviceRadiusKm,
-          hourlyRateFromClp
+          hourlyRateFromClp,
+          serviceCommunes: payloadServiceCommunes
         })
       });
-      const data = (await response.json()) as { profile?: ProProfile; error?: string; detail?: string };
+      const data = (await response.json()) as { profile?: ProProfile; serviceCommunes?: string[]; error?: string; detail?: string };
       if (!response.ok || !data.profile) throw new Error(data.detail || data.error || "No se pudo guardar perfil");
-      applyProfile(data.profile);
+      applyProfile(data.profile, data.serviceCommunes ?? serviceCommunes);
       setFeedback("Perfil actualizado.");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error inesperado");
@@ -436,6 +454,27 @@ export default function ProPage() {
               placeholder="Providencia"
             />
           </label>
+          <div className="full">
+            <p className="field-label">Comunas donde trabajas</p>
+            <div className="inline-checks">
+              {ACTIVE_MVP_COMMUNES.map((commune) => (
+                <label key={commune}>
+                  <input
+                    type="checkbox"
+                    checked={serviceCommunes.includes(commune)}
+                    onChange={(event) => {
+                      if (event.target.checked) {
+                        setServiceCommunes((current) => Array.from(new Set([...current, commune])));
+                        return;
+                      }
+                      setServiceCommunes((current) => current.filter((item) => item !== commune));
+                    }}
+                  />
+                  {commune}
+                </label>
+              ))}
+            </div>
+          </div>
           <label>
             Ciudad
             <select

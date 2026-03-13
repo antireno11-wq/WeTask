@@ -3,6 +3,7 @@
 import { FormEvent, MouseEvent, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { MarketNav } from "@/components/market-nav";
+import { ACTIVE_MVP_COMMUNES } from "@/lib/communes";
 import { geocodeAddress } from "@/lib/geo";
 
 const SANTIAGO_BOUNDS = {
@@ -27,7 +28,7 @@ export default function RegistroPage() {
   const [acceptTerms, setAcceptTerms] = useState(false);
   const [role, setRole] = useState<"CUSTOMER" | "PRO">("CUSTOMER");
   const [coverageStreet, setCoverageStreet] = useState("");
-  const [coverageComuna, setCoverageComuna] = useState("");
+  const [coverageComuna, setCoverageComuna] = useState<string>(ACTIVE_MVP_COMMUNES[0]);
   const [city, setCity] = useState("Santiago");
   const [postalCode, setPostalCode] = useState("7500000");
   const [serviceRadiusKm, setServiceRadiusKm] = useState(8);
@@ -215,7 +216,13 @@ export default function RegistroPage() {
 
               <label>
                 Comuna
-                <input value={coverageComuna} onChange={(e) => setCoverageComuna(e.target.value)} placeholder="Providencia" />
+                <select value={coverageComuna} onChange={(e) => setCoverageComuna(e.target.value)}>
+                  {ACTIVE_MVP_COMMUNES.map((commune) => (
+                    <option key={commune} value={commune}>
+                      {commune}
+                    </option>
+                  ))}
+                </select>
               </label>
 
               <label>

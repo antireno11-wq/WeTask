@@ -1303,6 +1303,14 @@ textarea {
   display: inline;
 }
 
+.mp-secure-field {
+  min-height: 42px;
+  border: 1px solid #b4c8df;
+  border-radius: 10px;
+  background: #fff;
+  padding: 8px 10px;
+}
+
 .inline-check-option input[type="checkbox"],
 .inline-checks input[type="checkbox"] {
   width: 16px;
@@ -1452,10 +1460,12 @@ textarea {
   border-radius: 16px;
   padding: 14px;
   background: #ffffff;
+  display: grid;
+  gap: 8px;
 }
 
 .booking-card p {
-  margin: 8px 0 0;
+  margin: 0;
   color: #2e2e2e;
 }
 
@@ -1469,6 +1479,91 @@ textarea {
 .booking-head h3 {
   margin: 0;
   font-size: 1.04rem;
+}
+
+.booking-actions {
+  margin-top: 4px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.cta-rating {
+  border-color: #f0c63d;
+  background: #f0c63d;
+  color: #132a57;
+}
+
+.cta-rating:hover {
+  border-color: #e4b62f;
+  background: #e4b62f;
+}
+
+.cta-rating.done,
+.cta-rating:disabled {
+  border-color: #f4da8a;
+  background: #f4da8a;
+  color: #7e6218;
+  cursor: not-allowed;
+}
+
+.client-profile-box {
+  margin-top: 10px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: #f8fcff;
+  padding: 12px;
+  display: grid;
+  grid-template-columns: 110px minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+}
+
+.client-photo-frame {
+  width: 96px;
+  height: 96px;
+  border-radius: 14px;
+  border: 1px dashed #b8d6ee;
+  background: #eef6fd;
+  color: #4b678a;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.client-photo-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.client-profile-copy {
+  display: grid;
+  gap: 8px;
+}
+
+.client-profile-copy h3 {
+  margin: 0;
+}
+
+.client-profile-copy p {
+  margin: 0;
+  color: var(--ink-soft);
+}
+
+.client-photo-upload {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.84rem;
+  font-weight: 700;
+  width: fit-content;
+}
+
+.client-photo-upload input[type="file"] {
+  max-width: 240px;
 }
 
 .status {
@@ -1915,6 +2010,11 @@ textarea {
     grid-template-columns: 1fr;
   }
 
+  .client-profile-box {
+    grid-template-columns: 1fr;
+    justify-items: start;
+  }
+
   .home-service-grid {
     grid-template-columns: 1fr;
   }
@@ -1978,6 +2078,13 @@ textarea {
   width: 86px;
   height: 86px;
   font-size: 1.1rem;
+}
+
+.we-pro-avatar-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: inherit;
 }
 
 .we-pro-content {
@@ -2198,6 +2305,10 @@ textarea {
 .we-info-grid p {
   margin: 6px 0 0;
   color: #2a3545;
+}
+
+.we-profile-quick-grid {
+  margin-top: 12px;
 }
 
 .we-step-card {

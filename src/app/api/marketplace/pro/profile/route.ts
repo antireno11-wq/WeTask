@@ -1,6 +1,7 @@
 import { UserRole } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { getRequestIdentity, hasRole } from "@/lib/auth";
+import { normalizeCommuneList } from "@/lib/communes";
 import { prisma } from "@/lib/prisma";
 import { marketplaceProProfileUpdateSchema } from "@/lib/validators";
 
@@ -31,7 +32,13 @@ export async function GET(req: NextRequest) {
         fullName: true,
         email: true,
         role: true,
-        professionalProfile: true
+        professionalProfile: true,
+        cleaningOnboarding: {
+          select: {
+            serviceCommunes: true,
+            baseCommune: true
+          }
+        }
       }
     });
 
@@ -42,7 +49,9 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(
       {
         user: { id: user.id, fullName: user.fullName, email: user.email },
-        profile: user.professionalProfile
+        profile: user.professionalProfile,
+        serviceCommunes: normalizeCommuneList(user.cleaningOnboarding?.serviceCommunes),
+        baseCommune: user.cleaningOnboarding?.baseCommune ?? user.professionalProfile?.coverageComuna ?? null
       },
       { status: 200 }
     );
@@ -108,7 +117,25 @@ export async function PATCH(req: NextRequest) {
       }
     });
 
-    return NextResponse.json({ profile }, { status: 200 });
+    const normalizedServiceCommunes = input.serviceCommunes ? normalizeCommuneList(input.serviceCommunes) : null;
+    if (normalizedServiceCommunes && normalizedServiceCommunes.length > 0) {
+      const nextBaseCommune = input.coverageComuna ?? normalizedServiceCommunes[0] ?? null;
+      await prisma.cleaningOnboarding.upsert({
+        where: { userId: targetProId },
+        create: {
+          userId: targetProId,
+          currentStep: 4,
+          baseCommune: nextBaseCommune,
+          serviceCommunes: normalizedServiceCommunes
+        },
+        update: {
+          baseCommune: nextBaseCommune ?? undefined,
+          serviceCommunes: normalizedServiceCommunes
+        }
+      });
+    }
+
+    return NextResponse.json({ profile, serviceCommunes: normalizedServiceCommunes ?? [] }, { status: 200 });
   } catch (error) {
     return NextResponse.json(
       {

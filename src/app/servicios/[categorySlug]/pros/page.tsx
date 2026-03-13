@@ -73,7 +73,7 @@ export default function ServiceProsPage() {
   const [notifyMessage, setNotifyMessage] = useState("");
 
   const address = search.get("address") ?? "";
-  const comuna = search.get("comuna") ?? "";
+  const comuna = search.get("comuna") ?? search.get("commune") ?? "";
   const city = search.get("city") ?? "Santiago";
   const requestedDate = search.get("requestedDate") ?? "";
   const requestedTime = search.get("requestedTime") ?? "";
@@ -107,8 +107,8 @@ export default function ServiceProsPage() {
           categoryId: match.id,
           limit: "40"
         });
-        const streetQuery = `${address}${comuna ? `, ${comuna}` : ""}`.trim();
-        if (streetQuery) qs.set("street", streetQuery);
+        if (address.trim()) qs.set("street", address.trim());
+        if (comuna) qs.set("commune", comuna);
         if (requestedIso) qs.set("date", requestedIso);
 
         const prosRes = await fetch(`/api/marketplace/search-professionals?${qs.toString()}`);
@@ -269,9 +269,9 @@ export default function ServiceProsPage() {
                   </Link>
                   <Link
                     className="cta small"
-                    href={`/booking/new?proId=${pro.userId}${category?.services[0] ? `&serviceId=${category.services[0].id}` : ""}&address=${encodeURIComponent(address)}&city=${encodeURIComponent(city)}`}
+                    href={`/pro/${pro.userId}?date=${encodeURIComponent(requestedDate || localYmd(new Date()))}#availability`}
                   >
-                    Ver disponibilidad
+                    Ver agenda
                   </Link>
                 </div>
               </div>

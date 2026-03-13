@@ -2,6 +2,7 @@ import { CleaningOnboardingStatus, Prisma, UserRole } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { getRequestIdentity, hasRole } from "@/lib/auth";
 import { CLEANING_TRAINING_TOPICS } from "@/lib/cleaning-onboarding";
+import { normalizeCommune, normalizeCommuneList } from "@/lib/communes";
 import { prisma } from "@/lib/prisma";
 import {
   cleaningOnboardingSaveSchema,
@@ -21,6 +22,16 @@ function resolveTargetUserId(req: NextRequest, identity: Identity) {
   const queryUserId = req.nextUrl.searchParams.get("userId") ?? undefined;
   if (identity.role === UserRole.ADMIN && queryUserId) return queryUserId;
   return identity.userId ?? undefined;
+}
+
+function normalizeOnboardingCommunes(baseCommune: string, serviceCommunes: string[]) {
+  const normalizedBase = normalizeCommune(baseCommune) ?? "Las Condes";
+  const normalizedSet = new Set(normalizeCommuneList(serviceCommunes));
+  normalizedSet.add(normalizedBase);
+  return {
+    baseCommune: normalizedBase,
+    serviceCommunes: Array.from(normalizedSet)
+  };
 }
 
 async function ensureOnboardingForUser(userId: string) {
@@ -150,10 +161,11 @@ export async function PATCH(req: NextRequest) {
 
     if (input.step === 4) {
       const parsed = cleaningOnboardingStage4Schema.parse(input.payload);
+      const normalizedCoverage = normalizeOnboardingCommunes(parsed.baseCommune, parsed.serviceCommunes);
       data = {
-        baseCommune: parsed.baseCommune.trim(),
+        baseCommune: normalizedCoverage.baseCommune,
         referenceAddress: parsed.referenceAddress.trim(),
-        serviceCommunes: parsed.serviceCommunes,
+        serviceCommunes: normalizedCoverage.serviceCommunes,
         coverageLatitude: parsed.coverageLatitude,
         coverageLongitude: parsed.coverageLongitude,
         maxTravelKm: parsed.maxTravelKm,
@@ -236,12 +248,13 @@ export async function PATCH(req: NextRequest) {
 
     if (input.step === 4) {
       const payload = cleaningOnboardingStage4Schema.parse(input.payload);
+      const normalizedCoverage = normalizeOnboardingCommunes(payload.baseCommune, payload.serviceCommunes);
       await prisma.professionalProfile.upsert({
         where: { userId },
         create: {
           userId,
           coverageStreet: payload.referenceAddress,
-          coverageComuna: payload.baseCommune,
+          coverageComuna: normalizedCoverage.baseCommune,
           coverageCity: "Santiago",
           coverageLatitude: payload.coverageLatitude,
           coverageLongitude: payload.coverageLongitude,
@@ -249,7 +262,7 @@ export async function PATCH(req: NextRequest) {
         },
         update: {
           coverageStreet: payload.referenceAddress,
-          coverageComuna: payload.baseCommune,
+          coverageComuna: normalizedCoverage.baseCommune,
           coverageLatitude: payload.coverageLatitude,
           coverageLongitude: payload.coverageLongitude,
           serviceRadiusKm: payload.maxTravelKm

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { UserRole } from "@prisma/client";
+import { COVERAGE_UNAVAILABLE_MESSAGE, normalizeCommune } from "@/lib/communes";
 import { prisma } from "@/lib/prisma";
 import { createBookingSchema, listBookingsQuerySchema } from "@/lib/validators";
 
@@ -60,13 +61,21 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Cliente no válido" }, { status: 400 });
     }
 
+    const normalizedCommune = normalizeCommune(input.comuna);
+    if (!normalizedCommune) {
+      return NextResponse.json(
+        { error: COVERAGE_UNAVAILABLE_MESSAGE },
+        { status: 400 }
+      );
+    }
+
     const booking = await prisma.booking.create({
       data: {
         customerId: input.customerId,
         serviceId: input.serviceId,
         scheduledAt: input.scheduledAt,
         addressLine1: input.addressLine1,
-        comuna: input.comuna,
+        comuna: normalizedCommune,
         region: input.region,
         notes: input.notes,
         totalPriceClp: service.basePriceClp

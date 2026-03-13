@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { inferCommuneFromAddress, isActiveMvpCommune, normalizeCommune } from "@/lib/communes";
 
 export const dynamic = "force-dynamic";
 
@@ -18,6 +19,8 @@ export async function GET(request: NextRequest) {
           valid: true,
           skipped: true,
           normalizedAddress: address,
+          commune: inferCommuneFromAddress(address),
+          isActiveCommune: isActiveMvpCommune(inferCommuneFromAddress(address)),
           location: { lat: null, lng: null }
         },
         { status: 200 }
@@ -33,7 +36,11 @@ export async function GET(request: NextRequest) {
     const response = await fetch(endpoint.toString(), { cache: "no-store" });
     const payload = (await response.json()) as {
       status?: string;
-      results?: Array<{ formatted_address?: string; geometry?: { location?: { lat?: number; lng?: number } } }>;
+      results?: Array<{
+        formatted_address?: string;
+        geometry?: { location?: { lat?: number; lng?: number } };
+        address_components?: Array<{ long_name?: string; short_name?: string; types?: string[] }>;
+      }>;
       error_message?: string;
     };
 
@@ -45,11 +52,20 @@ export async function GET(request: NextRequest) {
     }
 
     const first = payload.results[0];
+    const localityComponent = first.address_components?.find((component) =>
+      Array.isArray(component.types) &&
+      component.types.some((type) => type === "administrative_area_level_3" || type === "locality" || type === "sublocality")
+    );
+    const normalizedAddress = first.formatted_address ?? address;
+    const communeFromComponents = normalizeCommune(localityComponent?.long_name ?? localityComponent?.short_name ?? "");
+    const commune = communeFromComponents ?? inferCommuneFromAddress(normalizedAddress);
 
     return NextResponse.json(
       {
         valid: true,
-        normalizedAddress: first.formatted_address ?? address,
+        normalizedAddress,
+        commune,
+        isActiveCommune: isActiveMvpCommune(commune),
         location: {
           lat: first.geometry?.location?.lat ?? null,
           lng: first.geometry?.location?.lng ?? null

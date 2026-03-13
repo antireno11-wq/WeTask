@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { MarketNav } from "@/components/market-nav";
+import { activeCommunesSummaryWithConjunction } from "@/lib/communes";
 import { CORE_SERVICES } from "@/lib/core-services";
 
 const howItWorks = [
@@ -57,13 +58,11 @@ export default function HomePage() {
 
           <h1>Haz tu vida más fácil</h1>
           <p className="lead">Disfruta cualquier servicio en la comodidad de tu hogar.</p>
+          <p className="minimal-note">Disponible actualmente en: {activeCommunesSummaryWithConjunction()}</p>
 
           <div className="cta-row mvp-hero-actions">
             <Link href="/solicitar-tecnico?source=hero_primary" className="cta">
               Buscar servicio
-            </Link>
-            <Link href="/trabaja-con-nosotros?source=hero_secondary" className="cta ghost">
-              Ofrecer servicios
             </Link>
           </div>
 
@@ -165,9 +164,6 @@ export default function HomePage() {
         <Link href="/como-funciona">¿Qué es WeTask?</Link>
         <Link href="/como-funciona">Servicios</Link>
         <Link href="/legal">Términos y privacidad</Link>
-        <Link href="/trabaja-con-nosotros" className="mvp-footer-tech-link">
-          Convertirse en técnico
-        </Link>
       </footer>
     </main>
   );

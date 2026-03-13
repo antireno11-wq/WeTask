@@ -1,6 +1,7 @@
 import { UserRole } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { getRequestIdentity, hasRole } from "@/lib/auth";
+import { COVERAGE_UNAVAILABLE_MESSAGE, inferCommuneFromAddress, normalizeCommune, taskerServesCommune } from "@/lib/communes";
 import { calculateMarketplacePrice } from "@/lib/marketplace-pricing";
 import { prisma } from "@/lib/prisma";
 import { marketplaceCreateBookingSchema } from "@/lib/validators";
@@ -48,6 +49,16 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json();
     const input = marketplaceCreateBookingSchema.parse(body);
+    const clientCommune =
+      normalizeCommune(input.address.commune) ??
+      inferCommuneFromAddress(`${input.address.street}, ${input.address.city}, Chile`);
+
+    if (!clientCommune) {
+      return NextResponse.json(
+        { error: COVERAGE_UNAVAILABLE_MESSAGE },
+        { status: 400 }
+      );
+    }
 
     if (identity.role === UserRole.CUSTOMER && identity.userId !== input.customerId) {
       return NextResponse.json({ error: "No autorizado" }, { status: 403 });
@@ -83,7 +94,31 @@ export async function POST(req: NextRequest) {
     if (selectedSlotId) {
       const selectedSlot = await prisma.availabilitySlot.findUnique({
         where: { id: selectedSlotId },
-        include: { professionalProfile: true }
+        include: {
+          professionalProfile: {
+            select: {
+              userId: true,
+              coverageComuna: true,
+              taskerServices: {
+                where: {
+                  serviceId: input.serviceId,
+                  isActive: true
+                },
+                select: { id: true }
+              },
+              user: {
+                select: {
+                  cleaningOnboarding: {
+                    select: {
+                      serviceCommunes: true,
+                      baseCommune: true
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
       });
 
       if (!selectedSlot || !selectedSlot.isAvailable) {
@@ -97,10 +132,26 @@ export async function POST(req: NextRequest) {
       if (selectedSlot.serviceId && selectedSlot.serviceId !== input.serviceId) {
         return NextResponse.json({ error: "El bloque no pertenece al servicio seleccionado" }, { status: 400 });
       }
+      if (selectedSlot.professionalProfile.taskerServices.length === 0) {
+        return NextResponse.json({ error: "El tasker seleccionado no ofrece este servicio" }, { status: 400 });
+      }
+
+      const slotTaskerCanServe = taskerServesCommune(
+        {
+          serviceCommunes: selectedSlot.professionalProfile.user.cleaningOnboarding?.serviceCommunes,
+          coverageComuna:
+            selectedSlot.professionalProfile.coverageComuna ??
+            selectedSlot.professionalProfile.user.cleaningOnboarding?.baseCommune
+        },
+        clientCommune
+      );
+      if (!slotTaskerCanServe) {
+        return NextResponse.json({ error: "El tasker seleccionado no atiende esa comuna" }, { status: 400 });
+      }
 
       assignedProId = selectedSlot.professionalProfile.userId;
     } else if (input.autoAssign && !assignedProId) {
-      const candidate = await prisma.availabilitySlot.findFirst({
+      const candidates = await prisma.availabilitySlot.findMany({
         where: {
           isAvailable: true,
           startsAt: { lte: input.startsAt },
@@ -108,21 +159,101 @@ export async function POST(req: NextRequest) {
           OR: [{ serviceId: null }, { serviceId: input.serviceId }],
           professionalProfile: {
             isVerified: true,
-            user: { role: UserRole.PRO }
+            user: { role: UserRole.PRO },
+            taskerServices: {
+              some: {
+                serviceId: input.serviceId,
+                isActive: true
+              }
+            }
           }
         },
         orderBy: [{ startsAt: "asc" }],
-        include: { professionalProfile: true }
+        include: {
+          professionalProfile: {
+            select: {
+              userId: true,
+              coverageComuna: true,
+              taskerServices: {
+                where: {
+                  serviceId: input.serviceId,
+                  isActive: true
+                },
+                select: { id: true }
+              },
+              user: {
+                select: {
+                  cleaningOnboarding: {
+                    select: {
+                      serviceCommunes: true,
+                      baseCommune: true
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        take: 80
       });
+
+      const candidate = candidates.find((slot) =>
+        slot.professionalProfile.taskerServices.length > 0 &&
+        taskerServesCommune(
+          {
+            serviceCommunes: slot.professionalProfile.user.cleaningOnboarding?.serviceCommunes,
+            coverageComuna: slot.professionalProfile.coverageComuna ?? slot.professionalProfile.user.cleaningOnboarding?.baseCommune
+          },
+          clientCommune
+        )
+      );
 
       assignedProId = candidate?.professionalProfile.userId ?? null;
       selectedSlotId = candidate?.id ?? null;
     }
 
     if (assignedProId) {
-      const pro = await prisma.user.findUnique({ where: { id: assignedProId } });
+      const pro = await prisma.user.findUnique({
+        where: { id: assignedProId },
+        select: {
+          id: true,
+          role: true,
+          professionalProfile: {
+            select: {
+              coverageComuna: true,
+              taskerServices: {
+                where: {
+                  serviceId: input.serviceId,
+                  isActive: true
+                },
+                select: { id: true }
+              }
+            }
+          },
+          cleaningOnboarding: {
+            select: {
+              serviceCommunes: true,
+              baseCommune: true
+            }
+          }
+        }
+      });
       if (!pro || pro.role !== UserRole.PRO) {
         return NextResponse.json({ error: "Profesional no valido" }, { status: 400 });
+      }
+      if (!pro.professionalProfile || pro.professionalProfile.taskerServices.length === 0) {
+        return NextResponse.json({ error: "El tasker seleccionado no ofrece este servicio" }, { status: 400 });
+      }
+
+      const taskerCanServe = taskerServesCommune(
+        {
+          serviceCommunes: pro.cleaningOnboarding?.serviceCommunes,
+          coverageComuna: pro.professionalProfile?.coverageComuna ?? pro.cleaningOnboarding?.baseCommune
+        },
+        clientCommune
+      );
+      if (!taskerCanServe) {
+        return NextResponse.json({ error: "El tasker seleccionado no atiende esa comuna" }, { status: 400 });
       }
     }
 
@@ -144,7 +275,7 @@ export async function POST(req: NextRequest) {
         city: input.address.city,
         postalCode: input.address.postalCode,
         region: input.address.region,
-        country: "ES"
+        country: "CL"
       }
     });
 
@@ -158,7 +289,7 @@ export async function POST(req: NextRequest) {
         status: assignedProId ? "ASSIGNED" : "CREATED",
         scheduledAt: input.startsAt,
         addressLine1: input.address.street,
-        comuna: input.address.city,
+        comuna: clientCommune,
         region: input.address.region ?? "N/A",
         city: input.address.city,
         postalCode: input.address.postalCode,

@@ -1,6 +1,7 @@
 import { CleaningOnboardingStatus, UserRole } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { getRequestIdentity, hasRole } from "@/lib/auth";
+import { normalizeCommuneList } from "@/lib/communes";
 import { prisma } from "@/lib/prisma";
 import { cleaningOnboardingAdminActionSchema } from "@/lib/validators";
 
@@ -13,6 +14,10 @@ function deny() {
 async function ensureCleaningTaskerService(userId: string) {
   const onboarding = await prisma.cleaningOnboarding.findUnique({ where: { userId } });
   if (!onboarding) return;
+  const serviceCommunes = normalizeCommuneList(onboarding.serviceCommunes);
+  if (serviceCommunes.length === 0) {
+    throw new Error("El tasker no tiene comunas de servicio configuradas");
+  }
 
   const profile = await prisma.professionalProfile.upsert({
     where: { userId },
@@ -176,6 +181,12 @@ export async function PATCH(req: NextRequest) {
 
     if (onboarding.status !== CleaningOnboardingStatus.APROBADO) {
       return NextResponse.json({ error: "Solo perfiles aprobados se pueden activar" }, { status: 409 });
+    }
+    if (normalizeCommuneList(onboarding.serviceCommunes).length === 0) {
+      return NextResponse.json(
+        { error: "El tasker debe seleccionar al menos una comuna activa antes de activarse." },
+        { status: 409 }
+      );
     }
 
     await ensureCleaningTaskerService(onboarding.userId);

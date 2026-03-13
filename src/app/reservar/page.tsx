@@ -1,8 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { MarketNav } from "@/components/market-nav";
+import { COVERAGE_UNAVAILABLE_MESSAGE, inferCommuneFromAddress, normalizeCommune } from "@/lib/communes";
 
 export const dynamic = "force-dynamic";
 
@@ -42,6 +44,16 @@ type BookingResponse = {
   totalPriceClp: number;
 };
 
+type CardFormData = {
+  token?: string;
+  paymentMethodId?: string;
+  issuerId?: string;
+  installments?: string | number;
+  cardholderEmail?: string;
+  identificationType?: string;
+  identificationNumber?: string;
+};
+
 function clp(value: number) {
   return new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP", maximumFractionDigits: 0 }).format(value);
 }
@@ -56,16 +68,25 @@ function starsText(value: number) {
 }
 
 export default function ReservarPage() {
+  const router = useRouter();
+  const checkoutFormRef = useRef<any>(null);
+
   const [services, setServices] = useState<Service[]>([]);
   const [loadingServices, setLoadingServices] = useState(false);
   const [loadingSearch, setLoadingSearch] = useState(false);
-  const [loadingPay, setLoadingPay] = useState(false);
+  const [loadingCheckout, setLoadingCheckout] = useState(false);
+  const [checkoutState, setCheckoutState] = useState<"idle" | "processing" | "approved" | "rejected" | "connection_error">("idle");
+  const [checkoutStatusText, setCheckoutStatusText] = useState("");
+  const [mpSdkReady, setMpSdkReady] = useState(false);
+  const [cardFormReady, setCardFormReady] = useState(false);
+  const [checkoutIdempotencyKey, setCheckoutIdempotencyKey] = useState("");
 
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
 
   const [address, setAddress] = useState({
     city: "Santiago",
+    commune: "Providencia",
     postalCode: "7500000",
     street: "Av. Providencia 1550",
     latitude: "",
@@ -91,6 +112,7 @@ export default function ReservarPage() {
   const [details, setDetails] = useState("");
 
   const [createdBooking, setCreatedBooking] = useState<BookingResponse | null>(null);
+  const mercadoPagoPublicKey = process.env.NEXT_PUBLIC_MERCADOPAGO_PUBLIC_KEY ?? "";
 
   const selectedPro = useMemo(() => matches.find((pro) => pro.userId === selectedProId) ?? null, [matches, selectedProId]);
 
@@ -156,6 +178,7 @@ export default function ReservarPage() {
     const proId = params.get("proId");
     const addressLine = params.get("address");
     const city = params.get("city");
+    const commune = params.get("commune") ?? params.get("comuna");
     const postalCode = params.get("postalCode");
 
     if (serviceId) setFilters((prev) => ({ ...prev, serviceId }));
@@ -165,6 +188,7 @@ export default function ReservarPage() {
         ...prev,
         street: addressLine || prev.street,
         city: city || prev.city,
+        commune: commune || prev.commune,
         postalCode: postalCode || prev.postalCode
       }));
     }
@@ -181,6 +205,37 @@ export default function ReservarPage() {
       }
     };
     void bootstrapSession();
+  }, []);
+
+  useEffect(() => {
+    const nextKey =
+      typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+        ? `wtk_checkout_${crypto.randomUUID()}`
+        : `wtk_checkout_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+    setCheckoutIdempotencyKey(nextKey);
+  }, [customerId, selectedSlotId, filters.serviceId, hours, travelFeeClp, materials, urgency, address.street, address.commune]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if ((window as any).MercadoPago) {
+      setMpSdkReady(true);
+      return;
+    }
+
+    const script = document.createElement("script");
+    script.src = "https://sdk.mercadopago.com/js/v2";
+    script.async = true;
+    script.onload = () => setMpSdkReady(true);
+    script.onerror = () => {
+      setMpSdkReady(false);
+      setCheckoutState("connection_error");
+      setCheckoutStatusText("No pudimos cargar el SDK de Mercado Pago.");
+    };
+    document.body.appendChild(script);
+
+    return () => {
+      script.remove();
+    };
   }, []);
 
   const useGeolocation = async () => {
@@ -216,6 +271,7 @@ export default function ReservarPage() {
       setLoadingSearch(true);
       const params = new URLSearchParams({
         city: address.city,
+        commune: normalizeCommune(address.commune) ?? inferCommuneFromAddress(address.street) ?? address.commune,
         postalCode: address.postalCode,
         street: address.street,
         date: filters.date,
@@ -279,17 +335,93 @@ export default function ReservarPage() {
     }
   };
 
-  const createBooking = async () => {
+  useEffect(() => {
+    setCardFormReady(false);
+    setCheckoutState("idle");
+    setCheckoutStatusText("");
+    if (!selectedSlot || !mpSdkReady || !mercadoPagoPublicKey) return;
+    if (typeof window === "undefined") return;
+    const MercadoPagoCtor = (window as any).MercadoPago;
+    if (!MercadoPagoCtor) return;
+
+    const mount = async () => {
+      try {
+        const mp = new MercadoPagoCtor(mercadoPagoPublicKey, { locale: "es-CL" });
+        const cardForm = mp.cardForm({
+          amount: String(total),
+          iframe: true,
+          form: {
+            id: "mp-card-form",
+            cardholderName: { id: "mp-cardholder-name" },
+            cardholderEmail: { id: "mp-cardholder-email" },
+            cardNumber: { id: "mp-card-number" },
+            expirationDate: { id: "mp-expiration-date" },
+            securityCode: { id: "mp-security-code" },
+            installments: { id: "mp-installments" },
+            identificationType: { id: "mp-identification-type" },
+            identificationNumber: { id: "mp-identification-number" },
+            issuer: { id: "mp-issuer" }
+          }
+        });
+        checkoutFormRef.current = cardForm;
+        setCardFormReady(true);
+      } catch {
+        setCardFormReady(false);
+        setCheckoutState("connection_error");
+        setCheckoutStatusText("No pudimos inicializar el formulario de pago.");
+      }
+    };
+
+    void mount();
+
+    return () => {
+      try {
+        checkoutFormRef.current?.unmount?.();
+        checkoutFormRef.current?.destroy?.();
+      } catch {
+        // noop
+      } finally {
+        checkoutFormRef.current = null;
+      }
+    };
+  }, [selectedSlot, mpSdkReady, mercadoPagoPublicKey, total]);
+
+  const submitCheckout = async () => {
     if (!customerId || !selectedPro || !selectedSlot || !filters.serviceId) {
       setError("Completa cliente, profesional, servicio y horario.");
+      return;
+    }
+    if (!cardFormReady || !checkoutFormRef.current) {
+      setError("Formulario de pago aún cargando. Espera unos segundos.");
       return;
     }
 
     setError("");
     setMessage("");
+    setCheckoutState("processing");
+    setCheckoutStatusText("Procesando pago...");
+    setLoadingCheckout(true);
 
     try {
-      const response = await fetch("/api/marketplace/bookings", {
+      const bookingCommune = normalizeCommune(address.commune) ?? inferCommuneFromAddress(address.street);
+      if (!bookingCommune) {
+        setError(COVERAGE_UNAVAILABLE_MESSAGE);
+        setCheckoutState("rejected");
+        setCheckoutStatusText("Pago rechazado por comuna fuera de cobertura.");
+        return;
+      }
+
+      const cardData = (checkoutFormRef.current.getCardFormData?.() ?? {}) as CardFormData;
+      if (!cardData.token || !cardData.paymentMethodId) {
+        throw new Error("No pudimos tokenizar tu tarjeta. Revisa los datos e inténtalo nuevamente.");
+      }
+
+      const payerEmail = (cardData.cardholderEmail || "").trim();
+      if (!payerEmail) {
+        throw new Error("Ingresa un correo válido para procesar el pago.");
+      }
+
+      const response = await fetch("/api/bookings/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -297,11 +429,11 @@ export default function ReservarPage() {
           serviceId: filters.serviceId,
           proId: selectedPro.userId,
           slotId: selectedSlot.id,
-          autoAssign: false,
           startsAt: selectedSlot.startsAt,
           hours,
           address: {
             street: address.street,
+            commune: bookingCommune,
             city: address.city,
             postalCode: address.postalCode,
             region: address.city
@@ -311,44 +443,54 @@ export default function ReservarPage() {
             materials,
             urgency,
             travelFeeClp
-          }
+          },
+          payment: {
+            token: cardData.token,
+            paymentMethodId: cardData.paymentMethodId,
+            issuerId: cardData.issuerId,
+            installments: Number(cardData.installments || 1),
+            payerEmail,
+            payerIdentificationType: cardData.identificationType,
+            payerIdentificationNumber: cardData.identificationNumber
+          },
+          idempotencyKey: checkoutIdempotencyKey
         })
       });
 
-      const data = (await response.json()) as { booking?: BookingResponse; error?: string; detail?: string };
+      const data = (await response.json()) as {
+        booking?: BookingResponse;
+        payment?: { status?: string; providerStatus?: string };
+        error?: string;
+        detail?: string;
+      };
       if (!response.ok || !data.booking) {
-        throw new Error(data.detail || data.error || "No se pudo crear la reserva");
+        throw new Error(data.detail || data.error || "No se pudo completar el checkout");
       }
 
       setCreatedBooking(data.booking);
-      setMessage(`Reserva creada: ${data.booking.id}. Falta confirmar pago.`);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Error inesperado");
-    }
-  };
-
-  const confirmPayment = async () => {
-    if (!createdBooking || !customerId) return;
-    setError("");
-    setMessage("");
-
-    try {
-      setLoadingPay(true);
-      const response = await fetch(`/api/marketplace/bookings/${createdBooking.id}/payment/confirm`, {
-        method: "POST"
-      });
-
-      const data = (await response.json()) as { booking?: BookingResponse; error?: string; detail?: string };
-      if (!response.ok || !data.booking) {
-        throw new Error(data.detail || data.error || "No se pudo confirmar pago");
+      const paymentStatus = String(data.payment?.status ?? data.booking.paymentStatus);
+      if (data.booking.status === "CONFIRMED" && paymentStatus === "PAID") {
+        setCheckoutState("approved");
+        setCheckoutStatusText("Pago aprobado");
+        setMessage(`Reserva confirmada: ${data.booking.id}`);
+        setTimeout(() => {
+          router.push(`/booking/${data.booking!.id}`);
+        }, 800);
+      } else if (data.booking.status === "PAYMENT_FAILED" || paymentStatus === "FAILED") {
+        setCheckoutState("rejected");
+        setCheckoutStatusText("Pago rechazado");
+        setError("El pago fue rechazado. Puedes intentar con otra tarjeta.");
+      } else {
+        setCheckoutState("processing");
+        setCheckoutStatusText("Pago en proceso. Te avisaremos apenas se confirme.");
       }
-
-      setCreatedBooking(data.booking);
-      setMessage("Pago confirmado. Reserva confirmada y slot bloqueado.");
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Error inesperado");
+      const detail = e instanceof Error ? e.message : "Error inesperado";
+      setCheckoutState("connection_error");
+      setCheckoutStatusText("Error de conexión");
+      setError(detail);
     } finally {
-      setLoadingPay(false);
+      setLoadingCheckout(false);
     }
   };
 
@@ -366,6 +508,10 @@ export default function ReservarPage() {
           <label>
             Ciudad
             <input value={address.city} onChange={(e) => setAddress((prev) => ({ ...prev, city: e.target.value }))} required />
+          </label>
+          <label>
+            Comuna
+            <input value={address.commune} onChange={(e) => setAddress((prev) => ({ ...prev, commune: e.target.value }))} required />
           </label>
           <label>
             Codigo postal
@@ -503,28 +649,86 @@ export default function ReservarPage() {
           <div className="price-box" style={{ marginTop: 12 }}>
             Resumen en vivo: ({clp(baseHourly)} x {hours}h) + extras {clp(extrasTotal)} + comision {clp(commission)} = <strong>{clp(total)}</strong>
           </div>
-          <p className="minimal-note">Pago protegido y sujeto a politica de cancelacion.</p>
+          <p className="minimal-note">Pago seguro procesado por Mercado Pago</p>
 
-          <div className="cta-row">
-            <button className="cta" type="button" onClick={createBooking}>
-              Crear reserva
-            </button>
-            <Link className="cta ghost" href="/cliente">
-              Ver Mis Reservas
-            </Link>
-          </div>
+          <div className="panel" style={{ marginTop: 12 }}>
+            <h3>Checkout</h3>
+            <p>
+              Servicio: <strong>{services.find((service) => service.id === filters.serviceId)?.name ?? "Servicio seleccionado"}</strong>
+            </p>
+            <p>
+              Fecha y hora: <strong>{selectedSlot ? new Date(selectedSlot.startsAt).toLocaleString("es-CL") : "Selecciona un horario"}</strong>
+            </p>
+            <p>
+              Dirección: <strong>{address.street}, {address.commune}, {address.city}</strong>
+            </p>
+            <p>
+              Horas estimadas: <strong>{hours}</strong> · Total: <strong>{clp(total)}</strong>
+            </p>
 
-          {createdBooking ? (
-            <div className="panel" style={{ marginTop: 12 }}>
-              <h3>Checkout</h3>
-              <p>
+            {!mercadoPagoPublicKey ? (
+              <p className="feedback error">Configura `NEXT_PUBLIC_MERCADOPAGO_PUBLIC_KEY` para habilitar pagos.</p>
+            ) : null}
+
+            <form id="mp-card-form" className="grid-form" onSubmit={(event) => event.preventDefault()}>
+              <label>
+                Nombre titular
+                <input id="mp-cardholder-name" type="text" placeholder="Como aparece en tu tarjeta" />
+              </label>
+              <label>
+                Email pagador
+                <input id="mp-cardholder-email" type="email" placeholder="correo@ejemplo.com" />
+              </label>
+              <label className="full">
+                Número de tarjeta
+                <div id="mp-card-number" className="mp-secure-field" />
+              </label>
+              <label>
+                Vencimiento
+                <div id="mp-expiration-date" className="mp-secure-field" />
+              </label>
+              <label>
+                Código de seguridad
+                <div id="mp-security-code" className="mp-secure-field" />
+              </label>
+              <label>
+                Cuotas
+                <select id="mp-installments" defaultValue="" />
+              </label>
+              <label>
+                Banco emisor
+                <select id="mp-issuer" defaultValue="" />
+              </label>
+              <label>
+                Tipo identificación
+                <select id="mp-identification-type" defaultValue="" />
+              </label>
+              <label>
+                Número identificación
+                <input id="mp-identification-number" type="text" placeholder="RUT / documento" />
+              </label>
+            </form>
+
+            <div className="cta-row">
+              <button className="cta" type="button" onClick={submitCheckout} disabled={loadingCheckout || !selectedSlot || !cardFormReady}>
+                {loadingCheckout ? "Procesando pago..." : "Pagar y confirmar reserva"}
+              </button>
+              <Link className="cta ghost" href="/cliente">
+                Ver mis reservas
+              </Link>
+            </div>
+
+            {checkoutState === "processing" ? <p className="feedback ok">Procesando pago...</p> : null}
+            {checkoutState === "approved" ? <p className="feedback ok">Pago aprobado. Redirigiendo a tu confirmación...</p> : null}
+            {checkoutState === "rejected" ? <p className="feedback error">Pago rechazado. Revisa los datos o prueba otra tarjeta.</p> : null}
+            {checkoutState === "connection_error" ? <p className="feedback error">Error de conexión con el proveedor de pago.</p> : null}
+            {checkoutStatusText ? <p className="minimal-note">Estado checkout: {checkoutStatusText}</p> : null}
+            {createdBooking ? (
+              <p className="minimal-note">
                 Reserva {createdBooking.id} · Estado {createdBooking.status} · Pago {createdBooking.paymentStatus}
               </p>
-              <button className="cta" type="button" disabled={loadingPay} onClick={confirmPayment}>
-                {loadingPay ? "Confirmando pago..." : "Pagar y confirmar"}
-              </button>
-            </div>
-          ) : null}
+            ) : null}
+          </div>
         </section>
       ) : null}
 

@@ -1,6 +1,7 @@
 import { UserRole } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { encodeSessionCookie, SESSION_COOKIE_NAME } from "@/lib/auth";
+import { normalizeCommune } from "@/lib/communes";
 import { prisma } from "@/lib/prisma";
 import { hashPassword, randomToken, sha256 } from "@/lib/security";
 
@@ -42,6 +43,7 @@ export async function POST(req: NextRequest) {
     const authProvider = body.authProvider === "GOOGLE" ? "GOOGLE" : body.authProvider === "APPLE" ? "APPLE" : "EMAIL";
     const password = body.password?.trim();
     const acceptTerms = body.acceptTerms === true;
+    const normalizedCoverageCommune = role === UserRole.PRO ? normalizeCommune(body.coverageComuna) : null;
 
     if (!fullName || fullName.length < 3) {
       return NextResponse.json({ error: "Nombre debe tener al menos 3 caracteres" }, { status: 400 });
@@ -76,6 +78,12 @@ export async function POST(req: NextRequest) {
       }
       if (!backgroundCheckUrl || !isValidDocumentRef(backgroundCheckUrl)) {
         return NextResponse.json({ error: "Debes adjuntar certificado de antecedentes" }, { status: 400 });
+      }
+      if (!normalizedCoverageCommune) {
+        return NextResponse.json(
+          { error: "Aún no estamos disponibles en tu comuna. Déjanos tu email y te avisaremos cuando lleguemos." },
+          { status: 400 }
+        );
       }
     }
 
@@ -117,13 +125,23 @@ export async function POST(req: NextRequest) {
                   idDocumentUrl: body.identityDocumentUrl?.trim() || null,
                   backgroundCheckUrl: body.backgroundCheckUrl?.trim() || null,
                   coverageStreet: body.coverageStreet?.trim() || null,
-                  coverageComuna: body.coverageComuna?.trim() || null,
+                  coverageComuna: normalizedCoverageCommune,
                   coverageCity: body.city?.trim() || "Santiago",
                   coveragePostal: body.postalCode?.trim() || null,
                   coverageLatitude: typeof body.latitude === "number" ? body.latitude : null,
                   coverageLongitude: typeof body.longitude === "number" ? body.longitude : null,
                   serviceRadiusKm: Math.max(2, Math.min(50, Number(body.serviceRadiusKm ?? 8))),
                   hourlyRateFromClp: body.hourlyRateFromClp ? Math.max(5000, Number(body.hourlyRateFromClp)) : null
+                }
+              }
+            : undefined,
+        cleaningOnboarding:
+          role === UserRole.PRO
+            ? {
+                create: {
+                  currentStep: 2,
+                  baseCommune: normalizedCoverageCommune,
+                  serviceCommunes: normalizedCoverageCommune ? [normalizedCoverageCommune] : []
                 }
               }
             : undefined

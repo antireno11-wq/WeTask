@@ -7,13 +7,20 @@ import {
   CLEANING_TRAINING_TOPICS,
   CLEANING_WEEK_DAYS
 } from "@/lib/cleaning-onboarding";
+import { isActiveMvpCommune, normalizeCommune } from "@/lib/communes";
+
+const activeCommuneInputSchema = z
+  .string()
+  .min(2)
+  .refine((value) => isActiveMvpCommune(value), "Comuna fuera de cobertura MVP")
+  .transform((value) => normalizeCommune(value) ?? value);
 
 export const createBookingSchema = z.object({
   customerId: z.string().min(1),
   serviceId: z.string().min(1),
   scheduledAt: z.coerce.date(),
   addressLine1: z.string().min(5),
-  comuna: z.string().min(2),
+  comuna: activeCommuneInputSchema,
   region: z.string().min(2),
   notes: z.string().max(500).optional()
 });
@@ -41,7 +48,7 @@ export const publicCreateBookingSchema = z.object({
   serviceId: z.string().min(1),
   scheduledAt: z.coerce.date(),
   addressLine1: z.string().min(5),
-  comuna: z.string().min(2),
+  comuna: activeCommuneInputSchema,
   region: z.string().min(2),
   notes: z.string().max(500).optional()
 });
@@ -71,6 +78,7 @@ export const marketplaceCreateBookingSchema = z.object({
   hours: z.coerce.number().int().min(1).max(8),
   address: z.object({
     street: z.string().min(5),
+    commune: activeCommuneInputSchema,
     city: z.string().min(2),
     postalCode: z.string().min(4).max(10),
     region: z.string().min(2).optional()
@@ -118,6 +126,7 @@ export const marketplaceAvailabilityQuerySchema = z.object({
 
 export const marketplaceSearchProsSchema = z.object({
   city: z.string().min(2),
+  commune: activeCommuneInputSchema.optional(),
   postalCode: z.string().min(4).max(10).optional(),
   street: z.string().min(3).optional(),
   latitude: z.coerce.number().min(-90).max(90).optional(),
@@ -132,7 +141,8 @@ export const marketplaceProProfileUpdateSchema = z.object({
   proId: z.string().min(1).optional(),
   bio: z.string().max(600).optional().nullable(),
   coverageStreet: z.string().min(3).max(180).optional().nullable(),
-  coverageComuna: z.string().min(2).max(120).optional().nullable(),
+  coverageComuna: activeCommuneInputSchema.optional().nullable(),
+  serviceCommunes: z.array(activeCommuneInputSchema).min(1).optional().nullable(),
   coverageCity: z.string().min(2).max(120).optional().nullable(),
   coveragePostal: z.string().min(4).max(12).optional().nullable(),
   coverageLatitude: z.coerce.number().min(-90).max(90).optional().nullable(),
@@ -183,7 +193,7 @@ export const technicianRegistrationSchema = z.object({
   birthDate: z.coerce.date(),
   phone: z.string().min(7).max(30),
   email: z.string().email(),
-  commune: z.string().min(2).max(120),
+  commune: activeCommuneInputSchema,
   address: z.string().min(5).max(180),
   lat: z.coerce.number().min(-90).max(90).optional(),
   lng: z.coerce.number().min(-180).max(180).optional(),
@@ -201,7 +211,7 @@ export const technicianRegistrationSchema = z.object({
   identitySelfie: imageDataUrlSchema,
   affidavitAccepted: z.boolean().refine((v) => v, { message: "Debes aceptar la declaracion jurada" }),
 
-  availableCommunes: z.array(z.string().min(2)).min(1),
+  availableCommunes: z.array(activeCommuneInputSchema).min(1),
   coverageRadiusKm: z.coerce.number().int().min(1).max(80),
   availabilitySchedule: z.string().min(3).max(600),
   transportType: z.enum(["auto", "moto", "bicicleta", "transporte_publico"]),
@@ -233,7 +243,7 @@ export const cleaningOnboardingStartSchema = z.object({
   email: z.string().email(),
   password: z.string().min(8).max(120).optional(),
   authProvider: z.enum(["EMAIL", "GOOGLE", "APPLE"]).default("EMAIL"),
-  baseCommune: z.string().min(2).max(120),
+  baseCommune: activeCommuneInputSchema,
   acceptTerms: z.boolean().refine((v) => v, { message: "Debes aceptar terminos" })
 });
 
@@ -258,9 +268,9 @@ export const cleaningOnboardingStage3Schema = z.object({
 });
 
 export const cleaningOnboardingStage4Schema = z.object({
-  baseCommune: z.string().min(2).max(120),
+  baseCommune: activeCommuneInputSchema,
   referenceAddress: z.string().min(5).max(240),
-  serviceCommunes: z.array(z.string().min(2).max(120)).min(1),
+  serviceCommunes: z.array(activeCommuneInputSchema).min(1),
   coverageLatitude: z.coerce.number().min(-90).max(90),
   coverageLongitude: z.coerce.number().min(-180).max(180),
   maxTravelKm: z.coerce.number().int().min(1).max(80),

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { FormEvent, useEffect, useState } from "react";
 import { MarketNav } from "@/components/market-nav";
+import { COVERAGE_UNAVAILABLE_MESSAGE, inferCommuneFromAddress, normalizeCommune } from "@/lib/communes";
 
 type Category = {
   id: string;
@@ -23,6 +24,10 @@ export default function ServicioCategoriaPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [coverageNote, setCoverageNote] = useState("");
+  const [detectedCommune, setDetectedCommune] = useState<string | null>(null);
+  const [coverageEmail, setCoverageEmail] = useState("");
+  const [coverageEmailStatus, setCoverageEmailStatus] = useState("");
+  const [savingCoverageEmail, setSavingCoverageEmail] = useState(false);
   const [addressSuggestions, setAddressSuggestions] = useState<string[]>([]);
   const [autocompleteLoading, setAutocompleteLoading] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -113,19 +118,61 @@ export default function ServicioCategoriaPage() {
     setSelectedFromAutocomplete(true);
     setAddressSuggestions([]);
     setShowSuggestions(false);
+    setDetectedCommune(normalizeCommune(value) ?? inferCommuneFromAddress(value));
+  };
+
+  useEffect(() => {
+    const commune = normalizeCommune(street) ?? inferCommuneFromAddress(street);
+    setDetectedCommune(commune);
+  }, [street]);
+
+  const saveCoverageEmail = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!coverageEmail.trim()) return;
+    setSavingCoverageEmail(true);
+    setCoverageEmailStatus("");
+    try {
+      const response = await fetch("/api/coverage-waitlist", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: coverageEmail.trim(),
+          commune: detectedCommune ?? undefined,
+          address: street.trim(),
+          source: "services_category_form"
+        })
+      });
+      const data = (await response.json()) as { ok?: boolean; error?: string; detail?: string };
+      if (!response.ok || !data.ok) throw new Error(data.detail || data.error || "No se pudo registrar tu email");
+      setCoverageEmailStatus("Gracias. Te avisaremos por correo cuando lleguemos a tu comuna.");
+      setCoverageEmail("");
+    } catch (e) {
+      setCoverageEmailStatus(e instanceof Error ? e.message : "No se pudo registrar tu email.");
+    } finally {
+      setSavingCoverageEmail(false);
+    }
   };
 
   const openPros = (event: FormEvent) => {
     event.preventDefault();
     if (!category) return;
+    setCoverageEmailStatus("");
     if (!street.trim()) {
       setCoverageNote("Completa el servicio y la direccion para ver taskers disponibles.");
       return;
     }
+    const commune = detectedCommune ?? normalizeCommune(street) ?? inferCommuneFromAddress(street);
+    if (!commune) {
+      setCoverageNote(COVERAGE_UNAVAILABLE_MESSAGE);
+      return;
+    }
+    setCoverageNote("");
 
     const qs = new URLSearchParams({
       address: street.trim(),
-      city: city.trim()
+      city: city.trim(),
+      comuna: commune,
+      commune
     });
     if (selectedServiceId) qs.set("serviceId", selectedServiceId);
 
@@ -187,6 +234,9 @@ export default function ServicioCategoriaPage() {
                   </div>
                 ) : null}
               </label>
+              <p className="input-hint full">
+                Comuna detectada: <strong>{detectedCommune ?? "Sin detectar"}</strong>
+              </p>
               <div className="cta-row service-category-actions full">
                 <button type="submit" className="cta">
                   Ver profesionales disponibles
@@ -198,6 +248,24 @@ export default function ServicioCategoriaPage() {
             </form>
 
             {coverageNote ? <p className="feedback error">{coverageNote}</p> : null}
+            {coverageNote === COVERAGE_UNAVAILABLE_MESSAGE ? (
+              <form className="query-row query-single" onSubmit={saveCoverageEmail}>
+                <label>
+                  Email para aviso de cobertura
+                  <input
+                    type="email"
+                    value={coverageEmail}
+                    onChange={(event) => setCoverageEmail(event.target.value)}
+                    placeholder="tuemail@dominio.com"
+                    required
+                  />
+                </label>
+                <button type="submit" className="cta" disabled={savingCoverageEmail}>
+                  {savingCoverageEmail ? "Guardando..." : "Avisarme por email"}
+                </button>
+              </form>
+            ) : null}
+            {coverageEmailStatus ? <p className="feedback ok">{coverageEmailStatus}</p> : null}
 
             <p className="minimal-note">Si no hay cobertura en tu zona podras activar “Avisarme cuando haya”.</p>
           </>

@@ -1,3 +1,5 @@
+import { getCommuneCenter, inferCommuneFromAddress, normalizeCommune } from "@/lib/communes";
+
 export type Coordinates = { lat: number; lng: number };
 
 const cityCenters: Record<string, Coordinates> = {
@@ -23,10 +25,13 @@ export function geocodeAddress(input: {
   city: string;
   postalCode?: string;
   street?: string;
+  commune?: string;
   fallback?: Coordinates;
 }): Coordinates {
   const cityKey = input.city.trim().toLowerCase();
-  const center = cityCenters[cityKey] ?? input.fallback ?? cityCenters.madrid;
+  const detectedCommune = normalizeCommune(input.commune) ?? inferCommuneFromAddress(input.street ?? "");
+  const communeCenter = getCommuneCenter(detectedCommune);
+  const center = communeCenter ?? cityCenters[cityKey] ?? input.fallback ?? cityCenters.madrid;
 
   const seed = `${input.postalCode ?? ""}-${input.street ?? ""}-${cityKey}`;
   const latOffset = hashToOffset(`lat-${seed}`);

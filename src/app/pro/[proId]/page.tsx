@@ -1,9 +1,21 @@
 "use client";
 
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { MarketNav } from "@/components/market-nav";
+
+type CleaningOnboardingSummary = {
+  profilePhotoUrl: string | null;
+  shortDescription: string | null;
+  yearsExperience: number | null;
+  workMode: "SOLO" | "EQUIPO" | null;
+  offeredServices: unknown;
+  experienceTypes: unknown;
+  languages: unknown;
+  baseCommune: string | null;
+  maxTravelKm: number | null;
+};
 
 type ProfessionalDetail = {
   id: string;
@@ -23,6 +35,7 @@ type ProfessionalDetail = {
     fullName: string;
     email: string;
     phone: string | null;
+    cleaningOnboarding: CleaningOnboardingSummary | null;
   };
 };
 
@@ -56,8 +69,16 @@ const sampleComments = [
   { name: "Victor", time: "hace 1 mes", text: "Como siempre, trato impecable." }
 ];
 
+const demoOfferedServices = ["Limpieza general", "Limpieza profunda", "Planchado", "Orden y organización"];
+const demoExperienceTypes = ["Casas", "Departamentos", "Oficinas pequeñas"];
+const demoLanguages = ["Español"];
+
 function clp(value: number) {
   return new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP", maximumFractionDigits: 0 }).format(value);
+}
+
+function isValidYmd(value: string | null) {
+  return Boolean(value && /^\d{4}-\d{2}-\d{2}$/.test(value));
 }
 
 function dateInputDefault(): string {
@@ -75,21 +96,114 @@ function initials(name: string) {
     .join("");
 }
 
+function labelize(value: string) {
+  return value
+    .replace(/[_-]+/g, " ")
+    .split(" ")
+    .filter(Boolean)
+    .map((chunk) => chunk.charAt(0).toUpperCase() + chunk.slice(1))
+    .join(" ");
+}
+
+function toLabelList(value: unknown, fallback: string[]) {
+  if (!Array.isArray(value)) return fallback;
+  const cleaned = value.filter((item): item is string => typeof item === "string" && item.trim().length > 0).map(labelize);
+  return cleaned.length > 0 ? cleaned : fallback;
+}
+
+function buildDemoProfessional(proId: string): ProfessionalDetail {
+  const cleanId = proId.replace(/[-_]/g, " ").trim();
+  const fallbackName = cleanId.length > 0 ? labelize(cleanId) : "Tasker WeTask";
+
+  return {
+    id: `demo-profile-${proId}`,
+    userId: proId,
+    bio: "Tasker con experiencia comprobada en servicios a domicilio, enfoque en puntualidad y resultados de calidad.",
+    isVerified: true,
+    ratingAvg: 4.9,
+    ratingsCount: 47,
+    coverageCity: "Santiago",
+    coveragePostal: "7500000",
+    coverageLatitude: -33.4489,
+    coverageLongitude: -70.6693,
+    serviceRadiusKm: 12,
+    hourlyRateFromClp: 15000,
+    user: {
+      id: proId,
+      fullName: fallbackName,
+      email: "tasker@wetask.cl",
+      phone: "+56 9 5555 5555",
+      cleaningOnboarding: {
+        profilePhotoUrl: null,
+        shortDescription: "Perfil profesional con foco en limpieza del hogar, atención cordial y cumplimiento de horarios.",
+        yearsExperience: 7,
+        workMode: "SOLO",
+        offeredServices: demoOfferedServices,
+        experienceTypes: demoExperienceTypes,
+        languages: demoLanguages,
+        baseCommune: "Santiago",
+        maxTravelKm: 12
+      }
+    }
+  };
+}
+
+function buildDemoSlots(baseDate: string, proId: string): AvailabilitySlot[] {
+  const start = new Date(`${baseDate}T00:00:00`);
+  if (Number.isNaN(start.getTime())) return [];
+
+  const slots: AvailabilitySlot[] = [];
+  const windows = [
+    [9, 0, 11, 0],
+    [12, 0, 14, 0],
+    [16, 0, 18, 0]
+  ];
+
+  for (let dayOffset = 0; dayOffset < 7; dayOffset += 1) {
+    for (let i = 0; i < windows.length; i += 1) {
+      const [startH, startM, endH, endM] = windows[i];
+      const startsAt = new Date(start);
+      startsAt.setDate(start.getDate() + dayOffset);
+      startsAt.setHours(startH, startM, 0, 0);
+
+      const endsAt = new Date(start);
+      endsAt.setDate(start.getDate() + dayOffset);
+      endsAt.setHours(endH, endM, 0, 0);
+
+      slots.push({
+        id: `demo-slot-${proId}-${dayOffset}-${i}`,
+        startsAt: startsAt.toISOString(),
+        endsAt: endsAt.toISOString(),
+        service: { id: "demo-service", name: "Servicio a domicilio" }
+      });
+    }
+  }
+
+  return slots;
+}
+
 export default function ProDetailPage() {
   const params = useParams<{ proId: string }>();
-  const [date, setDate] = useState(dateInputDefault());
-  const [selectedDay, setSelectedDay] = useState("");
+  const searchParams = useSearchParams();
+  const requestedDate = searchParams.get("date");
+  const initialDate = isValidYmd(requestedDate) ? requestedDate! : dateInputDefault();
+  const [date, setDate] = useState(initialDate);
+  const [selectedDay, setSelectedDay] = useState(initialDate);
   const [expandedAbout, setExpandedAbout] = useState(false);
 
   const [data, setData] = useState<ProfessionalDetail | null>(null);
   const [slots, setSlots] = useState<AvailabilitySlot[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
 
   useEffect(() => {
     const load = async () => {
       try {
         setLoading(true);
+        setError("");
+        setNotice("");
+
         const [proRes, availabilityRes] = await Promise.all([
           fetch(`/api/marketplace/pros/${params.proId}`),
           fetch(`/api/marketplace/availability?proId=${params.proId}&date=${date}&days=10&limit=120`)
@@ -102,18 +216,37 @@ export default function ProDetailPage() {
           detail?: string;
         };
 
+        let resolvedProfile: ProfessionalDetail;
         if (!proRes.ok || !proBody.professional) {
-          throw new Error(proBody.detail || proBody.error || "No se pudo cargar perfil");
+          resolvedProfile = buildDemoProfessional(params.proId);
+          setNotice("Mostrando un perfil referencial para visualizar cómo se verá el tasker.");
+        } else {
+          resolvedProfile = proBody.professional;
         }
 
+        let resolvedSlots: AvailabilitySlot[] = [];
         if (!availabilityRes.ok || !availabilityBody.slots) {
-          throw new Error(availabilityBody.detail || availabilityBody.error || "No se pudo cargar disponibilidad");
+          resolvedSlots = buildDemoSlots(date, params.proId);
+          setNotice((prev) =>
+            prev
+              ? `${prev} También cargamos una agenda de ejemplo.`
+              : "Mostrando una agenda referencial para que puedas ver los días disponibles."
+          );
+        } else {
+          resolvedSlots = availabilityBody.slots;
         }
 
-        setData(proBody.professional);
-        setSlots(availabilityBody.slots);
-      } catch (e) {
-        setError(e instanceof Error ? e.message : "Error inesperado");
+        if (resolvedSlots.length === 0) {
+          resolvedSlots = buildDemoSlots(date, params.proId);
+        }
+
+        setData(resolvedProfile);
+        setSlots(resolvedSlots);
+      } catch {
+        setData(buildDemoProfessional(params.proId));
+        setSlots(buildDemoSlots(date, params.proId));
+        setNotice("No fue posible cargar todos los datos en vivo. Te mostramos una vista de ejemplo.");
+        setError("");
       } finally {
         setLoading(false);
       }
@@ -144,11 +277,11 @@ export default function ProDetailPage() {
   const selectedSlots = useMemo(() => dayGroups.find(([day]) => day === selectedDay)?.[1] ?? [], [dayGroups, selectedDay]);
 
   const aboutText = useMemo(() => {
-    const base = data?.bio?.trim();
+    const base = data?.bio?.trim() || data?.user.cleaningOnboarding?.shortDescription?.trim();
     const fallback =
       "Importante: aunque el calendario muestre franjas ocupadas, consulta disponibilidad. Disponemos de equipo rotativo y adaptamos horarios según tipo de servicio. Trabajamos en limpieza general, apoyo en hogar y servicios especiales bajo cotización.";
     return base && base.length > 30 ? `${fallback} ${base}` : fallback;
-  }, [data?.bio]);
+  }, [data?.bio, data?.user.cleaningOnboarding?.shortDescription]);
 
   const aboutPreview = aboutText.length > 340 ? `${aboutText.slice(0, 340)}...` : aboutText;
 
@@ -157,16 +290,67 @@ export default function ProDetailPage() {
   const friendlinessScore = Math.min(5, Math.max(4, rating + 0.2));
   const professionalismScore = Math.min(5, Math.max(4, rating + 0.15));
   const punctualityScore = Math.min(5, Math.max(4, rating + 0.1));
+  const onboarding = data?.user.cleaningOnboarding ?? null;
+  const profilePhotoUrl = onboarding?.profilePhotoUrl?.trim() || "";
+  const summaryDescription =
+    onboarding?.shortDescription?.trim() ||
+    "Tasker con experiencia en servicios a domicilio, buena valoración y agenda activa durante la semana.";
+  const experienceYears = onboarding?.yearsExperience ?? 6;
+  const offeredServices = toLabelList(onboarding?.offeredServices, demoOfferedServices);
+  const experienceTypes = toLabelList(onboarding?.experienceTypes, demoExperienceTypes);
+  const languages = toLabelList(onboarding?.languages, demoLanguages);
+  const workModeLabel = onboarding?.workMode === "EQUIPO" ? "Trabajo en equipo" : "Trabajo individual";
+  const baseCommune = onboarding?.baseCommune ?? data?.coverageCity ?? "Santiago";
+  const maxTravelKm = onboarding?.maxTravelKm ?? data?.serviceRadiusKm ?? 10;
 
   return (
     <main className="page market-shell">
       <MarketNav />
       {loading ? <p className="empty">Cargando perfil...</p> : null}
+      {notice ? <p className="feedback ok">{notice}</p> : null}
       {error ? <p className="feedback error">{error}</p> : null}
 
       {data ? (
         <section className="we-pro-detail-layout">
           <div className="we-pro-detail-main">
+            <article className="panel">
+              <h2>Perfil del tasker</h2>
+              <p>{summaryDescription}</p>
+              <div className="we-info-grid we-profile-quick-grid">
+                <div>
+                  <h3>Experiencia</h3>
+                  <p>{experienceYears} años</p>
+                </div>
+                <div>
+                  <h3>Modalidad</h3>
+                  <p>{workModeLabel}</p>
+                </div>
+                <div>
+                  <h3>Comuna base</h3>
+                  <p>{baseCommune}</p>
+                </div>
+                <div>
+                  <h3>Cobertura</h3>
+                  <p>{maxTravelKm} km</p>
+                </div>
+                <div>
+                  <h3>Tipos de experiencia</h3>
+                  <p>{experienceTypes.join(", ")}</p>
+                </div>
+                <div>
+                  <h3>Idiomas</h3>
+                  <p>{languages.join(", ")}</p>
+                </div>
+              </div>
+              <div className="we-pro-tags">
+                {offeredServices.map((service) => (
+                  <span key={service} className="we-tag">
+                    {service}
+                  </span>
+                ))}
+              </div>
+            </article>
+
             <article className="panel">
               <h2>Sobre mi</h2>
               <p>{expandedAbout ? aboutText : aboutPreview}</p>
@@ -218,7 +402,7 @@ export default function ProDetailPage() {
 
             <article id="availability" className="panel">
               <div className="we-section-head">
-                <h2>Disponibilidad</h2>
+                <h2>Agenda y disponibilidad</h2>
                 <label>
                   Desde fecha
                   <input type="date" value={date} onChange={(event) => setDate(event.target.value)} />
@@ -336,7 +520,7 @@ export default function ProDetailPage() {
           <aside className="panel we-pro-sticky-card">
             <div className="we-sticky-head">
               <div className="we-pro-avatar large" aria-hidden>
-                {initials(data.user.fullName)}
+                {profilePhotoUrl ? <img src={profilePhotoUrl} alt="" className="we-pro-avatar-image" /> : initials(data.user.fullName)}
               </div>
               <div>
                 <h3>{data.user.fullName}</h3>
@@ -353,7 +537,7 @@ export default function ProDetailPage() {
 
             <div className="cta-row">
               <a href="#availability" className="cta small">
-                Ver disponibilidad
+                Ver agenda
               </a>
               <Link className="cta small" href={`/booking/new?proId=${data.userId}`}>
                 Reservar ahora

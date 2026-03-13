@@ -40,6 +40,8 @@ enum CleaningAvailabilityMode {
 enum BookingStatus {
   CREATED
   PENDING
+  PENDING_PAYMENT
+  PAYMENT_FAILED
   CONFIRMED
   ASSIGNED
   ACCEPTED
@@ -349,6 +351,16 @@ model Payment {
   bookingId           String       @unique
   provider            String       @default("STRIPE")
   providerPaymentId   String?
+  providerStatus      String?
+  currency            String       @default("CLP")
+  paymentMethod       String?
+  last4               String?
+  payerEmail          String?
+  rawResponseJson     Json?
+  refundedAt          DateTime?
+  idempotencyKey      String?      @unique
+  errorCode           String?
+  errorMessage        String?
   amountClp           Int
   platformFeeClp      Int          @default(0)
   status              PaymentStatus @default(PENDING)
@@ -356,6 +368,9 @@ model Payment {
   createdAt           DateTime     @default(now())
   updatedAt           DateTime     @updatedAt
   booking             Booking      @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@index([provider, providerPaymentId])
+  @@index([providerStatus])
 }
 
 model Payout {
@@ -434,6 +449,19 @@ model ServiceLead {
   @@index([comuna, serviceNeeded])
 }
 
+model CoverageWaitlist {
+  id        String   @id @default(cuid())
+  email     String
+  commune   String?
+  address   String?
+  source    String   @default("coverage_gate")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([email])
+  @@index([commune, createdAt])
+}
+
 enum TechnicianVerificationStatus {
   PENDING
   UNDER_REVIEW
@@ -464,6 +492,7 @@ model Technician {
   references           String?
   coverageRadiusKm     Int                          @map("coverage_radius_km")
   availableCommunes    Json                         @map("available_communes")
+  serviceCommunes      Json?                        @map("service_communes")
   availabilitySchedule String                       @map("availability_schedule")
   transportType        String                       @map("transport_type")
   verificationStatus   TechnicianVerificationStatus @default(PENDING) @map("verification_status")
@@ -554,4 +583,3 @@ model CleaningOnboarding {
   @@index([status, createdAt])
   @@index([baseCommune])
 }
-
