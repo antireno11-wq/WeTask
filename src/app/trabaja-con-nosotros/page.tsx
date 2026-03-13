@@ -1,35 +1,87 @@
-import { MarketNav } from "@/components/market-nav";
-import { CORE_SERVICES } from "@/lib/core-services";
+"use client";
+
+import Link from "next/link";
+import { useState } from "react";
+import { CORE_SERVICES, type CoreTaskerServiceSlug } from "@/lib/core-services";
 
 export default function TrabajaConNosotrosPage() {
-  return (
-    <main className="page market-shell">
-      <MarketNav />
+  const [selectedService, setSelectedService] = useState<CoreTaskerServiceSlug>(CORE_SERVICES[0]?.slug ?? "limpieza");
 
-      <section className="panel">
-        <div className="panel-head">
-          <h2>Ofrecer servicios</h2>
-          <p>Selecciona el servicio que ofreces para continuar con su onboarding correspondiente.</p>
+  return (
+    <main className="auth-flow-screen">
+      <div className="auth-flow-backdrop" aria-hidden />
+      <section className="auth-flow-shell auth-flow-shell-wide">
+        <div className="auth-flow-copy">
+          <Link href="/" className="login-brand-mark auth-flow-brand" aria-label="Volver a WeTask">
+            <img src="/logo-wetask.png" alt="WeTask" width={220} height={86} />
+          </Link>
+          <p className="auth-flow-kicker">Trabaja con nosotros</p>
+          <h1>Convierte tu experiencia en servicios reservables.</h1>
+          <p>
+            Elige tu especialidad y te llevamos al onboarding profesional con el mismo estilo visual de WeTask.
+          </p>
+
+          <div className="auth-flow-copy-list">
+            <div className="auth-flow-meta-card">
+              <strong>Activacion guiada</strong>
+              <span>Completarás perfil, cobertura, documentos y condiciones para poder recibir reservas.</span>
+            </div>
+            <div className="auth-flow-meta-card">
+              <strong>Pago protegido</strong>
+              <span>Gestiona agenda, servicios y pagos desde una sola cuenta profesional.</span>
+            </div>
+          </div>
+
+          <div className="auth-flow-inline-links">
+            <Link href="/ingresar/tasker">Ya soy tasker</Link>
+            <Link href="/legal">Condiciones de uso</Link>
+          </div>
         </div>
 
-        <form action="/trabaja-con-nosotros/registro" method="GET" className="grid-form">
-          <label className="full">
-            Servicio
-            <select name="service" required defaultValue="">
-              <option value="" disabled>
-                Selecciona un servicio
-              </option>
-              {CORE_SERVICES.map((service) => (
-                <option key={service.slug} value={service.slug}>
-                  {service.icon} {service.label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <button type="submit" className="cta">
-            Continuar
-          </button>
-        </form>
+        <section className="auth-flow-panel auth-flow-panel-wide">
+          <div className="panel-head auth-flow-panel-head">
+            <h2>Elige tu servicio principal</h2>
+            <p>Usaremos esta seleccion para personalizar tu onboarding profesional.</p>
+          </div>
+
+          <form action="/trabaja-con-nosotros/registro" method="GET" className="auth-service-form">
+            <div className="auth-service-grid" role="radiogroup" aria-label="Servicios disponibles">
+              {CORE_SERVICES.map((service) => {
+                const isActive = selectedService === service.slug;
+                return (
+                  <label key={service.slug} className={`auth-service-card ${isActive ? "active" : ""}`}>
+                    <input
+                      type="radio"
+                      name="service"
+                      value={service.slug}
+                      checked={isActive}
+                      onChange={() => setSelectedService(service.slug)}
+                    />
+                    <span className="auth-service-icon" aria-hidden>
+                      {service.icon}
+                    </span>
+                    <strong>{service.label}</strong>
+                    <span>{service.taskerDescription}</span>
+                  </label>
+                );
+              })}
+            </div>
+
+            <div className="auth-flow-note-card">
+              <strong>Servicio seleccionado</strong>
+              <span>{CORE_SERVICES.find((service) => service.slug === selectedService)?.label ?? "Limpieza"}</span>
+            </div>
+
+            <div className="auth-flow-actions">
+              <button type="submit" className="cta">
+                Continuar onboarding
+              </button>
+              <Link href="/ingresar/tasker" className="cta ghost">
+                Iniciar sesion
+              </Link>
+            </div>
+          </form>
+        </section>
       </section>
     </main>
   );

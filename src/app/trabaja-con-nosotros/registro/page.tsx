@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { MarketNav } from "@/components/market-nav";
 import { ACTIVE_MVP_COMMUNES, inferCommuneFromAddress, normalizeCommune, normalizeCommuneList } from "@/lib/communes";
 import { geocodeAddress } from "@/lib/geo";
 import { CORE_SERVICES, type CoreTaskerServiceSlug } from "@/lib/core-services";
@@ -1012,20 +1011,58 @@ export default function CleaningOnboardingPage() {
 
   if (loading) {
     return (
-      <main className="page market-shell">
-        <MarketNav />
-        <section className="panel">
-          <p className="empty">Cargando onboarding...</p>
+      <main className="auth-flow-screen">
+        <div className="auth-flow-backdrop" aria-hidden />
+        <section className="auth-flow-shell auth-flow-shell-wide">
+          <div className="auth-flow-copy">
+            <Link href="/" className="login-brand-mark auth-flow-brand" aria-label="Volver a WeTask">
+              <img src="/logo-wetask.png" alt="WeTask" width={220} height={86} />
+            </Link>
+            <p className="auth-flow-kicker">Onboarding profesional</p>
+            <h1>Estamos preparando tu flujo de activacion.</h1>
+            <p>En unos segundos podrás continuar configurando tu perfil profesional en WeTask.</p>
+          </div>
+
+          <section className="auth-flow-panel auth-flow-panel-wide">
+            <p className="empty">Cargando onboarding...</p>
+          </section>
         </section>
       </main>
     );
   }
 
   return (
-    <main className="page market-shell">
-      <MarketNav />
+    <main className="auth-flow-screen auth-flow-screen-scroll">
+      <div className="auth-flow-backdrop" aria-hidden />
+      <section className="auth-flow-shell auth-flow-shell-wide">
+        <div className="auth-flow-copy">
+          <Link href="/" className="login-brand-mark auth-flow-brand" aria-label="Volver a WeTask">
+            <img src="/logo-wetask.png" alt="WeTask" width={220} height={86} />
+          </Link>
+          <p className="auth-flow-kicker">Onboarding profesional</p>
+          <h1>{selectedServiceLabel} con sello WeTask.</h1>
+          <p>Completa tu perfil paso a paso para activar tu cuenta profesional y comenzar a recibir reservas.</p>
 
-      <section className="panel mvp-lead-panel">
+          <div className="auth-flow-copy-list">
+            <div className="auth-flow-meta-card">
+              <strong>Servicio principal</strong>
+              <span>{selectedServiceLabel}</span>
+            </div>
+            <div className="auth-flow-meta-card">
+              <strong>Etapas clave</strong>
+              <span>Perfil, servicios, cobertura, documentos, pagos y entrenamiento.</span>
+            </div>
+          </div>
+
+          {onboarding ? (
+            <div className="auth-flow-status">
+              <strong>{CLEANING_STATUS_LABELS[onboarding.status]}</strong>
+              <span>{onboarding.adminReviewNotes ? onboarding.adminReviewNotes : "Continúa el flujo para avanzar al siguiente estado."}</span>
+            </div>
+          ) : null}
+        </div>
+
+        <section className="auth-flow-panel auth-flow-panel-wide mvp-lead-panel">
         <div className="panel-head">
           <h2>Onboarding profesional · {selectedServiceLabel}</h2>
           <p>Completa el onboarding de arriba hacia abajo para activar tu perfil y comenzar a recibir reservas.</p>
@@ -1645,6 +1682,7 @@ export default function CleaningOnboardingPage() {
 
         {feedback ? <p className="feedback ok">{feedback}</p> : null}
         {error ? <p className="feedback error">{error}</p> : null}
+        </section>
       </section>
     </main>
   );
