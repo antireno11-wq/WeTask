@@ -80,7 +80,7 @@ export default function ServiciosPage() {
       {loading ? <p className="empty">Cargando categorías...</p> : null}
       {error ? <p className="feedback error">{error}</p> : null}
 
-      <section className="service-grid">
+      <section className="service-grid services-page-grid">
         {categories.map((category) => (
           <Link key={category.id} href={`/services/${category.slug}`} className="service-card services-list-card module-link">
             <div

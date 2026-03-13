@@ -112,19 +112,6 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="panel mvp-section mvp-intro" id="sobre-nosotros-home">
-        <div className="mvp-intro-copy">
-          <h2>Pedimos de todo a casa: comida, paquetes, la compra... pero, ¿y los servicios?</h2>
-          <p>
-            Con WeTask puedes disfrutar de casi cualquier servicio (clases, belleza, fisioterapia y más) sin tener que salir de casa.
-          </p>
-        </div>
-        <div className="mvp-intro-visual-grid" aria-hidden>
-          <div className="mvp-intro-visual main" />
-          <div className="mvp-intro-visual secondary" />
-        </div>
-      </section>
-
       <section className="panel mvp-section" id="por-que">
         <div className="panel-head">
           <h2>¿Por qué WeTask?</h2>

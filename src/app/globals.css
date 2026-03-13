@@ -404,7 +404,7 @@ body {
 .auth-login-pill {
   background: #ffffff !important;
   color: #16395c !important;
-  border-color: #ffffff !important;
+  border-color: #c9dced !important;
 }
 
 .home-search-bar {
@@ -931,6 +931,10 @@ body {
   padding-left: 18px;
   display: grid;
   gap: 6px;
+}
+
+.services-page-grid {
+  margin-top: 10px;
 }
 
 .pro-card-top {
