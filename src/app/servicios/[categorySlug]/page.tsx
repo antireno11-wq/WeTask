@@ -26,6 +26,7 @@ export default function ServicioCategoriaPage() {
   const [addressSuggestions, setAddressSuggestions] = useState<string[]>([]);
   const [autocompleteLoading, setAutocompleteLoading] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [selectedFromAutocomplete, setSelectedFromAutocomplete] = useState(false);
 
   const [selectedServiceId, setSelectedServiceId] = useState(query.get("serviceId") ?? "");
   const [street, setStreet] = useState(query.get("address") ?? "");
@@ -60,6 +61,13 @@ export default function ServicioCategoriaPage() {
 
   useEffect(() => {
     const queryAddress = street.trim();
+    if (selectedFromAutocomplete) {
+      setAddressSuggestions([]);
+      setShowSuggestions(false);
+      setAutocompleteLoading(false);
+      return;
+    }
+
     if (queryAddress.length < 4) {
       setAddressSuggestions([]);
       setShowSuggestions(false);
@@ -98,10 +106,11 @@ export default function ServicioCategoriaPage() {
       controller.abort();
       clearTimeout(timer);
     };
-  }, [city, street]);
+  }, [city, selectedFromAutocomplete, street]);
 
   const selectAddressSuggestion = (value: string) => {
     setStreet(value);
+    setSelectedFromAutocomplete(true);
     setAddressSuggestions([]);
     setShowSuggestions(false);
   };
@@ -155,6 +164,7 @@ export default function ServicioCategoriaPage() {
                   value={street}
                   onChange={(event) => {
                     setStreet(event.target.value);
+                    setSelectedFromAutocomplete(false);
                     setShowSuggestions(true);
                   }}
                   onFocus={() => setShowSuggestions(addressSuggestions.length > 0)}
