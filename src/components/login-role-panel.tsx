@@ -127,7 +127,7 @@ export function LoginRolePanel({
     <section className="login-panel-card">
       <div className="login-panel-head">
         <Link href="/" className="login-brand-mark" aria-label="Volver a WeTask">
-          <img src="/logo-wetask.png" alt="WeTask" width={210} height={82} />
+          <img src="/logo-wetask-cropped.png" alt="WeTask" width={210} height={82} />
         </Link>
         <p className="login-panel-kicker">Tu cuenta WeTask</p>
         <h1>{roleTitle}</h1>
