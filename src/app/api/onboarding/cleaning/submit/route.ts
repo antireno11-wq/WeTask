@@ -17,6 +17,13 @@ function listMissingFields(onboarding: Awaited<ReturnType<typeof prisma.cleaning
 
   const required: Array<[string, unknown]> = [
     ["baseCommune", onboarding.baseCommune],
+    ["referenceAddress", onboarding.referenceAddress],
+    ["documentId", onboarding.documentId],
+    ["birthDate", onboarding.birthDate],
+    ["nationality", onboarding.nationality],
+    ["emergencyContactName", onboarding.emergencyContactName],
+    ["emergencyContactPhone", onboarding.emergencyContactPhone],
+    ["workReferences", onboarding.workReferences],
     ["profilePhotoUrl", onboarding.profilePhotoUrl],
     ["shortDescription", onboarding.shortDescription],
     ["yearsExperience", onboarding.yearsExperience],
@@ -25,10 +32,13 @@ function listMissingFields(onboarding: Awaited<ReturnType<typeof prisma.cleaning
     ["offeredServices", onboarding.offeredServices],
     ["acceptsHomesWithPets", onboarding.acceptsHomesWithPets],
     ["acceptsHomesWithChildren", onboarding.acceptsHomesWithChildren],
+    ["acceptsHomesWithElderly", onboarding.acceptsHomesWithElderly],
     ["worksWithClientProducts", onboarding.worksWithClientProducts],
     ["bringsOwnProducts", onboarding.bringsOwnProducts],
     ["bringsOwnTools", onboarding.bringsOwnTools],
     ["serviceCommunes", onboarding.serviceCommunes],
+    ["coverageLatitude", onboarding.coverageLatitude],
+    ["coverageLongitude", onboarding.coverageLongitude],
     ["maxTravelKm", onboarding.maxTravelKm],
     ["chargesTravelExtra", onboarding.chargesTravelExtra],
     ["availabilityMode", onboarding.availabilityMode],
@@ -40,16 +50,23 @@ function listMissingFields(onboarding: Awaited<ReturnType<typeof prisma.cleaning
     ["weekendSurchargePct", onboarding.weekendSurchargePct],
     ["holidaySurchargePct", onboarding.holidaySurchargePct],
     ["remoteCommuneSurchargeClp", onboarding.remoteCommuneSurchargeClp],
-    ["identityDocumentFile", onboarding.identityDocumentFile],
+    ["identityDocumentFrontFile", onboarding.identityDocumentFrontFile],
+    ["identityDocumentBackFile", onboarding.identityDocumentBackFile],
     ["identitySelfieFile", onboarding.identitySelfieFile],
     ["criminalRecordFile", onboarding.criminalRecordFile],
     ["bankAccountHolder", onboarding.bankAccountHolder],
+    ["bankAccountHolderRut", onboarding.bankAccountHolderRut],
     ["bankName", onboarding.bankName],
     ["bankAccountType", onboarding.bankAccountType],
     ["bankAccountNumber", onboarding.bankAccountNumber],
+    ["billingType", onboarding.billingType],
     ["phoneValidatedAt", onboarding.phoneValidatedAt],
     ["trainingTopics", onboarding.trainingTopics],
-    ["trainingCompletedAt", onboarding.trainingCompletedAt]
+    ["trainingCompletedAt", onboarding.trainingCompletedAt],
+    ["acceptsCancellationPolicy", onboarding.acceptsCancellationPolicy],
+    ["acceptsServiceProtocol", onboarding.acceptsServiceProtocol],
+    ["acceptsDataProcessing", onboarding.acceptsDataProcessing],
+    ["confirmsCleaningScope", onboarding.confirmsCleaningScope]
   ];
 
   return required.filter(([, value]) => missing(value)).map(([field]) => field);

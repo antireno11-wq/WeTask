@@ -486,6 +486,14 @@ model CleaningOnboarding {
   currentStep                Int                      @default(1)
   categorySlug               String                   @default("limpieza")
   baseCommune                String?
+  referenceAddress           String?
+  documentId                 String?
+  birthDate                  DateTime?
+  nationality                String?
+  migrationStatus            String?
+  emergencyContactName       String?
+  emergencyContactPhone      String?
+  workReferences             String?
   profilePhotoUrl            String?
   shortDescription           String?
   yearsExperience            Int?
@@ -494,10 +502,14 @@ model CleaningOnboarding {
   offeredServices            Json?
   acceptsHomesWithPets       Boolean?
   acceptsHomesWithChildren   Boolean?
+  acceptsHomesWithElderly    Boolean?
   worksWithClientProducts    Boolean?
   bringsOwnProducts          Boolean?
   bringsOwnTools             Boolean?
+  languages                  Json?
   serviceCommunes            Json?
+  coverageLatitude           Float?
+  coverageLongitude          Float?
   maxTravelKm                Int?
   chargesTravelExtra         Boolean?
   availabilityMode           CleaningAvailabilityMode?
@@ -511,17 +523,25 @@ model CleaningOnboarding {
   remoteCommuneSurchargeClp  Int?
   deepCleaningHourlyRateClp  Int?
   identityDocumentFile       String?
+  identityDocumentFrontFile  String?
+  identityDocumentBackFile   String?
   identitySelfieFile         String?
   criminalRecordFile         String?
   bankAccountHolder          String?
+  bankAccountHolderRut       String?
   bankName                   String?
   bankAccountType            String?
   bankAccountNumber          String?
+  billingType                String?
   phoneVerificationCodeHash  String?
   phoneVerificationExpiresAt DateTime?
   phoneValidatedAt           DateTime?
   trainingTopics             Json?
   trainingCompletedAt        DateTime?
+  acceptsCancellationPolicy  Boolean?
+  acceptsServiceProtocol     Boolean?
+  acceptsDataProcessing      Boolean?
+  confirmsCleaningScope      Boolean?
   submittedAt                DateTime?
   reviewedAt                 DateTime?
   approvedAt                 DateTime?
@@ -534,3 +554,4 @@ model CleaningOnboarding {
   @@index([status, createdAt])
   @@index([baseCommune])
 }
+

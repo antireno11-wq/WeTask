@@ -1,0 +1,629 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Nomade Chile - Tracker de tareas</title>
+    <style>
+      :root {
+        --bg: #f4f7f9;
+        --card: #ffffff;
+        --line: #d8e3e9;
+        --text: #17343f;
+        --muted: #50717d;
+        --blue: #0d6f80;
+        --red: #b4382e;
+        --yellow: #8f6a09;
+        --green: #1f6e3f;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: "Segoe UI", Tahoma, sans-serif;
+        background: var(--bg);
+        color: var(--text);
+      }
+
+      .container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 18px;
+        display: grid;
+        gap: 14px;
+      }
+
+      .card {
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 14px;
+      }
+
+      h1,
+      h2,
+      h3 {
+        margin: 0;
+      }
+
+      .subtitle {
+        margin-top: 6px;
+        color: var(--muted);
+        font-size: 14px;
+      }
+
+      .grid {
+        display: grid;
+        gap: 10px;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      }
+
+      label {
+        display: block;
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 700;
+        margin-bottom: 4px;
+      }
+
+      input,
+      select,
+      textarea,
+      button {
+        width: 100%;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 9px;
+        font-size: 13px;
+        background: #fff;
+      }
+
+      textarea {
+        min-height: 70px;
+        resize: vertical;
+      }
+
+      .actions {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        align-items: flex-end;
+      }
+
+      .btn {
+        width: auto;
+        border: 0;
+        color: #fff;
+        background: var(--blue);
+        font-weight: 700;
+        cursor: pointer;
+        padding: 10px 14px;
+      }
+
+      .btn.secondary {
+        background: #365460;
+      }
+
+      .btn.danger {
+        background: #f2d4d0;
+        color: #7b271f;
+        border: 1px solid #e7b9b4;
+      }
+
+      .summary {
+        display: grid;
+        gap: 10px;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      }
+
+      .metric {
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 10px;
+        background: #f9fcfd;
+      }
+
+      .metric-title {
+        font-size: 12px;
+        color: var(--muted);
+      }
+
+      .metric-value {
+        margin-top: 4px;
+        font-size: 26px;
+        font-weight: 800;
+      }
+
+      .table-wrap {
+        overflow-x: auto;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        min-width: 980px;
+      }
+
+      th,
+      td {
+        border-bottom: 1px solid var(--line);
+        padding: 8px;
+        text-align: left;
+        font-size: 12px;
+        vertical-align: middle;
+      }
+
+      th {
+        color: #45636f;
+        background: #f3f8fa;
+      }
+
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        border-radius: 999px;
+        padding: 4px 8px;
+        font-size: 11px;
+        font-weight: 800;
+      }
+
+      .dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: currentColor;
+      }
+
+      .red {
+        color: var(--red);
+        background: #fae9e7;
+      }
+
+      .yellow {
+        color: var(--yellow);
+        background: #fcf3dd;
+      }
+
+      .green {
+        color: var(--green);
+        background: #e7f5ec;
+      }
+
+      .muted {
+        color: var(--muted);
+      }
+
+      @media (max-width: 780px) {
+        .container {
+          padding: 10px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="container">
+      <section class="card">
+        <h1>Tracker simple de tareas</h1>
+        <p class="subtitle">Nomade Chile | oficina y campamento</p>
+      </section>
+
+      <section class="card">
+        <h2>1. Crear tarea</h2>
+        <div class="grid" style="margin-top: 10px">
+          <div>
+            <label for="titulo">Titulo</label>
+            <input id="titulo" type="text" placeholder="Ej: Enviar informe semanal" />
+          </div>
+          <div>
+            <label for="proyecto">Proyecto</label>
+            <input id="proyecto" type="text" placeholder="Ej: Quebrada Blanca" />
+          </div>
+          <div>
+            <label for="tipo">Tipo</label>
+            <select id="tipo">
+              <option value="Oficina">Oficina</option>
+              <option value="Campamento">Campamento</option>
+            </select>
+          </div>
+          <div>
+            <label for="responsable">Responsable</label>
+            <input id="responsable" type="text" placeholder="Nombre" />
+          </div>
+          <div>
+            <label for="prioridad">Prioridad</label>
+            <select id="prioridad">
+              <option value="Alta">Alta</option>
+              <option value="Media" selected>Media</option>
+              <option value="Baja">Baja</option>
+            </select>
+          </div>
+          <div>
+            <label for="fecha">Fecha compromiso</label>
+            <input id="fecha" type="date" />
+          </div>
+          <div>
+            <label for="estado">Estado</label>
+            <select id="estado">
+              <option value="Pendiente" selected>Pendiente</option>
+              <option value="En curso">En curso</option>
+              <option value="Vencida">Vencida</option>
+              <option value="Cerrada">Cerrada</option>
+            </select>
+          </div>
+          <div style="grid-column: 1 / -1">
+            <label for="descripcion">Descripcion breve</label>
+            <textarea id="descripcion" placeholder="Detalle corto de la tarea"></textarea>
+          </div>
+        </div>
+        <div class="actions" style="margin-top: 10px">
+          <button id="crear" class="btn" type="button">Crear tarea</button>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>2. Resumen simple</h2>
+        <div class="summary" id="summary" style="margin-top: 10px"></div>
+      </section>
+
+      <section class="card">
+        <h2>3. Listado de tareas</h2>
+        <div class="grid" style="margin-top: 10px">
+          <div>
+            <label for="f-proyecto">Filtro proyecto</label>
+            <select id="f-proyecto"></select>
+          </div>
+          <div>
+            <label for="f-responsable">Filtro responsable</label>
+            <select id="f-responsable"></select>
+          </div>
+          <div>
+            <label for="f-tipo">Filtro tipo</label>
+            <select id="f-tipo">
+              <option value="">Todos</option>
+              <option value="Oficina">Oficina</option>
+              <option value="Campamento">Campamento</option>
+            </select>
+          </div>
+          <div>
+            <label for="f-estado">Filtro estado</label>
+            <select id="f-estado">
+              <option value="">Todos</option>
+              <option value="Pendiente">Pendiente</option>
+              <option value="En curso">En curso</option>
+              <option value="Vencida">Vencida</option>
+              <option value="Cerrada">Cerrada</option>
+            </select>
+          </div>
+          <div class="actions">
+            <button id="limpiar" class="btn secondary" type="button">Limpiar filtros</button>
+          </div>
+        </div>
+
+        <div class="table-wrap" style="margin-top: 10px">
+          <table>
+            <thead>
+              <tr>
+                <th>Titulo</th>
+                <th>Descripcion</th>
+                <th>Proyecto</th>
+                <th>Tipo</th>
+                <th>Responsable</th>
+                <th>Prioridad</th>
+                <th>Fecha compromiso</th>
+                <th>Estado</th>
+                <th>Semaforo</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="rows"></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+
+    <script>
+      const STORAGE_KEY = "nomade_tareas_minimas_v1";
+
+      const defaultTasks = [
+        {
+          id: uid(),
+          titulo: "Enviar resumen diario",
+          descripcion: "Resumen al jefe de operaciones",
+          proyecto: "Quebrada Blanca",
+          tipo: "Oficina",
+          responsable: "Valentina",
+          prioridad: "Alta",
+          fechaCompromiso: offsetDate(0),
+          estado: "Pendiente"
+        },
+        {
+          id: uid(),
+          titulo: "Revisar stock de agua",
+          descripcion: "Confirmar nivel de estanques",
+          proyecto: "Sierra Norte",
+          tipo: "Campamento",
+          responsable: "Nicolas",
+          prioridad: "Media",
+          fechaCompromiso: offsetDate(-1),
+          estado: "En curso"
+        },
+        {
+          id: uid(),
+          titulo: "Cerrar ticket mantencion",
+          descripcion: "Validar cierre con fotos",
+          proyecto: "Atacama Sur",
+          tipo: "Campamento",
+          responsable: "Karen",
+          prioridad: "Baja",
+          fechaCompromiso: offsetDate(-2),
+          estado: "Cerrada"
+        }
+      ];
+
+      let tasks = loadTasks();
+
+      const el = {
+        titulo: document.getElementById("titulo"),
+        descripcion: document.getElementById("descripcion"),
+        proyecto: document.getElementById("proyecto"),
+        tipo: document.getElementById("tipo"),
+        responsable: document.getElementById("responsable"),
+        prioridad: document.getElementById("prioridad"),
+        fecha: document.getElementById("fecha"),
+        estado: document.getElementById("estado"),
+        crear: document.getElementById("crear"),
+        limpiar: document.getElementById("limpiar"),
+        fProyecto: document.getElementById("f-proyecto"),
+        fResponsable: document.getElementById("f-responsable"),
+        fTipo: document.getElementById("f-tipo"),
+        fEstado: document.getElementById("f-estado"),
+        summary: document.getElementById("summary"),
+        rows: document.getElementById("rows")
+      };
+
+      function loadTasks() {
+        try {
+          const raw = localStorage.getItem(STORAGE_KEY);
+          if (!raw) return structuredClone(defaultTasks);
+          return JSON.parse(raw);
+        } catch {
+          return structuredClone(defaultTasks);
+        }
+      }
+
+      function saveTasks() {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
+      }
+
+      function uid() {
+        if (typeof crypto !== "undefined" && crypto.randomUUID) {
+          return crypto.randomUUID();
+        }
+        return Math.random().toString(36).slice(2, 10);
+      }
+
+      function offsetDate(days) {
+        const d = new Date();
+        d.setHours(0, 0, 0, 0);
+        d.setDate(d.getDate() + days);
+        return dateToIso(d);
+      }
+
+      function dateToIso(date) {
+        const y = date.getFullYear();
+        const m = String(date.getMonth() + 1).padStart(2, "0");
+        const d = String(date.getDate()).padStart(2, "0");
+        return `${y}-${m}-${d}`;
+      }
+
+      function todayIso() {
+        return dateToIso(new Date());
+      }
+
+      function enforceRules() {
+        const today = todayIso();
+        let changed = false;
+
+        tasks = tasks.map((task) => {
+          if (task.estado !== "Cerrada" && task.fechaCompromiso && task.fechaCompromiso < today && task.estado !== "Vencida") {
+            changed = true;
+            return { ...task, estado: "Vencida" };
+          }
+          return task;
+        });
+
+        if (changed) saveTasks();
+      }
+
+      function unique(values) {
+        return [...new Set(values.filter((value) => value && value.trim() !== ""))].sort((a, b) => a.localeCompare(b, "es"));
+      }
+
+      function getFilters() {
+        return {
+          proyecto: el.fProyecto.value,
+          responsable: el.fResponsable.value,
+          tipo: el.fTipo.value,
+          estado: el.fEstado.value
+        };
+      }
+
+      function applyFilters(list) {
+        const f = getFilters();
+        return list.filter((task) => {
+          if (f.proyecto && task.proyecto !== f.proyecto) return false;
+          if (f.responsable && task.responsable !== f.responsable) return false;
+          if (f.tipo && task.tipo !== f.tipo) return false;
+          if (f.estado && task.estado !== f.estado) return false;
+          return true;
+        });
+      }
+
+      function semaforo(task) {
+        if (task.estado === "Cerrada") return { color: "green", text: "Verde" };
+        if (task.estado === "Vencida") return { color: "red", text: "Rojo" };
+
+        const today = todayIso();
+        if (task.fechaCompromiso === today) return { color: "yellow", text: "Amarillo" };
+        return { color: "green", text: "Verde" };
+      }
+
+      function escapeHtml(value) {
+        return String(value ?? "")
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;")
+          .replaceAll('"', "&quot;");
+      }
+
+      function renderFilterOptions() {
+        const proyectoActual = el.fProyecto.value;
+        const responsableActual = el.fResponsable.value;
+
+        const proyectos = unique(tasks.map((task) => task.proyecto));
+        const responsables = unique(tasks.map((task) => task.responsable));
+
+        el.fProyecto.innerHTML = `<option value="">Todos</option>${proyectos
+          .map((item) => `<option value="${escapeHtml(item)}">${escapeHtml(item)}</option>`)
+          .join("")}`;
+
+        el.fResponsable.innerHTML = `<option value="">Todos</option>${responsables
+          .map((item) => `<option value="${escapeHtml(item)}">${escapeHtml(item)}</option>`)
+          .join("")}`;
+
+        if (proyectos.includes(proyectoActual)) el.fProyecto.value = proyectoActual;
+        if (responsables.includes(responsableActual)) el.fResponsable.value = responsableActual;
+      }
+
+      function renderSummary(filteredTasks) {
+        const today = todayIso();
+        const pendientes = filteredTasks.filter((task) => task.estado === "Pendiente" || task.estado === "En curso").length;
+        const vencidas = filteredTasks.filter((task) => task.estado === "Vencida").length;
+        const vencenHoy = filteredTasks.filter((task) => task.estado !== "Cerrada" && task.fechaCompromiso === today).length;
+        const cerradas = filteredTasks.filter((task) => task.estado === "Cerrada").length;
+
+        el.summary.innerHTML = `
+          <div class="metric"><div class="metric-title">Tareas pendientes</div><div class="metric-value">${pendientes}</div><span class="badge yellow"><span class="dot"></span>Amarillo</span></div>
+          <div class="metric"><div class="metric-title">Tareas vencidas</div><div class="metric-value">${vencidas}</div><span class="badge red"><span class="dot"></span>Rojo</span></div>
+          <div class="metric"><div class="metric-title">Tareas que vencen hoy</div><div class="metric-value">${vencenHoy}</div><span class="badge yellow"><span class="dot"></span>Amarillo</span></div>
+          <div class="metric"><div class="metric-title">Tareas cerradas</div><div class="metric-value">${cerradas}</div><span class="badge green"><span class="dot"></span>Verde</span></div>
+        `;
+      }
+
+      function renderRows(filteredTasks) {
+        if (filteredTasks.length === 0) {
+          el.rows.innerHTML = `<tr><td colspan="10" class="muted">No hay tareas para los filtros seleccionados.</td></tr>`;
+          return;
+        }
+
+        el.rows.innerHTML = filteredTasks
+          .map((task) => {
+            const s = semaforo(task);
+            return `
+              <tr>
+                <td>${escapeHtml(task.titulo)}</td>
+                <td>${escapeHtml(task.descripcion)}</td>
+                <td>${escapeHtml(task.proyecto)}</td>
+                <td>${escapeHtml(task.tipo)}</td>
+                <td>${escapeHtml(task.responsable)}</td>
+                <td>${escapeHtml(task.prioridad)}</td>
+                <td>${escapeHtml(task.fechaCompromiso)}</td>
+                <td>
+                  <select onchange="updateEstado('${task.id}', this.value)">
+                    ${["Pendiente", "En curso", "Vencida", "Cerrada"]
+                      .map((estado) => `<option value="${estado}" ${task.estado === estado ? "selected" : ""}>${estado}</option>`)
+                      .join("")}
+                  </select>
+                </td>
+                <td><span class="badge ${s.color}"><span class="dot"></span>${s.text}</span></td>
+                <td class="actions">
+                  <button class="btn secondary" onclick="cerrarTarea('${task.id}')" type="button">Cerrar</button>
+                  <button class="btn danger" onclick="eliminarTarea('${task.id}')" type="button">Eliminar</button>
+                </td>
+              </tr>
+            `;
+          })
+          .join("");
+      }
+
+      function render() {
+        enforceRules();
+        renderFilterOptions();
+        const filtered = applyFilters(tasks);
+        renderSummary(filtered);
+        renderRows(filtered);
+      }
+
+      function clearForm() {
+        el.titulo.value = "";
+        el.descripcion.value = "";
+        el.proyecto.value = "";
+        el.tipo.value = "Oficina";
+        el.responsable.value = "";
+        el.prioridad.value = "Media";
+        el.fecha.value = "";
+        el.estado.value = "Pendiente";
+      }
+
+      el.crear.addEventListener("click", () => {
+        const nueva = {
+          id: uid(),
+          titulo: el.titulo.value.trim(),
+          descripcion: el.descripcion.value.trim(),
+          proyecto: el.proyecto.value.trim(),
+          tipo: el.tipo.value,
+          responsable: el.responsable.value.trim(),
+          prioridad: el.prioridad.value,
+          fechaCompromiso: el.fecha.value,
+          estado: el.estado.value
+        };
+
+        if (!nueva.titulo || !nueva.proyecto || !nueva.responsable || !nueva.fechaCompromiso) {
+          alert("Completa titulo, proyecto, responsable y fecha compromiso.");
+          return;
+        }
+
+        tasks.unshift(nueva);
+        saveTasks();
+        clearForm();
+        render();
+      });
+
+      [el.fProyecto, el.fResponsable, el.fTipo, el.fEstado].forEach((control) => {
+        control.addEventListener("change", render);
+      });
+
+      el.limpiar.addEventListener("click", () => {
+        el.fProyecto.value = "";
+        el.fResponsable.value = "";
+        el.fTipo.value = "";
+        el.fEstado.value = "";
+        render();
+      });
+
+      window.updateEstado = (id, estado) => {
+        tasks = tasks.map((task) => (task.id === id ? { ...task, estado } : task));
+        saveTasks();
+        render();
+      };
+
+      window.cerrarTarea = (id) => {
+        tasks = tasks.map((task) => (task.id === id ? { ...task, estado: "Cerrada" } : task));
+        saveTasks();
+        render();
+      };
+
+      window.eliminarTarea = (id) => {
+        tasks = tasks.filter((task) => task.id !== id);
+        saveTasks();
+        render();
+      };
+
+      render();
+    </script>
+  </body>
+</html>

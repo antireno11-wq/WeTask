@@ -21,8 +21,11 @@ async function ensureCleaningTaskerService(userId: string) {
       bio: onboarding.shortDescription,
       isVerified: true,
       verificationStatus: "APPROVED",
+      coverageStreet: onboarding.referenceAddress,
       coverageComuna: onboarding.baseCommune,
       coverageCity: "Santiago",
+      coverageLatitude: onboarding.coverageLatitude,
+      coverageLongitude: onboarding.coverageLongitude,
       serviceRadiusKm: onboarding.maxTravelKm ?? 8,
       hourlyRateFromClp: onboarding.hourlyRateClp
     },
@@ -30,7 +33,10 @@ async function ensureCleaningTaskerService(userId: string) {
       bio: onboarding.shortDescription,
       isVerified: true,
       verificationStatus: "APPROVED",
+      coverageStreet: onboarding.referenceAddress,
       coverageComuna: onboarding.baseCommune,
+      coverageLatitude: onboarding.coverageLatitude ?? undefined,
+      coverageLongitude: onboarding.coverageLongitude ?? undefined,
       serviceRadiusKm: onboarding.maxTravelKm ?? undefined,
       hourlyRateFromClp: onboarding.hourlyRateClp
     }

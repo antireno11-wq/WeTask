@@ -11,7 +11,12 @@ export const CLEANING_EXPERIENCE_TYPES = [
   "clases_escolares",
   "clases_musica",
   "clases_idiomas",
-  "clases_online"
+  "clases_online",
+  "cuidado_mascotas",
+  "paseo_perros",
+  "cuidado_infantil",
+  "entrenamiento_funcional",
+  "pintura_interior"
 ] as const;
 
 export const CLEANING_SERVICE_TYPES = [
@@ -30,7 +35,14 @@ export const CLEANING_SERVICE_TYPES = [
   "clases_apoyo_escolar",
   "clases_musica",
   "clases_idiomas",
-  "clases_online"
+  "clases_online",
+  "paseo_perros",
+  "cuidado_mascotas",
+  "babysitter_horas",
+  "profesor_particular",
+  "personal_trainer",
+  "pintura_basica",
+  "planchado_por_hora"
 ] as const;
 
 export const CLEANING_WEEK_DAYS = [

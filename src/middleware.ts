@@ -86,8 +86,21 @@ export async function middleware(req: NextRequest) {
     if (!hasRequiredRole(session.role, ["PRO", "ADMIN"])) return redirectToLogin(req, "tasker");
   }
 
+  if (pathname.startsWith("/admin")) {
+    if (!hasRequiredRole(session.role, ["ADMIN"])) return redirectToLogin(req, "cliente");
+  }
+
   if (pathname.startsWith("/reservar") || pathname.startsWith("/booking")) {
     if (!hasRequiredRole(session.role, ["CUSTOMER", "ADMIN"])) return redirectToLogin(req, "cliente");
+  }
+
+  if (pathname.startsWith("/api/admin")) {
+    if (!session.userId || !session.role) {
+      return NextResponse.json({ error: "No autenticado" }, { status: 401 });
+    }
+    if (!hasRequiredRole(session.role, ["ADMIN"])) {
+      return NextResponse.json({ error: "No autorizado" }, { status: 403 });
+    }
   }
 
   if (pathname.startsWith("/api/marketplace") && !isPublicMarketplaceApi(pathname)) {
@@ -112,5 +125,13 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/cliente/:path*", "/pro/:path*", "/reservar/:path*", "/booking/:path*", "/api/marketplace/:path*"]
+  matcher: [
+    "/cliente/:path*",
+    "/pro/:path*",
+    "/admin/:path*",
+    "/reservar/:path*",
+    "/booking/:path*",
+    "/api/admin/:path*",
+    "/api/marketplace/:path*"
+  ]
 };

@@ -128,6 +128,7 @@ export async function PATCH(req: NextRequest) {
         yearsExperience: parsed.yearsExperience,
         workMode: parsed.workMode,
         experienceTypes: parsed.experienceTypes,
+        referenceAddress: parsed.referenceAddress.trim(),
         currentStep: Math.max(onboarding.currentStep, 3)
       };
     }
@@ -138,9 +139,11 @@ export async function PATCH(req: NextRequest) {
         offeredServices: parsed.offeredServices,
         acceptsHomesWithPets: parsed.acceptsHomesWithPets,
         acceptsHomesWithChildren: parsed.acceptsHomesWithChildren,
+        acceptsHomesWithElderly: parsed.acceptsHomesWithElderly,
         worksWithClientProducts: parsed.worksWithClientProducts,
         bringsOwnProducts: parsed.bringsOwnProducts,
         bringsOwnTools: parsed.bringsOwnTools,
+        languages: parsed.languages,
         currentStep: Math.max(onboarding.currentStep, 4)
       };
     }
@@ -149,7 +152,10 @@ export async function PATCH(req: NextRequest) {
       const parsed = cleaningOnboardingStage4Schema.parse(input.payload);
       data = {
         baseCommune: parsed.baseCommune.trim(),
+        referenceAddress: parsed.referenceAddress.trim(),
         serviceCommunes: parsed.serviceCommunes,
+        coverageLatitude: parsed.coverageLatitude,
+        coverageLongitude: parsed.coverageLongitude,
         maxTravelKm: parsed.maxTravelKm,
         chargesTravelExtra: parsed.chargesTravelExtra,
         currentStep: Math.max(onboarding.currentStep, 5)
@@ -183,13 +189,24 @@ export async function PATCH(req: NextRequest) {
     if (input.step === 7) {
       const parsed = cleaningOnboardingStage7Schema.parse(input.payload);
       data = {
-        identityDocumentFile: parsed.identityDocumentFile,
+        documentId: parsed.documentId.trim(),
+        birthDate: parsed.birthDate,
+        nationality: parsed.nationality.trim(),
+        migrationStatus: parsed.migrationStatus?.trim() || null,
+        emergencyContactName: parsed.emergencyContactName.trim(),
+        emergencyContactPhone: parsed.emergencyContactPhone.trim(),
+        workReferences: parsed.workReferences.trim(),
+        identityDocumentFile: parsed.identityDocumentFrontFile,
+        identityDocumentFrontFile: parsed.identityDocumentFrontFile,
+        identityDocumentBackFile: parsed.identityDocumentBackFile,
         identitySelfieFile: parsed.identitySelfieFile,
         criminalRecordFile: parsed.criminalRecordFile,
         bankAccountHolder: parsed.bankAccountHolder.trim(),
+        bankAccountHolderRut: parsed.bankAccountHolderRut.trim(),
         bankName: parsed.bankName.trim(),
         bankAccountType: parsed.bankAccountType,
         bankAccountNumber: parsed.bankAccountNumber.trim(),
+        billingType: parsed.billingType,
         currentStep: Math.max(onboarding.currentStep, 8)
       };
     }
@@ -199,6 +216,10 @@ export async function PATCH(req: NextRequest) {
       data = {
         trainingTopics: parsed.completedTopics,
         trainingCompletedAt: new Date(),
+        acceptsCancellationPolicy: parsed.acceptsCancellationPolicy,
+        acceptsServiceProtocol: parsed.acceptsServiceProtocol,
+        acceptsDataProcessing: parsed.acceptsDataProcessing,
+        confirmsCleaningScope: parsed.confirmsCleaningScope,
         currentStep: Math.max(onboarding.currentStep, 9)
       };
     }
@@ -214,12 +235,18 @@ export async function PATCH(req: NextRequest) {
         where: { userId },
         create: {
           userId,
+          coverageStreet: payload.referenceAddress,
           coverageComuna: payload.baseCommune,
           coverageCity: "Santiago",
+          coverageLatitude: payload.coverageLatitude,
+          coverageLongitude: payload.coverageLongitude,
           serviceRadiusKm: payload.maxTravelKm
         },
         update: {
+          coverageStreet: payload.referenceAddress,
           coverageComuna: payload.baseCommune,
+          coverageLatitude: payload.coverageLatitude,
+          coverageLongitude: payload.coverageLongitude,
           serviceRadiusKm: payload.maxTravelKm
         }
       });
