@@ -13,6 +13,15 @@ const SANTIAGO_BOUNDS = {
   maxLng: -70.45
 };
 const CHILE_CITIES = ["Santiago", "Valparaiso", "Vina del Mar", "Concepcion", "La Serena", "Antofagasta", "Temuco", "Puerto Montt"];
+const PRO_STATUS_LABELS: Record<string, string> = {
+  ACCEPTED: "Aceptado",
+  IN_PROGRESS: "En curso",
+  COMPLETED: "Completado",
+  CANCELLED: "Cancelado",
+  CONFIRMED: "Confirmado",
+  ASSIGNED: "Asignado",
+  PENDING: "Pendiente"
+};
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
@@ -83,6 +92,16 @@ function combineLocalDateAndTime(date: string, time: string) {
   return new Date(`${date}T${time}:00`);
 }
 
+function formatBookingDate(value: string) {
+  return new Date(value).toLocaleString("es-CL", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    hour: "2-digit",
+    minute: "2-digit"
+  });
+}
+
 export default function ProPage() {
   const [proId, setProId] = useState("");
   const [bookings, setBookings] = useState<Booking[]>([]);
@@ -143,6 +162,13 @@ export default function ProPage() {
     }
     return Array.from(map.entries()).sort(([a], [b]) => a.localeCompare(b));
   }, [slots]);
+
+  const upcomingBookings = useMemo(
+    () => bookings.filter((item) => new Date(item.scheduledAt).getTime() >= Date.now() && item.status !== "COMPLETED"),
+    [bookings]
+  );
+  const completedBookings = useMemo(() => bookings.filter((item) => item.status === "COMPLETED"), [bookings]);
+  const availableSlotsCount = useMemo(() => slots.filter((item) => item.isAvailable).length, [slots]);
 
   const applyProfile = (nextProfile: ProProfile | null, nextServiceCommunes: string[] = []) => {
     setProfile(nextProfile);
@@ -229,8 +255,7 @@ export default function ProPage() {
     void bootstrap();
   }, []);
 
-  const reloadData = async (event: FormEvent) => {
-    event.preventDefault();
+  const reloadData = async () => {
     setFeedback("");
     setError("");
     try {
@@ -311,8 +336,7 @@ export default function ProPage() {
 
       const data = (await response.json()) as { slot?: ProSlot; error?: string; detail?: string };
       if (!response.ok || !data.slot) throw new Error(data.detail || data.error || "No se pudo crear bloque horario");
-      const createdSlot = data.slot;
-      setSlots((prev) => [...prev, createdSlot].sort((a, b) => a.startsAt.localeCompare(b.startsAt)));
+      setSlots((prev) => [...prev, data.slot!].sort((a, b) => a.startsAt.localeCompare(b.startsAt)));
       setFeedback("Bloque horario creado.");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error inesperado");
@@ -364,7 +388,7 @@ export default function ProPage() {
       const data = (await response.json()) as { booking?: { id: string; status: string }; error?: string; detail?: string };
       if (!response.ok || !data.booking) throw new Error(data.detail || data.error || "No se pudo actualizar estado");
       setBookings((prev) => prev.map((item) => (item.id === bookingId ? { ...item, status: data.booking!.status } : item)));
-      setFeedback(`Estado actualizado: ${data.booking.status}`);
+      setFeedback(`Estado actualizado: ${PRO_STATUS_LABELS[data.booking.status] ?? data.booking.status}`);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error inesperado");
     }
@@ -402,304 +426,389 @@ export default function ProPage() {
   };
 
   return (
-    <main className="page market-shell">
-      <MarketNav />
-      <section className="panel">
-        <div className="panel-head">
-          <h2>Panel Profesional</h2>
-          <p>Onboarding Tasker, calendario editable, reservas y payouts.</p>
-        </div>
+    <main className="auth-flow-screen auth-flow-screen-scroll market-shell-auth">
+      <div className="auth-flow-backdrop" aria-hidden />
 
-        <form className="query-row query-single" onSubmit={reloadData}>
-          <label>
-            Pro ID
-            <input required value={proId} onChange={(e) => setProId(e.target.value)} placeholder="cuid profesional" />
-          </label>
-          <button type="submit" className="cta ghost">
-            Recargar panel
-          </button>
-        </form>
-      </section>
+      <div className="login-screen-content market-shell-auth-content">
+        <MarketNav />
 
-      <section className="panel">
-        <div className="panel-head">
-          <h2>Perfil Tasker</h2>
-          <p>Configura tu zona, radio, tarifa y bio.</p>
-        </div>
+        <section className="auth-flow-shell auth-flow-shell-wide client-dashboard-hero">
+          <div className="auth-flow-copy client-dashboard-copy">
+            <p className="auth-flow-kicker">Panel profesional</p>
+            <h1>Gestiona tu operación diaria con el look nuevo de WeTask.</h1>
+            <p>Controla tu perfil, cobertura, agenda, reservas y pagos desde un panel más claro y más fácil de usar.</p>
 
-        <div className="grid-form">
-          <label className="full">
-            Bio
-            <textarea value={bio} onChange={(e) => setBio(e.target.value)} placeholder="Experiencia, especialidad, herramientas." />
-          </label>
-          <label>
-            Direccion
-            <input
-              value={coverageStreet}
-              onChange={(e) => {
-                setManualCoveragePoint(false);
-                setCoverageStreet(e.target.value);
-              }}
-              placeholder="Calle y numero"
-            />
-          </label>
-          <label>
-            Comuna
-            <input
-              value={coverageComuna}
-              onChange={(e) => {
-                setManualCoveragePoint(false);
-                setCoverageComuna(e.target.value);
-              }}
-              placeholder="Providencia"
-            />
-          </label>
-          <div className="full">
-            <p className="field-label">Comunas donde trabajas</p>
-            <div className="inline-checks">
-              {ACTIVE_MVP_COMMUNES.map((commune) => (
-                <label key={commune}>
-                  <input
-                    type="checkbox"
-                    checked={serviceCommunes.includes(commune)}
-                    onChange={(event) => {
-                      if (event.target.checked) {
-                        setServiceCommunes((current) => Array.from(new Set([...current, commune])));
-                        return;
-                      }
-                      setServiceCommunes((current) => current.filter((item) => item !== commune));
-                    }}
-                  />
-                  {commune}
-                </label>
-              ))}
+            <div className="auth-flow-copy-list client-dashboard-summary">
+              <div className="auth-flow-meta-card">
+                <strong>Próximas reservas</strong>
+                <span>{upcomingBookings.length} servicio(s) activos o por realizar.</span>
+              </div>
+              <div className="auth-flow-meta-card">
+                <strong>Servicios completados</strong>
+                <span>{completedBookings.length} trabajo(s) finalizado(s).</span>
+              </div>
+              <div className="auth-flow-meta-card">
+                <strong>Bloques disponibles</strong>
+                <span>{availableSlotsCount} horario(s) abierto(s) para nuevas reservas.</span>
+              </div>
+            </div>
+
+            <div className="auth-flow-actions">
+              <button className="cta ghost" type="button" onClick={() => void reloadData()} disabled={!proId}>
+                Actualizar panel
+              </button>
             </div>
           </div>
-          <label>
-            Ciudad
-            <select
-              value={coverageCity}
-              onChange={(e) => {
-                setManualCoveragePoint(false);
-                setCoverageCity(e.target.value);
-              }}
-            >
-              {cityOptions.map((city) => (
-                <option key={city} value={city}>
-                  {city}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            Radio cobertura (km)
-            <input type="number" min={2} max={60} value={serviceRadiusKm} onChange={(e) => setServiceRadiusKm(Number(e.target.value) || 8)} />
-          </label>
-          <label>
-            Tarifa desde (CLP/h)
-            <input
-              type="number"
-              min={5000}
-              value={hourlyRateFromClp}
-              onChange={(e) => setHourlyRateFromClp(Number(e.target.value) || 12000)}
-            />
-          </label>
-          <div className="full coverage-map-card">
-            <div className="coverage-map-head">
-              <h3>Mapa de cobertura</h3>
-              <p>Haz click para mover tu punto base. El radio se muestra en vivo.</p>
+
+          <section className="auth-flow-panel auth-flow-panel-wide client-dashboard-profile-panel">
+            <div className="panel-head client-dashboard-panel-head">
+              <h2>Tu operación hoy</h2>
+              <p>Resumen rápido de tu perfil y cobertura actual.</p>
             </div>
-            <div
-              className="coverage-map-wrap coverage-map-interactive"
-              onClick={onCoverageMapClick}
-              onKeyDown={(event) => {
-                if (event.key !== "Enter" && event.key !== " ") return;
-                event.preventDefault();
-                const rect = event.currentTarget.getBoundingClientRect();
-                updateCoverageFromPointer(rect.left + rect.width / 2, rect.top + rect.height / 2, rect);
-              }}
-              role="button"
-              tabIndex={0}
-              aria-label="Seleccionar punto de cobertura en el mapa"
-            >
-              <iframe
-                title="Mapa de cobertura profesional"
-                src={mapEmbedUrl}
-                loading="lazy"
-                className="coverage-map-frame"
-                referrerPolicy="no-referrer-when-downgrade"
-              />
-              <span className="coverage-pin" style={{ left: `${markerLeftPct}%`, top: `${markerTopPct}%` }} aria-hidden>
-                <span className="coverage-pin-radius" style={{ width: `${radiusPx}px`, height: `${radiusPx}px` }} />
-                <span className="coverage-pin-dot" />
-              </span>
+
+            <div className="client-profile-box client-profile-box-auth pro-dashboard-profile-box">
+              <div className="client-photo-frame pro-dashboard-badge" aria-hidden>
+                <span>{profile?.isVerified ? "PRO" : "TASKER"}</span>
+              </div>
+              <div className="client-profile-copy">
+                <h3>{coverageComuna || "Tu perfil profesional"}</h3>
+                <p>Dirección base</p>
+                <strong className="client-profile-address">
+                  {[coverageStreet || "Sin dirección", coverageComuna || "Sin comuna", coverageCity].filter(Boolean).join(", ")}
+                </strong>
+                <p>Tarifa desde</p>
+                <strong className="client-profile-address">{clp(hourlyRateFromClp)}/hora</strong>
+                <div className="client-profile-actions">
+                  <span className={`status ${profile?.isVerified ? "status-completed" : "status-pending"}`}>
+                    {profile?.isVerified ? "Verificado" : "Pendiente de verificación"}
+                  </span>
+                  <span className="status status-accepted">{serviceCommunes.length || 0} comuna(s)</span>
+                </div>
+              </div>
             </div>
-            <p className="coverage-meta">
-              Direccion base: {coverageStreet || "Sin direccion"}, {coverageComuna || "Sin comuna"}, {coverageCity} · Radio {serviceRadiusKm} km
-            </p>
-          </div>
-        </div>
+          </section>
+        </section>
 
-        <div className="cta-row">
-          <button className="cta" type="button" onClick={saveProfile}>
-            Guardar perfil
-          </button>
-          <span className={`status ${profile?.isVerified ? "status-completed" : "status-pending"}`}>
-            {profile?.isVerified ? "Verificado" : "Pendiente verificacion"}
-          </span>
-        </div>
-      </section>
+        <div className="page client-dashboard-sections">
+          <section className="auth-flow-panel client-dashboard-section">
+            <div className="panel-head client-dashboard-panel-head">
+              <h2>Resumen rápido</h2>
+              <p>Vista general de tu actividad actual.</p>
+            </div>
 
-      <section className="panel">
-        <div className="panel-head">
-          <h2>Calendario de disponibilidad</h2>
-          <p>Crea bloques disponibles y habilita/deshabilita con click.</p>
-        </div>
+            <div className="module-grid client-dashboard-metrics">
+              <article className="module-card client-dashboard-metric">
+                <h3>Reservas activas</h3>
+                <p>{upcomingBookings.length} servicio(s)</p>
+              </article>
+              <article className="module-card client-dashboard-metric">
+                <h3>Completadas</h3>
+                <p>{completedBookings.length} servicio(s)</p>
+              </article>
+              <article className="module-card client-dashboard-metric">
+                <h3>Notificaciones</h3>
+                <p>{notifications.length} aviso(s)</p>
+              </article>
+            </div>
+          </section>
 
-        <div className="grid-form">
-          <label>
-            Fecha
-            <input type="date" value={slotDate} onChange={(e) => setSlotDate(e.target.value)} />
-          </label>
-          <label>
-            Hora inicio
-            <input type="time" value={slotTime} onChange={(e) => setSlotTime(e.target.value)} />
-          </label>
-          <label>
-            Duracion
-            <select value={slotDurationMin} onChange={(e) => setSlotDurationMin(Number(e.target.value))}>
-              <option value={30}>30 min</option>
-              <option value={60}>60 min</option>
-              <option value={90}>90 min</option>
-              <option value={120}>120 min</option>
-              <option value={180}>180 min</option>
-              <option value={240}>240 min</option>
-            </select>
-          </label>
-          <label>
-            Servicio (opcional)
-            <select value={slotServiceId} onChange={(e) => setSlotServiceId(e.target.value)}>
-              <option value="">Cualquier servicio</option>
-              {services.map((service) => (
-                <option key={service.id} value={service.id}>
-                  {service.name}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
+          <section className="auth-flow-panel client-dashboard-section">
+            <div className="panel-head client-dashboard-panel-head">
+              <h2>Perfil profesional</h2>
+              <p>Configura bio, cobertura, tarifa y mapa base.</p>
+            </div>
 
-        <div className="cta-row">
-          <button className="cta" type="button" onClick={createSlot}>
-            Agregar bloque
-          </button>
-        </div>
-
-        <div className="list">
-          {slotGroups.length === 0 ? (
-            <p className="empty">Aun no tienes bloques de disponibilidad.</p>
-          ) : (
-            slotGroups.map(([day, daySlots]) => (
-              <article className="booking-card" key={day}>
-                <p>
-                  <strong>{new Date(`${day}T00:00:00`).toLocaleDateString("es-CL", { weekday: "long", day: "2-digit", month: "long" })}</strong>
-                </p>
-                <div className="calendar-slot-grid">
-                  {daySlots.map((slot) => (
-                    <div key={slot.id} className={`pro-slot-card ${slot.isAvailable ? "slot-btn-active" : ""}`}>
-                      <span>
-                        {new Date(slot.startsAt).toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" })} -{" "}
-                        {new Date(slot.endsAt).toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" })}
-                      </span>
-                      <span>{slot.service?.name ?? "General"}</span>
-                      <span>{slot.bookings.length > 0 ? "Con reserva" : slot.isAvailable ? "Disponible" : "No disponible"}</span>
-                      <div className="cta-row">
-                        <button className="cta small" type="button" onClick={() => updateSlotAvailability(slot.id, !slot.isAvailable)}>
-                          {slot.isAvailable ? "Desactivar" : "Activar"}
-                        </button>
-                        <button className="cta ghost small" type="button" onClick={() => deleteSlot(slot.id)}>
-                          Eliminar
-                        </button>
-                      </div>
-                    </div>
+            <div className="grid-form">
+              <label className="full">
+                Bio
+                <textarea value={bio} onChange={(e) => setBio(e.target.value)} placeholder="Experiencia, especialidad, herramientas." />
+              </label>
+              <label>
+                Dirección
+                <input
+                  value={coverageStreet}
+                  onChange={(e) => {
+                    setManualCoveragePoint(false);
+                    setCoverageStreet(e.target.value);
+                  }}
+                  placeholder="Calle y número"
+                />
+              </label>
+              <label>
+                Comuna
+                <input
+                  value={coverageComuna}
+                  onChange={(e) => {
+                    setManualCoveragePoint(false);
+                    setCoverageComuna(e.target.value);
+                  }}
+                  placeholder="Providencia"
+                />
+              </label>
+              <div className="full">
+                <p className="field-label">Comunas donde trabajas</p>
+                <div className="inline-checks">
+                  {ACTIVE_MVP_COMMUNES.map((commune) => (
+                    <label key={commune}>
+                      <input
+                        type="checkbox"
+                        checked={serviceCommunes.includes(commune)}
+                        onChange={(event) => {
+                          if (event.target.checked) {
+                            setServiceCommunes((current) => Array.from(new Set([...current, commune])));
+                            return;
+                          }
+                          setServiceCommunes((current) => current.filter((item) => item !== commune));
+                        }}
+                      />
+                      {commune}
+                    </label>
                   ))}
                 </div>
-              </article>
-            ))
-          )}
-        </div>
-      </section>
-
-      <section className="panel">
-        <div className="panel-head">
-          <h2>Notificaciones</h2>
-        </div>
-        <div className="list">
-          {notifications.length === 0 ? (
-            <p className="empty">Sin notificaciones por ahora.</p>
-          ) : (
-            notifications.map((item) => (
-              <article className="booking-card" key={item.id}>
-                <p>
-                  <strong>{item.title}</strong>
-                </p>
-                <p>{item.body}</p>
-                <p>{new Date(item.createdAt).toLocaleString("es-ES")}</p>
-              </article>
-            ))
-          )}
-        </div>
-      </section>
-
-      <section className="list">
-        {bookings.map((booking) => (
-          <article className="booking-card" key={booking.id}>
-            <div className="booking-head">
-              <h3>{booking.service.name}</h3>
-              <span className="status status-accepted">{booking.status}</span>
-            </div>
-            <p>
-              <strong>Cliente:</strong> {booking.customer.fullName} ({booking.customer.email})
-            </p>
-            <p>
-              <strong>Fecha:</strong> {new Date(booking.scheduledAt).toLocaleString("es-ES")}
-            </p>
-            <p>
-              <strong>Total:</strong> {clp(booking.totalPriceClp)}
-            </p>
-            <p>
-              <strong>Payout:</strong> {booking.payout?.status ?? "No solicitado"}
-            </p>
-            <div className="status-editor">
+              </div>
               <label>
-                Estado
+                Ciudad
                 <select
-                  value={statusByBooking[booking.id] ?? booking.status}
-                  onChange={(e) => setStatusByBooking((prev) => ({ ...prev, [booking.id]: e.target.value }))}
+                  value={coverageCity}
+                  onChange={(e) => {
+                    setManualCoveragePoint(false);
+                    setCoverageCity(e.target.value);
+                  }}
                 >
-                  {statusOptions.map((status) => (
-                    <option key={status} value={status}>
-                      {status}
+                  {cityOptions.map((city) => (
+                    <option key={city} value={city}>
+                      {city}
                     </option>
                   ))}
                 </select>
               </label>
-              <button className="cta small" type="button" onClick={() => updateStatus(booking.id)}>
-                Guardar estado
-              </button>
-              <button className="cta ghost small" type="button" onClick={() => completeBooking(booking.id)}>
-                Finalizar
-              </button>
-              <button className="cta ghost small" type="button" onClick={() => requestPayout(booking.id)}>
-                Solicitar payout
+              <label>
+                Radio cobertura (km)
+                <input type="number" min={2} max={60} value={serviceRadiusKm} onChange={(e) => setServiceRadiusKm(Number(e.target.value) || 8)} />
+              </label>
+              <label>
+                Tarifa desde (CLP/h)
+                <input
+                  type="number"
+                  min={5000}
+                  value={hourlyRateFromClp}
+                  onChange={(e) => setHourlyRateFromClp(Number(e.target.value) || 12000)}
+                />
+              </label>
+              <div className="full coverage-map-card">
+                <div className="coverage-map-head">
+                  <h3>Mapa de cobertura</h3>
+                  <p>Haz click para mover tu punto base. El radio se muestra en vivo.</p>
+                </div>
+                <div
+                  className="coverage-map-wrap coverage-map-interactive"
+                  onClick={onCoverageMapClick}
+                  onKeyDown={(event) => {
+                    if (event.key !== "Enter" && event.key !== " ") return;
+                    event.preventDefault();
+                    const rect = event.currentTarget.getBoundingClientRect();
+                    updateCoverageFromPointer(rect.left + rect.width / 2, rect.top + rect.height / 2, rect);
+                  }}
+                  role="button"
+                  tabIndex={0}
+                  aria-label="Seleccionar punto de cobertura en el mapa"
+                >
+                  <iframe
+                    title="Mapa de cobertura profesional"
+                    src={mapEmbedUrl}
+                    loading="lazy"
+                    className="coverage-map-frame"
+                    referrerPolicy="no-referrer-when-downgrade"
+                  />
+                  <span className="coverage-pin" style={{ left: `${markerLeftPct}%`, top: `${markerTopPct}%` }} aria-hidden>
+                    <span className="coverage-pin-radius" style={{ width: `${radiusPx}px`, height: `${radiusPx}px` }} />
+                    <span className="coverage-pin-dot" />
+                  </span>
+                </div>
+                <p className="coverage-meta">
+                  Dirección base: {coverageStreet || "Sin dirección"}, {coverageComuna || "Sin comuna"}, {coverageCity} · Radio {serviceRadiusKm} km
+                </p>
+              </div>
+            </div>
+
+            <div className="cta-row">
+              <button className="cta" type="button" onClick={saveProfile}>
+                Guardar perfil
               </button>
             </div>
-          </article>
-        ))}
-      </section>
+          </section>
 
-      {feedback ? <p className="feedback ok">{feedback}</p> : null}
-      {error ? <p className="feedback error">{error}</p> : null}
+          <section className="auth-flow-panel client-dashboard-section">
+            <div className="panel-head client-dashboard-panel-head">
+              <h2>Calendario de disponibilidad</h2>
+              <p>Crea bloques disponibles y habilita o deshabilita cada horario con un click.</p>
+            </div>
+
+            <div className="grid-form">
+              <label>
+                Fecha
+                <input type="date" value={slotDate} onChange={(e) => setSlotDate(e.target.value)} />
+              </label>
+              <label>
+                Hora inicio
+                <input type="time" value={slotTime} onChange={(e) => setSlotTime(e.target.value)} />
+              </label>
+              <label>
+                Duración
+                <select value={slotDurationMin} onChange={(e) => setSlotDurationMin(Number(e.target.value))}>
+                  <option value={30}>30 min</option>
+                  <option value={60}>60 min</option>
+                  <option value={90}>90 min</option>
+                  <option value={120}>120 min</option>
+                  <option value={180}>180 min</option>
+                  <option value={240}>240 min</option>
+                </select>
+              </label>
+              <label>
+                Servicio (opcional)
+                <select value={slotServiceId} onChange={(e) => setSlotServiceId(e.target.value)}>
+                  <option value="">Cualquier servicio</option>
+                  {services.map((service) => (
+                    <option key={service.id} value={service.id}>
+                      {service.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+
+            <div className="cta-row">
+              <button className="cta" type="button" onClick={createSlot}>
+                Agregar bloque
+              </button>
+            </div>
+
+            <div className="list client-dashboard-list">
+              {slotGroups.length === 0 ? (
+                <p className="empty">Aún no tienes bloques de disponibilidad.</p>
+              ) : (
+                slotGroups.map(([day, daySlots]) => (
+                  <article className="booking-card client-dashboard-card" key={day}>
+                    <p>
+                      <strong>{new Date(`${day}T00:00:00`).toLocaleDateString("es-CL", { weekday: "long", day: "2-digit", month: "long" })}</strong>
+                    </p>
+                    <div className="calendar-slot-grid">
+                      {daySlots.map((slot) => (
+                        <div key={slot.id} className={`pro-slot-card ${slot.isAvailable ? "slot-btn-active" : ""}`}>
+                          <span>
+                            {new Date(slot.startsAt).toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" })} -{" "}
+                            {new Date(slot.endsAt).toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" })}
+                          </span>
+                          <span>{slot.service?.name ?? "General"}</span>
+                          <span>{slot.bookings.length > 0 ? "Con reserva" : slot.isAvailable ? "Disponible" : "No disponible"}</span>
+                          <div className="cta-row">
+                            <button className="cta small" type="button" onClick={() => updateSlotAvailability(slot.id, !slot.isAvailable)}>
+                              {slot.isAvailable ? "Desactivar" : "Activar"}
+                            </button>
+                            <button className="cta ghost small" type="button" onClick={() => deleteSlot(slot.id)}>
+                              Eliminar
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </article>
+                ))
+              )}
+            </div>
+          </section>
+
+          <section className="auth-flow-panel client-dashboard-section">
+            <div className="panel-head client-dashboard-panel-head">
+              <h2>Notificaciones</h2>
+              <p>Mensajes y movimientos importantes de tu cuenta.</p>
+            </div>
+            <div className="list client-dashboard-list">
+              {notifications.length === 0 ? (
+                <p className="empty">Sin notificaciones por ahora.</p>
+              ) : (
+                notifications.map((item) => (
+                  <article className="booking-card client-dashboard-card" key={item.id}>
+                    <p>
+                      <strong>{item.title}</strong>
+                    </p>
+                    <p>{item.body}</p>
+                    <p>{new Date(item.createdAt).toLocaleString("es-CL")}</p>
+                  </article>
+                ))
+              )}
+            </div>
+          </section>
+
+          <section className="auth-flow-panel client-dashboard-section">
+            <div className="panel-head client-dashboard-panel-head">
+              <h2>Servicios</h2>
+              <p>Gestiona el estado de tus reservas y solicita payouts cuando corresponda.</p>
+            </div>
+
+            <div className="list client-dashboard-list">
+              {bookings.length === 0 ? (
+                <p className="empty">Todavía no tienes servicios asignados.</p>
+              ) : (
+                bookings.map((booking) => (
+                  <article className="booking-card client-dashboard-card" key={booking.id}>
+                    <div className="booking-head">
+                      <h3>{booking.service.name}</h3>
+                      <span
+                        className={`status ${
+                          booking.status === "COMPLETED" ? "status-completed" : booking.status === "CANCELLED" ? "status-cancelled" : "status-accepted"
+                        }`}
+                      >
+                        {PRO_STATUS_LABELS[booking.status] ?? booking.status}
+                      </span>
+                    </div>
+                    <p className="client-booking-eyebrow">{booking.status === "COMPLETED" ? "Servicio realizado" : "Próxima atención"}</p>
+                    <p>
+                      <strong>Cliente:</strong> {booking.customer.fullName} ({booking.customer.email})
+                    </p>
+                    <p>
+                      <strong>Fecha:</strong> {formatBookingDate(booking.scheduledAt)}
+                    </p>
+                    <p>
+                      <strong>Total:</strong> {clp(booking.totalPriceClp)}
+                    </p>
+                    <p>
+                      <strong>Payout:</strong> {booking.payout?.status ?? "No solicitado"}
+                    </p>
+                    <div className="status-editor">
+                      <label>
+                        Estado
+                        <select
+                          value={statusByBooking[booking.id] ?? booking.status}
+                          onChange={(e) => setStatusByBooking((prev) => ({ ...prev, [booking.id]: e.target.value }))}
+                        >
+                          {statusOptions.map((status) => (
+                            <option key={status} value={status}>
+                              {PRO_STATUS_LABELS[status] ?? status}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <button className="cta small" type="button" onClick={() => updateStatus(booking.id)}>
+                        Guardar estado
+                      </button>
+                      <button className="cta ghost small" type="button" onClick={() => completeBooking(booking.id)}>
+                        Finalizar
+                      </button>
+                      <button className="cta ghost small" type="button" onClick={() => requestPayout(booking.id)}>
+                        Solicitar payout
+                      </button>
+                    </div>
+                  </article>
+                ))
+              )}
+            </div>
+          </section>
+
+          {feedback ? <p className="feedback ok">{feedback}</p> : null}
+          {error ? <p className="feedback error">{error}</p> : null}
+        </div>
+      </div>
     </main>
   );
 }

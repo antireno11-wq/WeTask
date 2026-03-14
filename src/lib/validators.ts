@@ -105,7 +105,7 @@ export const marketplaceReviewCreateSchema = z.object({
   punctuality: z.coerce.number().int().min(1).max(5).optional(),
   quality: z.coerce.number().int().min(1).max(5).optional(),
   communication: z.coerce.number().int().min(1).max(5).optional(),
-  comment: z.string().max(800).optional()
+  comment: z.string().trim().min(8, "Escribe un comentario de al menos 8 caracteres.").max(800)
 });
 
 export const marketplaceAdminFeeSchema = z.object({

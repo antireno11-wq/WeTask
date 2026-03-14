@@ -170,6 +170,10 @@ export default function ClienteBookingActionsPage() {
 
   const leaveReview = async () => {
     if (!bookingId || !customerId) return;
+    if (reviewComment.trim().length < 8) {
+      setError("Escribe un comentario un poco más completo para enviar tu reseña.");
+      return;
+    }
     setError("");
     setFeedback("");
     try {
@@ -367,7 +371,13 @@ export default function ClienteBookingActionsPage() {
                   </label>
                   <label>
                     Comentario reseña
-                    <input value={reviewComment} onChange={(e) => setReviewComment(e.target.value)} />
+                    <textarea
+                      value={reviewComment}
+                      onChange={(e) => setReviewComment(e.target.value)}
+                      placeholder="Cuéntanos cómo fue el servicio, la puntualidad y la experiencia general."
+                      rows={5}
+                      required
+                    />
                   </label>
                   <button className="cta ghost small" type="button" onClick={leaveReview}>
                     Enviar reseña

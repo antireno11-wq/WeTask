@@ -3492,6 +3492,30 @@ textarea {
   grid-template-columns: 1fr 1fr auto;
 }
 
+.client-booking-actions-grid textarea {
+  min-height: 144px;
+  resize: vertical;
+  border-radius: 16px;
+  border: 1px solid #cfe2f3;
+  background: #fbfdff;
+  padding: 12px 14px;
+  font: inherit;
+}
+
+.pro-dashboard-profile-box .client-profile-copy {
+  gap: 10px;
+}
+
+.pro-dashboard-badge {
+  border-style: solid;
+  border-radius: 24px;
+  background: linear-gradient(135deg, #1656b0 0%, #18a6d5 100%);
+  color: #ffffff;
+  font-size: 1.05rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
 .auth-flow-screen {
   position: relative;
   min-height: calc(100vh - var(--site-footer-space));
