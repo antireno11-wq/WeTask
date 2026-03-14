@@ -41,6 +41,9 @@ type Booking = {
   status: string;
   scheduledAt: string;
   totalPriceClp: number;
+  proReviewRating: number | null;
+  proReviewComment: string | null;
+  proReviewedAt: string | null;
   customer: { fullName: string; email: string };
   service: { name: string };
   payout: { status: string } | null;
@@ -118,6 +121,7 @@ export default function ProPage() {
   const [services, setServices] = useState<Service[]>([]);
   const [slots, setSlots] = useState<ProSlot[]>([]);
   const [statusByBooking, setStatusByBooking] = useState<Record<string, string>>({});
+  const [proReviewByBooking, setProReviewByBooking] = useState<Record<string, { rating: number; comment: string }>>({});
 
   const [profile, setProfile] = useState<ProProfile | null>(null);
   const [bio, setBio] = useState("");
@@ -440,6 +444,48 @@ export default function ProPage() {
       const data = (await response.json()) as { payout?: { id: string; status: string }; error?: string; detail?: string };
       if (!response.ok || !data.payout) throw new Error(data.detail || data.error || "No se pudo solicitar payout");
       setFeedback(`Payout solicitado: ${data.payout.id}`);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Error inesperado");
+    }
+  };
+
+  const submitClientReview = async (bookingId: string) => {
+    const payload = proReviewByBooking[bookingId];
+    if (!payload || payload.comment.trim().length < 8) {
+      setError("Antes de solicitar payout, deja una reseña clara del cliente.");
+      return;
+    }
+
+    setFeedback("");
+    setError("");
+    try {
+      const response = await fetch(`/api/marketplace/bookings/${bookingId}/pro-review`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          rating: payload.rating,
+          comment: payload.comment
+        })
+      });
+      const data = (await response.json()) as {
+        review?: { proReviewRating: number | null; proReviewComment: string | null; proReviewedAt: string | null };
+        error?: string;
+        detail?: string;
+      };
+      if (!response.ok || !data.review) throw new Error(data.detail || data.error || "No se pudo guardar la reseña del cliente");
+      setBookings((current) =>
+        current.map((item) =>
+          item.id === bookingId
+            ? {
+                ...item,
+                proReviewRating: data.review?.proReviewRating ?? payload.rating,
+                proReviewComment: data.review?.proReviewComment ?? payload.comment,
+                proReviewedAt: data.review?.proReviewedAt ?? new Date().toISOString()
+              }
+            : item
+        )
+      );
+      setFeedback("Reseña del cliente guardada.");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error inesperado");
     }
@@ -814,6 +860,54 @@ export default function ProPage() {
                     <p>
                       <strong>Payout:</strong> {booking.payout?.status ?? "No solicitado"}
                     </p>
+                    {booking.status === "COMPLETED" ? (
+                      <div className="pro-review-card">
+                        <strong>Reseña del cliente</strong>
+                        <label>
+                          Calificación
+                          <select
+                            value={proReviewByBooking[booking.id]?.rating ?? booking.proReviewRating ?? 5}
+                            onChange={(e) =>
+                              setProReviewByBooking((current) => ({
+                                ...current,
+                                [booking.id]: {
+                                  rating: Number(e.target.value),
+                                  comment: current[booking.id]?.comment ?? booking.proReviewComment ?? ""
+                                }
+                              }))
+                            }
+                          >
+                            {[5, 4, 3, 2, 1].map((value) => (
+                              <option key={value} value={value}>
+                                {value} estrella{value > 1 ? "s" : ""}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                        <label>
+                          Comentario
+                          <textarea
+                            rows={4}
+                            value={proReviewByBooking[booking.id]?.comment ?? booking.proReviewComment ?? ""}
+                            onChange={(e) =>
+                              setProReviewByBooking((current) => ({
+                                ...current,
+                                [booking.id]: {
+                                  rating: current[booking.id]?.rating ?? booking.proReviewRating ?? 5,
+                                  comment: e.target.value
+                                }
+                              }))
+                            }
+                            placeholder="Cuéntanos cómo fue trabajar con este cliente."
+                          />
+                        </label>
+                        <div className="booking-actions">
+                          <button className="cta ghost small" type="button" onClick={() => submitClientReview(booking.id)}>
+                            Guardar reseña
+                          </button>
+                        </div>
+                      </div>
+                    ) : null}
                     <div className="status-editor">
                       <label>
                         Estado

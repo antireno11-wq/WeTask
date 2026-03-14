@@ -23,6 +23,13 @@ export async function POST(req: NextRequest, context: { params: { bookingId: str
       return NextResponse.json({ error: "El payout se solicita solo para reservas finalizadas" }, { status: 400 });
     }
 
+    if (!booking.proReviewedAt || !booking.proReviewRating || !booking.proReviewComment) {
+      return NextResponse.json(
+        { error: "Antes de solicitar tu payout debes dejar una reseña del cliente." },
+        { status: 400 }
+      );
+    }
+
     const existing = await prisma.payout.findUnique({ where: { bookingId: booking.id } });
     if (existing) {
       return NextResponse.json({ payout: existing }, { status: 200 });

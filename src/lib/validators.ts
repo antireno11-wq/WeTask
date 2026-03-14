@@ -108,6 +108,12 @@ export const marketplaceReviewCreateSchema = z.object({
   comment: z.string().trim().min(8, "Escribe un comentario de al menos 8 caracteres.").max(800)
 });
 
+export const marketplaceProReviewCreateSchema = z.object({
+  bookingId: z.string().min(1),
+  rating: z.coerce.number().int().min(1).max(5),
+  comment: z.string().trim().min(8, "Escribe un comentario de al menos 8 caracteres.").max(800)
+});
+
 export const marketplaceAdminFeeSchema = z.object({
   categoryId: z.string().min(1),
   basePlatformFeePct: z.coerce.number().min(0).max(100),
