@@ -1,17 +1,21 @@
 import { CleaningOnboardingStatus, Prisma, UserRole } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { getRequestIdentity, hasRole } from "@/lib/auth";
-import { CLEANING_TRAINING_TOPICS } from "@/lib/cleaning-onboarding";
+import { geocodeAddress } from "@/lib/geo";
+import { CLEANING_WEEK_DAYS } from "@/lib/cleaning-onboarding";
 import { normalizeCommune, normalizeCommuneList } from "@/lib/communes";
 import { prisma } from "@/lib/prisma";
 import {
   cleaningOnboardingSaveSchema,
-  cleaningOnboardingStage2Schema,
-  cleaningOnboardingStage3Schema,
-  cleaningOnboardingStage4Schema,
-  cleaningOnboardingStage5Schema,
-  cleaningOnboardingStage6Schema,
-  cleaningOnboardingStage7Schema
+  taskerOnboardingStep10Schema,
+  taskerOnboardingStep11Schema,
+  taskerOnboardingStep3Schema,
+  taskerOnboardingStep4Schema,
+  taskerOnboardingStep5Schema,
+  taskerOnboardingStep6Schema,
+  taskerOnboardingStep7Schema,
+  taskerOnboardingStep8Schema,
+  taskerOnboardingStep9Schema
 } from "@/lib/validators";
 
 export const dynamic = "force-dynamic";
@@ -131,114 +135,173 @@ export async function PATCH(req: NextRequest) {
 
     let data: Prisma.CleaningOnboardingUpdateInput = {};
 
-    if (input.step === 2) {
-      const parsed = cleaningOnboardingStage2Schema.parse(input.payload);
+    if (input.step === 3) {
+      const parsed = taskerOnboardingStep3Schema.parse(input.payload);
+      const existingByEmail = await prisma.user.findFirst({
+        where: {
+          email: parsed.email.trim().toLowerCase(),
+          NOT: { id: userId }
+        },
+        select: { id: true }
+      });
+      if (existingByEmail) {
+        return NextResponse.json({ error: "Ese email ya esta registrado con otra cuenta" }, { status: 409 });
+      }
+
       data = {
         profilePhotoUrl: parsed.profilePhotoUrl,
-        shortDescription: parsed.shortDescription.trim(),
-        yearsExperience: parsed.yearsExperience,
-        workMode: parsed.workMode,
-        experienceTypes: parsed.experienceTypes,
+        documentId: parsed.documentId.trim(),
+        baseCommune: parsed.baseCommune,
         referenceAddress: parsed.referenceAddress.trim(),
-        currentStep: Math.max(onboarding.currentStep, 3)
-      };
-    }
-
-    if (input.step === 3) {
-      const parsed = cleaningOnboardingStage3Schema.parse(input.payload);
-      data = {
-        offeredServices: parsed.offeredServices,
-        acceptsHomesWithPets: parsed.acceptsHomesWithPets,
-        acceptsHomesWithChildren: parsed.acceptsHomesWithChildren,
-        acceptsHomesWithElderly: parsed.acceptsHomesWithElderly,
-        worksWithClientProducts: parsed.worksWithClientProducts,
-        bringsOwnProducts: parsed.bringsOwnProducts,
-        bringsOwnTools: parsed.bringsOwnTools,
-        languages: parsed.languages,
         currentStep: Math.max(onboarding.currentStep, 4)
       };
+
+      const coords = geocodeAddress({
+        city: "Santiago",
+        street: parsed.referenceAddress.trim(),
+        commune: parsed.baseCommune
+      });
+
+      await prisma.user.update({
+        where: { id: userId },
+        data: {
+          fullName: parsed.fullName.trim(),
+          email: parsed.email.trim().toLowerCase(),
+          phone: parsed.phone.trim()
+        }
+      });
+
+      await prisma.professionalProfile.upsert({
+        where: { userId },
+        create: {
+          userId,
+          coverageStreet: parsed.referenceAddress.trim(),
+          coverageComuna: parsed.baseCommune,
+          coverageCity: "Santiago",
+          coverageLatitude: coords.lat,
+          coverageLongitude: coords.lng,
+          serviceRadiusKm: 8
+        },
+        update: {
+          coverageStreet: parsed.referenceAddress.trim(),
+          coverageComuna: parsed.baseCommune,
+          coverageCity: "Santiago",
+          coverageLatitude: coords.lat,
+          coverageLongitude: coords.lng
+        }
+      });
     }
 
     if (input.step === 4) {
-      const parsed = cleaningOnboardingStage4Schema.parse(input.payload);
+      const parsed = taskerOnboardingStep4Schema.parse(input.payload);
       const normalizedCoverage = normalizeOnboardingCommunes(parsed.baseCommune, parsed.serviceCommunes);
+      const coords = geocodeAddress({
+        city: "Santiago",
+        street: onboarding.referenceAddress ?? normalizedCoverage.baseCommune,
+        commune: normalizedCoverage.baseCommune
+      });
       data = {
         baseCommune: normalizedCoverage.baseCommune,
-        referenceAddress: parsed.referenceAddress.trim(),
         serviceCommunes: normalizedCoverage.serviceCommunes,
-        coverageLatitude: parsed.coverageLatitude,
-        coverageLongitude: parsed.coverageLongitude,
-        maxTravelKm: parsed.maxTravelKm,
-        chargesTravelExtra: parsed.chargesTravelExtra,
+        coverageLatitude: coords.lat,
+        coverageLongitude: coords.lng,
+        maxTravelKm: 15,
+        chargesTravelExtra: normalizedCoverage.serviceCommunes.includes("Chicureo"),
+        remoteCommuneSurchargeClp: normalizedCoverage.serviceCommunes.includes("Chicureo") ? 5000 : 0,
         currentStep: Math.max(onboarding.currentStep, 5)
       };
     }
 
     if (input.step === 5) {
-      const parsed = cleaningOnboardingStage5Schema.parse(input.payload);
+      const parsed = taskerOnboardingStep5Schema.parse(input.payload);
       data = {
-        availabilityMode: parsed.availabilityMode,
-        availabilityBlocks: parsed.availabilityBlocks,
-        maxServicesPerDay: parsed.maxServicesPerDay,
-        acceptsUrgentBookings: parsed.acceptsUrgentBookings,
+        categorySlug: parsed.categorySlug.trim(),
         currentStep: Math.max(onboarding.currentStep, 6)
       };
     }
 
     if (input.step === 6) {
-      const parsed = cleaningOnboardingStage6Schema.parse(input.payload);
+      const parsed = taskerOnboardingStep6Schema.parse(input.payload);
+      data = {
+        yearsExperience: parsed.yearsExperience === 11 ? 10 : parsed.yearsExperience,
+        workMode: parsed.workMode,
+        currentStep: Math.max(onboarding.currentStep, 7)
+      };
+    }
+
+    if (input.step === 7) {
+      const parsed = taskerOnboardingStep7Schema.parse(input.payload);
+      data = {
+        offeredServices: parsed.offeredServices,
+        experienceTypes: parsed.experienceTypes,
+        acceptsHomesWithPets: parsed.acceptsHomesWithPets ?? null,
+        acceptsHomesWithChildren: parsed.acceptsHomesWithChildren ?? null,
+        acceptsHomesWithElderly: parsed.acceptsHomesWithElderly ?? null,
+        worksWithClientProducts: parsed.worksWithClientProducts ?? null,
+        bringsOwnProducts: parsed.bringsOwnProducts ?? null,
+        bringsOwnTools: parsed.bringsOwnTools ?? null,
+        currentStep: Math.max(onboarding.currentStep, 8)
+      };
+    }
+
+    if (input.step === 8) {
+      const parsed = taskerOnboardingStep8Schema.parse(input.payload);
+      const uniqueBlocks = parsed.availabilityBlocks.filter((block, index, blocks) => {
+        const key = `${block.day}-${block.start}-${block.end}`;
+        return blocks.findIndex((candidate) => `${candidate.day}-${candidate.start}-${candidate.end}` === key) === index;
+      });
+
+      data = {
+        availabilityMode: "FIJA",
+        availabilityBlocks: uniqueBlocks,
+        maxServicesPerDay: 3,
+        acceptsUrgentBookings: false,
+        currentStep: Math.max(onboarding.currentStep, 9)
+      };
+    }
+
+    if (input.step === 9) {
+      const parsed = taskerOnboardingStep9Schema.parse(input.payload);
       data = {
         hourlyRateClp: parsed.hourlyRateClp,
         minBookingHours: parsed.minBookingHours,
         weekendSurchargePct: parsed.weekendSurchargePct,
         holidaySurchargePct: parsed.holidaySurchargePct,
         remoteCommuneSurchargeClp: parsed.remoteCommuneSurchargeClp,
-        deepCleaningHourlyRateClp: parsed.hasDeepCleaningRate ? parsed.deepCleaningHourlyRateClp ?? null : null,
-        currentStep: Math.max(onboarding.currentStep, 7)
+        deepCleaningHourlyRateClp: null,
+        currentStep: Math.max(onboarding.currentStep, 10)
       };
     }
 
-    if (input.step === 7) {
-      const parsed = cleaningOnboardingStage7Schema.parse(input.payload);
+    if (input.step === 10) {
+      const parsed = taskerOnboardingStep10Schema.parse(input.payload);
       data = {
-        documentId: parsed.documentId.trim(),
-        birthDate: parsed.birthDate,
-        nationality: parsed.nationality.trim(),
-        migrationStatus: parsed.migrationStatus?.trim() || null,
-        emergencyContactName: parsed.emergencyContactName.trim(),
-        emergencyContactPhone: parsed.emergencyContactPhone.trim(),
-        workReferences: parsed.workReferences.trim(),
-        identityDocumentFile: parsed.identityDocumentFrontFile,
-        identityDocumentFrontFile: parsed.identityDocumentFrontFile,
-        identityDocumentBackFile: parsed.identityDocumentBackFile,
-        identitySelfieFile: parsed.identitySelfieFile,
-        criminalRecordFile: parsed.criminalRecordFile,
         bankAccountHolder: parsed.bankAccountHolder.trim(),
         bankAccountHolderRut: parsed.bankAccountHolderRut.trim(),
         bankName: parsed.bankName.trim(),
         bankAccountType: parsed.bankAccountType,
         bankAccountNumber: parsed.bankAccountNumber.trim(),
-        billingType: parsed.billingType,
-        trainingTopics: [...CLEANING_TRAINING_TOPICS],
-        trainingCompletedAt: new Date(),
-        acceptsCancellationPolicy: true,
-        acceptsServiceProtocol: true,
-        acceptsDataProcessing: true,
-        confirmsCleaningScope: true,
-        currentStep: Math.max(onboarding.currentStep, 9)
+        billingType: "persona_natural",
+        currentStep: Math.max(onboarding.currentStep, 11)
       };
     }
 
-    if (input.step === 8) {
+    if (input.step === 11) {
+      taskerOnboardingStep11Schema.parse(input.payload);
       data = {
-        trainingTopics: [...CLEANING_TRAINING_TOPICS],
-        trainingCompletedAt: new Date(),
         acceptsCancellationPolicy: true,
         acceptsServiceProtocol: true,
         acceptsDataProcessing: true,
         confirmsCleaningScope: true,
-        currentStep: Math.max(onboarding.currentStep, 9)
+        trainingTopics: CLEANING_WEEK_DAYS,
+        trainingCompletedAt: new Date(),
+        currentStep: Math.max(onboarding.currentStep, 12)
       };
+
+      await prisma.user.update({
+        where: { id: userId },
+        data: { termsAcceptedAt: new Date() }
+      });
     }
 
     const updated = await prisma.cleaningOnboarding.update({
@@ -246,41 +309,27 @@ export async function PATCH(req: NextRequest) {
       data
     });
 
-    if (input.step === 4) {
-      const payload = cleaningOnboardingStage4Schema.parse(input.payload);
-      const normalizedCoverage = normalizeOnboardingCommunes(payload.baseCommune, payload.serviceCommunes);
+    if (input.step === 4 || input.step === 9) {
       await prisma.professionalProfile.upsert({
         where: { userId },
         create: {
           userId,
-          coverageStreet: payload.referenceAddress,
-          coverageComuna: normalizedCoverage.baseCommune,
+          coverageStreet: updated.referenceAddress,
+          coverageComuna: updated.baseCommune,
           coverageCity: "Santiago",
-          coverageLatitude: payload.coverageLatitude,
-          coverageLongitude: payload.coverageLongitude,
-          serviceRadiusKm: payload.maxTravelKm
+          coverageLatitude: updated.coverageLatitude,
+          coverageLongitude: updated.coverageLongitude,
+          serviceRadiusKm: updated.maxTravelKm ?? 15,
+          hourlyRateFromClp: updated.hourlyRateClp
         },
         update: {
-          coverageStreet: payload.referenceAddress,
-          coverageComuna: normalizedCoverage.baseCommune,
-          coverageLatitude: payload.coverageLatitude,
-          coverageLongitude: payload.coverageLongitude,
-          serviceRadiusKm: payload.maxTravelKm
-        }
-      });
-    }
-
-    if (input.step === 6) {
-      const payload = cleaningOnboardingStage6Schema.parse(input.payload);
-      await prisma.professionalProfile.upsert({
-        where: { userId },
-        create: {
-          userId,
-          hourlyRateFromClp: payload.hourlyRateClp,
-          serviceRadiusKm: 8
-        },
-        update: {
-          hourlyRateFromClp: payload.hourlyRateClp
+          coverageStreet: updated.referenceAddress ?? undefined,
+          coverageComuna: updated.baseCommune ?? undefined,
+          coverageCity: "Santiago",
+          coverageLatitude: updated.coverageLatitude ?? undefined,
+          coverageLongitude: updated.coverageLongitude ?? undefined,
+          serviceRadiusKm: updated.maxTravelKm ?? undefined,
+          hourlyRateFromClp: updated.hourlyRateClp ?? undefined
         }
       });
     }

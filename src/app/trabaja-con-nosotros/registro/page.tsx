@@ -1,12 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { AuthHeroNav } from "@/components/auth-hero-nav";
-import { ACTIVE_MVP_COMMUNES, inferCommuneFromAddress, normalizeCommune, normalizeCommuneList } from "@/lib/communes";
-import { geocodeAddress } from "@/lib/geo";
-import { CORE_SERVICES, type CoreTaskerServiceSlug } from "@/lib/core-services";
-import { CLEANING_LANGUAGE_OPTIONS, CLEANING_STATUS_LABELS, CLEANING_WEEK_DAYS } from "@/lib/cleaning-onboarding";
+import { ACTIVE_MVP_COMMUNES, type ActiveMvpCommune } from "@/lib/communes";
 
 type SessionPayload = {
   userId: string;
@@ -15,63 +13,41 @@ type SessionPayload = {
   role: "CUSTOMER" | "PRO" | "ADMIN";
   authProvider?: "EMAIL" | "GOOGLE" | "APPLE";
   emailVerified?: boolean;
+  termsAccepted?: boolean;
 };
 
 type OnboardingPayload = {
   id: string;
   status: "BORRADOR" | "PENDIENTE_REVISION" | "REQUIERE_CORRECCION" | "APROBADO" | "ACTIVO";
   currentStep: number;
+  categorySlug: string;
   baseCommune: string | null;
   referenceAddress: string | null;
   documentId: string | null;
-  birthDate: string | null;
-  nationality: string | null;
-  migrationStatus: string | null;
-  emergencyContactName: string | null;
-  emergencyContactPhone: string | null;
-  workReferences: string | null;
   profilePhotoUrl: string | null;
-  shortDescription: string | null;
   yearsExperience: number | null;
   workMode: "SOLO" | "EQUIPO" | null;
-  experienceTypes: unknown;
   offeredServices: unknown;
+  experienceTypes: unknown;
   acceptsHomesWithPets: boolean | null;
   acceptsHomesWithChildren: boolean | null;
   acceptsHomesWithElderly: boolean | null;
   worksWithClientProducts: boolean | null;
   bringsOwnProducts: boolean | null;
   bringsOwnTools: boolean | null;
-  languages: unknown;
   serviceCommunes: unknown;
-  coverageLatitude: number | null;
-  coverageLongitude: number | null;
-  maxTravelKm: number | null;
-  chargesTravelExtra: boolean | null;
-  availabilityMode: "FIJA" | "VARIABLE" | null;
   availabilityBlocks: unknown;
-  maxServicesPerDay: number | null;
-  acceptsUrgentBookings: boolean | null;
   hourlyRateClp: number | null;
   minBookingHours: number | null;
   weekendSurchargePct: number | null;
   holidaySurchargePct: number | null;
   remoteCommuneSurchargeClp: number | null;
-  deepCleaningHourlyRateClp: number | null;
-  identityDocumentFile: string | null;
-  identityDocumentFrontFile: string | null;
-  identityDocumentBackFile: string | null;
-  identitySelfieFile: string | null;
-  criminalRecordFile: string | null;
   bankAccountHolder: string | null;
   bankAccountHolderRut: string | null;
   bankName: string | null;
   bankAccountType: string | null;
   bankAccountNumber: string | null;
-  billingType: string | null;
   phoneValidatedAt: string | null;
-  trainingTopics: unknown;
-  trainingCompletedAt: string | null;
   acceptsCancellationPolicy: boolean | null;
   acceptsServiceProtocol: boolean | null;
   acceptsDataProcessing: boolean | null;
@@ -81,167 +57,206 @@ type OnboardingPayload = {
 };
 
 type AvailabilityBlock = {
-  day: (typeof CLEANING_WEEK_DAYS)[number];
+  day: DayKey;
   start: string;
   end: string;
 };
 
-type TaskerServiceSlug = CoreTaskerServiceSlug;
+type CategorySlug =
+  | "limpieza"
+  | "mascotas"
+  | "babysitter"
+  | "profesor-particular"
+  | "chef"
+  | "maquillaje"
+  | "planchado";
 
-const TASKER_SERVICE_OPTIONS: ReadonlyArray<{ slug: TaskerServiceSlug; label: string }> = CORE_SERVICES.map((service) => ({
-  slug: service.slug,
-  label: service.label
-}));
+type WizardStep = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12;
 
-const EXPERIENCE_OPTIONS_BY_SERVICE: Record<TaskerServiceSlug, string[]> = {
-  limpieza: ["casas", "departamentos", "oficinas_pequenas", "airbnb", "limpieza_profunda", "planchado"],
-  mascotas: ["cuidado_mascotas", "paseo_perros", "casas", "departamentos"],
-  babysitter: ["cuidado_infantil", "casas", "departamentos", "airbnb"],
-  "profesor-particular": ["clases_escolares", "clases_musica", "clases_idiomas", "clases_online"],
-  "personal-trainer": ["entrenamiento_funcional", "casas", "departamentos"],
-  chef: ["cocina_hogar", "eventos", "meal_prep", "dietas_especiales"],
-  maquillaje: ["maquillaje_social", "maquillaje_eventos", "novias", "pieles_sensibles"],
-  planchado: ["planchado", "casas", "departamentos"]
+type DayKey = "lunes" | "martes" | "miercoles" | "jueves" | "viernes" | "sabado" | "domingo";
+
+type DraftState = {
+  phone: string;
+  smsCode: string;
+  phoneVerified: boolean;
+  firstName: string;
+  lastName: string;
+  email: string;
+  rut: string;
+  address: string;
+  homeCommune: ActiveMvpCommune;
+  profilePhotoUrl: string;
+  coverageCommunes: ActiveMvpCommune[];
+  category: CategorySlug;
+  yearsExperience: string;
+  workMode: "SOLO" | "EQUIPO";
+  cleaningType: "hogar" | "profunda" | "post_mudanza";
+  cleaningBringsProducts: boolean | null;
+  cleaningBringsEquipment: boolean | null;
+  petServiceType: "paseo_perros" | "cuidado_casa_cliente" | "cuidado_en_tu_casa";
+  petAnimals: Array<"perros" | "gatos">;
+  petLargePets: boolean | null;
+  babysitterAgeRange: "0_2" | "3_6" | "7_plus";
+  babysitterFirstAid: boolean | null;
+  babysitterMultiChild: boolean | null;
+  teacherSubject: "matematicas" | "ingles" | "lenguaje" | "ciencias" | "otra";
+  teacherLevel: "basica" | "media" | "universitario";
+  teacherMode: "presencial" | "online" | "ambas";
+  chefServiceType: "comida_diaria" | "eventos" | "meal_prep";
+  chefCuisineType: "casera" | "saludable" | "gourmet";
+  chefAtClientHome: boolean | null;
+  makeupType: "social" | "eventos" | "novias";
+  makeupHome: boolean | null;
+  makeupKit: boolean | null;
+  ironingType: "casa_cliente" | "retiro_entrega";
+  ironingDelicate: boolean | null;
+  ironingPricing: "por_hora" | "por_prenda";
+  availabilityBlocks: AvailabilityBlock[];
+  hourlyRate: string;
+  minimumHours: string;
+  hasWeekendSurcharge: boolean;
+  weekendSurchargePct: string;
+  hasHolidaySurcharge: boolean;
+  holidaySurchargePct: string;
+  bankName: string;
+  bankAccountType: "cuenta_corriente" | "cuenta_vista" | "cuenta_rut" | "cuenta_ahorro";
+  bankAccountNumber: string;
+  bankOwnerRut: string;
+  acceptedTerms: boolean;
 };
 
-const OFFERED_SERVICES_BY_SERVICE: Record<TaskerServiceSlug, string[]> = {
-  limpieza: [
-    "limpieza_general",
-    "limpieza_profunda",
-    "limpieza_recurrente",
-    "limpieza_puntual",
-    "planchado",
-    "orden_organizacion",
-    "lavado_loza",
-    "limpieza_oficina_pequena",
-    "post_evento"
-  ],
-  mascotas: ["paseo_perros", "cuidado_mascotas"],
-  babysitter: ["babysitter_horas"],
-  "profesor-particular": ["profesor_particular", "clases_apoyo_escolar", "clases_musica", "clases_idiomas", "clases_online"],
-  "personal-trainer": ["personal_trainer"],
-  chef: ["chef_a_domicilio", "preparacion_menu", "cocina_eventos", "meal_prep"],
-  maquillaje: ["maquillaje_social", "maquillaje_eventos", "maquillaje_novias", "asesoria_look"],
-  planchado: ["planchado_por_hora", "orden_organizacion"]
-};
-
-const DYNAMIC_QUESTION_LABELS: Record<
-  TaskerServiceSlug,
-  {
-    first: string;
-    second: string;
-    third: string;
-    products: string;
-    ownProducts: string;
-    ownTools: string;
-  }
-> = {
-  limpieza: {
-    first: "Acepto casas con mascotas",
-    second: "Acepto hogares con ninos",
-    third: "Acepto hogares con adultos mayores",
-    products: "Trabajo con productos del cliente",
-    ownProducts: "Llevo productos propios",
-    ownTools: "Llevo implementos propios"
-  },
-  mascotas: {
-    first: "Acepto hogares con mascotas grandes",
-    second: "Acepto hogares con ninos",
-    third: "Acepto hogares con adultos mayores",
-    products: "Trabajo con implementos del cliente",
-    ownProducts: "Llevo snacks o insumos propios para mascotas",
-    ownTools: "Llevo correa o implementos propios"
-  },
-  babysitter: {
-    first: "Acepto hogares con mascotas",
-    second: "Acepto ninos pequenos",
-    third: "Acepto apoyo con adultos mayores en casa",
-    products: "Trabajo con implementos del hogar",
-    ownProducts: "Llevo materiales de apoyo (cuentos/juegos)",
-    ownTools: "Llevo implementos propios para actividades"
-  },
-  "profesor-particular": {
-    first: "Acepto clases en hogares con mascotas",
-    second: "Acepto clases para ninos",
-    third: "Acepto clases para adultos mayores",
-    products: "Trabajo con material del alumno",
-    ownProducts: "Llevo material de apoyo",
-    ownTools: "Llevo implementos propios para la clase"
-  },
-  "personal-trainer": {
-    first: "Acepto entrenar en hogares con mascotas",
-    second: "Acepto entrenar ninos y adolescentes",
-    third: "Acepto entrenar adultos mayores",
-    products: "Trabajo con implementos del cliente",
-    ownProducts: "Llevo rutinas y material de apoyo",
-    ownTools: "Llevo implementos deportivos propios"
-  },
-  chef: {
-    first: "Acepto cocinar en hogares con mascotas",
-    second: "Acepto preparar menus para ninos",
-    third: "Acepto preparar menus para adultos mayores",
-    products: "Trabajo con insumos del cliente",
-    ownProducts: "Puedo llevar algunos insumos propios",
-    ownTools: "Llevo utensilios y herramientas de cocina"
-  },
-  maquillaje: {
-    first: "Acepto trabajar en hogares con mascotas",
-    second: "Acepto servicios para adolescentes",
-    third: "Acepto servicios para adultos mayores",
-    products: "Trabajo con productos del cliente",
-    ownProducts: "Llevo kit de maquillaje propio",
-    ownTools: "Llevo herramientas y brochas profesionales"
-  },
-  planchado: {
-    first: "Acepto hogares con mascotas",
-    second: "Acepto hogares con ninos",
-    third: "Acepto hogares con adultos mayores",
-    products: "Trabajo con productos del cliente",
-    ownProducts: "Llevo productos propios para planchado",
-    ownTools: "Llevo implementos propios"
-  }
-};
-
-const CHILE_BANK_OPTIONS = [
+const TOTAL_STEPS = 12;
+const STORAGE_KEY = "wetask_tasker_wizard_v2";
+const COMMUNE_OPTIONS: ActiveMvpCommune[] = [
+  "Vitacura",
+  "Lo Barnechea",
+  "Chicureo",
+  "Las Condes",
+  "Providencia",
+  "La Reina",
+  "Ñuñoa"
+];
+const CATEGORY_OPTIONS: Array<{ slug: CategorySlug; label: string; icon: string; description: string }> = [
+  { slug: "limpieza", label: "Limpieza", icon: "🧹", description: "Limpieza hogar, profunda y post mudanza." },
+  { slug: "mascotas", label: "Cuidado de mascotas", icon: "🐾", description: "Paseos y cuidado diario para perros y gatos." },
+  { slug: "babysitter", label: "Babysitter", icon: "👶", description: "Cuidado infantil responsable en casa del cliente." },
+  { slug: "profesor-particular", label: "Profesor particular", icon: "📚", description: "Clases personalizadas presenciales u online." },
+  { slug: "chef", label: "Chef", icon: "👨‍🍳", description: "Comida diaria, eventos y meal prep semanal." },
+  { slug: "maquillaje", label: "Maquillaje", icon: "💄", description: "Servicios sociales, eventos y novias." },
+  { slug: "planchado", label: "Planchado", icon: "👕", description: "Planchado en casa o con retiro y entrega." }
+];
+const BANK_OPTIONS = [
   "Banco de Chile",
-  "Banco Internacional",
-  "Banco Scotiabank",
-  "Banco de Credito e Inversiones (BCI)",
-  "Banco BICE",
-  "HSBC Bank Chile",
-  "Banco Santander",
-  "Banco Itau",
+  "BancoEstado",
+  "Santander",
+  "BCI",
+  "Scotiabank",
+  "Itaú",
   "Banco Security",
+  "Banco Consorcio",
   "Banco Falabella",
   "Banco Ripley",
-  "Banco Consorcio",
-  "BancoEstado",
-  "Banco BTG Pactual Chile",
-  "Banco Coopeuch"
+  "Banco Internacional"
 ] as const;
+const DAY_OPTIONS: Array<{ key: DayKey; label: string }> = [
+  { key: "lunes", label: "Lunes" },
+  { key: "martes", label: "Martes" },
+  { key: "miercoles", label: "Miércoles" },
+  { key: "jueves", label: "Jueves" },
+  { key: "viernes", label: "Viernes" },
+  { key: "sabado", label: "Sábado" },
+  { key: "domingo", label: "Domingo" }
+];
 
-function clamp(value: number, min: number, max: number) {
-  return Math.min(Math.max(value, min), max);
+function createInitialDraft(): DraftState {
+  return {
+    phone: "",
+    smsCode: "",
+    phoneVerified: false,
+    firstName: "",
+    lastName: "",
+    email: "",
+    rut: "",
+    address: "",
+    homeCommune: "Las Condes",
+    profilePhotoUrl: "",
+    coverageCommunes: ["Las Condes"],
+    category: "limpieza",
+    yearsExperience: "1",
+    workMode: "SOLO",
+    cleaningType: "hogar",
+    cleaningBringsProducts: null,
+    cleaningBringsEquipment: null,
+    petServiceType: "paseo_perros",
+    petAnimals: ["perros"],
+    petLargePets: null,
+    babysitterAgeRange: "0_2",
+    babysitterFirstAid: null,
+    babysitterMultiChild: null,
+    teacherSubject: "matematicas",
+    teacherLevel: "basica",
+    teacherMode: "presencial",
+    chefServiceType: "comida_diaria",
+    chefCuisineType: "casera",
+    chefAtClientHome: null,
+    makeupType: "social",
+    makeupHome: null,
+    makeupKit: null,
+    ironingType: "casa_cliente",
+    ironingDelicate: null,
+    ironingPricing: "por_hora",
+    availabilityBlocks: [{ day: "lunes", start: "09:00", end: "13:00" }],
+    hourlyRate: "15000",
+    minimumHours: "2",
+    hasWeekendSurcharge: false,
+    weekendSurchargePct: "20",
+    hasHolidaySurcharge: false,
+    holidaySurchargePct: "20",
+    bankName: BANK_OPTIONS[0],
+    bankAccountType: "cuenta_corriente",
+    bankAccountNumber: "",
+    bankOwnerRut: "",
+    acceptedTerms: false
+  };
 }
 
-function calculateMapRadiusPixels(km: number, lat: number, zoom: number) {
-  const meters = Math.max(0, km) * 1000;
-  const metersPerPixel = (156543.03392 * Math.cos((lat * Math.PI) / 180)) / Math.pow(2, zoom);
-  if (!Number.isFinite(metersPerPixel) || metersPerPixel <= 0) return 0;
-  return meters / metersPerPixel;
+function splitFullName(fullName: string) {
+  const parts = fullName.trim().split(/\s+/).filter(Boolean);
+  return {
+    firstName: parts[0] ?? "",
+    lastName: parts.slice(1).join(" ")
+  };
 }
 
-function estimateZoomForRadius(km: number, lat: number) {
-  const meters = Math.max(0.5, km) * 1000;
-  const targetRadiusPx = 120;
-  const metersPerPixel = meters / targetRadiusPx;
-  const zoom = Math.log2((156543.03392 * Math.cos((lat * Math.PI) / 180)) / metersPerPixel);
-  return clamp(Math.round(zoom), 10, 18);
+function fileToDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ""));
+    reader.onerror = () => reject(new Error("No se pudo leer el archivo"));
+    reader.readAsDataURL(file);
+  });
 }
 
-function toStringArray(value: unknown): string[] {
-  if (!Array.isArray(value)) return [];
-  return value.map((item) => String(item));
+function normalizeRut(rawRut: string) {
+  return rawRut.replace(/\./g, "").replace(/-/g, "").toUpperCase();
+}
+
+function isValidRut(rawRut: string) {
+  const clean = normalizeRut(rawRut);
+  if (!/^\d{7,8}[0-9K]$/.test(clean)) return false;
+  const body = clean.slice(0, -1);
+  const dv = clean.slice(-1);
+  let sum = 0;
+  let multiplier = 2;
+
+  for (let index = body.length - 1; index >= 0; index -= 1) {
+    sum += Number(body[index]) * multiplier;
+    multiplier = multiplier === 7 ? 2 : multiplier + 1;
+  }
+
+  const remainder = 11 - (sum % 11);
+  const expected = remainder === 11 ? "0" : remainder === 10 ? "K" : String(remainder);
+  return dv === expected;
 }
 
 function toAvailabilityBlocks(value: unknown): AvailabilityBlock[] {
@@ -249,717 +264,253 @@ function toAvailabilityBlocks(value: unknown): AvailabilityBlock[] {
   return value
     .map((item) => {
       if (!item || typeof item !== "object") return null;
-      const block = item as { day?: string; start?: string; end?: string };
-      if (!block.day || !block.start || !block.end) return null;
-      if (!CLEANING_WEEK_DAYS.includes(block.day as (typeof CLEANING_WEEK_DAYS)[number])) return null;
+      const candidate = item as { day?: string; start?: string; end?: string };
+      if (!candidate.day || !candidate.start || !candidate.end) return null;
+      if (!DAY_OPTIONS.some((day) => day.key === candidate.day)) return null;
       return {
-        day: block.day as (typeof CLEANING_WEEK_DAYS)[number],
-        start: block.start,
-        end: block.end
+        day: candidate.day as DayKey,
+        start: candidate.start,
+        end: candidate.end
       };
     })
     .filter(Boolean) as AvailabilityBlock[];
 }
 
-function formatOptionLabel(value: string) {
-  const clean = value.replace(/_/g, " ").trim();
-  if (!clean) return "";
-  return clean.charAt(0).toUpperCase() + clean.slice(1);
+function buildStep7Payload(draft: DraftState) {
+  switch (draft.category) {
+    case "limpieza":
+      return {
+        offeredServices: [
+          draft.cleaningType === "hogar"
+            ? "limpieza_general"
+            : draft.cleaningType === "profunda"
+              ? "limpieza_profunda"
+              : "post_evento"
+        ],
+        experienceTypes: [draft.cleaningType],
+        worksWithClientProducts: false,
+        bringsOwnProducts: draft.cleaningBringsProducts,
+        bringsOwnTools: draft.cleaningBringsEquipment
+      };
+    case "mascotas":
+      return {
+        offeredServices: [draft.petServiceType],
+        experienceTypes: draft.petAnimals,
+        acceptsHomesWithPets: draft.petLargePets
+      };
+    case "babysitter":
+      return {
+        offeredServices: ["babysitter_horas"],
+        experienceTypes: [draft.babysitterAgeRange],
+        bringsOwnTools: draft.babysitterFirstAid,
+        acceptsHomesWithChildren: draft.babysitterMultiChild
+      };
+    case "profesor-particular":
+      return {
+        offeredServices: [draft.teacherSubject],
+        experienceTypes: [draft.teacherLevel, draft.teacherMode]
+      };
+    case "chef":
+      return {
+        offeredServices: [draft.chefServiceType],
+        experienceTypes: [draft.chefCuisineType],
+        worksWithClientProducts: draft.chefAtClientHome
+      };
+    case "maquillaje":
+      return {
+        offeredServices: [draft.makeupType],
+        bringsOwnProducts: draft.makeupKit,
+        worksWithClientProducts: draft.makeupHome
+      };
+    case "planchado":
+      return {
+        offeredServices: [draft.ironingType],
+        experienceTypes: [draft.ironingPricing],
+        bringsOwnTools: draft.ironingDelicate
+      };
+    default:
+      return { offeredServices: ["limpieza_general"] };
+  }
 }
 
-function buildChileAddressQuery(value: string) {
-  const trimmed = value.trim();
-  if (!trimmed) return "";
-  if (/chile/i.test(trimmed)) return trimmed;
-  return `${trimmed}, Santiago, Chile`;
+function OnboardingLoadingScreen() {
+  return (
+    <main className="auth-flow-screen">
+      <div className="auth-flow-backdrop" aria-hidden />
+      <div className="login-screen-content">
+        <AuthHeroNav />
+        <section className="auth-flow-shell auth-flow-shell-wide">
+          <div className="auth-flow-copy">
+            <p className="auth-flow-kicker">Registro tasker</p>
+            <h1>Estamos preparando tu registro.</h1>
+            <p>En unos segundos podrás completar tu perfil profesional en WeTask.</p>
+          </div>
+          <section className="auth-flow-panel auth-flow-panel-wide">
+            <p className="empty">Cargando registro...</p>
+          </section>
+        </section>
+      </div>
+    </main>
+  );
 }
 
-function fileToDataUrl(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result || ""));
-    reader.onerror = () => reject(new Error("No se pudo leer archivo"));
-    reader.readAsDataURL(file);
-  });
-}
-
-export default function CleaningOnboardingPage() {
+function CleaningOnboardingPageContent() {
+  const searchParams = useSearchParams();
   const [session, setSession] = useState<SessionPayload | null>(null);
   const [onboarding, setOnboarding] = useState<OnboardingPayload | null>(null);
-  const [activeStep, setActiveStep] = useState(1);
-  const [selectedService, setSelectedService] = useState<TaskerServiceSlug>("limpieza");
+  const [draft, setDraft] = useState<DraftState>(createInitialDraft);
+  const [activeStep, setActiveStep] = useState<WizardStep>(1);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [feedback, setFeedback] = useState("");
   const [error, setError] = useState("");
+  const [feedback, setFeedback] = useState("");
+  const [smsPreview, setSmsPreview] = useState("");
 
-  const [regFullName, setRegFullName] = useState("");
-  const [regPhone, setRegPhone] = useState("");
-  const [regEmail, setRegEmail] = useState("");
-  const [regPassword, setRegPassword] = useState("");
-  const [regTerms, setRegTerms] = useState(false);
-
-  const [profilePhotoUrl, setProfilePhotoUrl] = useState("");
-  const [shortDescription, setShortDescription] = useState("");
-  const [yearsExperience, setYearsExperience] = useState(2);
-  const [workMode, setWorkMode] = useState<"SOLO" | "EQUIPO">("SOLO");
-  const [experienceTypes, setExperienceTypes] = useState<string[]>([]);
-  const [referenceAddress, setReferenceAddress] = useState("");
-
-  const [offeredServices, setOfferedServices] = useState<string[]>([]);
-  const [acceptsHomesWithPets, setAcceptsHomesWithPets] = useState(true);
-  const [acceptsHomesWithChildren, setAcceptsHomesWithChildren] = useState(true);
-  const [acceptsHomesWithElderly, setAcceptsHomesWithElderly] = useState(true);
-  const [worksWithClientProducts, setWorksWithClientProducts] = useState(true);
-  const [bringsOwnProducts, setBringsOwnProducts] = useState(false);
-  const [bringsOwnTools, setBringsOwnTools] = useState(false);
-  const [languages, setLanguages] = useState<string[]>(["espanol"]);
-
-  const [baseCommune, setBaseCommune] = useState("Las Condes");
-  const [serviceCommunes, setServiceCommunes] = useState<string[]>(["Las Condes"]);
-  const [communeToAdd, setCommuneToAdd] = useState<string>(ACTIVE_MVP_COMMUNES[0]);
-  const [coverageLatitude, setCoverageLatitude] = useState("-33.448900");
-  const [coverageLongitude, setCoverageLongitude] = useState("-70.669300");
-  const [addressValidationState, setAddressValidationState] = useState<"idle" | "validating" | "verified" | "fallback">("idle");
-  const [validatedAddress, setValidatedAddress] = useState("");
-  const [mapZoom, setMapZoom] = useState(14);
-  const [addressSuggestions, setAddressSuggestions] = useState<string[]>([]);
-  const [autocompleteLoading, setAutocompleteLoading] = useState(false);
-  const [showSuggestions, setShowSuggestions] = useState(false);
-  const [selectedFromAutocomplete, setSelectedFromAutocomplete] = useState(false);
-  const [maxTravelKm, setMaxTravelKm] = useState(12);
-  const [chargesTravelExtra, setChargesTravelExtra] = useState(false);
-
-  const [availabilityMode, setAvailabilityMode] = useState<"FIJA" | "VARIABLE">("FIJA");
-  const [availabilityBlocks, setAvailabilityBlocks] = useState<AvailabilityBlock[]>([{ day: "lunes", start: "09:00", end: "13:00" }]);
-  const [maxServicesPerDay, setMaxServicesPerDay] = useState(3);
-  const [acceptsUrgentBookings, setAcceptsUrgentBookings] = useState(false);
-
-  const [hourlyRateClp, setHourlyRateClp] = useState(12000);
-  const [minBookingHours, setMinBookingHours] = useState(2);
-  const [weekendSurchargePct, setWeekendSurchargePct] = useState(15);
-  const [holidaySurchargePct, setHolidaySurchargePct] = useState(25);
-  const [hasDeepCleaningRate, setHasDeepCleaningRate] = useState(false);
-  const [deepCleaningHourlyRateClp, setDeepCleaningHourlyRateClp] = useState(15000);
-
-  const [documentId, setDocumentId] = useState("");
-  const [birthDate, setBirthDate] = useState("");
-  const [nationality, setNationality] = useState("chilena");
-  const [migrationStatus, setMigrationStatus] = useState("");
-  const [emergencyContactName, setEmergencyContactName] = useState("");
-  const [emergencyContactPhone, setEmergencyContactPhone] = useState("");
-  const [workReferences, setWorkReferences] = useState("");
-  const [identityDocumentFrontFile, setIdentityDocumentFrontFile] = useState("");
-  const [identityDocumentBackFile, setIdentityDocumentBackFile] = useState("");
-  const [identitySelfieFile, setIdentitySelfieFile] = useState("");
-  const [criminalRecordFile, setCriminalRecordFile] = useState("");
-  const [bankAccountHolder, setBankAccountHolder] = useState("");
-  const [bankAccountHolderRut, setBankAccountHolderRut] = useState("");
-  const [bankName, setBankName] = useState("");
-  const [bankAccountType, setBankAccountType] = useState("cuenta_corriente");
-  const [bankAccountNumber, setBankAccountNumber] = useState("");
-  const [billingType, setBillingType] = useState("persona_natural");
-  const [phoneCode, setPhoneCode] = useState("");
-  const [emailCode, setEmailCode] = useState("");
-
-  const [completedTopics, setCompletedTopics] = useState<string[]>([]);
-  const [acceptsCancellationPolicy, setAcceptsCancellationPolicy] = useState(false);
-  const [acceptsServiceProtocol, setAcceptsServiceProtocol] = useState(false);
-  const [acceptsDataProcessing, setAcceptsDataProcessing] = useState(false);
-  const [confirmsCleaningScope, setConfirmsCleaningScope] = useState(false);
-
-  const phoneValidated = Boolean(onboarding?.phoneValidatedAt);
-  const emailVerified = Boolean(session?.authProvider !== "EMAIL" || session?.emailVerified);
-
-  const parsedMapLat = Number(coverageLatitude);
-  const parsedMapLng = Number(coverageLongitude);
-  const geocodedCenter = useMemo(
-    () =>
-      geocodeAddress({
-        city: "Santiago",
-        postalCode: "7500000",
-        street: referenceAddress.trim() || `${baseCommune}, Santiago`,
-        fallback: { lat: -33.4489, lng: -70.6693 }
-      }),
-    [referenceAddress, baseCommune]
-  );
-  const mapLat = clamp(
-    Number.isFinite(parsedMapLat) ? parsedMapLat : geocodedCenter.lat,
-    -90,
-    90
-  );
-  const mapLng = clamp(
-    Number.isFinite(parsedMapLng) ? parsedMapLng : geocodedCenter.lng,
-    -180,
-    180
-  );
-  const radiusPx = calculateMapRadiusPixels(maxTravelKm, mapLat, mapZoom);
-  const mapEmbedUrl = `https://maps.google.com/maps?hl=es&q=${encodeURIComponent(`${mapLat},${mapLng}`)}&z=${mapZoom}&t=m&output=embed`;
+  const chicureoSelected = draft.homeCommune === "Chicureo" || draft.coverageCommunes.includes("Chicureo");
+  const selectedCategoryLabel = CATEGORY_OPTIONS.find((option) => option.slug === draft.category)?.label ?? "Limpieza";
+  const progressPercent = Math.round((activeStep / TOTAL_STEPS) * 100);
 
   useEffect(() => {
-    if (!referenceAddress.trim()) {
-      setCoverageLatitude(geocodedCenter.lat.toFixed(6));
-      setCoverageLongitude(geocodedCenter.lng.toFixed(6));
-      setAddressValidationState("idle");
-      setValidatedAddress("");
-      setAddressSuggestions([]);
-      setShowSuggestions(false);
-      return;
-    }
-
-    const controller = new AbortController();
-    const timer = setTimeout(async () => {
-      setAddressValidationState("validating");
-      setValidatedAddress("");
-      try {
-        const query = buildChileAddressQuery(referenceAddress);
-        const response = await fetch(`/api/maps/validate-address?address=${encodeURIComponent(query)}`, {
-          signal: controller.signal
-        });
-        const data = (await response.json()) as {
-          valid?: boolean;
-          skipped?: boolean;
-          normalizedAddress?: string;
-          location?: { lat?: number | null; lng?: number | null };
-        };
-
-        if (!response.ok || !data.valid) {
-          setAddressValidationState("fallback");
-          return;
-        }
-
-        if (data.location?.lat != null && data.location?.lng != null) {
-          setCoverageLatitude(Number(data.location.lat).toFixed(6));
-          setCoverageLongitude(Number(data.location.lng).toFixed(6));
-          setMapZoom(estimateZoomForRadius(maxTravelKm, Number(data.location.lat)));
-        }
-
-        setValidatedAddress((data.normalizedAddress || query).trim());
-        const detectedCommune = inferCommuneFromAddress(data.normalizedAddress || query);
-        if (detectedCommune && detectedCommune !== baseCommune) {
-          setBaseCommune(detectedCommune);
-        }
-        setAddressValidationState(data.skipped ? "fallback" : "verified");
-      } catch {
-        if (!controller.signal.aborted) {
-          setAddressValidationState("fallback");
-          const detectedCommune = inferCommuneFromAddress(referenceAddress);
-          if (detectedCommune && detectedCommune !== baseCommune) {
-            setBaseCommune(detectedCommune);
-          }
-        }
-      }
-    }, 500);
-
-    return () => {
-      controller.abort();
-      clearTimeout(timer);
-    };
-  }, [baseCommune, geocodedCenter.lat, geocodedCenter.lng, maxTravelKm, referenceAddress]);
-
-  useEffect(() => {
-    const query = referenceAddress.trim();
-    if (selectedFromAutocomplete) {
-      setAddressSuggestions([]);
-      setShowSuggestions(false);
-      setAutocompleteLoading(false);
-      return;
-    }
-    if (query.length < 4) {
-      setAddressSuggestions([]);
-      setShowSuggestions(false);
-      setAutocompleteLoading(false);
-      return;
-    }
-
-    const controller = new AbortController();
-    const timer = setTimeout(async () => {
-      setAutocompleteLoading(true);
-      try {
-        const response = await fetch(`/api/maps/autocomplete?input=${encodeURIComponent(buildChileAddressQuery(query))}`, {
-          signal: controller.signal
-        });
-        const data = (await response.json()) as { predictions?: string[] };
-        if (!response.ok) {
-          setAddressSuggestions([]);
-          setShowSuggestions(false);
-          return;
-        }
-        const suggestions = Array.isArray(data.predictions) ? data.predictions : [];
-        setAddressSuggestions(suggestions);
-        setShowSuggestions(suggestions.length > 0);
-      } catch {
-        if (!controller.signal.aborted) {
-          setAddressSuggestions([]);
-          setShowSuggestions(false);
-        }
-      } finally {
-        if (!controller.signal.aborted) {
-          setAutocompleteLoading(false);
-        }
-      }
-    }, 300);
-
-    return () => {
-      controller.abort();
-      clearTimeout(timer);
-    };
-  }, [referenceAddress, selectedFromAutocomplete]);
-
-  useEffect(() => {
-    if (addressValidationState !== "verified") return;
-    setMapZoom(estimateZoomForRadius(maxTravelKm, mapLat));
-  }, [addressValidationState, mapLat, maxTravelKm]);
-
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const service = params.get("service");
-    if (!service) return;
-    const selected = TASKER_SERVICE_OPTIONS.find((item) => item.slug === service);
-    if (selected) setSelectedService(selected.slug);
-  }, []);
-
-  const selectedServiceLabel =
-    TASKER_SERVICE_OPTIONS.find((item) => item.slug === selectedService)?.label ?? "Limpieza";
-  const activeExperienceOptions = EXPERIENCE_OPTIONS_BY_SERVICE[selectedService];
-  const activeOfferedServices = OFFERED_SERVICES_BY_SERVICE[selectedService];
-  const activeDynamicLabels = DYNAMIC_QUESTION_LABELS[selectedService];
-  const bankOptions = useMemo(() => {
-    if (!bankName) return CHILE_BANK_OPTIONS;
-    if (CHILE_BANK_OPTIONS.includes(bankName as (typeof CHILE_BANK_OPTIONS)[number])) return CHILE_BANK_OPTIONS;
-    return [bankName, ...CHILE_BANK_OPTIONS];
-  }, [bankName]);
-
-  useEffect(() => {
-    setExperienceTypes((current) => current.filter((item) => activeExperienceOptions.includes(item)));
-    setOfferedServices((current) => current.filter((item) => activeOfferedServices.includes(item)));
-  }, [activeExperienceOptions, activeOfferedServices]);
-
-  const hydrateFromOnboarding = (next: OnboardingPayload) => {
-    setOnboarding(next);
-    setBaseCommune(next.baseCommune ?? "Las Condes");
-
-    setProfilePhotoUrl(next.profilePhotoUrl ?? "");
-    setShortDescription(next.shortDescription ?? "");
-    setYearsExperience(next.yearsExperience ?? 2);
-    setWorkMode(next.workMode ?? "SOLO");
-    setExperienceTypes(toStringArray(next.experienceTypes));
-    setReferenceAddress(next.referenceAddress ?? "");
-
-    setOfferedServices(toStringArray(next.offeredServices));
-    setAcceptsHomesWithPets(next.acceptsHomesWithPets ?? true);
-    setAcceptsHomesWithChildren(next.acceptsHomesWithChildren ?? true);
-    setAcceptsHomesWithElderly(next.acceptsHomesWithElderly ?? true);
-    setWorksWithClientProducts(next.worksWithClientProducts ?? true);
-    setBringsOwnProducts(next.bringsOwnProducts ?? false);
-    setBringsOwnTools(next.bringsOwnTools ?? false);
-    setLanguages(toStringArray(next.languages).length > 0 ? toStringArray(next.languages) : ["espanol"]);
-
-    const loadedCommunes = normalizeCommuneList(next.serviceCommunes);
-    const communes = loadedCommunes.length > 0 ? loadedCommunes : [next.baseCommune ?? "Las Condes"];
-    setServiceCommunes(communes);
-    setCommuneToAdd(communes[0] ?? ACTIVE_MVP_COMMUNES[0]);
-    if (next.coverageLatitude != null && next.coverageLongitude != null) {
-      setCoverageLatitude(next.coverageLatitude.toFixed(6));
-      setCoverageLongitude(next.coverageLongitude.toFixed(6));
-      setAddressValidationState("verified");
-    } else {
-      setCoverageLatitude("-33.448900");
-      setCoverageLongitude("-70.669300");
-      setAddressValidationState("idle");
-    }
-    setMaxTravelKm(next.maxTravelKm ?? 12);
-    setChargesTravelExtra(next.chargesTravelExtra ?? false);
-
-    setAvailabilityMode(next.availabilityMode ?? "FIJA");
-    setAvailabilityBlocks(toAvailabilityBlocks(next.availabilityBlocks).length > 0 ? toAvailabilityBlocks(next.availabilityBlocks) : [{ day: "lunes", start: "09:00", end: "13:00" }]);
-    setMaxServicesPerDay(next.maxServicesPerDay ?? 3);
-    setAcceptsUrgentBookings(next.acceptsUrgentBookings ?? false);
-
-    setHourlyRateClp(next.hourlyRateClp ?? 12000);
-    setMinBookingHours(next.minBookingHours ?? 2);
-    setWeekendSurchargePct(next.weekendSurchargePct ?? 15);
-    setHolidaySurchargePct(next.holidaySurchargePct ?? 25);
-    setHasDeepCleaningRate((next.deepCleaningHourlyRateClp ?? 0) > 0);
-    setDeepCleaningHourlyRateClp(next.deepCleaningHourlyRateClp ?? 15000);
-
-    setDocumentId(next.documentId ?? "");
-    setBirthDate(next.birthDate ? new Date(next.birthDate).toISOString().slice(0, 10) : "");
-    setNationality(next.nationality ?? "chilena");
-    setMigrationStatus(next.migrationStatus ?? "");
-    setEmergencyContactName(next.emergencyContactName ?? "");
-    setEmergencyContactPhone(next.emergencyContactPhone ?? "");
-    setWorkReferences(next.workReferences ?? "");
-    setIdentityDocumentFrontFile(next.identityDocumentFrontFile ?? next.identityDocumentFile ?? "");
-    setIdentityDocumentBackFile(next.identityDocumentBackFile ?? "");
-    setIdentitySelfieFile(next.identitySelfieFile ?? "");
-    setCriminalRecordFile(next.criminalRecordFile ?? "");
-    setBankAccountHolder(next.bankAccountHolder ?? "");
-    setBankAccountHolderRut(next.bankAccountHolderRut ?? "");
-    setBankName(next.bankName ?? "");
-    setBankAccountType(next.bankAccountType ?? "cuenta_corriente");
-    setBankAccountNumber(next.bankAccountNumber ?? "");
-    setBillingType(next.billingType ?? "persona_natural");
-
-    setCompletedTopics(toStringArray(next.trainingTopics));
-    setAcceptsCancellationPolicy(Boolean(next.acceptsCancellationPolicy));
-    setAcceptsServiceProtocol(Boolean(next.acceptsServiceProtocol));
-    setAcceptsDataProcessing(Boolean(next.acceptsDataProcessing));
-    setConfirmsCleaningScope(Boolean(next.confirmsCleaningScope));
-    setActiveStep(Math.min(9, Math.max(2, next.currentStep ?? 2)));
-  };
-
-  const loadSessionAndOnboarding = async () => {
-    setLoading(true);
+    const stored = window.localStorage.getItem(STORAGE_KEY);
+    if (!stored) return;
     try {
-      const sessionRes = await fetch("/api/auth/session");
-      const sessionData = (await sessionRes.json()) as { session?: SessionPayload | null };
-      const nextSession = sessionData.session ?? null;
-      setSession(nextSession);
-
-      if (nextSession?.role === "PRO" && nextSession.userId) {
-        const onboardingRes = await fetch("/api/onboarding/cleaning/me");
-        const onboardingData = (await onboardingRes.json()) as {
-          onboarding?: OnboardingPayload;
-          user?: { fullName?: string | null; email?: string | null; phone?: string | null };
-          error?: string;
-          detail?: string;
-        };
-        if (!onboardingRes.ok || !onboardingData.onboarding) {
-          throw new Error(onboardingData.detail || onboardingData.error || "No se pudo cargar onboarding");
-        }
-        hydrateFromOnboarding(onboardingData.onboarding);
-        if (onboardingData.user?.fullName) setRegFullName(onboardingData.user.fullName);
-        if (onboardingData.user?.email) setRegEmail(onboardingData.user.email);
-        if (onboardingData.user?.phone) setRegPhone(onboardingData.user.phone);
-      } else {
-        setActiveStep(1);
+      const parsed = JSON.parse(stored) as Partial<DraftState> & { activeStep?: WizardStep };
+      setDraft((current) => ({ ...current, ...parsed }));
+      if (parsed.activeStep && parsed.activeStep >= 1 && parsed.activeStep <= 12) {
+        setActiveStep(parsed.activeStep);
       }
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Error inesperado");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    void loadSessionAndOnboarding();
-  }, []);
-
-  const toggleInList = (value: string, list: string[], setter: (next: string[]) => void) => {
-    if (list.includes(value)) setter(list.filter((item) => item !== value));
-    else setter([...list, value]);
-  };
-
-  const addServiceCommune = () => {
-    if (!communeToAdd) return;
-    setServiceCommunes((current) => {
-      const set = new Set<string>([...current, communeToAdd]);
-      return Array.from(set);
-    });
-  };
-
-  const removeServiceCommune = (commune: string) => {
-    setServiceCommunes((current) => current.filter((item) => item !== commune));
-  };
-
-  const selectSuggestedAddress = (value: string) => {
-    setReferenceAddress(value);
-    setSelectedFromAutocomplete(true);
-    setAddressSuggestions([]);
-    setShowSuggestions(false);
-    const detectedCommune = inferCommuneFromAddress(value);
-    if (detectedCommune) {
-      setBaseCommune(detectedCommune);
-      setCommuneToAdd(detectedCommune);
-      setServiceCommunes((current) => {
-        const set = new Set<string>([...current, detectedCommune]);
-        return Array.from(set);
-      });
-    }
-  };
-
-  const uploadAsDataUrl = async (file: File | null, setter: (value: string) => void) => {
-    if (!file) return;
-    const content = await fileToDataUrl(file);
-    setter(content);
-  };
-
-  const sendEmailCode = async (emailOverride?: string) => {
-    setSaving(true);
-    setFeedback("");
-    setError("");
-    try {
-      const targetEmail = (emailOverride ?? regEmail ?? session?.email ?? "").trim().toLowerCase();
-      if (!targetEmail) throw new Error("Ingresa un correo para enviar el codigo.");
-
-      const response = await fetch("/api/auth/verify/request", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: targetEmail })
-      });
-      const data = (await response.json()) as { ok?: boolean; alreadyVerified?: boolean; codePreview?: string; tokenPreview?: string; error?: string; detail?: string };
-      if (!response.ok || !data.ok) throw new Error(data.detail || data.error || "No se pudo enviar codigo de correo");
-
-      if (data.alreadyVerified) {
-        setFeedback("Tu correo ya esta verificado.");
-      } else {
-        const preview = data.codePreview || data.tokenPreview;
-        setFeedback(preview ? `Codigo enviado al correo. Codigo dev: ${preview}` : "Codigo enviado al correo.");
-      }
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Error inesperado");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const verifyEmailCode = async () => {
-    setSaving(true);
-    setFeedback("");
-    setError("");
-    try {
-      const trimmedCode = emailCode.trim();
-      if (!trimmedCode) throw new Error("Ingresa el codigo que recibiste por correo.");
-
-      const response = await fetch("/api/auth/verify/confirm", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token: trimmedCode })
-      });
-      const data = (await response.json()) as { ok?: boolean; error?: string; detail?: string };
-      if (!response.ok || !data.ok) throw new Error(data.detail || data.error || "No se pudo verificar correo");
-
-      const sessionResponse = await fetch("/api/auth/session");
-      const sessionData = (await sessionResponse.json()) as { session?: SessionPayload | null };
-      setSession(sessionData.session ?? null);
-      setEmailCode("");
-      setFeedback("Correo verificado correctamente.");
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Error inesperado");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const registerStage1 = async (event: FormEvent) => {
-    event.preventDefault();
-    setSaving(true);
-    setFeedback("");
-    setError("");
-    try {
-      const response = await fetch("/api/onboarding/cleaning/start", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          fullName: regFullName,
-          phone: regPhone,
-          email: regEmail,
-          password: regPassword,
-          authProvider: "EMAIL",
-          baseCommune,
-          acceptTerms: regTerms
-        })
-      });
-      const data = (await response.json()) as {
-        ok?: boolean;
-        error?: string;
-        detail?: string;
-        emailVerificationRequired?: boolean;
-        verificationTokenPreview?: string;
-      };
-      if (!response.ok || !data.ok) throw new Error(data.detail || data.error || "No se pudo crear cuenta");
-
-      setFeedback(
-        data.emailVerificationRequired
-          ? "Cuenta creada. Te enviaremos un codigo corto al correo para verificar tu cuenta."
-          : "Cuenta creada. Continuemos con tu onboarding profesional."
-      );
-      await loadSessionAndOnboarding();
-      if (data.emailVerificationRequired) {
-        await sendEmailCode(regEmail);
-      }
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Error inesperado");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const persistStep = async (
-    step: number,
-    options: {
-      showSuccess?: boolean;
-      advanceStep?: boolean;
-    } = {}
-  ) => {
-    const { showSuccess = true, advanceStep = true } = options;
-    setSaving(true);
-    setFeedback("");
-    setError("");
-
-    try {
-      let payload: Record<string, unknown> = {};
-
-      if (step === 2) {
-        const referenceAddressForProfile = referenceAddress.trim() || `${baseCommune}, Santiago`;
-        payload = {
-          profilePhotoUrl,
-          shortDescription,
-          yearsExperience,
-          workMode,
-          experienceTypes,
-          referenceAddress: referenceAddressForProfile
-        };
-      }
-
-      if (step === 3) {
-        payload = {
-          offeredServices,
-          acceptsHomesWithPets,
-          acceptsHomesWithChildren,
-          acceptsHomesWithElderly,
-          worksWithClientProducts,
-          bringsOwnProducts,
-          bringsOwnTools,
-          languages
-        };
-      }
-
-      if (step === 4) {
-        const lat = Number(coverageLatitude);
-        const lng = Number(coverageLongitude);
-        if (!referenceAddress.trim()) {
-          throw new Error("Ingresa una direccion para definir la cobertura.");
-        }
-        if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
-          throw new Error("Debes seleccionar una ubicacion valida en el mapa.");
-        }
-        const detectedCommune = inferCommuneFromAddress(validatedAddress || referenceAddress) ?? baseCommune;
-        const coverageCommune = normalizeCommune(detectedCommune) ?? "Las Condes";
-        const normalizedCommunes = normalizeCommuneList(serviceCommunes);
-        const communes = normalizedCommunes.includes(coverageCommune)
-          ? normalizedCommunes
-          : normalizeCommuneList([...normalizedCommunes, coverageCommune]);
-        if (communes.length === 0) {
-          throw new Error("Selecciona al menos una comuna activa donde atiendes.");
-        }
-        setBaseCommune(coverageCommune);
-        setServiceCommunes(communes);
-        payload = {
-          baseCommune: coverageCommune,
-          referenceAddress,
-          serviceCommunes: communes,
-          coverageLatitude: lat,
-          coverageLongitude: lng,
-          maxTravelKm,
-          chargesTravelExtra
-        };
-      }
-
-      if (step === 5) {
-        payload = {
-          availabilityMode,
-          availabilityBlocks,
-          maxServicesPerDay,
-          acceptsUrgentBookings
-        };
-      }
-
-      if (step === 6) {
-        payload = {
-          hourlyRateClp,
-          minBookingHours,
-          weekendSurchargePct,
-          holidaySurchargePct,
-          remoteCommuneSurchargeClp: 0,
-          hasDeepCleaningRate,
-          deepCleaningHourlyRateClp: hasDeepCleaningRate ? deepCleaningHourlyRateClp : null
-        };
-      }
-
-      if (step === 7) {
-        payload = {
-          documentId,
-          birthDate,
-          nationality,
-          migrationStatus,
-          emergencyContactName,
-          emergencyContactPhone,
-          workReferences,
-          identityDocumentFrontFile,
-          identityDocumentBackFile,
-          identitySelfieFile,
-          criminalRecordFile,
-          bankAccountHolder,
-          bankAccountHolderRut,
-          bankName,
-          bankAccountType,
-          bankAccountNumber,
-          billingType
-        };
-      }
-
-      if (step === 8) {
-        payload = {
-          completedTopics,
-          acceptsCancellationPolicy,
-          acceptsServiceProtocol,
-          acceptsDataProcessing,
-          confirmsCleaningScope
-        };
-      }
-
-      const response = await fetch("/api/onboarding/cleaning/me", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ step, payload })
-      });
-
-      const data = (await response.json()) as { ok?: boolean; error?: string; detail?: string; onboarding?: OnboardingPayload };
-      if (!response.ok || !data.ok || !data.onboarding) throw new Error(data.detail || data.error || "No se pudo guardar etapa");
-      const savedOnboarding = data.onboarding;
-
-      hydrateFromOnboarding(savedOnboarding);
-      if (advanceStep) {
-        setActiveStep((current) => Math.min(9, Math.max(current + 1, savedOnboarding.currentStep)));
-      }
-      if (showSuccess) {
-        setFeedback("Etapa guardada correctamente.");
-      }
-      return savedOnboarding;
-    } catch (e) {
-      const message = e instanceof Error ? e.message : "Error inesperado";
-      setError(message);
-      throw new Error(message);
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const saveStep = async (step: number) => {
-    try {
-      await persistStep(step);
     } catch {
-      // El error ya se muestra en pantalla desde persistStep.
+      // noop
     }
+  }, []);
+
+  useEffect(() => {
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...draft, activeStep }));
+  }, [draft, activeStep]);
+
+  useEffect(() => {
+    const presetService = searchParams.get("service");
+    if (!presetService) return;
+    if (CATEGORY_OPTIONS.some((option) => option.slug === presetService)) {
+      setDraft((current) => ({ ...current, category: presetService as CategorySlug }));
+    }
+  }, [searchParams]);
+
+  const hydrateFromServer = (nextOnboarding: OnboardingPayload, user?: { fullName?: string | null; email?: string | null; phone?: string | null }) => {
+    const { firstName, lastName } = splitFullName(user?.fullName ?? session?.fullName ?? "");
+    setOnboarding(nextOnboarding);
+    setDraft((current) => ({
+      ...current,
+      phone: user?.phone ?? current.phone,
+      phoneVerified: Boolean(nextOnboarding.phoneValidatedAt),
+      firstName: firstName || current.firstName,
+      lastName: lastName || current.lastName,
+      email: user?.email ?? current.email,
+      rut: nextOnboarding.documentId ?? current.rut,
+      address: nextOnboarding.referenceAddress ?? current.address,
+      homeCommune: (nextOnboarding.baseCommune as ActiveMvpCommune) ?? current.homeCommune,
+      profilePhotoUrl: nextOnboarding.profilePhotoUrl ?? current.profilePhotoUrl,
+      coverageCommunes:
+        Array.isArray(nextOnboarding.serviceCommunes) && nextOnboarding.serviceCommunes.length > 0
+          ? (nextOnboarding.serviceCommunes as ActiveMvpCommune[])
+          : current.coverageCommunes,
+      category: (CATEGORY_OPTIONS.some((option) => option.slug === nextOnboarding.categorySlug)
+        ? nextOnboarding.categorySlug
+        : current.category) as CategorySlug,
+      yearsExperience: nextOnboarding.yearsExperience ? String(Math.min(nextOnboarding.yearsExperience, 10)) : current.yearsExperience,
+      workMode: nextOnboarding.workMode ?? current.workMode,
+      availabilityBlocks:
+        toAvailabilityBlocks(nextOnboarding.availabilityBlocks).length > 0
+          ? toAvailabilityBlocks(nextOnboarding.availabilityBlocks)
+          : current.availabilityBlocks,
+      hourlyRate: nextOnboarding.hourlyRateClp ? String(nextOnboarding.hourlyRateClp) : current.hourlyRate,
+      minimumHours: nextOnboarding.minBookingHours ? String(nextOnboarding.minBookingHours) : current.minimumHours,
+      hasWeekendSurcharge: Boolean((nextOnboarding.weekendSurchargePct ?? 0) > 0),
+      weekendSurchargePct: nextOnboarding.weekendSurchargePct != null ? String(nextOnboarding.weekendSurchargePct) : current.weekendSurchargePct,
+      hasHolidaySurcharge: Boolean((nextOnboarding.holidaySurchargePct ?? 0) > 0),
+      holidaySurchargePct: nextOnboarding.holidaySurchargePct != null ? String(nextOnboarding.holidaySurchargePct) : current.holidaySurchargePct,
+      bankName: nextOnboarding.bankName ?? current.bankName,
+      bankAccountType: (nextOnboarding.bankAccountType as DraftState["bankAccountType"]) ?? current.bankAccountType,
+      bankAccountNumber: nextOnboarding.bankAccountNumber ?? current.bankAccountNumber,
+      bankOwnerRut: nextOnboarding.bankAccountHolderRut ?? current.bankOwnerRut,
+      acceptedTerms: Boolean(nextOnboarding.acceptsCancellationPolicy && nextOnboarding.acceptsDataProcessing)
+    }));
+
+    if (nextOnboarding.submittedAt || ["PENDIENTE_REVISION", "APROBADO", "ACTIVO"].includes(nextOnboarding.status)) {
+      setActiveStep(12);
+      return;
+    }
+
+    const nextStep = Math.max(1, Math.min(11, nextOnboarding.currentStep || 1)) as WizardStep;
+    setActiveStep(nextStep >= 3 ? nextStep : 3);
+  };
+
+  useEffect(() => {
+    const load = async () => {
+      setLoading(true);
+      try {
+        const sessionResponse = await fetch("/api/auth/session");
+        const sessionData = (await sessionResponse.json()) as { session?: SessionPayload | null };
+        const nextSession = sessionData.session ?? null;
+        setSession(nextSession);
+
+        if (nextSession?.role === "PRO") {
+          const onboardingResponse = await fetch("/api/onboarding/cleaning/me");
+          const onboardingData = (await onboardingResponse.json()) as {
+            onboarding?: OnboardingPayload;
+            user?: { fullName?: string | null; email?: string | null; phone?: string | null };
+            error?: string;
+            detail?: string;
+          };
+          if (!onboardingResponse.ok || !onboardingData.onboarding) {
+            throw new Error(onboardingData.detail || onboardingData.error || "No se pudo cargar el registro");
+          }
+          hydrateFromServer(onboardingData.onboarding, onboardingData.user);
+        }
+      } catch (eventualError) {
+        setError(eventualError instanceof Error ? eventualError.message : "Error inesperado");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    void load();
+  }, []);
+
+  const updateDraft = <K extends keyof DraftState>(key: K, value: DraftState[K]) => {
+    setDraft((current) => ({ ...current, [key]: value }));
+  };
+
+  const persistServerStep = async (step: number, payload: Record<string, unknown>) => {
+    const response = await fetch("/api/onboarding/cleaning/me", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ step, payload })
+    });
+    const data = (await response.json()) as { ok?: boolean; onboarding?: OnboardingPayload; error?: string; detail?: string };
+    if (!response.ok || !data.ok || !data.onboarding) {
+      throw new Error(data.detail || data.error || "No se pudo guardar el paso");
+    }
+    setOnboarding(data.onboarding);
   };
 
   const sendPhoneCode = async () => {
     setSaving(true);
-    setFeedback("");
     setError("");
+    setFeedback("");
+    setSmsPreview("");
     try {
-      const response = await fetch("/api/onboarding/cleaning/phone/send", {
+      const response = await fetch("/api/onboarding/public/phone/send", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone: regPhone || undefined })
+        body: JSON.stringify({ phone: draft.phone.trim() })
       });
-      const data = (await response.json()) as { ok?: boolean; error?: string; detail?: string; codePreview?: string };
-      if (!response.ok || !data.ok) throw new Error(data.detail || data.error || "No se pudo enviar codigo");
-      setFeedback(data.codePreview ? `Codigo enviado. Token dev: ${data.codePreview}` : "Codigo enviado a tu telefono.");
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Error inesperado");
+      const data = (await response.json()) as { ok?: boolean; codePreview?: string; error?: string; detail?: string };
+      if (!response.ok || !data.ok) throw new Error(data.detail || data.error || "No se pudo enviar el codigo");
+      setFeedback("Codigo enviado por SMS.");
+      setSmsPreview(data.codePreview ?? "");
+    } catch (eventualError) {
+      setError(eventualError instanceof Error ? eventualError.message : "Error inesperado");
     } finally {
       setSaving(false);
     }
@@ -967,724 +518,1012 @@ export default function CleaningOnboardingPage() {
 
   const verifyPhoneCode = async () => {
     setSaving(true);
-    setFeedback("");
     setError("");
+    setFeedback("");
     try {
-      const response = await fetch("/api/onboarding/cleaning/phone/verify", {
+      const response = await fetch("/api/onboarding/public/phone/verify", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code: phoneCode })
+        body: JSON.stringify({ code: draft.smsCode.trim() })
       });
-      const data = (await response.json()) as { ok?: boolean; error?: string; detail?: string; onboarding?: OnboardingPayload };
-      if (!response.ok || !data.ok || !data.onboarding) throw new Error(data.detail || data.error || "No se pudo validar telefono");
-      hydrateFromOnboarding(data.onboarding);
-      setFeedback("Telefono validado correctamente.");
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Error inesperado");
+      const data = (await response.json()) as { ok?: boolean; error?: string; detail?: string };
+      if (!response.ok || !data.ok) throw new Error(data.detail || data.error || "No se pudo verificar el telefono");
+      setDraft((current) => ({ ...current, phoneVerified: true }));
+      setFeedback("Telefono verificado correctamente.");
+      setActiveStep(3);
+    } catch (eventualError) {
+      setError(eventualError instanceof Error ? eventualError.message : "Error inesperado");
     } finally {
       setSaving(false);
     }
   };
 
-  const submitForReview = async () => {
-    setFeedback("");
+  const continueStep1 = () => {
     setError("");
-    try {
-      for (const step of [2, 3, 4, 5, 6, 7]) {
-        await persistStep(step, { showSuccess: false, advanceStep: false });
-      }
+    setFeedback("");
+    setActiveStep(2);
+  };
 
-      setSaving(true);
-      const response = await fetch("/api/onboarding/cleaning/submit", { method: "POST" });
-      const data = (await response.json()) as { ok?: boolean; error?: string; detail?: string; missingFields?: string[]; onboarding?: OnboardingPayload };
-      if (!response.ok || !data.ok) {
-        const missingFieldsText = data.missingFields?.length ? ` Faltan: ${data.missingFields.join(", ")}` : "";
-        throw new Error((data.detail || data.error || "No se pudo enviar a revision") + missingFieldsText);
+  const continueStep2 = async () => {
+    if (!draft.phone.trim()) {
+      setError("Ingresa tu telefono para continuar.");
+      return;
+    }
+    if (!draft.phoneVerified) {
+      setError("Debes verificar tu telefono antes de continuar.");
+      return;
+    }
+    setError("");
+    setFeedback("");
+    setActiveStep(3);
+  };
+
+  const continueStep3 = async () => {
+    if (!draft.firstName.trim() || !draft.lastName.trim()) {
+      setError("Completa nombre y apellido.");
+      return;
+    }
+    if (!draft.email.trim()) {
+      setError("Completa tu email.");
+      return;
+    }
+    if (!isValidRut(draft.rut)) {
+      setError("Ingresa un RUT chileno valido.");
+      return;
+    }
+    if (!draft.address.trim()) {
+      setError("Ingresa tu direccion.");
+      return;
+    }
+    if (!draft.profilePhotoUrl) {
+      setError("La foto de perfil es obligatoria.");
+      return;
+    }
+
+    setSaving(true);
+    setError("");
+    setFeedback("");
+    try {
+      if (session?.role === "PRO") {
+        await persistServerStep(3, {
+          fullName: `${draft.firstName.trim()} ${draft.lastName.trim()}`,
+          email: draft.email.trim().toLowerCase(),
+          phone: draft.phone.trim(),
+          documentId: draft.rut.trim(),
+          referenceAddress: draft.address.trim(),
+          baseCommune: draft.homeCommune,
+          profilePhotoUrl: draft.profilePhotoUrl
+        });
+      } else {
+        const response = await fetch("/api/onboarding/cleaning/start", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            fullName: `${draft.firstName.trim()} ${draft.lastName.trim()}`,
+            email: draft.email.trim().toLowerCase(),
+            phone: draft.phone.trim(),
+            baseCommune: draft.homeCommune,
+            referenceAddress: draft.address.trim(),
+            documentId: draft.rut.trim(),
+            profilePhotoUrl: draft.profilePhotoUrl
+          })
+        });
+        const data = (await response.json()) as {
+          session?: SessionPayload;
+          onboarding?: OnboardingPayload;
+          error?: string;
+          detail?: string;
+        };
+        if (!response.ok || !data.session || !data.onboarding) {
+          throw new Error(data.detail || data.error || "No se pudo iniciar el registro");
+        }
+        setSession(data.session);
+        setOnboarding(data.onboarding);
       }
-      if (data.onboarding) hydrateFromOnboarding(data.onboarding);
-      setFeedback("Perfil enviado a revision manual. Te avisaremos cuando quede aprobado.");
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Error inesperado");
+      setActiveStep(4);
+    } catch (eventualError) {
+      setError(eventualError instanceof Error ? eventualError.message : "Error inesperado");
     } finally {
       setSaving(false);
     }
+  };
+
+  const continueStep4 = async () => {
+    if (draft.coverageCommunes.length === 0) {
+      setError("Selecciona al menos una comuna de cobertura.");
+      return;
+    }
+    setSaving(true);
+    setError("");
+    setFeedback("");
+    try {
+      await persistServerStep(4, {
+        baseCommune: draft.homeCommune,
+        serviceCommunes: draft.coverageCommunes
+      });
+      setActiveStep(5);
+    } catch (eventualError) {
+      setError(eventualError instanceof Error ? eventualError.message : "Error inesperado");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const continueStep5 = async () => {
+    setSaving(true);
+    setError("");
+    try {
+      await persistServerStep(5, { categorySlug: draft.category });
+      setActiveStep(6);
+    } catch (eventualError) {
+      setError(eventualError instanceof Error ? eventualError.message : "Error inesperado");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const continueStep6 = async () => {
+    setSaving(true);
+    setError("");
+    try {
+      await persistServerStep(6, {
+        yearsExperience: draft.yearsExperience === "10+" ? 11 : Number(draft.yearsExperience),
+        workMode: draft.workMode
+      });
+      setActiveStep(7);
+    } catch (eventualError) {
+      setError(eventualError instanceof Error ? eventualError.message : "Error inesperado");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const continueStep7 = async () => {
+    const payload = buildStep7Payload(draft);
+    if (!payload.offeredServices || payload.offeredServices.length === 0) {
+      setError("Responde las preguntas de tu categoria para continuar.");
+      return;
+    }
+    setSaving(true);
+    setError("");
+    try {
+      await persistServerStep(7, payload);
+      setActiveStep(8);
+    } catch (eventualError) {
+      setError(eventualError instanceof Error ? eventualError.message : "Error inesperado");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const continueStep8 = async () => {
+    const validBlocks = draft.availabilityBlocks.filter((block) => block.start && block.end && block.end > block.start);
+    if (validBlocks.length === 0) {
+      setError("Configura al menos un bloque horario valido.");
+      return;
+    }
+    setSaving(true);
+    setError("");
+    try {
+      await persistServerStep(8, { availabilityBlocks: validBlocks });
+      setActiveStep(9);
+    } catch (eventualError) {
+      setError(eventualError instanceof Error ? eventualError.message : "Error inesperado");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const continueStep9 = async () => {
+    if (!draft.hourlyRate.trim() || !draft.minimumHours.trim()) {
+      setError("Completa tu tarifa y minimo de horas.");
+      return;
+    }
+    setSaving(true);
+    setError("");
+    try {
+      await persistServerStep(9, {
+        hourlyRateClp: Number(draft.hourlyRate),
+        minBookingHours: Number(draft.minimumHours),
+        weekendSurchargePct: draft.hasWeekendSurcharge ? Number(draft.weekendSurchargePct || 0) : 0,
+        holidaySurchargePct: draft.hasHolidaySurcharge ? Number(draft.holidaySurchargePct || 0) : 0,
+        remoteCommuneSurchargeClp: chicureoSelected ? 5000 : 0
+      });
+      setActiveStep(10);
+    } catch (eventualError) {
+      setError(eventualError instanceof Error ? eventualError.message : "Error inesperado");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const continueStep10 = async () => {
+    if (!isValidRut(draft.bankOwnerRut)) {
+      setError("Ingresa un RUT titular valido.");
+      return;
+    }
+    setSaving(true);
+    setError("");
+    try {
+      await persistServerStep(10, {
+        bankAccountHolder: `${draft.firstName.trim()} ${draft.lastName.trim()}`.trim(),
+        bankAccountHolderRut: draft.bankOwnerRut.trim(),
+        bankName: draft.bankName,
+        bankAccountType: draft.bankAccountType,
+        bankAccountNumber: draft.bankAccountNumber.trim()
+      });
+      setActiveStep(11);
+    } catch (eventualError) {
+      setError(eventualError instanceof Error ? eventualError.message : "Error inesperado");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const finalizeRegistration = async () => {
+    if (!draft.acceptedTerms) {
+      setError("Debes aceptar los terminos y condiciones para finalizar.");
+      return;
+    }
+    setSaving(true);
+    setError("");
+    setFeedback("");
+    try {
+      await persistServerStep(11, { acceptTerms: true });
+      const response = await fetch("/api/onboarding/cleaning/submit", { method: "POST" });
+      const data = (await response.json()) as { ok?: boolean; onboarding?: OnboardingPayload; error?: string; detail?: string; missingFields?: string[] };
+      if (!response.ok || !data.ok || !data.onboarding) {
+        throw new Error(data.detail || data.error || "No se pudo finalizar el registro");
+      }
+      setOnboarding(data.onboarding);
+      setActiveStep(12);
+      setFeedback("Registro completado. Tu perfil será revisado antes de activarse.");
+      window.localStorage.removeItem(STORAGE_KEY);
+    } catch (eventualError) {
+      setError(eventualError instanceof Error ? eventualError.message : "Error inesperado");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const toggleCoverageCommune = (commune: ActiveMvpCommune) => {
+    setDraft((current) => {
+      const exists = current.coverageCommunes.includes(commune);
+      return {
+        ...current,
+        coverageCommunes: exists ? current.coverageCommunes.filter((item) => item !== commune) : [...current.coverageCommunes, commune]
+      };
+    });
+  };
+
+  const updateAvailabilityBlock = (index: number, patch: Partial<AvailabilityBlock>) => {
+    setDraft((current) => ({
+      ...current,
+      availabilityBlocks: current.availabilityBlocks.map((block, blockIndex) => (blockIndex === index ? { ...block, ...patch } : block))
+    }));
+  };
+
+  const addAvailabilityBlock = (day: DayKey) => {
+    setDraft((current) => ({
+      ...current,
+      availabilityBlocks: [...current.availabilityBlocks, { day, start: "14:00", end: "18:00" }]
+    }));
+  };
+
+  const removeAvailabilityBlock = (index: number) => {
+    setDraft((current) => ({
+      ...current,
+      availabilityBlocks: current.availabilityBlocks.filter((_, blockIndex) => blockIndex !== index)
+    }));
+  };
+
+  const groupedBlocks = useMemo(
+    () =>
+      DAY_OPTIONS.map((day) => ({
+        ...day,
+        blocks: draft.availabilityBlocks
+          .map((block, index) => ({ ...block, index }))
+          .filter((block) => block.day === day.key)
+      })),
+    [draft.availabilityBlocks]
+  );
+
+  const previousStep = () => {
+    if (activeStep <= 1) return;
+    setError("");
+    setFeedback("");
+    setActiveStep((current) => Math.max(1, current - 1) as WizardStep);
   };
 
   if (loading) {
-    return (
-      <main className="auth-flow-screen">
-        <div className="auth-flow-backdrop" aria-hidden />
-        <div className="login-screen-content">
-          <AuthHeroNav />
-          <section className="auth-flow-shell auth-flow-shell-wide">
-            <div className="auth-flow-copy">
-              <p className="auth-flow-kicker">Onboarding profesional</p>
-              <h1>Estamos preparando tu flujo de activacion.</h1>
-              <p>En unos segundos podrás continuar configurando tu perfil profesional en WeTask.</p>
-            </div>
-
-            <section className="auth-flow-panel auth-flow-panel-wide">
-              <p className="empty">Cargando onboarding...</p>
-            </section>
-          </section>
-        </div>
-      </main>
-    );
+    return <OnboardingLoadingScreen />;
   }
 
   return (
     <main className="auth-flow-screen auth-flow-screen-scroll">
       <div className="auth-flow-backdrop" aria-hidden />
+
       <div className="login-screen-content">
         <AuthHeroNav />
+
         <section className="auth-flow-shell auth-flow-shell-wide">
           <div className="auth-flow-copy">
-            <p className="auth-flow-kicker">Onboarding profesional</p>
-            <h1>{selectedServiceLabel} con sello WeTask.</h1>
-            <p>Completa tu perfil paso a paso para activar tu cuenta profesional y comenzar a recibir reservas.</p>
+            <p className="auth-flow-kicker">Registro de taskers</p>
+            <h1>Completa tu registro en 3 a 4 minutos.</h1>
+            <p>Trabaja con clientes en tu comuna, configura tu disponibilidad y recibe pagos seguros por tus servicios en WeTask.</p>
 
             <div className="auth-flow-copy-list">
               <div className="auth-flow-meta-card">
-                <strong>Servicio principal</strong>
-                <span>{selectedServiceLabel}</span>
+                <strong>Tiempo objetivo</strong>
+                <span>3–4 minutos para completar el flujo base y enviarlo a revisión.</span>
               </div>
               <div className="auth-flow-meta-card">
-                <strong>Etapas clave</strong>
-                <span>Perfil, servicios, cobertura, documentos, pagos y entrenamiento.</span>
+                <strong>Guardado por paso</strong>
+                <span>Desde que creas tu cuenta, cada avance queda persistido automáticamente.</span>
               </div>
             </div>
 
-            {onboarding ? (
+            {onboarding?.adminReviewNotes ? (
               <div className="auth-flow-status">
-                <strong>{CLEANING_STATUS_LABELS[onboarding.status]}</strong>
-                <span>{onboarding.adminReviewNotes ? onboarding.adminReviewNotes : "Continúa el flujo para avanzar al siguiente estado."}</span>
+                <strong>{onboarding.status}</strong>
+                <span>{onboarding.adminReviewNotes}</span>
               </div>
             ) : null}
           </div>
 
-          <section className="auth-flow-panel auth-flow-panel-wide mvp-lead-panel">
-          <div className="panel-head">
-            <h2>Onboarding profesional · {selectedServiceLabel}</h2>
-            <p>Completa el onboarding de arriba hacia abajo para activar tu perfil y comenzar a recibir reservas.</p>
-          </div>
-
-        {onboarding ? (
-          <p className="minimal-note">
-            Estado actual: <strong>{CLEANING_STATUS_LABELS[onboarding.status]}</strong>
-            {onboarding.adminReviewNotes ? ` · Nota admin: ${onboarding.adminReviewNotes}` : ""}
-          </p>
-        ) : null}
-
-        {selectedService !== "limpieza" ? (
-          <p className="minimal-note">
-            Seleccionaste <strong>{selectedServiceLabel}</strong>. Las preguntas de experiencia y servicios se adaptan a esta especialidad.
-          </p>
-        ) : null}
-
-        {activeStep === 1 ? (
-          <form className="grid-form" onSubmit={registerStage1}>
-            <label>
-              Nombre completo
-              <input value={regFullName} onChange={(event) => setRegFullName(event.target.value)} required />
-            </label>
-            <label>
-              Telefono
-              <input value={regPhone} onChange={(event) => setRegPhone(event.target.value)} required />
-            </label>
-            <label>
-              Email
-              <input type="email" value={regEmail} onChange={(event) => setRegEmail(event.target.value)} required />
-            </label>
-            <label>
-              Contrasena
-              <input type="password" value={regPassword} onChange={(event) => setRegPassword(event.target.value)} minLength={8} required />
-            </label>
-            <label>
-              Comuna base
-              <select value={baseCommune} onChange={(event) => setBaseCommune(event.target.value)} required>
-                {ACTIVE_MVP_COMMUNES.map((commune) => (
-                  <option key={commune} value={commune}>
-                    {commune}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <div className="full inline-option-row">
-              <label className="inline-check-option">
-                <input type="checkbox" checked={regTerms} onChange={(event) => setRegTerms(event.target.checked)} required />
-                <span>
-                  Acepto los{" "}
-                  <Link href="/legal#terminos" target="_blank" rel="noreferrer">
-                    terminos y condiciones
-                  </Link>
-                </span>
-              </label>
-            </div>
-            <div className="cta-row full">
-              <button type="submit" className="cta" disabled={saving}>
-                {saving ? "Creando cuenta..." : "Continuar onboarding"}
-              </button>
-            </div>
-          </form>
-        ) : null}
-
-        {session && session.role !== "PRO" && activeStep > 1 ? (
-          <p className="feedback error">Tu cuenta actual no es de profesional. Inicia sesion como tasker para continuar.</p>
-        ) : null}
-
-        {session?.role === "PRO" ? (
-          <div className="grid-form">
-            <h3 className="full">1. Perfil profesional</h3>
-            <label>
-              Foto de perfil
-              <input type="file" accept="image/png,image/jpeg" onChange={(event) => void uploadAsDataUrl(event.target.files?.[0] ?? null, setProfilePhotoUrl)} />
-            </label>
-            <label className="full">
-              Descripcion corta
-              <textarea value={shortDescription} onChange={(event) => setShortDescription(event.target.value)} />
-            </label>
-            <label>
-              Anos de experiencia
-              <input type="number" min={0} max={60} value={yearsExperience} onChange={(event) => setYearsExperience(Number(event.target.value) || 0)} />
-            </label>
-            <label>
-              Modalidad
-              <select value={workMode} onChange={(event) => setWorkMode(event.target.value as "SOLO" | "EQUIPO") }>
-                <option value="SOLO">Trabajo sola/o</option>
-                <option value="EQUIPO">Trabajo en equipo</option>
-              </select>
-            </label>
-            <div className="full">
-              <p className="field-label">Tipo de experiencia</p>
-              <div className="inline-checks">
-                {activeExperienceOptions.map((item) => (
-                  <label key={item}>
-                    <input type="checkbox" checked={experienceTypes.includes(item)} onChange={() => toggleInList(item, experienceTypes, setExperienceTypes)} />
-                    {formatOptionLabel(item)}
-                  </label>
-                ))}
+          <section className="auth-flow-panel auth-flow-panel-wide onboarding-panel">
+            <div className="onboarding-progress-head">
+              <div>
+                <p className="onboarding-step-kicker">Paso {activeStep} de {TOTAL_STEPS}</p>
+                <h2>{activeStep === 12 ? "Registro completado" : "Trabaja con WeTask"}</h2>
               </div>
+              <span className="onboarding-progress-label">{progressPercent}%</span>
             </div>
-            <div className="cta-row full">
-              <button type="button" className="cta" onClick={() => void saveStep(2)} disabled={saving}>
-                {saving ? "Guardando..." : "Guardar perfil profesional"}
-              </button>
+            <div className="onboarding-progress-track" aria-hidden>
+              <div className="onboarding-progress-fill" style={{ width: `${progressPercent}%` }} />
             </div>
-          </div>
-        ) : null}
 
-        {session?.role === "PRO" ? (
-          <div className="grid-form">
-            <h3 className="full">2. Servicios que ofreces</h3>
-            <div className="full">
-              <div className="inline-checks">
-                {activeOfferedServices.map((item) => (
-                  <label key={item}>
-                    <input type="checkbox" checked={offeredServices.includes(item)} onChange={() => toggleInList(item, offeredServices, setOfferedServices)} />
-                    {formatOptionLabel(item)}
-                  </label>
-                ))}
-              </div>
-            </div>
-            <div className="full inline-options-stack">
-              <label className="inline-check-option">
-                <input type="checkbox" checked={acceptsHomesWithPets} onChange={(event) => setAcceptsHomesWithPets(event.target.checked)} />
-                <span>{activeDynamicLabels.first}</span>
-              </label>
-              <label className="inline-check-option">
-                <input type="checkbox" checked={acceptsHomesWithChildren} onChange={(event) => setAcceptsHomesWithChildren(event.target.checked)} />
-                <span>{activeDynamicLabels.second}</span>
-              </label>
-              <label className="inline-check-option">
-                <input type="checkbox" checked={acceptsHomesWithElderly} onChange={(event) => setAcceptsHomesWithElderly(event.target.checked)} />
-                <span>{activeDynamicLabels.third}</span>
-              </label>
-              <label className="inline-check-option">
-                <input type="checkbox" checked={worksWithClientProducts} onChange={(event) => setWorksWithClientProducts(event.target.checked)} />
-                <span>{activeDynamicLabels.products}</span>
-              </label>
-              <label className="inline-check-option">
-                <input type="checkbox" checked={bringsOwnProducts} onChange={(event) => setBringsOwnProducts(event.target.checked)} />
-                <span>{activeDynamicLabels.ownProducts}</span>
-              </label>
-              <label className="inline-check-option">
-                <input type="checkbox" checked={bringsOwnTools} onChange={(event) => setBringsOwnTools(event.target.checked)} />
-                <span>{activeDynamicLabels.ownTools}</span>
-              </label>
-            </div>
-            <div className="full">
-              <p className="field-label">Idiomas</p>
-              <div className="inline-checks">
-                {CLEANING_LANGUAGE_OPTIONS.map((item) => (
-                  <label key={item}>
-                    <input type="checkbox" checked={languages.includes(item)} onChange={() => toggleInList(item, languages, setLanguages)} />
-                    {item}
-                  </label>
-                ))}
-              </div>
-            </div>
-            <div className="cta-row full">
-              <button type="button" className="cta" onClick={() => void saveStep(3)} disabled={saving}>
-                {saving ? "Guardando..." : "Guardar servicios"}
-              </button>
-            </div>
-          </div>
-        ) : null}
+            {feedback ? <p className="feedback ok">{feedback}</p> : null}
+            {error ? <p className="feedback error">{error}</p> : null}
 
-        {session?.role === "PRO" ? (
-          <div className="grid-form">
-            <h3 className="full">3. Cobertura geografica</h3>
-            <label>
-              Radio maximo de desplazamiento (km)
-              <input type="number" min={1} max={80} value={maxTravelKm} onChange={(event) => setMaxTravelKm(Number(event.target.value) || 1)} />
-            </label>
-            <label className="full">
-              Direccion base para mapa de cobertura
-              <input
-                value={referenceAddress}
-                onChange={(event) => {
-                  setReferenceAddress(event.target.value);
-                  setSelectedFromAutocomplete(false);
-                  setShowSuggestions(true);
-                }}
-                onFocus={() => {
-                  if (addressSuggestions.length > 0) setShowSuggestions(true);
-                }}
-                onBlur={() => {
-                  setTimeout(() => setShowSuggestions(false), 120);
-                }}
-                placeholder="Ej: Av. Apoquindo 1234"
-                autoComplete="off"
-              />
-              {showSuggestions && addressSuggestions.length > 0 ? (
-                <div className="address-suggestions">
-                  {addressSuggestions.map((suggestion) => (
-                    <button
-                      key={suggestion}
-                      type="button"
-                      className="address-suggestion-btn"
-                      onMouseDown={() => selectSuggestedAddress(suggestion)}
-                    >
-                      {suggestion}
-                    </button>
-                  ))}
-                </div>
-              ) : null}
-              {autocompleteLoading ? <small className="input-hint">Buscando direcciones en Google...</small> : null}
-              <small className="input-hint">
-                {addressValidationState === "idle" ? "Escribe una direccion para ubicar tu casa en el mapa." : null}
-                {addressValidationState === "validating" ? "Validando direccion..." : null}
-                {addressValidationState === "verified"
-                  ? "Direccion validada por Google Maps."
-                  : null}
-                {addressValidationState === "fallback"
-                  ? "No hubo validacion exacta de Google. Usamos una ubicacion estimada por comuna."
-                  : null}
-              </small>
-            </label>
-            <p className="input-hint full">
-              Comuna detectada automaticamente: <strong>{baseCommune}</strong>
-            </p>
-            <div className="full">
-              <p className="field-label">Comunas donde trabajas</p>
-              <div className="commune-picker-row">
-                <select value={communeToAdd} onChange={(event) => setCommuneToAdd(event.target.value)}>
-                  {ACTIVE_MVP_COMMUNES.map((commune) => (
-                    <option key={commune} value={commune}>
-                      {commune}
-                    </option>
-                  ))}
-                </select>
-                <button type="button" className="cta ghost small compact-btn" onClick={addServiceCommune}>
-                  Agregar comuna
-                </button>
-              </div>
-              {serviceCommunes.length === 0 ? <p className="commune-empty">Selecciona al menos una comuna.</p> : null}
-              <div className="commune-chip-list">
-                {serviceCommunes.map((commune) => (
-                  <span className="commune-chip" key={commune}>
-                    {commune}
-                    <button type="button" aria-label={`Quitar ${commune}`} onClick={() => removeServiceCommune(commune)}>
-                      ×
-                    </button>
-                  </span>
-                ))}
-              </div>
-            </div>
-            {addressValidationState === "verified" && validatedAddress ? (
-              <p className="address-confirmation full">
-                Direccion confirmada: <strong>{validatedAddress}</strong>
-              </p>
-            ) : null}
-            {addressValidationState === "fallback" ? (
-              <p className="address-warning full">No se pudo confirmar exacto con Google Maps. Revisa calle y numeracion.</p>
-            ) : null}
-            <article className="coverage-map-card full">
-              <header className="coverage-map-head">
-                <h3>Mapa en tiempo real de tu zona de servicio</h3>
-                <p>La casa marca tu direccion base. Usa + y - para acercar o alejar el mapa.</p>
-              </header>
-              <div className="coverage-map-toolbar">
-                <button type="button" className="map-zoom-btn" onClick={() => setMapZoom((current) => Math.max(11, current - 1))} aria-label="Alejar mapa">
-                  -
-                </button>
-                <span>Zoom {mapZoom}</span>
-                <button type="button" className="map-zoom-btn" onClick={() => setMapZoom((current) => Math.min(18, current + 1))} aria-label="Acercar mapa">
-                  +
-                </button>
-              </div>
-              <div className="coverage-map-wrap">
-                <div className="coverage-map-interactive">
-                  <iframe
-                    title="Mapa cobertura profesional"
-                    className="coverage-map-frame"
-                    src={mapEmbedUrl}
-                    loading="lazy"
-                    referrerPolicy="no-referrer-when-downgrade"
-                  />
-                  <div className="coverage-pin coverage-pin-center">
-                    <span
-                      className="coverage-pin-radius"
-                      style={{ width: `${radiusPx * 2}px`, height: `${radiusPx * 2}px` }}
-                    />
-                    <span
-                      className="coverage-pin-dot"
-                      style={{
-                        width: "26px",
-                        height: "26px",
-                        display: "grid",
-                        placeItems: "center",
-                        fontSize: "12px",
-                        background: "#0f7cab"
-                      }}
-                    >
-                      🏠
-                    </span>
-                  </div>
+            {activeStep === 1 ? (
+              <div className="onboarding-screen">
+                <h3>Trabaja con WeTask</h3>
+                <p>Conecta con clientes en tu comuna y recibe pagos seguros por tus servicios.</p>
+                <div className="auth-flow-actions">
+                  <button type="button" className="cta" onClick={continueStep1}>
+                    Comenzar registro
+                  </button>
                 </div>
               </div>
-              <p className="coverage-meta">
-                Coordenadas base: {mapLat.toFixed(6)}, {mapLng.toFixed(6)} · Radio activo: {maxTravelKm} km
-              </p>
-            </article>
-            <div className="full inline-option-row">
-              <label className="inline-check-option">
-                <input type="checkbox" checked={chargesTravelExtra} onChange={(event) => setChargesTravelExtra(event.target.checked)} />
-                <span>Cobro extra por traslado</span>
-              </label>
-            </div>
-            <div className="cta-row full">
-              <button type="button" className="cta" onClick={() => void saveStep(4)} disabled={saving}>
-                {saving ? "Guardando..." : "Guardar cobertura"}
-              </button>
-            </div>
-          </div>
-        ) : null}
+            ) : null}
 
-        {session?.role === "PRO" ? (
-          <div className="grid-form">
-            <h3 className="full">4. Disponibilidad</h3>
-            <label>
-              Tipo de disponibilidad
-              <select value={availabilityMode} onChange={(event) => setAvailabilityMode(event.target.value as "FIJA" | "VARIABLE") }>
-                <option value="FIJA">Fija</option>
-                <option value="VARIABLE">Variable</option>
-              </select>
-            </label>
-            <label>
-              Maximo servicios por dia
-              <input type="number" min={1} max={12} value={maxServicesPerDay} onChange={(event) => setMaxServicesPerDay(Number(event.target.value) || 1)} />
-            </label>
-            <label className="full">
-              Bloques horarios
-              <div className="list">
-                {availabilityBlocks.map((block, index) => (
-                  <article key={`${block.day}-${index}`} className="module-card">
-                    <div className="query-row query-availability">
-                      <label>
-                        Dia
-                        <select
-                          value={block.day}
-                          onChange={(event) => {
-                            const next = [...availabilityBlocks];
-                            next[index] = { ...next[index], day: event.target.value as (typeof CLEANING_WEEK_DAYS)[number] };
-                            setAvailabilityBlocks(next);
-                          }}
-                        >
-                          {CLEANING_WEEK_DAYS.map((day) => (
-                            <option key={day} value={day}>
-                              {day}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
-                      <label>
-                        Inicio
-                        <input
-                          type="time"
-                          value={block.start}
-                          onChange={(event) => {
-                            const next = [...availabilityBlocks];
-                            next[index] = { ...next[index], start: event.target.value };
-                            setAvailabilityBlocks(next);
-                          }}
-                        />
-                      </label>
-                      <label>
-                        Termino
-                        <input
-                          type="time"
-                          value={block.end}
-                          onChange={(event) => {
-                            const next = [...availabilityBlocks];
-                            next[index] = { ...next[index], end: event.target.value };
-                            setAvailabilityBlocks(next);
-                          }}
-                        />
-                      </label>
-                      <button
-                        type="button"
-                        className="cta ghost small compact-btn"
-                        onClick={() => setAvailabilityBlocks((current) => current.filter((_, blockIndex) => blockIndex !== index))}
-                        disabled={availabilityBlocks.length === 1}
-                      >
-                        Quitar
-                      </button>
-                    </div>
-                  </article>
-                ))}
-              </div>
-            </label>
-            <div className="cta-row full">
-              <button
-                type="button"
-                className="cta ghost small compact-btn"
-                onClick={() =>
-                  setAvailabilityBlocks((current) => [...current, { day: "lunes", start: "14:00", end: "18:00" }])
-                }
-              >
-                Agregar bloque
-              </button>
-            </div>
-            <div className="full inline-option-row">
-              <label className="inline-check-option">
-                <input type="checkbox" checked={acceptsUrgentBookings} onChange={(event) => setAcceptsUrgentBookings(event.target.checked)} />
-                <span>Acepto reservas urgentes</span>
-              </label>
-            </div>
-            <div className="cta-row full">
-              <button type="button" className="cta" onClick={() => void saveStep(5)} disabled={saving}>
-                {saving ? "Guardando..." : "Guardar disponibilidad"}
-              </button>
-            </div>
-          </div>
-        ) : null}
-
-        {session?.role === "PRO" ? (
-          <div className="grid-form">
-            <h3 className="full">5. Tarifas</h3>
-            <label>
-              Tarifa por hora (CLP)
-              <input type="number" min={5000} value={hourlyRateClp} onChange={(event) => setHourlyRateClp(Number(event.target.value) || 5000)} />
-            </label>
-            <label>
-              Minimo de horas por reserva
-              <input type="number" min={1} max={12} value={minBookingHours} onChange={(event) => setMinBookingHours(Number(event.target.value) || 1)} />
-            </label>
-            <label>
-              Recargo fin de semana (%)
-              <input type="number" min={0} max={100} value={weekendSurchargePct} onChange={(event) => setWeekendSurchargePct(Number(event.target.value) || 0)} />
-            </label>
-            <label>
-              Recargo festivos (%)
-              <input type="number" min={0} max={100} value={holidaySurchargePct} onChange={(event) => setHolidaySurchargePct(Number(event.target.value) || 0)} />
-            </label>
-            <label className="full">
-              <div className="inline-checks">
+            {activeStep === 2 ? (
+              <div className="onboarding-screen">
+                <h3>Verificación de teléfono</h3>
                 <label>
-                  <input type="checkbox" checked={hasDeepCleaningRate} onChange={(event) => setHasDeepCleaningRate(event.target.checked)} />
-                  Tengo precio distinto para limpieza profunda
+                  Teléfono
+                  <input value={draft.phone} onChange={(event) => updateDraft("phone", event.target.value)} placeholder="+56 9 XXXXXXXX" />
                 </label>
+                <div className="auth-flow-actions">
+                  <button type="button" className="cta ghost" onClick={sendPhoneCode} disabled={saving}>
+                    {saving ? "Enviando..." : "Enviar código"}
+                  </button>
+                </div>
+                <label>
+                  Código SMS
+                  <input value={draft.smsCode} onChange={(event) => updateDraft("smsCode", event.target.value)} placeholder="123456" maxLength={6} />
+                </label>
+                {smsPreview ? <p className="onboarding-dev-note">Código dev: <strong>{smsPreview}</strong></p> : null}
+                <div className="auth-flow-actions">
+                  <button type="button" className="cta" onClick={verifyPhoneCode} disabled={saving}>
+                    {saving ? "Verificando..." : "Validar código"}
+                  </button>
+                  <button type="button" className="cta ghost" onClick={previousStep}>
+                    Volver
+                  </button>
+                  <button type="button" className="cta ghost" onClick={continueStep2}>
+                    Continuar
+                  </button>
+                </div>
               </div>
-            </label>
-            {hasDeepCleaningRate ? (
-              <label>
-                Tarifa limpieza profunda (CLP/h)
-                <input
-                  type="number"
-                  min={5000}
-                  value={deepCleaningHourlyRateClp}
-                  onChange={(event) => setDeepCleaningHourlyRateClp(Number(event.target.value) || 5000)}
-                />
-              </label>
             ) : null}
-            <div className="cta-row full">
-              <button type="button" className="cta" onClick={() => void saveStep(6)} disabled={saving}>
-                {saving ? "Guardando..." : "Guardar tarifas"}
-              </button>
-            </div>
-          </div>
-        ) : null}
 
-        {session?.role === "PRO" ? (
-          <div className="grid-form">
-            <h3 className="full">6. Verificacion y pagos</h3>
-            <label>
-              RUT o documento
-              <input value={documentId} onChange={(event) => setDocumentId(event.target.value)} placeholder="12.345.678-9" />
-            </label>
-            <label>
-              Fecha de nacimiento
-              <input type="date" value={birthDate} onChange={(event) => setBirthDate(event.target.value)} />
-            </label>
-            <label>
-              Nacionalidad
-              <input value={nationality} onChange={(event) => setNationality(event.target.value)} />
-            </label>
-            <label>
-              Situacion migratoria (si aplica)
-              <input value={migrationStatus} onChange={(event) => setMigrationStatus(event.target.value)} placeholder="Residencia definitiva / temporal" />
-            </label>
-            <label>
-              Contacto de emergencia (nombre)
-              <input value={emergencyContactName} onChange={(event) => setEmergencyContactName(event.target.value)} />
-            </label>
-            <label>
-              Contacto de emergencia (telefono)
-              <input value={emergencyContactPhone} onChange={(event) => setEmergencyContactPhone(event.target.value)} />
-            </label>
-            <label className="full">
-              Cuentanos tus experiencias en este servicio
-              <textarea value={workReferences} onChange={(event) => setWorkReferences(event.target.value)} placeholder="Nombre, relacion y telefono de al menos una referencia" />
-            </label>
-            <label>
-              Cedula (frente)
-              <input type="file" accept="image/png,image/jpeg" onChange={(event) => void uploadAsDataUrl(event.target.files?.[0] ?? null, setIdentityDocumentFrontFile)} />
-            </label>
-            <label>
-              Cedula (reverso)
-              <input type="file" accept="image/png,image/jpeg" onChange={(event) => void uploadAsDataUrl(event.target.files?.[0] ?? null, setIdentityDocumentBackFile)} />
-            </label>
-            <label>
-              Selfie de validacion
-              <input type="file" accept="image/png,image/jpeg" onChange={(event) => void uploadAsDataUrl(event.target.files?.[0] ?? null, setIdentitySelfieFile)} />
-            </label>
-            <label>
-              Certificado de antecedentes
-              <input type="file" accept="application/pdf,image/png,image/jpeg" onChange={(event) => void uploadAsDataUrl(event.target.files?.[0] ?? null, setCriminalRecordFile)} />
-            </label>
-            <label>
-              Titular cuenta bancaria
-              <input value={bankAccountHolder} onChange={(event) => setBankAccountHolder(event.target.value)} />
-            </label>
-            <label>
-              RUT titular cuenta
-              <input value={bankAccountHolderRut} onChange={(event) => setBankAccountHolderRut(event.target.value)} />
-            </label>
-            <label>
-              Banco
-              <select value={bankName} onChange={(event) => setBankName(event.target.value)}>
-                <option value="">Selecciona banco</option>
-                {bankOptions.map((bank) => (
-                  <option key={bank} value={bank}>
-                    {bank}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label>
-              Tipo de cuenta
-              <select value={bankAccountType} onChange={(event) => setBankAccountType(event.target.value)}>
-                <option value="cuenta_corriente">Cuenta corriente</option>
-                <option value="cuenta_vista">Cuenta vista</option>
-                <option value="cuenta_rut">Cuenta RUT</option>
-                <option value="cuenta_ahorro">Cuenta ahorro</option>
-              </select>
-            </label>
-            <label>
-              Numero de cuenta
-              <input value={bankAccountNumber} onChange={(event) => setBankAccountNumber(event.target.value)} />
-            </label>
-            <label>
-              Tipo de facturacion
-              <select value={billingType} onChange={(event) => setBillingType(event.target.value)}>
-                <option value="persona_natural">Persona natural</option>
-                <option value="boleta_honorarios">Emito boleta</option>
-              </select>
-            </label>
+            {activeStep === 3 ? (
+              <div className="onboarding-screen">
+                <h3>Datos personales + foto</h3>
+                <div className="grid-form auth-flow-form">
+                  <label>
+                    Nombre
+                    <input value={draft.firstName} onChange={(event) => updateDraft("firstName", event.target.value)} />
+                  </label>
+                  <label>
+                    Apellido
+                    <input value={draft.lastName} onChange={(event) => updateDraft("lastName", event.target.value)} />
+                  </label>
+                  <label>
+                    Email
+                    <input type="email" value={draft.email} onChange={(event) => updateDraft("email", event.target.value)} />
+                  </label>
+                  <label>
+                    RUT
+                    <input value={draft.rut} onChange={(event) => updateDraft("rut", event.target.value)} placeholder="12.345.678-5" />
+                  </label>
+                  <label className="full">
+                    Dirección
+                    <input value={draft.address} onChange={(event) => updateDraft("address", event.target.value)} placeholder="Av. Apoquindo 1234" />
+                  </label>
+                  <label>
+                    Comuna donde vive
+                    <select value={draft.homeCommune} onChange={(event) => updateDraft("homeCommune", event.target.value as ActiveMvpCommune)}>
+                      {COMMUNE_OPTIONS.map((commune) => (
+                        <option key={commune} value={commune}>
+                          {commune}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    Foto de perfil
+                    <input
+                      type="file"
+                      accept="image/png,image/jpeg"
+                      onChange={async (event) => {
+                        const file = event.target.files?.[0];
+                        if (!file) return;
+                        const content = await fileToDataUrl(file);
+                        updateDraft("profilePhotoUrl", content);
+                      }}
+                    />
+                  </label>
+                </div>
+                {draft.homeCommune === "Chicureo" ? <p className="onboarding-warning">Chicureo puede tener recargo por distancia.</p> : null}
+                <div className="auth-flow-actions">
+                  <button type="button" className="cta ghost" onClick={previousStep}>
+                    Volver
+                  </button>
+                  <button type="button" className="cta" onClick={continueStep3} disabled={saving}>
+                    {saving ? "Guardando..." : "Continuar"}
+                  </button>
+                </div>
+              </div>
+            ) : null}
 
-            <label>
-              Telefono para validacion
-              <input value={regPhone} onChange={(event) => setRegPhone(event.target.value)} placeholder="+56 9 ..." />
-            </label>
+            {activeStep === 4 ? (
+              <div className="onboarding-screen">
+                <h3>¿En qué comunas quieres trabajar?</h3>
+                <div className="onboarding-checkbox-grid">
+                  {COMMUNE_OPTIONS.map((commune) => (
+                    <label key={commune} className="onboarding-check-card">
+                      <input
+                        type="checkbox"
+                        checked={draft.coverageCommunes.includes(commune)}
+                        onChange={() => toggleCoverageCommune(commune)}
+                      />
+                      <span>{commune}</span>
+                    </label>
+                  ))}
+                </div>
+                {chicureoSelected ? <p className="onboarding-warning">Chicureo puede tener recargo por distancia.</p> : null}
+                <div className="auth-flow-actions">
+                  <button type="button" className="cta ghost" onClick={previousStep}>
+                    Volver
+                  </button>
+                  <button type="button" className="cta" onClick={continueStep4} disabled={saving}>
+                    {saving ? "Guardando..." : "Continuar"}
+                  </button>
+                </div>
+              </div>
+            ) : null}
 
-            <label>
-              Codigo de telefono
-              <input value={phoneCode} onChange={(event) => setPhoneCode(event.target.value)} maxLength={6} placeholder="123456" />
-            </label>
+            {activeStep === 5 ? (
+              <div className="onboarding-screen">
+                <h3>Categoría de servicio</h3>
+                <div className="auth-service-grid">
+                  {CATEGORY_OPTIONS.map((option) => (
+                    <label key={option.slug} className={`auth-service-card ${draft.category === option.slug ? "active" : ""}`}>
+                      <input
+                        type="radio"
+                        name="category"
+                        checked={draft.category === option.slug}
+                        onChange={() => updateDraft("category", option.slug)}
+                      />
+                      <span className="auth-service-icon" aria-hidden>
+                        {option.icon}
+                      </span>
+                      <strong>{option.label}</strong>
+                      <span>{option.description}</span>
+                    </label>
+                  ))}
+                </div>
+                <div className="auth-flow-actions">
+                  <button type="button" className="cta ghost" onClick={previousStep}>
+                    Volver
+                  </button>
+                  <button type="button" className="cta" onClick={continueStep5} disabled={saving}>
+                    {saving ? "Guardando..." : "Continuar"}
+                  </button>
+                </div>
+              </div>
+            ) : null}
 
-            <label>
-              Correo para validacion
-              <input value={(regEmail || session?.email || "").trim()} onChange={(event) => setRegEmail(event.target.value)} placeholder="tu@email.com" />
-            </label>
+            {activeStep === 6 ? (
+              <div className="onboarding-screen">
+                <h3>Información profesional</h3>
+                <div className="grid-form auth-flow-form">
+                  <label>
+                    Años de experiencia
+                    <select value={draft.yearsExperience} onChange={(event) => updateDraft("yearsExperience", event.target.value)}>
+                      {["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "10+"].map((value) => (
+                        <option key={value} value={value}>
+                          {value}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    ¿Cómo trabajas?
+                    <select value={draft.workMode} onChange={(event) => updateDraft("workMode", event.target.value as "SOLO" | "EQUIPO")}>
+                      <option value="SOLO">Solo</option>
+                      <option value="EQUIPO">Con equipo</option>
+                    </select>
+                  </label>
+                </div>
+                <div className="auth-flow-actions">
+                  <button type="button" className="cta ghost" onClick={previousStep}>
+                    Volver
+                  </button>
+                  <button type="button" className="cta" onClick={continueStep6} disabled={saving}>
+                    {saving ? "Guardando..." : "Continuar"}
+                  </button>
+                </div>
+              </div>
+            ) : null}
 
-            <label>
-              Codigo de correo
-              <input value={emailCode} onChange={(event) => setEmailCode(event.target.value.replace(/\s+/g, ""))} maxLength={6} placeholder="123456" />
-            </label>
+            {activeStep === 7 ? (
+              <div className="onboarding-screen">
+                <h3>Preguntas específicas: {selectedCategoryLabel}</h3>
 
-            <div className="cta-row full">
-              <button type="button" className="cta ghost small" onClick={() => void sendPhoneCode()} disabled={saving}>
-                Enviar codigo
-              </button>
-              <button type="button" className="cta ghost small" onClick={() => void verifyPhoneCode()} disabled={saving || phoneCode.length !== 6}>
-                Verificar telefono
-              </button>
-              <span className="minimal-note">Telefono validado: {phoneValidated ? "si" : "no"}</span>
-            </div>
+                {draft.category === "limpieza" ? (
+                  <div className="grid-form auth-flow-form">
+                    <label>
+                      Tipo de limpieza
+                      <select value={draft.cleaningType} onChange={(event) => updateDraft("cleaningType", event.target.value as DraftState["cleaningType"])}>
+                        <option value="hogar">Hogar</option>
+                        <option value="profunda">Profunda</option>
+                        <option value="post_mudanza">Post mudanza</option>
+                      </select>
+                    </label>
+                    <label>
+                      ¿Llevas productos de limpieza?
+                      <select
+                        value={draft.cleaningBringsProducts == null ? "" : draft.cleaningBringsProducts ? "si" : "no"}
+                        onChange={(event) => updateDraft("cleaningBringsProducts", event.target.value === "si")}
+                      >
+                        <option value="">Selecciona</option>
+                        <option value="si">Sí</option>
+                        <option value="no">No</option>
+                      </select>
+                    </label>
+                    <label>
+                      ¿Llevas aspiradora o equipos?
+                      <select
+                        value={draft.cleaningBringsEquipment == null ? "" : draft.cleaningBringsEquipment ? "si" : "no"}
+                        onChange={(event) => updateDraft("cleaningBringsEquipment", event.target.value === "si")}
+                      >
+                        <option value="">Selecciona</option>
+                        <option value="si">Sí</option>
+                        <option value="no">No</option>
+                      </select>
+                    </label>
+                  </div>
+                ) : null}
 
-            <div className="cta-row full">
-              <button type="button" className="cta ghost small" onClick={() => void sendEmailCode()} disabled={saving}>
-                Enviar codigo por correo
-              </button>
-              <button type="button" className="cta ghost small" onClick={() => void verifyEmailCode()} disabled={saving || emailCode.trim().length < 6}>
-                Verificar correo
-              </button>
-              <span className="minimal-note">Correo verificado: {emailVerified ? "si" : "no"}</span>
-            </div>
+                {draft.category === "mascotas" ? (
+                  <div className="grid-form auth-flow-form">
+                    <label>
+                      Tipo de servicio
+                      <select value={draft.petServiceType} onChange={(event) => updateDraft("petServiceType", event.target.value as DraftState["petServiceType"])}>
+                        <option value="paseo_perros">Paseo de perros</option>
+                        <option value="cuidado_casa_cliente">Cuidado en casa del cliente</option>
+                        <option value="cuidado_en_tu_casa">Cuidado en tu casa</option>
+                      </select>
+                    </label>
+                    <div className="full">
+                      <p className="field-label">Animales</p>
+                      <div className="onboarding-checkbox-grid onboarding-checkbox-grid-compact">
+                        {(["perros", "gatos"] as const).map((animal) => (
+                          <label key={animal} className="onboarding-check-card">
+                            <input
+                              type="checkbox"
+                              checked={draft.petAnimals.includes(animal)}
+                              onChange={() =>
+                                updateDraft(
+                                  "petAnimals",
+                                  draft.petAnimals.includes(animal) ? draft.petAnimals.filter((item) => item !== animal) : [...draft.petAnimals, animal]
+                                )
+                              }
+                            />
+                            <span>{animal === "perros" ? "Perros" : "Gatos"}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                    <label>
+                      ¿Aceptas mascotas grandes?
+                      <select
+                        value={draft.petLargePets == null ? "" : draft.petLargePets ? "si" : "no"}
+                        onChange={(event) => updateDraft("petLargePets", event.target.value === "si")}
+                      >
+                        <option value="">Selecciona</option>
+                        <option value="si">Sí</option>
+                        <option value="no">No</option>
+                      </select>
+                    </label>
+                  </div>
+                ) : null}
 
-            <div className="cta-row full">
-              <button type="button" className="cta" onClick={() => void saveStep(7)} disabled={saving}>
-                {saving ? "Guardando..." : "Guardar verificacion"}
-              </button>
-            </div>
-          </div>
-        ) : null}
+                {draft.category === "babysitter" ? (
+                  <div className="grid-form auth-flow-form">
+                    <label>
+                      Edad mínima de niños
+                      <select value={draft.babysitterAgeRange} onChange={(event) => updateDraft("babysitterAgeRange", event.target.value as DraftState["babysitterAgeRange"])}>
+                        <option value="0_2">0-2 años</option>
+                        <option value="3_6">3-6 años</option>
+                        <option value="7_plus">7+</option>
+                      </select>
+                    </label>
+                    <label>
+                      ¿Sabes primeros auxilios?
+                      <select
+                        value={draft.babysitterFirstAid == null ? "" : draft.babysitterFirstAid ? "si" : "no"}
+                        onChange={(event) => updateDraft("babysitterFirstAid", event.target.value === "si")}
+                      >
+                        <option value="">Selecciona</option>
+                        <option value="si">Sí</option>
+                        <option value="no">No</option>
+                      </select>
+                    </label>
+                    <label>
+                      ¿Puedes cuidar más de un niño?
+                      <select
+                        value={draft.babysitterMultiChild == null ? "" : draft.babysitterMultiChild ? "si" : "no"}
+                        onChange={(event) => updateDraft("babysitterMultiChild", event.target.value === "si")}
+                      >
+                        <option value="">Selecciona</option>
+                        <option value="si">Sí</option>
+                        <option value="no">No</option>
+                      </select>
+                    </label>
+                  </div>
+                ) : null}
 
-        {session?.role === "PRO" ? (
-          <div className="grid-form">
-            <div className="full module-card">
-              <h3>7. Revision y activacion</h3>
-              <p>
-                Estado actual: <strong>{onboarding ? CLEANING_STATUS_LABELS[onboarding.status] : "borrador"}</strong>
-              </p>
-              <p>El perfil no se activa automaticamente. Un administrador debe revisarlo y activarlo manualmente.</p>
-              {onboarding?.submittedAt ? <p>Enviado a revision: {new Date(onboarding.submittedAt).toLocaleString("es-CL")}</p> : null}
-              {onboarding?.adminReviewNotes ? <p>Observaciones: {onboarding.adminReviewNotes}</p> : null}
-            </div>
-            <div className="cta-row full">
-              <button type="button" className="cta" onClick={() => void submitForReview()} disabled={saving}>
-                {saving ? "Enviando..." : "Enviar a revision"}
-              </button>
-            </div>
-          </div>
-        ) : null}
+                {draft.category === "profesor-particular" ? (
+                  <div className="grid-form auth-flow-form">
+                    <label>
+                      Asignatura
+                      <select value={draft.teacherSubject} onChange={(event) => updateDraft("teacherSubject", event.target.value as DraftState["teacherSubject"])}>
+                        <option value="matematicas">Matemáticas</option>
+                        <option value="ingles">Inglés</option>
+                        <option value="lenguaje">Lenguaje</option>
+                        <option value="ciencias">Ciencias</option>
+                        <option value="otra">Otra</option>
+                      </select>
+                    </label>
+                    <label>
+                      Nivel
+                      <select value={draft.teacherLevel} onChange={(event) => updateDraft("teacherLevel", event.target.value as DraftState["teacherLevel"])}>
+                        <option value="basica">Básica</option>
+                        <option value="media">Media</option>
+                        <option value="universitario">Universitario</option>
+                      </select>
+                    </label>
+                    <label>
+                      Modalidad
+                      <select value={draft.teacherMode} onChange={(event) => updateDraft("teacherMode", event.target.value as DraftState["teacherMode"])}>
+                        <option value="presencial">Presencial</option>
+                        <option value="online">Online</option>
+                        <option value="ambas">Ambas</option>
+                      </select>
+                    </label>
+                  </div>
+                ) : null}
 
-          {feedback ? <p className="feedback ok">{feedback}</p> : null}
-          {error ? <p className="feedback error">{error}</p> : null}
+                {draft.category === "chef" ? (
+                  <div className="grid-form auth-flow-form">
+                    <label>
+                      Tipo de servicio
+                      <select value={draft.chefServiceType} onChange={(event) => updateDraft("chefServiceType", event.target.value as DraftState["chefServiceType"])}>
+                        <option value="comida_diaria">Comida diaria</option>
+                        <option value="eventos">Eventos</option>
+                        <option value="meal_prep">Meal prep semanal</option>
+                      </select>
+                    </label>
+                    <label>
+                      Tipo de cocina
+                      <select value={draft.chefCuisineType} onChange={(event) => updateDraft("chefCuisineType", event.target.value as DraftState["chefCuisineType"])}>
+                        <option value="casera">Casera</option>
+                        <option value="saludable">Saludable</option>
+                        <option value="gourmet">Gourmet</option>
+                      </select>
+                    </label>
+                    <label>
+                      ¿Cocinas en casa del cliente?
+                      <select
+                        value={draft.chefAtClientHome == null ? "" : draft.chefAtClientHome ? "si" : "no"}
+                        onChange={(event) => updateDraft("chefAtClientHome", event.target.value === "si")}
+                      >
+                        <option value="">Selecciona</option>
+                        <option value="si">Sí</option>
+                        <option value="no">No</option>
+                      </select>
+                    </label>
+                  </div>
+                ) : null}
+
+                {draft.category === "maquillaje" ? (
+                  <div className="grid-form auth-flow-form">
+                    <label>
+                      Tipo
+                      <select value={draft.makeupType} onChange={(event) => updateDraft("makeupType", event.target.value as DraftState["makeupType"])}>
+                        <option value="social">Social</option>
+                        <option value="eventos">Eventos</option>
+                        <option value="novias">Novias</option>
+                      </select>
+                    </label>
+                    <label>
+                      ¿Trabajas a domicilio?
+                      <select
+                        value={draft.makeupHome == null ? "" : draft.makeupHome ? "si" : "no"}
+                        onChange={(event) => updateDraft("makeupHome", event.target.value === "si")}
+                      >
+                        <option value="">Selecciona</option>
+                        <option value="si">Sí</option>
+                        <option value="no">No</option>
+                      </select>
+                    </label>
+                    <label>
+                      ¿Incluye kit de maquillaje?
+                      <select
+                        value={draft.makeupKit == null ? "" : draft.makeupKit ? "si" : "no"}
+                        onChange={(event) => updateDraft("makeupKit", event.target.value === "si")}
+                      >
+                        <option value="">Selecciona</option>
+                        <option value="si">Sí</option>
+                        <option value="no">No</option>
+                      </select>
+                    </label>
+                  </div>
+                ) : null}
+
+                {draft.category === "planchado" ? (
+                  <div className="grid-form auth-flow-form">
+                    <label>
+                      Tipo de servicio
+                      <select value={draft.ironingType} onChange={(event) => updateDraft("ironingType", event.target.value as DraftState["ironingType"])}>
+                        <option value="casa_cliente">En casa del cliente</option>
+                        <option value="retiro_entrega">Retiro y entrega</option>
+                      </select>
+                    </label>
+                    <label>
+                      ¿Planchas ropa delicada?
+                      <select
+                        value={draft.ironingDelicate == null ? "" : draft.ironingDelicate ? "si" : "no"}
+                        onChange={(event) => updateDraft("ironingDelicate", event.target.value === "si")}
+                      >
+                        <option value="">Selecciona</option>
+                        <option value="si">Sí</option>
+                        <option value="no">No</option>
+                      </select>
+                    </label>
+                    <label>
+                      Cobro
+                      <select value={draft.ironingPricing} onChange={(event) => updateDraft("ironingPricing", event.target.value as DraftState["ironingPricing"])}>
+                        <option value="por_hora">Por hora</option>
+                        <option value="por_prenda">Por prenda</option>
+                      </select>
+                    </label>
+                  </div>
+                ) : null}
+
+                <div className="auth-flow-actions">
+                  <button type="button" className="cta ghost" onClick={previousStep}>
+                    Volver
+                  </button>
+                  <button type="button" className="cta" onClick={continueStep7} disabled={saving}>
+                    {saving ? "Guardando..." : "Continuar"}
+                  </button>
+                </div>
+              </div>
+            ) : null}
+
+            {activeStep === 8 ? (
+              <div className="onboarding-screen">
+                <h3>Disponibilidad</h3>
+                <div className="onboarding-availability-grid">
+                  {groupedBlocks.map((day) => (
+                    <div key={day.key} className="onboarding-day-card">
+                      <div className="onboarding-day-head">
+                        <strong>{day.label}</strong>
+                        <button type="button" className="login-link-button" onClick={() => addAvailabilityBlock(day.key)}>
+                          Agregar bloque
+                        </button>
+                      </div>
+                      {day.blocks.length === 0 ? <p className="input-hint">Sin horarios definidos.</p> : null}
+                      {day.blocks.map((block) => (
+                        <div key={block.index} className="onboarding-time-row">
+                          <input type="time" value={block.start} onChange={(event) => updateAvailabilityBlock(block.index, { start: event.target.value })} />
+                          <span>–</span>
+                          <input type="time" value={block.end} onChange={(event) => updateAvailabilityBlock(block.index, { end: event.target.value })} />
+                          <button type="button" className="login-link-button" onClick={() => removeAvailabilityBlock(block.index)}>
+                            Quitar
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+                <div className="auth-flow-actions">
+                  <button type="button" className="cta ghost" onClick={previousStep}>
+                    Volver
+                  </button>
+                  <button type="button" className="cta" onClick={continueStep8} disabled={saving}>
+                    {saving ? "Guardando..." : "Continuar"}
+                  </button>
+                </div>
+              </div>
+            ) : null}
+
+            {activeStep === 9 ? (
+              <div className="onboarding-screen">
+                <h3>Tarifas</h3>
+                <div className="grid-form auth-flow-form">
+                  <label>
+                    Tarifa por hora
+                    <input value={draft.hourlyRate} onChange={(event) => updateDraft("hourlyRate", event.target.value.replace(/\D/g, ""))} placeholder="15000" />
+                  </label>
+                  <label>
+                    Mínimo de horas por servicio
+                    <input value={draft.minimumHours} onChange={(event) => updateDraft("minimumHours", event.target.value.replace(/\D/g, ""))} placeholder="2" />
+                  </label>
+                  <label>
+                    Recargo fin de semana
+                    <select value={draft.hasWeekendSurcharge ? "si" : "no"} onChange={(event) => updateDraft("hasWeekendSurcharge", event.target.value === "si")}>
+                      <option value="no">No</option>
+                      <option value="si">Sí</option>
+                    </select>
+                  </label>
+                  {draft.hasWeekendSurcharge ? (
+                    <label>
+                      Porcentaje fin de semana
+                      <input
+                        value={draft.weekendSurchargePct}
+                        onChange={(event) => updateDraft("weekendSurchargePct", event.target.value.replace(/\D/g, ""))}
+                        placeholder="20"
+                      />
+                    </label>
+                  ) : null}
+                  <label>
+                    Recargo festivos
+                    <select value={draft.hasHolidaySurcharge ? "si" : "no"} onChange={(event) => updateDraft("hasHolidaySurcharge", event.target.value === "si")}>
+                      <option value="no">No</option>
+                      <option value="si">Sí</option>
+                    </select>
+                  </label>
+                  {draft.hasHolidaySurcharge ? (
+                    <label>
+                      Porcentaje festivos
+                      <input
+                        value={draft.holidaySurchargePct}
+                        onChange={(event) => updateDraft("holidaySurchargePct", event.target.value.replace(/\D/g, ""))}
+                        placeholder="20"
+                      />
+                    </label>
+                  ) : null}
+                </div>
+                {chicureoSelected ? <p className="onboarding-warning">Se aplicará un recargo fijo sugerido para Chicureo.</p> : null}
+                <div className="auth-flow-actions">
+                  <button type="button" className="cta ghost" onClick={previousStep}>
+                    Volver
+                  </button>
+                  <button type="button" className="cta" onClick={continueStep9} disabled={saving}>
+                    {saving ? "Guardando..." : "Continuar"}
+                  </button>
+                </div>
+              </div>
+            ) : null}
+
+            {activeStep === 10 ? (
+              <div className="onboarding-screen">
+                <h3>Cuenta bancaria</h3>
+                <div className="grid-form auth-flow-form">
+                  <label>
+                    Banco
+                    <select value={draft.bankName} onChange={(event) => updateDraft("bankName", event.target.value)}>
+                      {BANK_OPTIONS.map((bank) => (
+                        <option key={bank} value={bank}>
+                          {bank}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    Tipo de cuenta
+                    <select
+                      value={draft.bankAccountType}
+                      onChange={(event) => updateDraft("bankAccountType", event.target.value as DraftState["bankAccountType"])}
+                    >
+                      <option value="cuenta_corriente">Cuenta Corriente</option>
+                      <option value="cuenta_vista">Cuenta Vista</option>
+                      <option value="cuenta_rut">Cuenta RUT</option>
+                      <option value="cuenta_ahorro">Cuenta de Ahorro</option>
+                    </select>
+                  </label>
+                  <label>
+                    Número de cuenta
+                    <input
+                      value={draft.bankAccountNumber}
+                      onChange={(event) => updateDraft("bankAccountNumber", event.target.value.replace(/\D/g, ""))}
+                      placeholder="Solo números"
+                    />
+                  </label>
+                  <label>
+                    RUT titular
+                    <input value={draft.bankOwnerRut} onChange={(event) => updateDraft("bankOwnerRut", event.target.value)} placeholder="12.345.678-5" />
+                  </label>
+                </div>
+                <div className="auth-flow-actions">
+                  <button type="button" className="cta ghost" onClick={previousStep}>
+                    Volver
+                  </button>
+                  <button type="button" className="cta" onClick={continueStep10} disabled={saving}>
+                    {saving ? "Guardando..." : "Continuar"}
+                  </button>
+                </div>
+              </div>
+            ) : null}
+
+            {activeStep === 11 ? (
+              <div className="onboarding-screen">
+                <h3>Términos y condiciones</h3>
+                <label className="auth-flow-checkbox">
+                  <input type="checkbox" checked={draft.acceptedTerms} onChange={(event) => updateDraft("acceptedTerms", event.target.checked)} />
+                  <span>Acepto los términos y condiciones de WeTask</span>
+                </label>
+                <div className="auth-flow-actions">
+                  <button type="button" className="cta ghost" onClick={previousStep}>
+                    Volver
+                  </button>
+                  <button type="button" className="cta" onClick={finalizeRegistration} disabled={saving}>
+                    {saving ? "Finalizando..." : "Finalizar registro"}
+                  </button>
+                </div>
+              </div>
+            ) : null}
+
+            {activeStep === 12 ? (
+              <div className="onboarding-screen onboarding-success-screen">
+                <h3>Registro completado</h3>
+                <p>Tu perfil será revisado antes de activarse en la plataforma.</p>
+                {onboarding?.adminReviewNotes ? <p className="onboarding-warning">{onboarding.adminReviewNotes}</p> : null}
+                <div className="auth-flow-actions">
+                  <Link href="/pro" className="cta">
+                    Ir a mi perfil
+                  </Link>
+                </div>
+              </div>
+            ) : null}
           </section>
         </section>
       </div>
     </main>
+  );
+}
+
+export default function CleaningOnboardingPage() {
+  return (
+    <Suspense fallback={<OnboardingLoadingScreen />}>
+      <CleaningOnboardingPageContent />
+    </Suspense>
   );
 }

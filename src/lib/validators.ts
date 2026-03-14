@@ -187,6 +187,32 @@ const pdfOrImageDataUrlSchema = dataUrlSchema.refine(
   }
 );
 
+function isValidChileanRut(value: string) {
+  const clean = value.replace(/\./g, "").replace(/-/g, "").toUpperCase();
+  if (!/^\d{7,8}[0-9K]$/.test(clean)) return false;
+
+  const body = clean.slice(0, -1);
+  const dv = clean.slice(-1);
+  let sum = 0;
+  let multiplier = 2;
+
+  for (let index = body.length - 1; index >= 0; index -= 1) {
+    sum += Number(body[index]) * multiplier;
+    multiplier = multiplier === 7 ? 2 : multiplier + 1;
+  }
+
+  const remainder = 11 - (sum % 11);
+  const expected = remainder === 11 ? "0" : remainder === 10 ? "K" : String(remainder);
+  return dv === expected;
+}
+
+const chileanRutSchema = z
+  .string()
+  .trim()
+  .min(8)
+  .max(16)
+  .refine((value) => isValidChileanRut(value), "RUT chileno invalido");
+
 export const technicianRegistrationSchema = z.object({
   fullName: z.string().min(3).max(120),
   rut: z.string().min(8).max(16),
@@ -244,7 +270,10 @@ export const cleaningOnboardingStartSchema = z.object({
   password: z.string().min(8).max(120).optional(),
   authProvider: z.enum(["EMAIL", "GOOGLE", "APPLE"]).default("EMAIL"),
   baseCommune: activeCommuneInputSchema,
-  acceptTerms: z.boolean().refine((v) => v, { message: "Debes aceptar terminos" })
+  acceptTerms: z.boolean().optional().default(false),
+  profilePhotoUrl: imageDataUrlSchema.optional(),
+  documentId: chileanRutSchema.optional(),
+  referenceAddress: z.string().min(5).max(240).optional()
 });
 
 export const cleaningOnboardingStage2Schema = z.object({
@@ -329,8 +358,67 @@ export const cleaningOnboardingStage8Schema = z
   }, "Debes completar todos los puntos de la capacitacion");
 
 export const cleaningOnboardingSaveSchema = z.object({
-  step: z.coerce.number().int().min(2).max(8),
+  step: z.coerce.number().int().min(3).max(11),
   payload: z.record(z.any())
+});
+
+export const taskerOnboardingStep3Schema = z.object({
+  fullName: z.string().min(3).max(120),
+  email: z.string().email(),
+  phone: z.string().min(7).max(30),
+  documentId: chileanRutSchema,
+  referenceAddress: z.string().min(5).max(240),
+  baseCommune: activeCommuneInputSchema,
+  profilePhotoUrl: imageDataUrlSchema
+});
+
+export const taskerOnboardingStep4Schema = z.object({
+  baseCommune: activeCommuneInputSchema,
+  serviceCommunes: z.array(activeCommuneInputSchema).min(1)
+});
+
+export const taskerOnboardingStep5Schema = z.object({
+  categorySlug: z.string().min(2).max(120)
+});
+
+export const taskerOnboardingStep6Schema = z.object({
+  yearsExperience: z.coerce.number().int().min(1).max(11),
+  workMode: z.enum(["SOLO", "EQUIPO"])
+});
+
+export const taskerOnboardingStep7Schema = z.object({
+  offeredServices: z.array(z.string().min(1)).min(1),
+  experienceTypes: z.array(z.string().min(1)).optional().default([]),
+  acceptsHomesWithPets: z.boolean().optional().nullable(),
+  acceptsHomesWithChildren: z.boolean().optional().nullable(),
+  acceptsHomesWithElderly: z.boolean().optional().nullable(),
+  worksWithClientProducts: z.boolean().optional().nullable(),
+  bringsOwnProducts: z.boolean().optional().nullable(),
+  bringsOwnTools: z.boolean().optional().nullable()
+});
+
+export const taskerOnboardingStep8Schema = z.object({
+  availabilityBlocks: z.array(cleaningAvailabilityBlockSchema).min(1).max(21)
+});
+
+export const taskerOnboardingStep9Schema = z.object({
+  hourlyRateClp: z.coerce.number().int().min(5000).max(200000),
+  minBookingHours: z.coerce.number().int().min(1).max(12),
+  weekendSurchargePct: z.coerce.number().int().min(0).max(100),
+  holidaySurchargePct: z.coerce.number().int().min(0).max(100),
+  remoteCommuneSurchargeClp: z.coerce.number().int().min(0).max(50000).optional().default(0)
+});
+
+export const taskerOnboardingStep10Schema = z.object({
+  bankAccountHolder: z.string().min(3).max(120),
+  bankAccountHolderRut: chileanRutSchema,
+  bankName: z.string().min(2).max(120),
+  bankAccountType: z.enum(["cuenta_corriente", "cuenta_vista", "cuenta_rut", "cuenta_ahorro"]),
+  bankAccountNumber: z.string().regex(/^\d+$/, "La cuenta debe contener solo numeros").min(4).max(40)
+});
+
+export const taskerOnboardingStep11Schema = z.object({
+  acceptTerms: z.boolean().refine((v) => v, { message: "Debes aceptar los terminos y condiciones" })
 });
 
 export const cleaningOnboardingPhoneSendSchema = z.object({

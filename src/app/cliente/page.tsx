@@ -138,116 +138,170 @@ export default function ClientePage() {
   };
 
   return (
-    <main className="page market-shell">
-      <MarketNav />
-      <section className="panel">
-        <div className="panel-head">
-          <h2>Panel Cliente</h2>
-          <p>Mis reservas próximas, historial y estado de servicios.</p>
-        </div>
-        <div className="client-profile-box">
-          <div className="client-photo-frame" aria-hidden>
-            {customerPhotoUrl ? <img src={customerPhotoUrl} alt="Foto del cliente" className="client-photo-img" /> : <span>Sin foto</span>}
-          </div>
-          <div className="client-profile-copy">
-            <h3>{customerName}</h3>
-            <p>Este espacio muestra la foto de perfil del cliente.</p>
-            <label className="client-photo-upload">
-              Cargar foto
-              <input type="file" accept="image/png,image/jpeg,image/webp" onChange={handlePhotoChange} />
-            </label>
-            <button className="cta ghost small" type="button" onClick={() => void refreshDashboard()} disabled={!sessionUserId}>
-              Actualizar servicios
-            </button>
-          </div>
-        </div>
-      </section>
+    <main className="auth-flow-screen auth-flow-screen-scroll market-shell-auth">
+      <div className="auth-flow-backdrop" aria-hidden />
 
-      <section className="panel">
-        <div className="panel-head">
-          <h2>Notificaciones</h2>
-        </div>
-        <div className="list">
-          {notifications.length === 0 ? (
-            <p className="empty">Sin notificaciones por ahora.</p>
-          ) : (
-            notifications.map((item) => (
-              <article className="booking-card" key={item.id}>
-                <p>
-                  <strong>{item.title}</strong>
-                </p>
-                <p>{item.body}</p>
-                <p>{new Date(item.createdAt).toLocaleString("es-ES")}</p>
+      <div className="login-screen-content market-shell-auth-content">
+        <MarketNav />
+
+        <section className="auth-flow-shell auth-flow-shell-wide client-dashboard-hero">
+          <div className="auth-flow-copy client-dashboard-copy">
+            <p className="auth-flow-kicker">Panel cliente</p>
+            <h1>Gestiona tus reservas con el mismo look de WeTask.</h1>
+            <p>Revisa tus próximas visitas, historial, avisos importantes y vuelve a reservar en segundos desde un solo panel.</p>
+
+            <div className="auth-flow-copy-list client-dashboard-summary">
+              <div className="auth-flow-meta-card">
+                <strong>Próximas reservas</strong>
+                <span>{upcomingBookings.length} servicio(s) programado(s).</span>
+              </div>
+              <div className="auth-flow-meta-card">
+                <strong>Historial</strong>
+                <span>{historyBookings.length} servicio(s) completados o pasados.</span>
+              </div>
+              <div className="auth-flow-meta-card">
+                <strong>Notificaciones</strong>
+                <span>{notifications.length} aviso(s) disponible(s) para revisar.</span>
+              </div>
+            </div>
+
+            <div className="auth-flow-actions">
+              <Link href="/solicitar-tecnico" className="cta">
+                Buscar servicio
+              </Link>
+              <button className="cta ghost" type="button" onClick={() => void refreshDashboard()} disabled={!sessionUserId}>
+                Actualizar panel
+              </button>
+            </div>
+          </div>
+
+          <section className="auth-flow-panel auth-flow-panel-wide client-dashboard-profile-panel">
+            <div className="panel-head client-dashboard-panel-head">
+              <h2>Tu perfil</h2>
+              <p>Tu foto y accesos rápidos del lado cliente.</p>
+            </div>
+
+            <div className="client-profile-box client-profile-box-auth">
+              <div className="client-photo-frame" aria-hidden>
+                {customerPhotoUrl ? <img src={customerPhotoUrl} alt="Foto del cliente" className="client-photo-img" /> : <span>Sin foto</span>}
+              </div>
+              <div className="client-profile-copy">
+                <h3>{customerName}</h3>
+                <p>Este espacio muestra la foto de perfil del cliente y mantiene tu panel actualizado.</p>
+                <label className="client-photo-upload">
+                  Cargar foto
+                  <input type="file" accept="image/png,image/jpeg,image/webp" onChange={handlePhotoChange} />
+                </label>
+                <div className="client-profile-actions">
+                  <Link className="cta small" href="/services">
+                    Explorar servicios
+                  </Link>
+                  <button className="cta ghost small" type="button" onClick={() => void refreshDashboard()} disabled={!sessionUserId}>
+                    Actualizar servicios
+                  </button>
+                </div>
+              </div>
+            </div>
+          </section>
+        </section>
+
+        <div className="page client-dashboard-sections">
+          {feedback ? <p className="feedback ok">{feedback}</p> : null}
+          {error ? <p className="feedback error">{error}</p> : null}
+
+          <section className="auth-flow-panel client-dashboard-section">
+            <div className="panel-head client-dashboard-panel-head">
+              <h2>Resumen rápido</h2>
+              <p>Tu actividad actual dentro de la plataforma.</p>
+            </div>
+            <div className="module-grid client-dashboard-metrics">
+              <article className="module-card client-dashboard-metric">
+                <h3>Próximas</h3>
+                <p>{upcomingBookings.length} reserva(s) programada(s)</p>
               </article>
-            ))
-          )}
-        </div>
-      </section>
+              <article className="module-card client-dashboard-metric">
+                <h3>Historial</h3>
+                <p>{historyBookings.length} servicio(s) realizado(s)</p>
+              </article>
+              <article className="module-card client-dashboard-metric">
+                <h3>Servicios</h3>
+                <p>{bookings.length} servicio(s) en total</p>
+              </article>
+            </div>
+          </section>
 
-      <section className="panel">
-        <div className="module-grid">
-          <article className="module-card">
-            <h3>Proximas</h3>
-            <p>{upcomingBookings.length} reserva(s) programada(s)</p>
-          </article>
-          <article className="module-card">
-            <h3>Historial</h3>
-            <p>{historyBookings.length} servicio(s) realizado(s)</p>
-          </article>
-          <article className="module-card">
-            <h3>Servicios</h3>
-            <p>{bookings.length} servicio(s) en total</p>
-          </article>
-        </div>
-      </section>
+          <section className="auth-flow-panel client-dashboard-section">
+            <div className="panel-head client-dashboard-panel-head">
+              <h2>Notificaciones</h2>
+              <p>Mensajes y actualizaciones sobre tus reservas.</p>
+            </div>
+            <div className="list client-dashboard-list">
+              {notifications.length === 0 ? (
+                <p className="empty">Sin notificaciones por ahora.</p>
+              ) : (
+                notifications.map((item) => (
+                  <article className="booking-card client-dashboard-card" key={item.id}>
+                    <p>
+                      <strong>{item.title}</strong>
+                    </p>
+                    <p>{item.body}</p>
+                    <p>{new Date(item.createdAt).toLocaleString("es-ES")}</p>
+                  </article>
+                ))
+              )}
+            </div>
+          </section>
 
-      <section className="panel">
-        <div className="panel-head">
-          <h2>Servicios</h2>
-          <p>Estado y detalle de tus reservas activas e históricas.</p>
+          <section className="auth-flow-panel client-dashboard-section">
+            <div className="panel-head client-dashboard-panel-head">
+              <h2>Servicios</h2>
+              <p>Estado y detalle de tus reservas activas e históricas.</p>
+            </div>
+            <div className="list client-dashboard-list">
+              {bookings.length === 0 ? (
+                <p className="empty">Todavía no tienes reservas. Cuando hagas la primera, aparecerá aquí.</p>
+              ) : (
+                bookings.map((booking) => (
+                  <article className="booking-card client-dashboard-card" key={booking.id}>
+                    <div className="booking-head">
+                      <h3>{booking.service.name}</h3>
+                      <span className={`status ${statusClassByBooking(booking.status)}`}>{booking.status}</span>
+                    </div>
+                    <p>
+                      <strong>ID:</strong> {booking.id}
+                    </p>
+                    <p>
+                      <strong>Fecha:</strong> {new Date(booking.scheduledAt).toLocaleString("es-ES")}
+                    </p>
+                    <p>
+                      <strong>Profesional:</strong> {booking.pro?.fullName ?? "Pendiente"}
+                    </p>
+                    <p>
+                      <strong>Total:</strong> {clp(booking.totalPriceClp)}
+                    </p>
+                    <div className="booking-actions">
+                      <Link className="cta small" href={`/cliente/reservas/${booking.id}`} target="_blank" rel="noreferrer">
+                        Ver servicio
+                      </Link>
+                      {booking.status === "COMPLETED" ? (
+                        booking.review?.id ? (
+                          <button type="button" className="cta small cta-rating done" disabled>
+                            Valorado
+                          </button>
+                        ) : (
+                          <Link className="cta small cta-rating" href={`/cliente/reservas/${booking.id}`} target="_blank" rel="noreferrer">
+                            Valorar
+                          </Link>
+                        )
+                      ) : null}
+                    </div>
+                  </article>
+                ))
+              )}
+            </div>
+          </section>
         </div>
-        <div className="list">
-          {bookings.map((booking) => (
-            <article className="booking-card" key={booking.id}>
-              <div className="booking-head">
-                <h3>{booking.service.name}</h3>
-                <span className={`status ${statusClassByBooking(booking.status)}`}>{booking.status}</span>
-              </div>
-              <p>
-                <strong>ID:</strong> {booking.id}
-              </p>
-              <p>
-                <strong>Fecha:</strong> {new Date(booking.scheduledAt).toLocaleString("es-ES")}
-              </p>
-              <p>
-                <strong>Profesional:</strong> {booking.pro?.fullName ?? "Pendiente"}
-              </p>
-              <p>
-                <strong>Total:</strong> {clp(booking.totalPriceClp)}
-              </p>
-              <div className="booking-actions">
-                <Link className="cta small" href={`/cliente/reservas/${booking.id}`} target="_blank" rel="noreferrer">
-                  Ver servicio
-                </Link>
-                {booking.status === "COMPLETED" ? (
-                  booking.review?.id ? (
-                    <button type="button" className="cta small cta-rating done" disabled>
-                      Valorado
-                    </button>
-                  ) : (
-                    <Link className="cta small cta-rating" href={`/cliente/reservas/${booking.id}`} target="_blank" rel="noreferrer">
-                      Valorar
-                    </Link>
-                  )
-                ) : null}
-              </div>
-            </article>
-          ))}
-        </div>
-      </section>
-
-      {feedback ? <p className="feedback ok">{feedback}</p> : null}
-      {error ? <p className="feedback error">{error}</p> : null}
+      </div>
     </main>
   );
 }

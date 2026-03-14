@@ -2,6 +2,7 @@ import { CleaningOnboardingStatus, UserRole } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { getRequestIdentity, hasRole } from "@/lib/auth";
 import { normalizeCommuneList } from "@/lib/communes";
+import { CORE_SERVICES } from "@/lib/core-services";
 import { prisma } from "@/lib/prisma";
 import { cleaningOnboardingAdminActionSchema } from "@/lib/validators";
 
@@ -47,10 +48,12 @@ async function ensureCleaningTaskerService(userId: string) {
     }
   });
 
+  const selectedCoreService = CORE_SERVICES.find((service) => service.categorySlug === onboarding.categorySlug) ?? CORE_SERVICES[0];
+
   const category = await prisma.category.findFirst({
     where: {
       isActive: true,
-      OR: [{ slug: { contains: "limpieza" } }, { name: { contains: "Limpieza", mode: "insensitive" } }]
+      slug: selectedCoreService.categorySlug
     },
     orderBy: [{ slug: "asc" }]
   });
@@ -60,7 +63,10 @@ async function ensureCleaningTaskerService(userId: string) {
     where: {
       categoryId: category.id,
       isActive: true,
-      OR: [{ slug: { contains: "limpieza" } }, { name: { contains: "Limpieza", mode: "insensitive" } }]
+      OR: [
+        { slug: { contains: selectedCoreService.slug } },
+        { name: { contains: selectedCoreService.label, mode: "insensitive" } }
+      ]
     },
     orderBy: [{ basePriceClp: "asc" }]
   });

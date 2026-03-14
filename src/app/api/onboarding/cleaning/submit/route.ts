@@ -16,51 +16,32 @@ function listMissingFields(onboarding: Awaited<ReturnType<typeof prisma.cleaning
   if (!onboarding) return ["onboarding"];
 
   const required: Array<[string, unknown]> = [
+    ["categorySlug", onboarding.categorySlug],
+    ["phoneValidatedAt", onboarding.phoneValidatedAt],
+    ["profilePhotoUrl", onboarding.profilePhotoUrl],
     ["baseCommune", onboarding.baseCommune],
     ["referenceAddress", onboarding.referenceAddress],
     ["documentId", onboarding.documentId],
-    ["birthDate", onboarding.birthDate],
-    ["nationality", onboarding.nationality],
-    ["emergencyContactName", onboarding.emergencyContactName],
-    ["emergencyContactPhone", onboarding.emergencyContactPhone],
-    ["workReferences", onboarding.workReferences],
-    ["profilePhotoUrl", onboarding.profilePhotoUrl],
-    ["shortDescription", onboarding.shortDescription],
     ["yearsExperience", onboarding.yearsExperience],
     ["workMode", onboarding.workMode],
-    ["experienceTypes", onboarding.experienceTypes],
     ["offeredServices", onboarding.offeredServices],
-    ["acceptsHomesWithPets", onboarding.acceptsHomesWithPets],
-    ["acceptsHomesWithChildren", onboarding.acceptsHomesWithChildren],
-    ["acceptsHomesWithElderly", onboarding.acceptsHomesWithElderly],
-    ["worksWithClientProducts", onboarding.worksWithClientProducts],
-    ["bringsOwnProducts", onboarding.bringsOwnProducts],
-    ["bringsOwnTools", onboarding.bringsOwnTools],
     ["serviceCommunes", onboarding.serviceCommunes],
     ["coverageLatitude", onboarding.coverageLatitude],
     ["coverageLongitude", onboarding.coverageLongitude],
-    ["maxTravelKm", onboarding.maxTravelKm],
-    ["chargesTravelExtra", onboarding.chargesTravelExtra],
-    ["availabilityMode", onboarding.availabilityMode],
     ["availabilityBlocks", onboarding.availabilityBlocks],
-    ["maxServicesPerDay", onboarding.maxServicesPerDay],
-    ["acceptsUrgentBookings", onboarding.acceptsUrgentBookings],
     ["hourlyRateClp", onboarding.hourlyRateClp],
     ["minBookingHours", onboarding.minBookingHours],
     ["weekendSurchargePct", onboarding.weekendSurchargePct],
     ["holidaySurchargePct", onboarding.holidaySurchargePct],
-    ["remoteCommuneSurchargeClp", onboarding.remoteCommuneSurchargeClp],
-    ["identityDocumentFrontFile", onboarding.identityDocumentFrontFile],
-    ["identityDocumentBackFile", onboarding.identityDocumentBackFile],
-    ["identitySelfieFile", onboarding.identitySelfieFile],
-    ["criminalRecordFile", onboarding.criminalRecordFile],
     ["bankAccountHolder", onboarding.bankAccountHolder],
     ["bankAccountHolderRut", onboarding.bankAccountHolderRut],
     ["bankName", onboarding.bankName],
     ["bankAccountType", onboarding.bankAccountType],
     ["bankAccountNumber", onboarding.bankAccountNumber],
-    ["billingType", onboarding.billingType],
-    ["phoneValidatedAt", onboarding.phoneValidatedAt]
+    ["acceptsCancellationPolicy", onboarding.acceptsCancellationPolicy],
+    ["acceptsServiceProtocol", onboarding.acceptsServiceProtocol],
+    ["acceptsDataProcessing", onboarding.acceptsDataProcessing],
+    ["confirmsCleaningScope", onboarding.confirmsCleaningScope]
   ];
 
   return required.filter(([, value]) => missing(value)).map(([field]) => field);
@@ -89,7 +70,7 @@ export async function POST(req: NextRequest) {
       where: { userId: identity.userId },
       data: {
         status: CleaningOnboardingStatus.PENDIENTE_REVISION,
-        currentStep: 9,
+        currentStep: Math.max(onboarding?.currentStep ?? 1, 12),
         submittedAt: new Date(),
         adminReviewNotes: null
       }

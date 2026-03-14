@@ -1,6 +1,7 @@
 export const ACTIVE_MVP_COMMUNES = [
   "Las Condes",
   "Vitacura",
+  "Chicureo",
   "Providencia",
   "Ñuñoa",
   "La Reina",
@@ -17,6 +18,7 @@ type Coordinates = { lat: number; lng: number };
 const ACTIVE_MVP_COMMUNE_CENTERS: Record<ActiveMvpCommune, Coordinates> = {
   "Las Condes": { lat: -33.4167, lng: -70.5833 },
   Vitacura: { lat: -33.3906, lng: -70.5711 },
+  Chicureo: { lat: -33.2833, lng: -70.65 },
   Providencia: { lat: -33.4311, lng: -70.6111 },
   "Ñuñoa": { lat: -33.4569, lng: -70.5975 },
   "Lo Barnechea": { lat: -33.3504, lng: -70.5152 },
@@ -43,6 +45,10 @@ const communeAliasMap = new Map<string, ActiveMvpCommune>(
     }
     if (normalized === "lo barnechea") {
       aliases.add("barnechea");
+    }
+    if (normalized === "chicureo") {
+      aliases.add("colina");
+      aliases.add("chicureo colina");
     }
 
     return Array.from(aliases).map((alias) => [alias, commune] as const);

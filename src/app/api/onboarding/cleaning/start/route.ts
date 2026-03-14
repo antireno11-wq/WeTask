@@ -2,6 +2,7 @@ import { AuthProvider, CleaningOnboardingStatus, UserRole } from "@prisma/client
 import { NextRequest, NextResponse } from "next/server";
 import { encodeSessionCookie, SESSION_COOKIE_NAME } from "@/lib/auth";
 import { normalizeCommune } from "@/lib/communes";
+import { decodeVerifiedPhone, PUBLIC_ONBOARDING_PHONE_VERIFIED_COOKIE } from "@/lib/onboarding-phone";
 import { prisma } from "@/lib/prisma";
 import { cleaningOnboardingStartSchema } from "@/lib/validators";
 import { hashPassword, randomToken, sha256 } from "@/lib/security";
@@ -14,10 +15,6 @@ export async function POST(req: NextRequest) {
     const input = cleaningOnboardingStartSchema.parse(body);
     const baseCommune = normalizeCommune(input.baseCommune) ?? input.baseCommune.trim();
 
-    if (input.authProvider === "EMAIL" && !input.password) {
-      return NextResponse.json({ error: "Debes ingresar contraseña para registro por email" }, { status: 400 });
-    }
-
     const email = input.email.trim().toLowerCase();
     const exists = await prisma.user.findUnique({ where: { email }, select: { id: true } });
     if (exists) {
@@ -25,17 +22,20 @@ export async function POST(req: NextRequest) {
     }
 
     const provider: AuthProvider = input.authProvider;
-    const passwordHash = provider === "EMAIL" && input.password ? await hashPassword(input.password) : null;
+    const passwordHash = provider === "EMAIL" ? await hashPassword(input.password ?? randomToken(12)) : null;
+    const verifiedPhone = decodeVerifiedPhone(req.cookies.get(PUBLIC_ONBOARDING_PHONE_VERIFIED_COOKIE)?.value);
+    const phone = input.phone.trim();
+    const phoneIsVerified = verifiedPhone?.verified === true && verifiedPhone.phone.trim() === phone;
 
     const user = await prisma.user.create({
       data: {
         fullName: input.fullName.trim(),
-        phone: input.phone.trim(),
+        phone,
         email,
         role: UserRole.PRO,
         authProvider: provider,
         passwordHash,
-        termsAcceptedAt: new Date(),
+        termsAcceptedAt: input.acceptTerms ? new Date() : null,
         emailVerifiedAt: provider === "EMAIL" ? null : new Date(),
         roleAssignments: {
           create: {
@@ -59,9 +59,14 @@ export async function POST(req: NextRequest) {
         cleaningOnboarding: {
           create: {
             status: CleaningOnboardingStatus.BORRADOR,
-            currentStep: 2,
+            currentStep: 4,
+            categorySlug: "limpieza",
             baseCommune,
-            serviceCommunes: [baseCommune]
+            referenceAddress: input.referenceAddress?.trim() || null,
+            documentId: input.documentId?.trim() || null,
+            profilePhotoUrl: input.profilePhotoUrl ?? null,
+            serviceCommunes: [baseCommune],
+            phoneValidatedAt: phoneIsVerified ? new Date() : null
           }
         }
       },
