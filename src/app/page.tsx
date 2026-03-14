@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { MarketNav } from "@/components/market-nav";
+import { AuthHeroNav } from "@/components/auth-hero-nav";
 import { activeCommunesSummaryWithConjunction } from "@/lib/communes";
 import { CORE_SERVICES } from "@/lib/core-services";
 
@@ -38,43 +38,64 @@ const whyWetask = [
 
 export default function HomePage() {
   return (
-    <main className="page market-shell mvp-landing">
-      <section className="home-top mvp-top">
-        <MarketNav />
+    <main className="home-auth-page">
+      <div className="auth-flow-backdrop home-auth-backdrop" aria-hidden />
 
-        <section className="panel mvp-hero home-hero-main" id="inicio">
-          <div className="mvp-category-top-row" aria-label="Categorías principales">
-            {CORE_SERVICES.map((item) => (
-              <Link
-                key={item.slug}
-                href={`/services/${item.categorySlug}?source=home_category_${item.slug}`}
-                className="mvp-category-top-pill"
-              >
-                <span aria-hidden>{item.icon}</span>
-                {item.label}
+      <div className="login-screen-content home-auth-content">
+        <AuthHeroNav />
+
+        <section className="auth-flow-shell auth-flow-shell-wide home-auth-hero" id="inicio">
+          <div className="auth-flow-copy home-auth-copy">
+            <p className="auth-flow-kicker">Marketplace WeTask</p>
+            <h1>Haz tu vida más fácil con servicios a domicilio confiables.</h1>
+            <p>Reserva ayuda real para tu casa, rutina o bienestar con pago protegido y cobertura activa en Santiago.</p>
+
+            <div className="auth-flow-copy-list">
+              <div className="auth-flow-meta-card">
+                <strong>Disponible ahora</strong>
+                <span>{activeCommunesSummaryWithConjunction()}</span>
+              </div>
+              <div className="auth-flow-meta-card">
+                <strong>Flujo simple</strong>
+                <span>Busca, compara y reserva profesionales verificados desde una sola plataforma.</span>
+              </div>
+            </div>
+
+            <div className="auth-flow-actions">
+              <Link href="/solicitar-tecnico?source=hero_primary" className="cta">
+                Buscar servicio
               </Link>
-            ))}
+              <Link href="/trabaja-con-nosotros" className="cta ghost">
+                Ofrecer servicios
+              </Link>
+            </div>
           </div>
 
-          <h1>Haz tu vida más fácil</h1>
-          <p className="lead">Disfruta cualquier servicio en la comodidad de tu hogar.</p>
-          <p className="minimal-note">Disponible actualmente en: {activeCommunesSummaryWithConjunction()}</p>
+          <section className="auth-flow-panel home-auth-panel">
+            <div className="mvp-category-top-row" aria-label="Categorías principales">
+              {CORE_SERVICES.map((item) => (
+                <Link
+                  key={item.slug}
+                  href={`/services/${item.categorySlug}?source=home_category_${item.slug}`}
+                  className="mvp-category-top-pill"
+                >
+                  <span aria-hidden>{item.icon}</span>
+                  {item.label}
+                </Link>
+              ))}
+            </div>
 
-          <div className="cta-row mvp-hero-actions">
-            <Link href="/solicitar-tecnico?source=hero_primary" className="cta">
-              Buscar servicio
-            </Link>
-          </div>
-
-          <div className="mvp-hero-scene" aria-hidden>
-            <picture>
-              <source srcSet="/hero-webel-twofloor.webp" type="image/webp" />
-              <img src="/hero-webel-reference.webp" alt="" />
-            </picture>
-          </div>
+            <div className="mvp-hero-scene" aria-hidden>
+              <picture>
+                <source srcSet="/hero-webel-twofloor.webp" type="image/webp" />
+                <img src="/hero-webel-reference.webp" alt="" />
+              </picture>
+            </div>
+          </section>
         </section>
-      </section>
+      </div>
 
+      <div className="page home-auth-sections mvp-landing">
       <section className="panel mvp-section how-works" id="como-funciona">
         <div className="panel-head">
           <h2>¿Cómo funciona?</h2>
@@ -165,6 +186,7 @@ export default function HomePage() {
         <Link href="/como-funciona">Servicios</Link>
         <Link href="/legal">Términos y privacidad</Link>
       </footer>
+      </div>
     </main>
   );
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { BrandLogo } from "@/components/brand-logo";
 
 const navLinks = [
   { href: "/", label: "Inicio" },
@@ -13,7 +14,7 @@ export function AuthHeroNav() {
   return (
     <header className="auth-hero-nav">
       <Link href="/" className="auth-hero-brand" aria-label="Volver al inicio de WeTask">
-        <img src="/logo-wetask-cropped.png" alt="WeTask" width={180} height={60} />
+        <BrandLogo width={180} height={60} />
       </Link>
 
       <nav className="auth-hero-links" aria-label="Navegacion principal">
@@ -25,6 +26,9 @@ export function AuthHeroNav() {
       </nav>
 
       <div className="auth-hero-actions">
+        <Link href="/ingresar" className="auth-hero-link">
+          Acceder
+        </Link>
         <Link href="/registro" className="auth-hero-link auth-hero-link-strong">
           Crear cuenta
         </Link>

@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useEffect } from "react";
 import Link from "next/link";
-import { MarketNav } from "@/components/market-nav";
+import { AuthHeroNav } from "@/components/auth-hero-nav";
 
 type Service = {
   id: string;
@@ -71,51 +71,64 @@ export default function CatalogoPage() {
   }, [categories, query]);
 
   return (
-    <main className="page market-shell">
-      <MarketNav />
-      <section className="panel">
-        <div className="panel-head">
-          <h2>Servicios</h2>
-          <p>Explora por categoria y elige el servicio que necesitas.</p>
-        </div>
-        <label>
-          Buscar
-          <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="ej: limpieza, electrica, jardineria" />
-        </label>
-      </section>
-
-      {loading ? <p className="empty">Cargando servicios...</p> : null}
-      {error ? <p className="feedback error">{error}</p> : null}
-
-      {!loading && !error && filtered.length === 0 ? <p className="empty">No hay servicios para el filtro.</p> : null}
-
-      {filtered.map((category) => (
-        <section key={category.id} className="panel">
-          <div className="panel-head">
-            <h2>{category.name}</h2>
-            <p>
-              Minimo {category.minHours}h · Bloques de {category.slotMinutes} min
-            </p>
+    <main className="auth-flow-screen auth-flow-screen-scroll">
+      <div className="auth-flow-backdrop" aria-hidden />
+      <div className="login-screen-content">
+        <AuthHeroNav />
+        <section className="auth-flow-shell auth-flow-shell-wide">
+          <div className="auth-flow-copy">
+            <p className="auth-flow-kicker">Catalogo</p>
+            <h1>Explora todas las categorías y servicios desde un solo lugar.</h1>
+            <p>Busca por nombre, compara opciones y entra directo a profesionales o reserva según el servicio que necesites.</p>
           </div>
-          <div className="service-grid">
-            {category.services.map((service) => (
-              <article key={service.id} className="service-card active">
-                <strong>{service.name}</strong>
-                <span>{service.description}</span>
-                <span>Desde {clp(service.basePriceClp)} / hora</span>
-                <div className="cta-row">
-                  <Link className="cta small" href={`/services/${category.slug}/pros?city=Santiago&postalCode=7500000&address=`}>
-                    Ver profesionales
-                  </Link>
-                  <Link className="cta ghost small" href={`/booking/new?serviceId=${service.id}`}>
-                    Reservar
-                  </Link>
-                </div>
-              </article>
-            ))}
-          </div>
+
+          <section className="auth-flow-panel auth-flow-panel-wide">
+            <div className="panel-head auth-flow-panel-head">
+              <h2>Servicios</h2>
+              <p>Explora por categoria y elige el servicio que necesitas.</p>
+            </div>
+            <label>
+              Buscar
+              <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="ej: limpieza, electrica, jardineria" />
+            </label>
+          </section>
         </section>
-      ))}
+
+        <div className="page home-auth-sections">
+          {loading ? <p className="empty">Cargando servicios...</p> : null}
+          {error ? <p className="feedback error">{error}</p> : null}
+
+          {!loading && !error && filtered.length === 0 ? <p className="empty">No hay servicios para el filtro.</p> : null}
+
+          {filtered.map((category) => (
+            <section key={category.id} className="panel">
+              <div className="panel-head">
+                <h2>{category.name}</h2>
+                <p>
+                  Minimo {category.minHours}h · Bloques de {category.slotMinutes} min
+                </p>
+              </div>
+              <div className="service-grid">
+                {category.services.map((service) => (
+                  <article key={service.id} className="service-card active">
+                    <strong>{service.name}</strong>
+                    <span>{service.description}</span>
+                    <span>Desde {clp(service.basePriceClp)} / hora</span>
+                    <div className="cta-row">
+                      <Link className="cta small" href={`/services/${category.slug}/pros?city=Santiago&postalCode=7500000&address=`}>
+                        Ver profesionales
+                      </Link>
+                      <Link className="cta ghost small" href={`/booking/new?serviceId=${service.id}`}>
+                        Reservar
+                      </Link>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </section>
+          ))}
+        </div>
+      </div>
     </main>
   );
 }

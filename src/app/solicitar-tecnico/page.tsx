@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { MarketNav } from "@/components/market-nav";
+import { AuthHeroNav } from "@/components/auth-hero-nav";
 import { COVERAGE_UNAVAILABLE_MESSAGE, inferCommuneFromAddress, normalizeCommune } from "@/lib/communes";
 import { CORE_CATEGORY_SLUGS, CORE_SERVICES } from "@/lib/core-services";
 
@@ -323,150 +323,174 @@ export default function SolicitarTecnicoPage() {
   };
 
   return (
-    <main className="page market-shell">
-      <MarketNav />
+    <main className="auth-flow-screen auth-flow-screen-scroll">
+      <div className="auth-flow-backdrop" aria-hidden />
+      <div className="login-screen-content">
+        <AuthHeroNav />
 
-      <section className="panel">
-        <div className="panel-head">
-          <h2>Buscar un servicio</h2>
-          <p>Elige el tipo de servicio, la fecha y la dirección para ver taskers disponibles en tu zona.</p>
-        </div>
+        <section className="auth-flow-shell auth-flow-shell-wide">
+          <div className="auth-flow-copy">
+            <p className="auth-flow-kicker">Solicitar tecnico</p>
+            <h1>Encuentra profesionales cerca de ti en pocos pasos.</h1>
+            <p>Elige el tipo de servicio, la fecha y la dirección para ver taskers disponibles en tu zona.</p>
 
-        <form className="service-search-form" onSubmit={searchTaskersByAddress}>
-          <div className="service-search-row">
-            <label>
-              Tipo de servicio
-              <select
-                value={selectedCategoryId}
-                onChange={(event) => {
-                  setSelectedCategoryId(event.target.value);
-                  setHasSearched(false);
-                  setSearchTaskers([]);
-                  setMessage("");
-                }}
-                disabled={loadingCatalog}
-                required
-              >
-                {categories.length === 0 ? <option value="">Cargando servicios...</option> : null}
-                {categories.map((category) => {
-                  const meta = serviceMetaBySlug.get(category.slug);
-                  return (
-                    <option key={category.id} value={category.id}>
-                      {meta?.icon ?? "🛠️"} {meta?.label ?? category.name}
-                    </option>
-                  );
-                })}
-              </select>
-            </label>
-
-            <label>
-              Fecha del servicio
-              <input type="date" value={serviceDate} min={todayYmd()} onChange={(event) => setServiceDate(event.target.value)} required />
-            </label>
-
-            <label>
-              Dirección
-              <input
-                value={address}
-                onChange={(event) => setAddress(event.target.value)}
-                placeholder="Ej: Av. Providencia 1234, Providencia"
-                required
-              />
-            </label>
-
-            <button type="submit" className="cta" disabled={loadingSearch || loadingCatalog}>
-              {loadingSearch ? "Buscando..." : "Buscar taskers"}
-            </button>
-          </div>
-          <p className="service-search-meta">
-            Ciudad de búsqueda: <strong>{city}</strong> · Fecha seleccionada: <strong>{serviceDate}</strong> · Comuna detectada:{" "}
-            <strong>{detectedCommune ?? "Sin detectar"}</strong>
-          </p>
-        </form>
-
-        {message ? <p className="feedback ok">{message}</p> : null}
-        {error ? <p className="feedback error">{error}</p> : null}
-        {error === COVERAGE_UNAVAILABLE_MESSAGE ? (
-          <form className="query-row query-single" onSubmit={saveCoverageEmail}>
-            <label>
-              Déjanos tu email
-              <input
-                type="email"
-                value={coverageEmail}
-                onChange={(event) => setCoverageEmail(event.target.value)}
-                placeholder="tuemail@dominio.com"
-                required
-              />
-            </label>
-            <button type="submit" className="cta" disabled={savingCoverageEmail}>
-              {savingCoverageEmail ? "Guardando..." : "Avisarme cuando lleguen"}
-            </button>
-          </form>
-        ) : null}
-        {coverageEmailStatus ? <p className="feedback ok">{coverageEmailStatus}</p> : null}
-      </section>
-
-      <section className="panel">
-        <div className="taskers-head">
-          <h3>
-            {selectedCategoryIcon} {showingExamples ? "Taskers de ejemplo" : "Taskers disponibles"}
-          </h3>
-          <p>{showingExamples ? `Vista previa para ${selectedCategoryName.toLowerCase()}.` : "Resultados según servicio y dirección."}</p>
-        </div>
-
-        {loadingSamples && !hasSearched ? <p className="empty">Cargando taskers de ejemplo...</p> : null}
-        {loadingSearch ? <p className="empty">Buscando taskers en tu zona...</p> : null}
-
-        <div className="we-results-list">
-          {visibleTaskers.map((tasker) => (
-            <article className="we-pro-card" key={`${tasker.id}-${tasker.userId}`}>
-              <div className="we-pro-main">
-                <div className="we-pro-avatar" aria-hidden>
-                  {initials(tasker.fullName)}
-                </div>
-
-                <div className="we-pro-content">
-                  <div className="we-pro-title-row">
-                    <h3>{tasker.fullName}</h3>
-                    <span className="we-verified-badge">Verificado</span>
-                  </div>
-
-                  <p className="we-pro-rating-line">
-                    <span className="we-star">★</span> {tasker.ratingAvg.toFixed(1)} ({tasker.ratingsCount} reseñas)
-                  </p>
-
-                  <div className="we-pro-tags">
-                    <span className="we-tag">Servicio a domicilio</span>
-                    <span className="we-tag">Cobertura {tasker.serviceRadiusKm} km</span>
-                    <span className="we-tag">{tasker.coverageCity ?? city}</span>
-                  </div>
-
-                  <p className="we-pro-snippet">Perfil apto para {selectedCategoryName.toLowerCase()} con agenda activa y valoración alta.</p>
-
-                  <div className="cta-row we-pro-actions">
-                    <Link href={prosHref} className="cta small">
-                      Ver disponibilidad
-                    </Link>
-                    <Link href="/services" className="cta ghost small">
-                      Más servicios
-                    </Link>
-                  </div>
-                </div>
+            <div className="auth-flow-copy-list">
+              <div className="auth-flow-meta-card">
+                <strong>Servicio seleccionado</strong>
+                <span>{selectedCategoryIcon} {selectedCategoryName}</span>
               </div>
+              <div className="auth-flow-meta-card">
+                <strong>Comuna detectada</strong>
+                <span>{detectedCommune ?? "Aun no detectamos una comuna valida."}</span>
+              </div>
+            </div>
+          </div>
 
-              <aside className="we-pro-price">
-                <strong>{tasker.hourlyRateFromClp ? clp(tasker.hourlyRateFromClp) : "A coordinar"}</strong>
-                <span>por hora</span>
-                <small>{tasker.distanceKm != null ? `${tasker.distanceKm.toFixed(1)} km` : "Distancia referencial"}</small>
-              </aside>
-            </article>
-          ))}
+          <section className="auth-flow-panel auth-flow-panel-wide">
+            <div className="panel-head auth-flow-panel-head">
+              <h2>Buscar un servicio</h2>
+              <p>Completa los datos para mostrar disponibilidad real o ejemplos según tu zona.</p>
+            </div>
+
+            <form className="service-search-form" onSubmit={searchTaskersByAddress}>
+              <div className="service-search-row">
+                <label>
+                  Tipo de servicio
+                  <select
+                    value={selectedCategoryId}
+                    onChange={(event) => {
+                      setSelectedCategoryId(event.target.value);
+                      setHasSearched(false);
+                      setSearchTaskers([]);
+                      setMessage("");
+                    }}
+                    disabled={loadingCatalog}
+                    required
+                  >
+                    {categories.length === 0 ? <option value="">Cargando servicios...</option> : null}
+                    {categories.map((category) => {
+                      const meta = serviceMetaBySlug.get(category.slug);
+                      return (
+                        <option key={category.id} value={category.id}>
+                          {meta?.icon ?? "🛠️"} {meta?.label ?? category.name}
+                        </option>
+                      );
+                    })}
+                  </select>
+                </label>
+
+                <label>
+                  Fecha del servicio
+                  <input type="date" value={serviceDate} min={todayYmd()} onChange={(event) => setServiceDate(event.target.value)} required />
+                </label>
+
+                <label>
+                  Dirección
+                  <input
+                    value={address}
+                    onChange={(event) => setAddress(event.target.value)}
+                    placeholder="Ej: Av. Providencia 1234, Providencia"
+                    required
+                  />
+                </label>
+
+                <button type="submit" className="cta" disabled={loadingSearch || loadingCatalog}>
+                  {loadingSearch ? "Buscando..." : "Buscar taskers"}
+                </button>
+              </div>
+              <p className="service-search-meta">
+                Ciudad de búsqueda: <strong>{city}</strong> · Fecha seleccionada: <strong>{serviceDate}</strong> · Comuna detectada:{" "}
+                <strong>{detectedCommune ?? "Sin detectar"}</strong>
+              </p>
+            </form>
+
+            {message ? <p className="feedback ok">{message}</p> : null}
+            {error ? <p className="feedback error">{error}</p> : null}
+            {error === COVERAGE_UNAVAILABLE_MESSAGE ? (
+              <form className="service-coverage-form" onSubmit={saveCoverageEmail}>
+                <label>
+                  Déjanos tu email
+                  <input
+                    type="email"
+                    value={coverageEmail}
+                    onChange={(event) => setCoverageEmail(event.target.value)}
+                    placeholder="tuemail@dominio.com"
+                    required
+                  />
+                </label>
+                <button type="submit" className="cta" disabled={savingCoverageEmail}>
+                  {savingCoverageEmail ? "Guardando..." : "Avisarme cuando lleguen"}
+                </button>
+              </form>
+            ) : null}
+            {coverageEmailStatus ? <p className="feedback ok">{coverageEmailStatus}</p> : null}
+          </section>
+        </section>
+
+        <div className="page home-auth-sections">
+          <section className="panel">
+            <div className="taskers-head">
+              <h3>
+                {selectedCategoryIcon} {showingExamples ? "Taskers de ejemplo" : "Taskers disponibles"}
+              </h3>
+              <p>{showingExamples ? `Vista previa para ${selectedCategoryName.toLowerCase()}.` : "Resultados según servicio y dirección."}</p>
+            </div>
+
+            {loadingSamples && !hasSearched ? <p className="empty">Cargando taskers de ejemplo...</p> : null}
+            {loadingSearch ? <p className="empty">Buscando taskers en tu zona...</p> : null}
+
+            <div className="we-results-list">
+              {visibleTaskers.map((tasker) => (
+                <article className="we-pro-card" key={`${tasker.id}-${tasker.userId}`}>
+                  <div className="we-pro-main">
+                    <div className="we-pro-avatar" aria-hidden>
+                      {initials(tasker.fullName)}
+                    </div>
+
+                    <div className="we-pro-content">
+                      <div className="we-pro-title-row">
+                        <h3>{tasker.fullName}</h3>
+                        <span className="we-verified-badge">Verificado</span>
+                      </div>
+
+                      <p className="we-pro-rating-line">
+                        <span className="we-star">★</span> {tasker.ratingAvg.toFixed(1)} ({tasker.ratingsCount} reseñas)
+                      </p>
+
+                      <div className="we-pro-tags">
+                        <span className="we-tag">Servicio a domicilio</span>
+                        <span className="we-tag">Cobertura {tasker.serviceRadiusKm} km</span>
+                        <span className="we-tag">{tasker.coverageCity ?? city}</span>
+                      </div>
+
+                      <p className="we-pro-snippet">Perfil apto para {selectedCategoryName.toLowerCase()} con agenda activa y valoración alta.</p>
+
+                      <div className="cta-row we-pro-actions">
+                        <Link href={prosHref} className="cta small">
+                          Ver disponibilidad
+                        </Link>
+                        <Link href="/services" className="cta ghost small">
+                          Más servicios
+                        </Link>
+                      </div>
+                    </div>
+                  </div>
+
+                  <aside className="we-pro-price">
+                    <strong>{tasker.hourlyRateFromClp ? clp(tasker.hourlyRateFromClp) : "A coordinar"}</strong>
+                    <span>por hora</span>
+                    <small>{tasker.distanceKm != null ? `${tasker.distanceKm.toFixed(1)} km` : "Distancia referencial"}</small>
+                  </aside>
+                </article>
+              ))}
+            </div>
+
+            {!loadingCatalog && visibleTaskers.length === 0 ? (
+              <p className="empty">Aún no hay taskers para mostrar en este servicio.</p>
+            ) : null}
+          </section>
         </div>
-
-        {!loadingCatalog && visibleTaskers.length === 0 ? (
-          <p className="empty">Aún no hay taskers para mostrar en este servicio.</p>
-        ) : null}
-      </section>
+      </div>
     </main>
   );
 }

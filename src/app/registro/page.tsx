@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { FormEvent, MouseEvent, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { AuthHeroNav } from "@/components/auth-hero-nav";
 import { ACTIVE_MVP_COMMUNES } from "@/lib/communes";
 import { geocodeAddress } from "@/lib/geo";
 
@@ -171,43 +172,42 @@ export default function RegistroPage() {
   return (
     <main className="auth-flow-screen auth-flow-screen-scroll">
       <div className="auth-flow-backdrop" aria-hidden />
-      <section className="auth-flow-shell auth-flow-shell-wide">
-        <div className="auth-flow-copy">
-          <Link href="/" className="login-brand-mark auth-flow-brand" aria-label="Volver a WeTask">
-            <img src="/logo-wetask.png" alt="WeTask" width={220} height={86} />
-          </Link>
-          <p className="auth-flow-kicker">Crear cuenta</p>
-          <h1>Empieza con WeTask en minutos.</h1>
-          <p>
-            Crea una cuenta como cliente para reservar servicios o como profesional para comenzar tu proceso de activacion dentro de la plataforma.
-          </p>
+      <div className="login-screen-content">
+        <AuthHeroNav />
+        <section className="auth-flow-shell auth-flow-shell-wide">
+          <div className="auth-flow-copy">
+            <p className="auth-flow-kicker">Crear cuenta</p>
+            <h1>Empieza con WeTask en minutos.</h1>
+            <p>
+              Crea una cuenta como cliente para reservar servicios o como profesional para comenzar tu proceso de activacion dentro de la plataforma.
+            </p>
 
-          <div className="auth-flow-copy-list">
-            <div className="auth-flow-meta-card">
-              <strong>{role === "PRO" ? "Cuenta profesional" : "Cuenta cliente"}</strong>
-              <span>
-                {role === "PRO"
-                  ? "Configura tu cobertura, documentacion y tarifa base con la estetica renovada de WeTask."
-                  : "Reserva, paga de forma protegida y sigue tus servicios desde una sola cuenta."}
-              </span>
+            <div className="auth-flow-copy-list">
+              <div className="auth-flow-meta-card">
+                <strong>{role === "PRO" ? "Cuenta profesional" : "Cuenta cliente"}</strong>
+                <span>
+                  {role === "PRO"
+                    ? "Configura tu cobertura, documentacion y tarifa base con la estetica renovada de WeTask."
+                    : "Reserva, paga de forma protegida y sigue tus servicios desde una sola cuenta."}
+                </span>
+              </div>
+              <div className="auth-flow-meta-card">
+                <strong>Acceso seguro</strong>
+                <span>Tu informacion queda asociada a tu perfil y puedes continuar el flujo despues desde tu sesion.</span>
+              </div>
             </div>
-            <div className="auth-flow-meta-card">
-              <strong>Acceso seguro</strong>
-              <span>Tu informacion queda asociada a tu perfil y puedes continuar el flujo despues desde tu sesion.</span>
+
+            <div className="auth-flow-inline-links">
+              <Link href="/ingresar">Ya tengo cuenta</Link>
+              <Link href="/legal">Terminos y privacidad</Link>
             </div>
           </div>
 
-          <div className="auth-flow-inline-links">
-            <Link href="/ingresar">Ya tengo cuenta</Link>
-            <Link href="/legal">Terminos y privacidad</Link>
-          </div>
-        </div>
-
-        <section className="auth-flow-panel auth-flow-panel-wide">
-          <div className="panel-head auth-flow-panel-head">
-            <h2>Crear cuenta</h2>
-            <p>Completa tus datos y entra de inmediato a WeTask.</p>
-          </div>
+          <section className="auth-flow-panel auth-flow-panel-wide">
+            <div className="panel-head auth-flow-panel-head">
+              <h2>Crear cuenta</h2>
+              <p>Completa tus datos y entra de inmediato a WeTask.</p>
+            </div>
 
           <div className="auth-flow-role-tabs" role="tablist" aria-label="Tipo de cuenta">
             <button
@@ -428,10 +428,11 @@ export default function RegistroPage() {
             </div>
           </form>
 
-          {feedback ? <p className="feedback ok">{feedback}</p> : null}
-          {error ? <p className="feedback error">{error}</p> : null}
+            {feedback ? <p className="feedback ok">{feedback}</p> : null}
+            {error ? <p className="feedback error">{error}</p> : null}
+          </section>
         </section>
-      </section>
+      </div>
     </main>
   );
 }

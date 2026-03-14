@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { AuthHeroNav } from "@/components/auth-hero-nav";
 import { CORE_SERVICES, type CoreTaskerServiceSlug } from "@/lib/core-services";
 
 export default function TrabajaConNosotrosPage() {
@@ -10,39 +11,38 @@ export default function TrabajaConNosotrosPage() {
   return (
     <main className="auth-flow-screen">
       <div className="auth-flow-backdrop" aria-hidden />
-      <section className="auth-flow-shell auth-flow-shell-wide">
-        <div className="auth-flow-copy">
-          <Link href="/" className="login-brand-mark auth-flow-brand" aria-label="Volver a WeTask">
-            <img src="/logo-wetask.png" alt="WeTask" width={220} height={86} />
-          </Link>
-          <p className="auth-flow-kicker">Trabaja con nosotros</p>
-          <h1>Convierte tu experiencia en servicios reservables.</h1>
-          <p>
-            Elige tu especialidad y te llevamos al onboarding profesional con el mismo estilo visual de WeTask.
-          </p>
+      <div className="login-screen-content">
+        <AuthHeroNav />
+        <section className="auth-flow-shell auth-flow-shell-wide">
+          <div className="auth-flow-copy">
+            <p className="auth-flow-kicker">Trabaja con nosotros</p>
+            <h1>Convierte tu experiencia en servicios reservables.</h1>
+            <p>
+              Elige tu especialidad y te llevamos al onboarding profesional con el mismo estilo visual de WeTask.
+            </p>
 
-          <div className="auth-flow-copy-list">
-            <div className="auth-flow-meta-card">
-              <strong>Activacion guiada</strong>
-              <span>Completarás perfil, cobertura, documentos y condiciones para poder recibir reservas.</span>
+            <div className="auth-flow-copy-list">
+              <div className="auth-flow-meta-card">
+                <strong>Activacion guiada</strong>
+                <span>Completarás perfil, cobertura, documentos y condiciones para poder recibir reservas.</span>
+              </div>
+              <div className="auth-flow-meta-card">
+                <strong>Pago protegido</strong>
+                <span>Gestiona agenda, servicios y pagos desde una sola cuenta profesional.</span>
+              </div>
             </div>
-            <div className="auth-flow-meta-card">
-              <strong>Pago protegido</strong>
-              <span>Gestiona agenda, servicios y pagos desde una sola cuenta profesional.</span>
+
+            <div className="auth-flow-inline-links">
+              <Link href="/ingresar/tasker">Ya soy tasker</Link>
+              <Link href="/legal">Condiciones de uso</Link>
             </div>
           </div>
 
-          <div className="auth-flow-inline-links">
-            <Link href="/ingresar/tasker">Ya soy tasker</Link>
-            <Link href="/legal">Condiciones de uso</Link>
-          </div>
-        </div>
-
-        <section className="auth-flow-panel auth-flow-panel-wide">
-          <div className="panel-head auth-flow-panel-head">
-            <h2>Elige tu servicio principal</h2>
-            <p>Usaremos esta seleccion para personalizar tu onboarding profesional.</p>
-          </div>
+          <section className="auth-flow-panel auth-flow-panel-wide">
+            <div className="panel-head auth-flow-panel-head">
+              <h2>Elige tu servicio principal</h2>
+              <p>Usaremos esta seleccion para personalizar tu onboarding profesional.</p>
+            </div>
 
           <form action="/trabaja-con-nosotros/registro" method="GET" className="auth-service-form">
             <div className="auth-service-grid" role="radiogroup" aria-label="Servicios disponibles">
@@ -80,9 +80,10 @@ export default function TrabajaConNosotrosPage() {
                 Iniciar sesion
               </Link>
             </div>
-          </form>
+            </form>
+          </section>
         </section>
-      </section>
+      </div>
     </main>
   );
 }

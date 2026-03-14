@@ -3171,6 +3171,43 @@ textarea {
   background: rgba(255, 255, 255, 0.18);
 }
 
+.home-auth-page {
+  position: relative;
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 10% 0%, rgba(24, 166, 213, 0.22) 0%, rgba(24, 166, 213, 0) 24%),
+    linear-gradient(180deg, #edf5fc 0%, #f5f9fd 34%, #eef4fb 100%);
+}
+
+.home-auth-backdrop {
+  max-height: 760px;
+}
+
+.home-auth-content {
+  padding-bottom: 40px;
+}
+
+.home-auth-hero {
+  align-items: center;
+}
+
+.home-auth-copy {
+  max-width: 560px;
+}
+
+.home-auth-panel {
+  display: grid;
+  gap: 20px;
+}
+
+.home-auth-sections {
+  position: relative;
+  z-index: 1;
+  margin-top: -8px;
+  padding-top: 0;
+  padding-bottom: 64px;
+}
+
 .auth-flow-screen {
   position: relative;
   min-height: 100vh;
@@ -3587,6 +3624,15 @@ textarea {
     width: 100%;
   }
 
+  .home-auth-content {
+    padding-bottom: 26px;
+  }
+
+  .home-auth-sections {
+    margin-top: 0;
+    padding-top: 0;
+  }
+
   .auth-flow-screen {
     padding: 18px;
   }
@@ -3651,6 +3697,11 @@ textarea {
   .auth-hero-link {
     justify-content: center;
     display: inline-flex;
+  }
+
+  .auth-hero-brand {
+    width: 100%;
+    justify-content: center;
   }
 
   .auth-flow-copy h1 {
