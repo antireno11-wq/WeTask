@@ -9,6 +9,10 @@ type Booking = {
   status: string;
   scheduledAt: string;
   totalPriceClp: number;
+  addressLine1: string;
+  comuna: string;
+  city: string | null;
+  postalCode: string | null;
   service: { name: string };
   pro: { fullName: string } | null;
   review?: { id: string } | null;
@@ -43,6 +47,14 @@ export default function ClientePage() {
     () => [...bookings].sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime()),
     [bookings]
   );
+  const defaultAddress = useMemo(() => {
+    const latestWithAddress = bookings.find((item) => item.addressLine1?.trim());
+    if (!latestWithAddress) return "Aun no tienes una direccion guardada.";
+
+    return [latestWithAddress.addressLine1, latestWithAddress.comuna, latestWithAddress.city]
+      .filter((value) => typeof value === "string" && value.trim().length > 0)
+      .join(", ");
+  }, [bookings]);
 
   const upcomingBookings = sortedBookings.filter((item) => new Date(item.scheduledAt).getTime() >= Date.now());
   const historyBookings = sortedBookings.filter((item) => new Date(item.scheduledAt).getTime() < Date.now());
@@ -187,11 +199,16 @@ export default function ClientePage() {
               </div>
               <div className="client-profile-copy">
                 <h3>{customerName}</h3>
-                <p>Este espacio muestra la foto de perfil del cliente y mantiene tu panel actualizado.</p>
-                <label className="client-photo-upload">
-                  Cargar foto
-                  <input type="file" accept="image/png,image/jpeg,image/webp" onChange={handlePhotoChange} />
-                </label>
+                <p>Direccion por defecto</p>
+                <strong className="client-profile-address">{defaultAddress}</strong>
+                {!customerPhotoUrl ? (
+                  <label className="client-photo-upload">
+                    Cargar foto
+                    <input type="file" accept="image/png,image/jpeg,image/webp" onChange={handlePhotoChange} />
+                  </label>
+                ) : (
+                  <span className="client-photo-status">Foto de perfil cargada.</span>
+                )}
                 <div className="client-profile-actions">
                   <Link className="cta small" href="/services">
                     Explorar servicios

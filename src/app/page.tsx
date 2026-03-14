@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { AuthHeroNav } from "@/components/auth-hero-nav";
-import { activeCommunesSummaryWithConjunction } from "@/lib/communes";
 import { CORE_SERVICES } from "@/lib/core-services";
 
 const howItWorks = [
@@ -47,27 +46,19 @@ export default function HomePage() {
         <section className="auth-flow-shell auth-flow-shell-wide home-auth-hero" id="inicio">
           <div className="auth-flow-copy home-auth-copy">
             <p className="auth-flow-kicker">Marketplace WeTask</p>
-            <h1>Haz tu vida más fácil con servicios a domicilio confiables.</h1>
-            <p>Reserva ayuda real para tu casa, rutina o bienestar con pago protegido y cobertura activa en Santiago.</p>
-
-            <div className="auth-flow-copy-list">
-              <div className="auth-flow-meta-card">
-                <strong>Disponible ahora</strong>
-                <span>{activeCommunesSummaryWithConjunction()}</span>
+            <div className="home-auth-copy-top">
+              <h1>Servicios a domicilio confiables para tu rutina.</h1>
+              <div className="home-auth-copy-side">
+                <p>Reserva ayuda real para tu casa, bienestar o día a día con pago protegido y profesionales listos para atenderte.</p>
+                <div className="auth-flow-actions">
+                  <Link href="/solicitar-tecnico?source=hero_primary" className="cta">
+                    Buscar servicio
+                  </Link>
+                  <Link href="/trabaja-con-nosotros" className="cta ghost">
+                    Ofrecer servicios
+                  </Link>
+                </div>
               </div>
-              <div className="auth-flow-meta-card">
-                <strong>Flujo simple</strong>
-                <span>Busca, compara y reserva profesionales verificados desde una sola plataforma.</span>
-              </div>
-            </div>
-
-            <div className="auth-flow-actions">
-              <Link href="/solicitar-tecnico?source=hero_primary" className="cta">
-                Buscar servicio
-              </Link>
-              <Link href="/trabaja-con-nosotros" className="cta ghost">
-                Ofrecer servicios
-              </Link>
             </div>
           </div>
 
