@@ -31,8 +31,7 @@ type BookingDetail = {
   comuna: string;
   city: string | null;
   postalCode: string | null;
-  review: { id: string } | null;
-  disputes: Array<{ id: string; status: string }>;
+  review: { id: string; rating: number; comment: string | null } | null;
   extras: Array<{ id: string; label: string; priceClp: number }>;
 };
 
@@ -104,7 +103,6 @@ export default function ClienteBookingActionsPage() {
   const [chatBody, setChatBody] = useState("");
   const [reviewScore, setReviewScore] = useState(5);
   const [reviewComment, setReviewComment] = useState("");
-  const [disputeReason, setDisputeReason] = useState("");
   const [feedback, setFeedback] = useState("");
   const [error, setError] = useState("");
 
@@ -190,26 +188,20 @@ export default function ClienteBookingActionsPage() {
       });
       const data = (await response.json()) as { review?: { id: string }; error?: string; detail?: string };
       if (!response.ok || !data.review) throw new Error(data.detail || data.error || "No se pudo enviar reseña");
+      const nextReview = data.review;
+      setBooking((current) =>
+        current
+          ? {
+              ...current,
+              review: {
+                id: nextReview.id,
+                rating: reviewScore,
+                comment: reviewComment || null
+              }
+            }
+          : current
+      );
       setFeedback("Reseña enviada correctamente.");
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Error inesperado");
-    }
-  };
-
-  const openDispute = async () => {
-    if (!bookingId || !customerId || !disputeReason.trim()) return;
-    setError("");
-    setFeedback("");
-    try {
-      const response = await fetch("/api/marketplace/disputes", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ bookingId, openedById: customerId, reason: disputeReason })
-      });
-      const data = (await response.json()) as { ticket?: { id: string }; error?: string; detail?: string };
-      if (!response.ok || !data.ticket) throw new Error(data.detail || data.error || "No se pudo crear disputa");
-      setFeedback("Solicitud enviada a soporte.");
-      setDisputeReason("");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error inesperado");
     }
@@ -364,8 +356,8 @@ export default function ClienteBookingActionsPage() {
 
               <section className="auth-flow-panel client-dashboard-section">
                 <div className="panel-head client-dashboard-panel-head">
-                  <h2>Reseña y soporte</h2>
-                  <p>Valora tu experiencia o abre un caso si necesitas ayuda.</p>
+                  <h2>Tu reseña</h2>
+                  <p>Valora tu experiencia con este servicio.</p>
                 </div>
 
                 <div className="action-grid client-booking-actions-grid">
@@ -380,15 +372,17 @@ export default function ClienteBookingActionsPage() {
                   <button className="cta ghost small" type="button" onClick={leaveReview}>
                     Enviar reseña
                   </button>
-
-                  <label>
-                    Motivo de soporte
-                    <input value={disputeReason} onChange={(e) => setDisputeReason(e.target.value)} />
-                  </label>
-                  <button className="cta ghost small" type="button" onClick={openDispute}>
-                    Solicitar ayuda
-                  </button>
                 </div>
+
+                {booking.review?.id ? (
+                  <div className="client-booking-note">
+                    <strong>Tu valoración actual</strong>
+                    <p>
+                      {booking.review.rating}/5 estrellas
+                      {booking.review.comment ? ` · ${booking.review.comment}` : ""}
+                    </p>
+                  </div>
+                ) : null}
               </section>
             </>
           ) : null}

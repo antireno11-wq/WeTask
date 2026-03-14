@@ -32,7 +32,7 @@ export async function GET(req: NextRequest) {
         pro: { select: { id: true, fullName: true } },
         extras: true,
         payment: true,
-        review: { select: { id: true } }
+        review: { select: { id: true, rating: true, comment: true } }
       },
       orderBy: [{ scheduledAt: "desc" }],
       take: 50

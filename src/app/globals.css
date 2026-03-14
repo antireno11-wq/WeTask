@@ -3436,6 +3436,11 @@ textarea {
   text-transform: uppercase;
 }
 
+.client-booking-review-line {
+  color: #8a6200 !important;
+  font-weight: 700;
+}
+
 .client-booking-overview {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

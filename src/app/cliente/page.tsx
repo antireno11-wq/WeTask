@@ -15,7 +15,7 @@ type Booking = {
   postalCode: string | null;
   service: { name: string };
   pro: { fullName: string } | null;
-  review?: { id: string } | null;
+  review?: { id: string; rating: number; comment?: string | null } | null;
 };
 
 type Notification = {
@@ -55,6 +55,13 @@ function formatBookingDate(value: string) {
     hour: "2-digit",
     minute: "2-digit"
   });
+}
+
+function bookingEyebrow(status: string, scheduledAt: string) {
+  if (status === "COMPLETED") return "Servicio realizado";
+  if (status === "IN_PROGRESS") return "Servicio en curso";
+  if (new Date(scheduledAt).getTime() >= Date.now()) return "Próxima visita";
+  return "Servicio agendado";
 }
 
 export default function ClientePage() {
@@ -284,9 +291,6 @@ export default function ClientePage() {
                   <Link className="cta small" href="/services">
                     Explorar servicios
                   </Link>
-                  <button className="cta ghost small" type="button" onClick={() => void refreshDashboard()} disabled={!sessionUserId}>
-                    Actualizar servicios
-                  </button>
                 </div>
               </div>
             </div>
@@ -355,7 +359,7 @@ export default function ClientePage() {
                       <h3>{booking.service.name}</h3>
                       <span className={`status ${statusClassByBooking(booking.status)}`}>{statusLabelByBooking(booking.status)}</span>
                     </div>
-                    <p className="client-booking-eyebrow">{new Date(booking.scheduledAt).getTime() >= Date.now() ? "Próxima visita" : "Servicio realizado"}</p>
+                    <p className="client-booking-eyebrow">{bookingEyebrow(booking.status, booking.scheduledAt)}</p>
                     <p>
                       <strong>Fecha:</strong> {formatBookingDate(booking.scheduledAt)}
                     </p>
@@ -368,6 +372,11 @@ export default function ClientePage() {
                     <p>
                       <strong>Total:</strong> {clp(booking.totalPriceClp)}
                     </p>
+                    {booking.review?.id ? (
+                      <p className="client-booking-review-line">
+                        <strong>Valoración:</strong> {booking.review.rating}/5 estrellas
+                      </p>
+                    ) : null}
                     <div className="booking-actions">
                       <Link className="cta small" href={`/cliente/reservas/${booking.id}`}>
                         Ver servicio
