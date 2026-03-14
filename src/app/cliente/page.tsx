@@ -30,14 +30,40 @@ type SessionPayload = {
   fullName?: string | null;
 };
 
+const STATUS_LABELS: Record<string, string> = {
+  PENDING: "Pendiente",
+  PENDING_PAYMENT: "Pago pendiente",
+  ACCEPTED: "Aceptado",
+  ASSIGNED: "Asignado",
+  CONFIRMED: "Confirmado",
+  IN_PROGRESS: "En curso",
+  COMPLETED: "Completado",
+  CANCELLED: "Cancelado",
+  REFUNDED: "Reembolsado",
+  PAYMENT_FAILED: "Pago fallido"
+};
+
 function clp(value: number) {
   return new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP", maximumFractionDigits: 0 }).format(value);
+}
+
+function formatBookingDate(value: string) {
+  return new Date(value).toLocaleString("es-CL", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    hour: "2-digit",
+    minute: "2-digit"
+  });
 }
 
 export default function ClientePage() {
   const [sessionUserId, setSessionUserId] = useState("");
   const [customerName, setCustomerName] = useState("Cliente");
   const [customerPhotoUrl, setCustomerPhotoUrl] = useState("");
+  const [customAddress, setCustomAddress] = useState("");
+  const [addressDraft, setAddressDraft] = useState("");
+  const [editingAddress, setEditingAddress] = useState(false);
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [feedback, setFeedback] = useState("");
@@ -55,6 +81,7 @@ export default function ClientePage() {
       .filter((value) => typeof value === "string" && value.trim().length > 0)
       .join(", ");
   }, [bookings]);
+  const displayedAddress = customAddress.trim() || defaultAddress;
 
   const upcomingBookings = sortedBookings.filter((item) => new Date(item.scheduledAt).getTime() >= Date.now());
   const historyBookings = sortedBookings.filter((item) => new Date(item.scheduledAt).getTime() < Date.now());
@@ -109,6 +136,11 @@ export default function ClientePage() {
     try {
       const savedPhoto = window.localStorage.getItem("wetask_customer_photo") ?? "";
       if (savedPhoto) setCustomerPhotoUrl(savedPhoto);
+      const savedAddress = window.localStorage.getItem("wetask_customer_address") ?? "";
+      if (savedAddress) {
+        setCustomAddress(savedAddress);
+        setAddressDraft(savedAddress);
+      }
     } catch {
       // Ignorar errores de almacenamiento local.
     }
@@ -140,6 +172,23 @@ export default function ClientePage() {
     }
   };
 
+  const saveAddress = () => {
+    const nextAddress = addressDraft.trim();
+    if (!nextAddress) {
+      setError("Ingresa una dirección antes de guardar.");
+      return;
+    }
+    setCustomAddress(nextAddress);
+    setEditingAddress(false);
+    setFeedback("Dirección actualizada en tu panel.");
+    setError("");
+    try {
+      window.localStorage.setItem("wetask_customer_address", nextAddress);
+    } catch {
+      // noop
+    }
+  };
+
   const statusClassByBooking = (status: string) => {
     if (status === "COMPLETED") return "status-completed";
     if (status === "CANCELLED" || status === "REFUNDED") return "status-cancelled";
@@ -148,6 +197,7 @@ export default function ClientePage() {
     }
     return "status-pending";
   };
+  const statusLabelByBooking = (status: string) => STATUS_LABELS[status] ?? status;
 
   return (
     <main className="auth-flow-screen auth-flow-screen-scroll market-shell-auth">
@@ -200,16 +250,37 @@ export default function ClientePage() {
               <div className="client-profile-copy">
                 <h3>{customerName}</h3>
                 <p>Direccion por defecto</p>
-                <strong className="client-profile-address">{defaultAddress}</strong>
+                <strong className="client-profile-address">{displayedAddress}</strong>
+                {editingAddress ? (
+                  <div className="client-address-editor">
+                    <input value={addressDraft} onChange={(event) => setAddressDraft(event.target.value)} placeholder="Ingresa tu dirección" />
+                    <div className="client-profile-actions">
+                      <button className="cta small" type="button" onClick={saveAddress}>
+                        Guardar dirección
+                      </button>
+                      <button
+                        className="cta ghost small"
+                        type="button"
+                        onClick={() => {
+                          setAddressDraft(displayedAddress);
+                          setEditingAddress(false);
+                        }}
+                      >
+                        Cancelar
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
                 {!customerPhotoUrl ? (
                   <label className="client-photo-upload">
                     Cargar foto
                     <input type="file" accept="image/png,image/jpeg,image/webp" onChange={handlePhotoChange} />
                   </label>
-                ) : (
-                  <span className="client-photo-status">Foto de perfil cargada.</span>
-                )}
+                ) : null}
                 <div className="client-profile-actions">
+                  <button className="cta ghost small" type="button" onClick={() => setEditingAddress((current) => !current)}>
+                    Editar dirección
+                  </button>
                   <Link className="cta small" href="/services">
                     Explorar servicios
                   </Link>
@@ -282,22 +353,23 @@ export default function ClientePage() {
                   <article className="booking-card client-dashboard-card" key={booking.id}>
                     <div className="booking-head">
                       <h3>{booking.service.name}</h3>
-                      <span className={`status ${statusClassByBooking(booking.status)}`}>{booking.status}</span>
+                      <span className={`status ${statusClassByBooking(booking.status)}`}>{statusLabelByBooking(booking.status)}</span>
                     </div>
+                    <p className="client-booking-eyebrow">{new Date(booking.scheduledAt).getTime() >= Date.now() ? "Próxima visita" : "Servicio realizado"}</p>
                     <p>
-                      <strong>ID:</strong> {booking.id}
-                    </p>
-                    <p>
-                      <strong>Fecha:</strong> {new Date(booking.scheduledAt).toLocaleString("es-ES")}
+                      <strong>Fecha:</strong> {formatBookingDate(booking.scheduledAt)}
                     </p>
                     <p>
                       <strong>Profesional:</strong> {booking.pro?.fullName ?? "Pendiente"}
                     </p>
                     <p>
+                      <strong>Ubicación:</strong> {[booking.addressLine1, booking.comuna, booking.city].filter(Boolean).join(", ")}
+                    </p>
+                    <p>
                       <strong>Total:</strong> {clp(booking.totalPriceClp)}
                     </p>
                     <div className="booking-actions">
-                      <Link className="cta small" href={`/cliente/reservas/${booking.id}`} target="_blank" rel="noreferrer">
+                      <Link className="cta small" href={`/cliente/reservas/${booking.id}`}>
                         Ver servicio
                       </Link>
                       {booking.status === "COMPLETED" ? (
@@ -306,7 +378,7 @@ export default function ClientePage() {
                             Valorado
                           </button>
                         ) : (
-                          <Link className="cta small cta-rating" href={`/cliente/reservas/${booking.id}`} target="_blank" rel="noreferrer">
+                          <Link className="cta small cta-rating" href={`/cliente/reservas/${booking.id}`}>
                             Valorar
                           </Link>
                         )
