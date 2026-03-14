@@ -2,7 +2,7 @@
 
 import { FormEvent, MouseEvent, useEffect, useMemo, useState } from "react";
 import { MarketNav } from "@/components/market-nav";
-import { ACTIVE_MVP_COMMUNES, normalizeCommuneList } from "@/lib/communes";
+import { ACTIVE_MVP_COMMUNES, inferCommuneFromAddress, normalizeCommune, normalizeCommuneList } from "@/lib/communes";
 import { geocodeAddress } from "@/lib/geo";
 
 const statusOptions = ["ACCEPTED", "IN_PROGRESS", "COMPLETED", "CANCELLED"];
@@ -82,6 +82,17 @@ type ProProfileResponse = {
   detail?: string;
 };
 
+type AddressValidationResponse = {
+  valid?: boolean;
+  skipped?: boolean;
+  normalizedAddress?: string;
+  commune?: string | null;
+  isActiveCommune?: boolean;
+  location?: { lat?: number | null; lng?: number | null };
+  error?: string;
+  detail?: string;
+};
+
 type ProSlot = {
   id: string;
   startsAt: string;
@@ -143,6 +154,14 @@ export default function ProPage() {
 
   const [feedback, setFeedback] = useState("");
   const [error, setError] = useState("");
+  const [addressSuggestions, setAddressSuggestions] = useState<string[]>([]);
+  const [autocompleteLoading, setAutocompleteLoading] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [selectedFromAutocomplete, setSelectedFromAutocomplete] = useState(false);
+  const [validatingAddress, setValidatingAddress] = useState(false);
+  const [validatedAddress, setValidatedAddress] = useState("");
+  const [addressValidationMessage, setAddressValidationMessage] = useState("");
+  const [addressValidationError, setAddressValidationError] = useState("");
   const parsedMapLat = Number(coverageLatitude);
   const parsedMapLng = Number(coverageLongitude);
   const cityOptions = useMemo(
@@ -162,6 +181,10 @@ export default function ProPage() {
   const mapLng = Number.isFinite(parsedMapLng) ? parsedMapLng : -70.6693;
   const markerLeftPct = ((mapLng - SANTIAGO_BOUNDS.minLng) / (SANTIAGO_BOUNDS.maxLng - SANTIAGO_BOUNDS.minLng)) * 100;
   const markerTopPct = (1 - (mapLat - SANTIAGO_BOUNDS.minLat) / (SANTIAGO_BOUNDS.maxLat - SANTIAGO_BOUNDS.minLat)) * 100;
+  const fullCoverageAddress = useMemo(
+    () => [coverageStreet.trim(), coverageComuna.trim(), coverageCity.trim(), "Chile"].filter(Boolean).join(", "),
+    [coverageCity, coverageComuna, coverageStreet]
+  );
   const selectedCommunes = useMemo(
     () => normalizeCommuneList(serviceCommunes.length > 0 ? serviceCommunes : [coverageComuna]),
     [serviceCommunes, coverageComuna]
@@ -214,6 +237,55 @@ export default function ProPage() {
     setCoverageLatitude(geocodedCenter.lat.toFixed(6));
     setCoverageLongitude(geocodedCenter.lng.toFixed(6));
   }, [geocodedCenter, manualCoveragePoint]);
+
+  useEffect(() => {
+    if (selectedFromAutocomplete) {
+      setAddressSuggestions([]);
+      setShowSuggestions(false);
+      setAutocompleteLoading(false);
+      return;
+    }
+
+    if (coverageStreet.trim().length < 4) {
+      setAddressSuggestions([]);
+      setShowSuggestions(false);
+      setAutocompleteLoading(false);
+      return;
+    }
+
+    const controller = new AbortController();
+    const timer = setTimeout(async () => {
+      setAutocompleteLoading(true);
+      try {
+        const response = await fetch(`/api/maps/autocomplete?input=${encodeURIComponent(fullCoverageAddress)}`, {
+          signal: controller.signal
+        });
+        const data = (await response.json()) as { predictions?: string[] };
+        if (!response.ok) {
+          setAddressSuggestions([]);
+          setShowSuggestions(false);
+          return;
+        }
+        const suggestions = Array.isArray(data.predictions) ? data.predictions : [];
+        setAddressSuggestions(suggestions);
+        setShowSuggestions(suggestions.length > 0);
+      } catch {
+        if (!controller.signal.aborted) {
+          setAddressSuggestions([]);
+          setShowSuggestions(false);
+        }
+      } finally {
+        if (!controller.signal.aborted) {
+          setAutocompleteLoading(false);
+        }
+      }
+    }, 320);
+
+    return () => {
+      controller.abort();
+      clearTimeout(timer);
+    };
+  }, [coverageStreet, fullCoverageAddress, selectedFromAutocomplete]);
 
   const loadAll = async (targetProId: string) => {
     if (!targetProId) return;
@@ -310,10 +382,75 @@ export default function ProPage() {
     });
   };
 
+  const selectAddressSuggestion = (suggestion: string) => {
+    const [streetSegment] = suggestion.split(",");
+    setCoverageStreet(streetSegment?.trim() || suggestion);
+    const detectedCommune = normalizeCommune(suggestion) ?? inferCommuneFromAddress(suggestion);
+    if (detectedCommune) {
+      setCoverageComuna(detectedCommune);
+    }
+    setSelectedFromAutocomplete(true);
+    setAddressSuggestions([]);
+    setShowSuggestions(false);
+    setAddressValidationMessage("");
+    setAddressValidationError("");
+    setValidatedAddress("");
+    setManualCoveragePoint(false);
+  };
+
+  const validateCoverageAddress = async () => {
+    if (!coverageStreet.trim()) {
+      setAddressValidationError("Ingresa una dirección antes de corroborarla con Google.");
+      setAddressValidationMessage("");
+      return false;
+    }
+
+    setValidatingAddress(true);
+    setAddressValidationError("");
+    setAddressValidationMessage("");
+
+    try {
+      const response = await fetch(`/api/maps/validate-address?address=${encodeURIComponent(fullCoverageAddress)}`);
+      const data = (await response.json()) as AddressValidationResponse;
+
+      if (!response.ok || !data.valid) {
+        throw new Error(data.detail || data.error || "No pudimos corroborar esa dirección.");
+      }
+
+      const detectedCommune = normalizeCommune(data.commune ?? "") ?? inferCommuneFromAddress(data.normalizedAddress ?? fullCoverageAddress);
+      if (detectedCommune) {
+        setCoverageComuna(detectedCommune);
+      }
+
+      if (data.location?.lat != null && data.location?.lng != null) {
+        setCoverageLatitude(data.location.lat.toFixed(6));
+        setCoverageLongitude(data.location.lng.toFixed(6));
+        setManualCoveragePoint(true);
+      } else {
+        setManualCoveragePoint(false);
+      }
+
+      setValidatedAddress(data.normalizedAddress ?? fullCoverageAddress);
+      setAddressValidationMessage(
+        data.skipped ? "Dirección corroborada en modo básico. En este ambiente no respondió Google Maps." : "Dirección corroborada con Google Maps."
+      );
+      return true;
+    } catch (e) {
+      setValidatedAddress("");
+      setAddressValidationError(e instanceof Error ? e.message : "No pudimos corroborar esa dirección.");
+      return false;
+    } finally {
+      setValidatingAddress(false);
+    }
+  };
+
   const saveProfile = async () => {
     setFeedback("");
     setError("");
     try {
+      const isAddressValid = await validateCoverageAddress();
+      if (!isAddressValid) return;
+
       const payloadServiceCommunes = normalizeCommuneList(serviceCommunes.length > 0 ? serviceCommunes : [coverageComuna]);
       if (payloadServiceCommunes.length === 0) {
         throw new Error("Selecciona al menos una comuna activa donde atiendes.");
@@ -598,17 +735,46 @@ export default function ProPage() {
                 <input
                   value={coverageStreet}
                   onChange={(e) => {
+                    setSelectedFromAutocomplete(false);
+                    setAddressValidationMessage("");
+                    setAddressValidationError("");
+                    setValidatedAddress("");
                     setManualCoveragePoint(false);
                     setCoverageStreet(e.target.value);
                   }}
+                  onFocus={() => setShowSuggestions(addressSuggestions.length > 0)}
                   placeholder="Calle y número"
                 />
+                {autocompleteLoading ? <p className="input-hint">Buscando direcciones en Google...</p> : null}
+                {showSuggestions && addressSuggestions.length > 0 ? (
+                  <div className="address-suggestions">
+                    {addressSuggestions.map((suggestion) => (
+                      <button
+                        key={suggestion}
+                        type="button"
+                        className="address-suggestion-btn"
+                        onClick={() => selectAddressSuggestion(suggestion)}
+                      >
+                        {suggestion}
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
+                <div className="address-inline-actions">
+                  <button className="cta ghost small" type="button" onClick={() => void validateCoverageAddress()} disabled={validatingAddress}>
+                    {validatingAddress ? "Corroborando..." : "Corroborar con Google"}
+                  </button>
+                </div>
               </label>
               <label>
                 Comuna
                 <input
                   value={coverageComuna}
                   onChange={(e) => {
+                    setSelectedFromAutocomplete(false);
+                    setAddressValidationMessage("");
+                    setAddressValidationError("");
+                    setValidatedAddress("");
                     setManualCoveragePoint(false);
                     setCoverageComuna(e.target.value);
                   }}
@@ -641,6 +807,10 @@ export default function ProPage() {
                 <select
                   value={coverageCity}
                   onChange={(e) => {
+                    setSelectedFromAutocomplete(false);
+                    setAddressValidationMessage("");
+                    setAddressValidationError("");
+                    setValidatedAddress("");
                     setManualCoveragePoint(false);
                     setCoverageCity(e.target.value);
                   }}
@@ -713,6 +883,12 @@ export default function ProPage() {
                 <p className="coverage-meta">
                   Dirección base: {coverageStreet || "Sin dirección"}, {coverageComuna || "Sin comuna"}, {coverageCity}
                 </p>
+                {addressValidationMessage ? (
+                  <p className="coverage-meta coverage-meta-ok">
+                    {addressValidationMessage} {validatedAddress ? `(${validatedAddress})` : ""}
+                  </p>
+                ) : null}
+                {addressValidationError ? <p className="coverage-meta coverage-meta-error">{addressValidationError}</p> : null}
                 <p className="coverage-meta">
                   Comunas activas: {selectedCommunes.length > 0 ? selectedCommunes.join(", ") : "Selecciona al menos una comuna."}
                 </p>

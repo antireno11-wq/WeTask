@@ -1210,6 +1210,16 @@ textarea {
   font-size: 0.8rem;
 }
 
+.coverage-meta-ok {
+  color: #166a41;
+  font-weight: 700;
+}
+
+.coverage-meta-error {
+  color: #b42318;
+  font-weight: 700;
+}
+
 .input-hint {
   margin-top: 4px;
   color: var(--ink-soft);
@@ -1244,6 +1254,12 @@ textarea {
 
 .address-suggestion-btn:hover {
   background: #f3f8fc;
+}
+
+.address-inline-actions {
+  margin-top: 8px;
+  display: flex;
+  justify-content: flex-start;
 }
 
 .coverage-map-toolbar {
