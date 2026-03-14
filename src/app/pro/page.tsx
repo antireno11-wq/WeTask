@@ -125,6 +125,13 @@ function formatBookingDate(value: string) {
   });
 }
 
+function formatDayKey(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 export default function ProPage() {
   const [proId, setProId] = useState("");
   const [bookings, setBookings] = useState<Booking[]>([]);
@@ -193,17 +200,44 @@ export default function ProPage() {
     const query = encodeURIComponent(`${mapLat},${mapLng}`);
     return `https://www.google.com/maps?q=${query}&z=11&output=embed`;
   }, [mapLat, mapLng]);
-
-  const slotGroups = useMemo(() => {
+  const todayKey = useMemo(() => formatDayKey(new Date()), []);
+  const slotsByDay = useMemo(() => {
     const map = new Map<string, ProSlot[]>();
     for (const slot of slots) {
       const key = slot.startsAt.slice(0, 10);
       const prev = map.get(key) ?? [];
-      prev.push(slot);
-      map.set(key, prev);
+      map.set(key, [...prev, slot].sort((a, b) => a.startsAt.localeCompare(b.startsAt)));
     }
-    return Array.from(map.entries()).sort(([a], [b]) => a.localeCompare(b));
+    return map;
   }, [slots]);
+  const todaySlots = slotsByDay.get(todayKey) ?? [];
+  const selectedDaySlots = slotsByDay.get(slotDate) ?? [];
+  const selectedDate = useMemo(() => new Date(`${slotDate}T12:00:00`), [slotDate]);
+  const selectedMonthLabel = useMemo(
+    () => selectedDate.toLocaleDateString("es-CL", { month: "long", year: "numeric" }),
+    [selectedDate]
+  );
+  const selectedDayLabel = useMemo(
+    () => selectedDate.toLocaleDateString("es-CL", { weekday: "long", day: "numeric", month: "long" }),
+    [selectedDate]
+  );
+  const bookedSlotsCount = useMemo(() => slots.filter((item) => item.bookings.length > 0).length, [slots]);
+  const daysWithSlotsCount = useMemo(() => slotsByDay.size, [slotsByDay]);
+  const monthCalendarDays = useMemo(() => {
+    const start = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1);
+    const startWeekday = (start.getDay() + 6) % 7;
+    start.setDate(start.getDate() - startWeekday);
+
+    return Array.from({ length: 35 }, (_, index) => {
+      const date = new Date(start);
+      date.setDate(start.getDate() + index);
+      return {
+        key: formatDayKey(date),
+        date,
+        isCurrentMonth: date.getMonth() === selectedDate.getMonth()
+      };
+    });
+  }, [selectedDate]);
 
   const upcomingBookings = useMemo(
     () => bookings.filter((item) => new Date(item.scheduledAt).getTime() >= Date.now() && item.status !== "COMPLETED"),
@@ -905,67 +939,179 @@ export default function ProPage() {
           <section className="auth-flow-panel client-dashboard-section">
             <div className="panel-head client-dashboard-panel-head">
               <h2>Calendario de disponibilidad</h2>
-              <p>Crea bloques disponibles y habilita o deshabilita cada horario con un click.</p>
+              <p>Organiza tus horarios como una agenda visual y controla qué bloques quedan abiertos para reservas.</p>
             </div>
 
-            <div className="grid-form">
-              <label>
-                Fecha
-                <input type="date" value={slotDate} onChange={(e) => setSlotDate(e.target.value)} />
-              </label>
-              <label>
-                Hora inicio
-                <input type="time" value={slotTime} onChange={(e) => setSlotTime(e.target.value)} />
-              </label>
-              <label>
-                Duración
-                <select value={slotDurationMin} onChange={(e) => setSlotDurationMin(Number(e.target.value))}>
-                  <option value={30}>30 min</option>
-                  <option value={60}>60 min</option>
-                  <option value={90}>90 min</option>
-                  <option value={120}>120 min</option>
-                  <option value={180}>180 min</option>
-                  <option value={240}>240 min</option>
-                </select>
-              </label>
-              <label>
-                Servicio (opcional)
-                <select value={slotServiceId} onChange={(e) => setSlotServiceId(e.target.value)}>
-                  <option value="">Cualquier servicio</option>
-                  {services.map((service) => (
-                    <option key={service.id} value={service.id}>
-                      {service.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </div>
+            <div className="pro-availability-shell">
+              <aside className="pro-availability-sidebar">
+                <div className="pro-availability-overview">
+                  <article className="availability-stat-card tone-indigo">
+                    <span>Hoy</span>
+                    <strong>{todaySlots.length}</strong>
+                    <p>bloque(s) programado(s)</p>
+                  </article>
+                  <article className="availability-stat-card tone-peach">
+                    <span>Abiertos</span>
+                    <strong>{availableSlotsCount}</strong>
+                    <p>listos para reservar</p>
+                  </article>
+                  <article className="availability-stat-card tone-sky">
+                    <span>Con reserva</span>
+                    <strong>{bookedSlotsCount}</strong>
+                    <p>bloque(s) comprometido(s)</p>
+                  </article>
+                  <article className="availability-stat-card tone-mint">
+                    <span>Días activos</span>
+                    <strong>{daysWithSlotsCount}</strong>
+                    <p>con disponibilidad cargada</p>
+                  </article>
+                </div>
 
-            <div className="cta-row">
-              <button className="cta" type="button" onClick={createSlot}>
-                Agregar bloque
-              </button>
-            </div>
+                <div className="availability-composer-card">
+                  <div className="availability-composer-head">
+                    <div>
+                      <p className="availability-eyebrow">Nuevo bloque</p>
+                      <h3>Agrega una franja rápida</h3>
+                    </div>
+                    <span className="availability-selected-pill">{selectedDayLabel}</span>
+                  </div>
 
-            <div className="list client-dashboard-list">
-              {slotGroups.length === 0 ? (
-                <p className="empty">Aún no tienes bloques de disponibilidad.</p>
-              ) : (
-                slotGroups.map(([day, daySlots]) => (
-                  <article className="booking-card client-dashboard-card" key={day}>
-                    <p>
-                      <strong>{new Date(`${day}T00:00:00`).toLocaleDateString("es-CL", { weekday: "long", day: "2-digit", month: "long" })}</strong>
+                  <div className="grid-form availability-form-grid">
+                    <label>
+                      Fecha
+                      <input type="date" value={slotDate} onChange={(e) => setSlotDate(e.target.value)} />
+                    </label>
+                    <label>
+                      Hora inicio
+                      <input type="time" value={slotTime} onChange={(e) => setSlotTime(e.target.value)} />
+                    </label>
+                    <label>
+                      Duración
+                      <select value={slotDurationMin} onChange={(e) => setSlotDurationMin(Number(e.target.value))}>
+                        <option value={30}>30 min</option>
+                        <option value={60}>60 min</option>
+                        <option value={90}>90 min</option>
+                        <option value={120}>120 min</option>
+                        <option value={180}>180 min</option>
+                        <option value={240}>240 min</option>
+                      </select>
+                    </label>
+                    <label>
+                      Servicio
+                      <select value={slotServiceId} onChange={(e) => setSlotServiceId(e.target.value)}>
+                        <option value="">Cualquier servicio</option>
+                        {services.map((service) => (
+                          <option key={service.id} value={service.id}>
+                            {service.name}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  </div>
+
+                  <div className="cta-row availability-form-actions">
+                    <button className="cta" type="button" onClick={createSlot}>
+                      Agregar bloque
+                    </button>
+                  </div>
+                </div>
+              </aside>
+
+              <div className="availability-board-card">
+                <div className="availability-board-head">
+                  <div>
+                    <p className="availability-eyebrow">
+                      {selectedDate.toLocaleDateString("es-CL", { day: "2-digit", month: "short", year: "2-digit", weekday: "long" })}
                     </p>
-                    <div className="calendar-slot-grid">
-                      {daySlots.map((slot) => (
-                        <div key={slot.id} className={`pro-slot-card ${slot.isAvailable ? "slot-btn-active" : ""}`}>
-                          <span>
-                            {new Date(slot.startsAt).toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" })} -{" "}
+                    <h3>{selectedMonthLabel}</h3>
+                  </div>
+                  <span className="availability-board-chip">
+                    {selectedDaySlots.length} bloque(s) en {selectedDate.getDate()}
+                  </span>
+                </div>
+
+                <div className="availability-weekdays">
+                  {["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"].map((day) => (
+                    <span key={day}>{day}</span>
+                  ))}
+                </div>
+
+                <div className="availability-month-grid">
+                  {monthCalendarDays.map((day) => {
+                    const daySlots = slotsByDay.get(day.key) ?? [];
+                    const freeCount = daySlots.filter((slot) => slot.isAvailable && slot.bookings.length === 0).length;
+                    const reservedCount = daySlots.filter((slot) => slot.bookings.length > 0).length;
+                    const isSelected = day.key === slotDate;
+                    const isToday = day.key === todayKey;
+
+                    return (
+                      <button
+                        key={day.key}
+                        type="button"
+                        className={[
+                          "availability-day-card",
+                          day.isCurrentMonth ? "" : "muted",
+                          isSelected ? "selected" : "",
+                          isToday ? "today" : ""
+                        ]
+                          .filter(Boolean)
+                          .join(" ")}
+                        onClick={() => setSlotDate(day.key)}
+                      >
+                        <span className="availability-day-number">{day.date.getDate()}</span>
+                        <span className="availability-day-meta">
+                          {daySlots.length > 0 ? `${daySlots.length} bloque(s)` : "Sin bloques"}
+                        </span>
+                        <span className="availability-day-dots" aria-hidden>
+                          {freeCount > 0 ? <span className="availability-dot free" /> : null}
+                          {reservedCount > 0 ? <span className="availability-dot booked" /> : null}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className="availability-task-panel">
+                  <div className="availability-task-head">
+                    <div>
+                      <p className="availability-eyebrow">Detalle del día</p>
+                      <h4>{selectedDayLabel}</h4>
+                    </div>
+                    <span className="availability-selected-pill">
+                      {selectedDaySlots.length > 0 ? `${selectedDaySlots.length} bloque(s)` : "Sin bloques"}
+                    </span>
+                  </div>
+
+                  {selectedDaySlots.length === 0 ? (
+                    <div className="availability-empty-state">
+                      <strong>No tienes horarios cargados para este día.</strong>
+                      <p>Usa el formulario de la izquierda para agregar una nueva franja de atención.</p>
+                    </div>
+                  ) : (
+                    <div className="availability-task-list">
+                      {selectedDaySlots.map((slot) => (
+                        <article
+                          key={slot.id}
+                          className={`availability-task-item ${
+                            slot.bookings.length > 0 ? "reserved" : slot.isAvailable ? "open" : "closed"
+                          }`}
+                        >
+                          <div className="availability-task-time">
+                            {new Date(slot.startsAt).toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" })}
+                            <span />
                             {new Date(slot.endsAt).toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" })}
-                          </span>
-                          <span>{slot.service?.name ?? "General"}</span>
-                          <span>{slot.bookings.length > 0 ? "Con reserva" : slot.isAvailable ? "Disponible" : "No disponible"}</span>
-                          <div className="cta-row">
+                          </div>
+                          <div className="availability-task-copy">
+                            <strong>{slot.service?.name ?? "Disponibilidad general"}</strong>
+                            <p>
+                              {slot.bookings.length > 0
+                                ? "Este bloque ya tiene una reserva asociada."
+                                : slot.isAvailable
+                                  ? "Visible para nuevas reservas."
+                                  : "Guardado pero oculto para clientes."}
+                            </p>
+                          </div>
+                          <div className="availability-task-actions">
                             <button className="cta small" type="button" onClick={() => updateSlotAvailability(slot.id, !slot.isAvailable)}>
                               {slot.isAvailable ? "Desactivar" : "Activar"}
                             </button>
@@ -973,12 +1119,12 @@ export default function ProPage() {
                               Eliminar
                             </button>
                           </div>
-                        </div>
+                        </article>
                       ))}
                     </div>
-                  </article>
-                ))
-              )}
+                  )}
+                </div>
+              </div>
             </div>
           </section>
 

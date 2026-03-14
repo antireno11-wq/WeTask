@@ -1813,6 +1813,312 @@ textarea {
   color: var(--ink);
 }
 
+.pro-availability-shell {
+  margin-top: 10px;
+  display: grid;
+  grid-template-columns: 340px minmax(0, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+
+.pro-availability-sidebar {
+  display: grid;
+  gap: 18px;
+}
+
+.pro-availability-overview {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.availability-stat-card {
+  border-radius: 22px;
+  padding: 16px;
+  min-height: 132px;
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  border: 1px solid rgba(214, 231, 245, 0.92);
+  box-shadow: 0 18px 30px rgba(22, 45, 79, 0.08);
+}
+
+.availability-stat-card span {
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: #4d6682;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.availability-stat-card strong {
+  font-size: 2rem;
+  line-height: 1;
+  color: #132a57;
+}
+
+.availability-stat-card p {
+  margin: 0;
+  color: #48617a;
+  font-size: 0.86rem;
+}
+
+.availability-stat-card.tone-indigo {
+  background: linear-gradient(180deg, #f2efff 0%, #ece8ff 100%);
+}
+
+.availability-stat-card.tone-peach {
+  background: linear-gradient(180deg, #fff4eb 0%, #ffeee0 100%);
+}
+
+.availability-stat-card.tone-sky {
+  background: linear-gradient(180deg, #eefdff 0%, #e4f7ff 100%);
+}
+
+.availability-stat-card.tone-mint {
+  background: linear-gradient(180deg, #effcf4 0%, #e6f8ee 100%);
+}
+
+.availability-composer-card,
+.availability-board-card {
+  border: 1px solid #d6e7f5;
+  border-radius: 28px;
+  background: linear-gradient(180deg, #ffffff 0%, #f6fbff 100%);
+  box-shadow: 0 24px 40px rgba(19, 42, 87, 0.09);
+}
+
+.availability-composer-card {
+  padding: 20px;
+  display: grid;
+  gap: 16px;
+}
+
+.availability-composer-head,
+.availability-board-head,
+.availability-task-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.availability-eyebrow {
+  margin: 0 0 6px;
+  color: #6a7f94;
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.availability-composer-head h3,
+.availability-board-head h3,
+.availability-task-head h4 {
+  margin: 0;
+  color: #132a57;
+}
+
+.availability-selected-pill,
+.availability-board-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  border-radius: 999px;
+  padding: 0 14px;
+  background: rgba(255, 255, 255, 0.88);
+  border: 1px solid #d6e7f5;
+  color: #23476f;
+  font-size: 0.82rem;
+  font-weight: 800;
+  text-align: center;
+}
+
+.availability-form-grid {
+  gap: 12px;
+}
+
+.availability-form-actions {
+  margin-top: 0;
+}
+
+.availability-board-card {
+  padding: 22px;
+  display: grid;
+  gap: 18px;
+}
+
+.availability-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 10px;
+  color: #6f8398;
+  font-size: 0.82rem;
+  font-weight: 800;
+  text-align: center;
+}
+
+.availability-month-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.availability-day-card {
+  border: 1px solid #d7e6f3;
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 20px;
+  min-height: 102px;
+  padding: 12px 10px;
+  display: grid;
+  align-content: space-between;
+  gap: 10px;
+  text-align: left;
+  cursor: pointer;
+  transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease, background 0.16s ease;
+}
+
+.availability-day-card:hover {
+  transform: translateY(-2px);
+  border-color: #bad3ea;
+  box-shadow: 0 16px 24px rgba(19, 42, 87, 0.08);
+}
+
+.availability-day-card.muted {
+  opacity: 0.42;
+}
+
+.availability-day-card.today {
+  border-color: #9fd1ff;
+}
+
+.availability-day-card.selected {
+  border-color: #173b5f;
+  background: linear-gradient(180deg, #173b5f 0%, #2a5c87 100%);
+  box-shadow: 0 18px 28px rgba(23, 59, 95, 0.22);
+}
+
+.availability-day-number {
+  font-size: 1.05rem;
+  font-weight: 900;
+  color: #173b5f;
+}
+
+.availability-day-card.selected .availability-day-number,
+.availability-day-card.selected .availability-day-meta {
+  color: #ffffff;
+}
+
+.availability-day-meta {
+  font-size: 0.76rem;
+  color: #668095;
+  line-height: 1.3;
+}
+
+.availability-day-dots {
+  display: inline-flex;
+  gap: 6px;
+}
+
+.availability-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: #c3d3e0;
+}
+
+.availability-dot.free {
+  background: #18a957;
+}
+
+.availability-dot.booked {
+  background: #ff8a00;
+}
+
+.availability-task-panel {
+  border-radius: 24px;
+  background: linear-gradient(180deg, #ffffff 0%, #f4f9ff 100%);
+  border: 1px solid #dceaf6;
+  padding: 18px;
+  display: grid;
+  gap: 14px;
+}
+
+.availability-empty-state {
+  border: 1px dashed #c6dced;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.84);
+  padding: 18px;
+  display: grid;
+  gap: 8px;
+}
+
+.availability-empty-state strong,
+.availability-task-copy strong {
+  color: #132a57;
+}
+
+.availability-empty-state p,
+.availability-task-copy p {
+  margin: 0;
+  color: #5f7388;
+  font-size: 0.9rem;
+}
+
+.availability-task-list {
+  display: grid;
+  gap: 12px;
+}
+
+.availability-task-item {
+  border: 1px solid #d8e7f3;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.96);
+  padding: 14px;
+  display: grid;
+  grid-template-columns: 130px minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: center;
+}
+
+.availability-task-item.open {
+  border-color: #b8e2ca;
+  background: linear-gradient(180deg, #ffffff 0%, #f1fbf5 100%);
+}
+
+.availability-task-item.reserved {
+  border-color: #ffd6ad;
+  background: linear-gradient(180deg, #ffffff 0%, #fff7ef 100%);
+}
+
+.availability-task-item.closed {
+  border-color: #d8e7f3;
+  background: linear-gradient(180deg, #ffffff 0%, #f5f8fc 100%);
+}
+
+.availability-task-time {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+  font-weight: 900;
+  color: #173b5f;
+}
+
+.availability-task-time span {
+  width: 18px;
+  height: 2px;
+  border-radius: 999px;
+  background: #89a8c4;
+}
+
+.availability-task-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
 .inline-checks {
   display: flex;
   flex-wrap: wrap;
@@ -2071,6 +2377,18 @@ textarea {
 
   .pro-card-grid {
     grid-template-columns: 1fr;
+  }
+
+  .pro-availability-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .availability-task-item {
+    grid-template-columns: 1fr;
+  }
+
+  .availability-task-actions {
+    justify-content: flex-start;
   }
 
   .status-editor,
