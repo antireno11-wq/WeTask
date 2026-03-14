@@ -28,6 +28,25 @@ body {
   font-family: "Manrope", "Avenir Next", "Segoe UI", sans-serif;
 }
 
+.app-shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.app-content {
+  flex: 1;
+}
+
+.site-footer-wrap {
+  padding: 0 18px 28px;
+}
+
+.site-footer-panel {
+  max-width: 1120px;
+  margin: 0 auto;
+}
+
 .page {
   max-width: 1120px;
   margin: 0 auto;
