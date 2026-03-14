@@ -78,6 +78,7 @@ type CategorySlug =
   | "mascotas"
   | "babysitter"
   | "profesor-particular"
+  | "personal-trainer"
   | "chef"
   | "maquillaje"
   | "planchado";
@@ -113,6 +114,9 @@ type DraftState = {
   teacherSubject: "matematicas" | "ingles" | "lenguaje" | "ciencias" | "otra";
   teacherLevel: "basica" | "media" | "universitario";
   teacherMode: "presencial" | "online" | "ambas";
+  trainerServiceType: "funcional" | "fuerza" | "perdida_peso" | "movilidad";
+  trainerMode: "presencial" | "online" | "ambas";
+  trainerBringsEquipment: boolean | null;
   chefServiceType: Array<"comida_diaria" | "eventos" | "meal_prep">;
   chefCuisineType: "casera" | "saludable" | "gourmet";
   makeupType: Array<"social" | "eventos" | "novias">;
@@ -150,6 +154,7 @@ const CATEGORY_OPTIONS: Array<{ slug: CategorySlug; label: string; icon: string;
   { slug: "mascotas", label: "Cuidado de mascotas", icon: "🐾", description: "Paseos y cuidado diario para perros y gatos." },
   { slug: "babysitter", label: "Babysitter", icon: "👶", description: "Cuidado infantil responsable en casa del cliente." },
   { slug: "profesor-particular", label: "Profesor particular", icon: "📚", description: "Clases personalizadas presenciales u online." },
+  { slug: "personal-trainer", label: "Personal trainer", icon: "🏋️", description: "Entrenamiento personalizado según objetivo y modalidad." },
   { slug: "chef", label: "Chef", icon: "👨‍🍳", description: "Comida diaria, eventos y meal prep semanal." },
   { slug: "maquillaje", label: "Maquillaje", icon: "💄", description: "Servicios sociales, eventos y novias." },
   { slug: "planchado", label: "Planchado", icon: "👕", description: "Planchado en casa o con retiro y entrega." }
@@ -263,6 +268,9 @@ function createInitialDraft(): DraftState {
     teacherSubject: "matematicas",
     teacherLevel: "basica",
     teacherMode: "presencial",
+    trainerServiceType: "funcional",
+    trainerMode: "presencial",
+    trainerBringsEquipment: null,
     chefServiceType: ["comida_diaria"],
     chefCuisineType: "casera",
     makeupType: ["social"],
@@ -374,6 +382,12 @@ function buildStep7Payload(draft: DraftState) {
       return {
         offeredServices: [draft.teacherSubject],
         experienceTypes: [draft.teacherLevel, draft.teacherMode]
+      };
+    case "personal-trainer":
+      return {
+        offeredServices: [draft.trainerServiceType],
+        experienceTypes: [draft.trainerMode],
+        bringsOwnTools: draft.trainerBringsEquipment
       };
     case "chef":
       return {
@@ -1486,6 +1500,42 @@ function CleaningOnboardingPageContent() {
                         <option value="presencial">Presencial</option>
                         <option value="online">Online</option>
                         <option value="ambas">Ambas</option>
+                      </select>
+                    </label>
+                  </div>
+                ) : null}
+
+                {draft.category === "personal-trainer" ? (
+                  <div className="grid-form auth-flow-form">
+                    <label>
+                      Tipo de entrenamiento
+                      <select
+                        value={draft.trainerServiceType}
+                        onChange={(event) => updateDraft("trainerServiceType", event.target.value as DraftState["trainerServiceType"])}
+                      >
+                        <option value="funcional">Funcional</option>
+                        <option value="fuerza">Fuerza</option>
+                        <option value="perdida_peso">Pérdida de peso</option>
+                        <option value="movilidad">Movilidad</option>
+                      </select>
+                    </label>
+                    <label>
+                      Modalidad
+                      <select value={draft.trainerMode} onChange={(event) => updateDraft("trainerMode", event.target.value as DraftState["trainerMode"])}>
+                        <option value="presencial">Presencial</option>
+                        <option value="online">Online</option>
+                        <option value="ambas">Ambas</option>
+                      </select>
+                    </label>
+                    <label>
+                      ¿Llevas implementos o equipamiento?
+                      <select
+                        value={draft.trainerBringsEquipment == null ? "" : draft.trainerBringsEquipment ? "si" : "no"}
+                        onChange={(event) => updateDraft("trainerBringsEquipment", event.target.value === "si")}
+                      >
+                        <option value="">Selecciona</option>
+                        <option value="si">Sí</option>
+                        <option value="no">No</option>
                       </select>
                     </label>
                   </div>
