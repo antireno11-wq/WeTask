@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { AuthHeroNav } from "@/components/auth-hero-nav";
-import { ACTIVE_MVP_COMMUNES, type ActiveMvpCommune } from "@/lib/communes";
+import { ACTIVE_MVP_COMMUNES, inferCommuneFromAddress, normalizeCommune, type ActiveMvpCommune } from "@/lib/communes";
 
 type SessionPayload = {
   userId: string;
@@ -54,6 +54,17 @@ type OnboardingPayload = {
   confirmsCleaningScope: boolean | null;
   submittedAt: string | null;
   adminReviewNotes: string | null;
+};
+
+type AddressValidationResponse = {
+  valid?: boolean;
+  skipped?: boolean;
+  normalizedAddress?: string;
+  commune?: string | null;
+  isActiveCommune?: boolean;
+  location?: { lat?: number | null; lng?: number | null };
+  error?: string;
+  detail?: string;
 };
 
 type AvailabilityBlock = {
@@ -365,10 +376,18 @@ function CleaningOnboardingPageContent() {
   const [error, setError] = useState("");
   const [feedback, setFeedback] = useState("");
   const [smsPreview, setSmsPreview] = useState("");
+  const [addressSuggestions, setAddressSuggestions] = useState<string[]>([]);
+  const [autocompleteLoading, setAutocompleteLoading] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [selectedFromAutocomplete, setSelectedFromAutocomplete] = useState(false);
+  const [validatingAddress, setValidatingAddress] = useState(false);
+  const [addressValidationMessage, setAddressValidationMessage] = useState("");
+  const [addressValidationError, setAddressValidationError] = useState("");
 
   const chicureoSelected = draft.homeCommune === "Chicureo" || draft.coverageCommunes.includes("Chicureo");
   const selectedCategoryLabel = CATEGORY_OPTIONS.find((option) => option.slug === draft.category)?.label ?? "Limpieza";
   const progressPercent = Math.round((activeStep / TOTAL_STEPS) * 100);
+  const addressQuery = useMemo(() => [draft.address.trim(), "Santiago", "Chile"].filter(Boolean).join(", "), [draft.address]);
 
   useEffect(() => {
     const stored = window.localStorage.getItem(STORAGE_KEY);
@@ -387,6 +406,55 @@ function CleaningOnboardingPageContent() {
   useEffect(() => {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...draft, activeStep }));
   }, [draft, activeStep]);
+
+  useEffect(() => {
+    if (selectedFromAutocomplete) {
+      setAddressSuggestions([]);
+      setShowSuggestions(false);
+      setAutocompleteLoading(false);
+      return;
+    }
+
+    if (draft.address.trim().length < 4) {
+      setAddressSuggestions([]);
+      setShowSuggestions(false);
+      setAutocompleteLoading(false);
+      return;
+    }
+
+    const controller = new AbortController();
+    const timer = setTimeout(async () => {
+      setAutocompleteLoading(true);
+      try {
+        const response = await fetch(`/api/maps/autocomplete?input=${encodeURIComponent(addressQuery)}`, {
+          signal: controller.signal
+        });
+        const data = (await response.json()) as { predictions?: string[] };
+        if (!response.ok) {
+          setAddressSuggestions([]);
+          setShowSuggestions(false);
+          return;
+        }
+        const suggestions = Array.isArray(data.predictions) ? data.predictions : [];
+        setAddressSuggestions(suggestions);
+        setShowSuggestions(suggestions.length > 0);
+      } catch {
+        if (!controller.signal.aborted) {
+          setAddressSuggestions([]);
+          setShowSuggestions(false);
+        }
+      } finally {
+        if (!controller.signal.aborted) {
+          setAutocompleteLoading(false);
+        }
+      }
+    }, 320);
+
+    return () => {
+      controller.abort();
+      clearTimeout(timer);
+    };
+  }, [addressQuery, draft.address, selectedFromAutocomplete]);
 
   useEffect(() => {
     const presetService = searchParams.get("service");
@@ -479,6 +547,62 @@ function CleaningOnboardingPageContent() {
 
   const updateDraft = <K extends keyof DraftState>(key: K, value: DraftState[K]) => {
     setDraft((current) => ({ ...current, [key]: value }));
+  };
+
+  const selectAddressSuggestion = (suggestion: string) => {
+    const detectedCommune = normalizeCommune(suggestion) ?? inferCommuneFromAddress(suggestion);
+    setDraft((current) => ({
+      ...current,
+      address: suggestion,
+      homeCommune: detectedCommune ?? current.homeCommune
+    }));
+    setSelectedFromAutocomplete(true);
+    setAddressSuggestions([]);
+    setShowSuggestions(false);
+    setAddressValidationMessage("");
+    setAddressValidationError("");
+  };
+
+  const validateHomeAddress = async () => {
+    if (!draft.address.trim()) {
+      setAddressValidationError("Ingresa tu dirección antes de corroborarla con Google.");
+      setAddressValidationMessage("");
+      return false;
+    }
+
+    setValidatingAddress(true);
+    setAddressValidationError("");
+    setAddressValidationMessage("");
+
+    try {
+      const response = await fetch(`/api/maps/validate-address?address=${encodeURIComponent(addressQuery)}`);
+      const data = (await response.json()) as AddressValidationResponse;
+      if (!response.ok || !data.valid) {
+        throw new Error(data.detail || data.error || "No pudimos validar esa dirección con Google.");
+      }
+
+      const detectedCommune = normalizeCommune(data.commune ?? "") ?? inferCommuneFromAddress(data.normalizedAddress ?? addressQuery);
+      if (!detectedCommune) {
+        throw new Error("No pudimos identificar una comuna válida a partir de esa dirección.");
+      }
+
+      setDraft((current) => ({
+        ...current,
+        address: data.normalizedAddress ?? current.address,
+        homeCommune: detectedCommune
+      }));
+      setAddressValidationMessage(
+        data.skipped
+          ? `Comuna completada automáticamente: ${detectedCommune}.`
+          : `Dirección corroborada con Google y comuna completada: ${detectedCommune}.`
+      );
+      return true;
+    } catch (eventualError) {
+      setAddressValidationError(eventualError instanceof Error ? eventualError.message : "No pudimos validar esa dirección.");
+      return false;
+    } finally {
+      setValidatingAddress(false);
+    }
   };
 
   const persistServerStep = async (step: number, payload: Record<string, unknown>) => {
@@ -584,6 +708,9 @@ function CleaningOnboardingPageContent() {
     setError("");
     setFeedback("");
     try {
+      const addressOk = await validateHomeAddress();
+      if (!addressOk) return;
+
       if (session?.role === "PRO") {
         await persistServerStep(3, {
           fullName: `${draft.firstName.trim()} ${draft.lastName.trim()}`,
@@ -951,7 +1078,37 @@ function CleaningOnboardingPageContent() {
                   </label>
                   <label className="full">
                     Dirección
-                    <input value={draft.address} onChange={(event) => updateDraft("address", event.target.value)} placeholder="Av. Apoquindo 1234" />
+                    <input
+                      value={draft.address}
+                      onChange={(event) => {
+                        setSelectedFromAutocomplete(false);
+                        setAddressValidationMessage("");
+                        setAddressValidationError("");
+                        updateDraft("address", event.target.value);
+                      }}
+                      onFocus={() => setShowSuggestions(addressSuggestions.length > 0)}
+                      placeholder="Av. Apoquindo 1234"
+                    />
+                    {autocompleteLoading ? <p className="input-hint">Buscando direcciones en Google...</p> : null}
+                    {showSuggestions && addressSuggestions.length > 0 ? (
+                      <div className="address-suggestions">
+                        {addressSuggestions.map((suggestion) => (
+                          <button
+                            key={suggestion}
+                            type="button"
+                            className="address-suggestion-btn"
+                            onClick={() => selectAddressSuggestion(suggestion)}
+                          >
+                            {suggestion}
+                          </button>
+                        ))}
+                      </div>
+                    ) : null}
+                    <div className="address-inline-actions">
+                      <button className="cta ghost small" type="button" onClick={() => void validateHomeAddress()} disabled={validatingAddress}>
+                        {validatingAddress ? "Corroborando..." : "Corroborar con Google"}
+                      </button>
+                    </div>
                   </label>
                   <label>
                     Comuna donde vive
@@ -962,6 +1119,7 @@ function CleaningOnboardingPageContent() {
                         </option>
                       ))}
                     </select>
+                    <p className="input-hint">Se rellena automáticamente según la dirección que elijas y corroboras con Google.</p>
                   </label>
                   <label>
                     Foto de perfil
@@ -977,6 +1135,8 @@ function CleaningOnboardingPageContent() {
                     />
                   </label>
                 </div>
+                {addressValidationMessage ? <p className="feedback ok">{addressValidationMessage}</p> : null}
+                {addressValidationError ? <p className="feedback error">{addressValidationError}</p> : null}
                 {draft.homeCommune === "Chicureo" ? <p className="onboarding-warning">Chicureo puede tener recargo por distancia.</p> : null}
                 <div className="auth-flow-actions">
                   <button type="button" className="cta ghost" onClick={previousStep}>
