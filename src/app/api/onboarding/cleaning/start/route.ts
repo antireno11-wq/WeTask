@@ -60,7 +60,7 @@ export async function POST(req: NextRequest) {
           create: {
             status: CleaningOnboardingStatus.BORRADOR,
             currentStep: 4,
-            categorySlug: "limpieza",
+            categorySlug: input.categorySlug?.trim() || "limpieza",
             baseCommune,
             referenceAddress: input.referenceAddress?.trim() || null,
             documentId: input.documentId?.trim() || null,

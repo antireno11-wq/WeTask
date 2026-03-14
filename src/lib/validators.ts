@@ -275,6 +275,7 @@ export const cleaningOnboardingStartSchema = z.object({
   email: z.string().email(),
   password: z.string().min(8).max(120).optional(),
   authProvider: z.enum(["EMAIL", "GOOGLE", "APPLE"]).default("EMAIL"),
+  categorySlug: z.string().min(2).max(120).optional(),
   baseCommune: activeCommuneInputSchema,
   acceptTerms: z.boolean().optional().default(false),
   profilePhotoUrl: imageDataUrlSchema.optional(),

@@ -388,6 +388,10 @@ function CleaningOnboardingPageContent() {
   const selectedCategoryLabel = CATEGORY_OPTIONS.find((option) => option.slug === draft.category)?.label ?? "Limpieza";
   const progressPercent = Math.round((activeStep / TOTAL_STEPS) * 100);
   const addressQuery = useMemo(() => [draft.address.trim(), "Santiago", "Chile"].filter(Boolean).join(", "), [draft.address]);
+  const presetService = useMemo(() => {
+    const service = searchParams.get("service");
+    return CATEGORY_OPTIONS.some((option) => option.slug === service) ? (service as CategorySlug) : null;
+  }, [searchParams]);
 
   useEffect(() => {
     const stored = window.localStorage.getItem(STORAGE_KEY);
@@ -457,12 +461,15 @@ function CleaningOnboardingPageContent() {
   }, [addressQuery, draft.address, selectedFromAutocomplete]);
 
   useEffect(() => {
-    const presetService = searchParams.get("service");
     if (!presetService) return;
-    if (CATEGORY_OPTIONS.some((option) => option.slug === presetService)) {
-      setDraft((current) => ({ ...current, category: presetService as CategorySlug }));
+    setDraft((current) => ({ ...current, category: presetService }));
+  }, [presetService]);
+
+  useEffect(() => {
+    if (presetService && activeStep === 5) {
+      setActiveStep(6);
     }
-  }, [searchParams]);
+  }, [activeStep, presetService]);
 
   const hydrateFromServer = (nextOnboarding: OnboardingPayload, user?: { fullName?: string | null; email?: string | null; phone?: string | null }) => {
     const { firstName, lastName } = splitFullName(user?.fullName ?? session?.fullName ?? "");
@@ -729,6 +736,7 @@ function CleaningOnboardingPageContent() {
             fullName: `${draft.firstName.trim()} ${draft.lastName.trim()}`,
             email: draft.email.trim().toLowerCase(),
             phone: draft.phone.trim(),
+            categorySlug: draft.category,
             baseCommune: draft.homeCommune,
             referenceAddress: draft.address.trim(),
             documentId: draft.rut.trim(),
@@ -768,7 +776,12 @@ function CleaningOnboardingPageContent() {
         baseCommune: draft.homeCommune,
         serviceCommunes: draft.coverageCommunes
       });
-      setActiveStep(5);
+      if (presetService) {
+        await persistServerStep(5, { categorySlug: draft.category });
+        setActiveStep(6);
+      } else {
+        setActiveStep(5);
+      }
     } catch (eventualError) {
       setError(eventualError instanceof Error ? eventualError.message : "Error inesperado");
     } finally {
@@ -1176,7 +1189,7 @@ function CleaningOnboardingPageContent() {
               </div>
             ) : null}
 
-            {activeStep === 5 ? (
+            {activeStep === 5 && !presetService ? (
               <div className="onboarding-screen">
                 <h3>Categoría de servicio</h3>
                 <div className="auth-service-grid">
