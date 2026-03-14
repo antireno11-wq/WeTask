@@ -113,9 +113,8 @@ type DraftState = {
   teacherSubject: "matematicas" | "ingles" | "lenguaje" | "ciencias" | "otra";
   teacherLevel: "basica" | "media" | "universitario";
   teacherMode: "presencial" | "online" | "ambas";
-  chefServiceType: "comida_diaria" | "eventos" | "meal_prep";
+  chefServiceType: Array<"comida_diaria" | "eventos" | "meal_prep">;
   chefCuisineType: "casera" | "saludable" | "gourmet";
-  chefAtClientHome: boolean | null;
   makeupType: Array<"social" | "eventos" | "novias">;
   makeupKit: boolean | null;
   ironingType: "casa_cliente" | "retiro_entrega";
@@ -223,6 +222,19 @@ function normalizeMakeupTypes(value: unknown): Array<"social" | "eventos" | "nov
   return ["social"];
 }
 
+function normalizeChefServiceTypes(value: unknown): Array<"comida_diaria" | "eventos" | "meal_prep"> {
+  const allowed = new Set(["comida_diaria", "eventos", "meal_prep"]);
+  if (Array.isArray(value)) {
+    return value.filter(
+      (item): item is "comida_diaria" | "eventos" | "meal_prep" => typeof item === "string" && allowed.has(item)
+    );
+  }
+  if (typeof value === "string" && allowed.has(value)) {
+    return [value as "comida_diaria" | "eventos" | "meal_prep"];
+  }
+  return ["comida_diaria"];
+}
+
 function createInitialDraft(): DraftState {
   return {
     phone: "",
@@ -251,9 +263,8 @@ function createInitialDraft(): DraftState {
     teacherSubject: "matematicas",
     teacherLevel: "basica",
     teacherMode: "presencial",
-    chefServiceType: "comida_diaria",
+    chefServiceType: ["comida_diaria"],
     chefCuisineType: "casera",
-    chefAtClientHome: null,
     makeupType: ["social"],
     makeupKit: null,
     ironingType: "casa_cliente",
@@ -366,9 +377,9 @@ function buildStep7Payload(draft: DraftState) {
       };
     case "chef":
       return {
-        offeredServices: [draft.chefServiceType],
+        offeredServices: draft.chefServiceType,
         experienceTypes: [draft.chefCuisineType],
-        worksWithClientProducts: draft.chefAtClientHome
+        worksWithClientProducts: true
       };
     case "maquillaje":
       return {
@@ -446,6 +457,7 @@ function CleaningOnboardingPageContent() {
       setDraft((current) => ({
         ...current,
         ...parsed,
+        chefServiceType: normalizeChefServiceTypes(parsed.chefServiceType),
         makeupType: normalizeMakeupTypes(parsed.makeupType)
       }));
       if (parsed.activeStep && parsed.activeStep >= 1 && parsed.activeStep <= 12) {
@@ -1481,14 +1493,32 @@ function CleaningOnboardingPageContent() {
 
                 {draft.category === "chef" ? (
                   <div className="grid-form auth-flow-form">
-                    <label>
-                      Tipo de servicio
-                      <select value={draft.chefServiceType} onChange={(event) => updateDraft("chefServiceType", event.target.value as DraftState["chefServiceType"])}>
-                        <option value="comida_diaria">Comida diaria</option>
-                        <option value="eventos">Eventos</option>
-                        <option value="meal_prep">Meal prep semanal</option>
-                      </select>
-                    </label>
+                    <div className="full">
+                      <p className="field-label">Tipo de servicio</p>
+                      <div className="inline-checks">
+                        {[
+                          { value: "comida_diaria", label: "Comida diaria" },
+                          { value: "eventos", label: "Eventos" },
+                          { value: "meal_prep", label: "Meal prep semanal" }
+                        ].map((option) => (
+                          <label key={option.value}>
+                            <input
+                              type="checkbox"
+                              checked={draft.chefServiceType.includes(option.value as "comida_diaria" | "eventos" | "meal_prep")}
+                              onChange={(event) => {
+                                updateDraft(
+                                  "chefServiceType",
+                                  event.target.checked
+                                    ? Array.from(new Set([...draft.chefServiceType, option.value as "comida_diaria" | "eventos" | "meal_prep"]))
+                                    : draft.chefServiceType.filter((item) => item !== option.value)
+                                );
+                              }}
+                            />
+                            {option.label}
+                          </label>
+                        ))}
+                      </div>
+                    </div>
                     <label>
                       Tipo de cocina
                       <select value={draft.chefCuisineType} onChange={(event) => updateDraft("chefCuisineType", event.target.value as DraftState["chefCuisineType"])}>
@@ -1497,17 +1527,10 @@ function CleaningOnboardingPageContent() {
                         <option value="gourmet">Gourmet</option>
                       </select>
                     </label>
-                    <label>
-                      ¿Cocinas en casa del cliente?
-                      <select
-                        value={draft.chefAtClientHome == null ? "" : draft.chefAtClientHome ? "si" : "no"}
-                        onChange={(event) => updateDraft("chefAtClientHome", event.target.value === "si")}
-                      >
-                        <option value="">Selecciona</option>
-                        <option value="si">Sí</option>
-                        <option value="no">No</option>
-                      </select>
-                    </label>
+                    <div className="full auth-flow-note-card">
+                      <strong>Cocina en casa del cliente</strong>
+                      <span>En WeTask, el servicio de chef se considera siempre realizado en casa del cliente.</span>
+                    </div>
                   </div>
                 ) : null}
 
