@@ -4750,6 +4750,33 @@ textarea {
   gap: 14px;
 }
 
+.onboarding-availability-shell {
+  margin-top: 10px;
+}
+
+.onboarding-week-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.onboarding-week-card {
+  min-height: 116px;
+}
+
+.onboarding-week-card .availability-day-number {
+  font-size: 0.92rem;
+}
+
+.onboarding-task-item {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.onboarding-task-item .availability-task-copy {
+  display: grid;
+  gap: 6px;
+}
+
 .onboarding-day-card {
   display: grid;
   gap: 12px;
@@ -4773,7 +4800,7 @@ textarea {
 
 .onboarding-time-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   gap: 10px;
   align-items: center;
 }
@@ -4897,6 +4924,10 @@ textarea {
     grid-template-columns: 1fr;
   }
 
+  .onboarding-week-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .login-stage-copy {
     max-width: none;
   }
@@ -4987,6 +5018,10 @@ textarea {
   .onboarding-progress-head,
   .onboarding-day-head,
   .onboarding-time-row {
+    grid-template-columns: 1fr;
+  }
+
+  .onboarding-week-grid {
     grid-template-columns: 1fr;
   }
 

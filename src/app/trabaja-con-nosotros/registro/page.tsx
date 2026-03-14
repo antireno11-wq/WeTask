@@ -179,6 +179,12 @@ const DAY_OPTIONS: Array<{ key: DayKey; label: string }> = [
   { key: "domingo", label: "Domingo" }
 ];
 
+function currentWeekDayKey(): DayKey {
+  const jsDay = new Date().getDay();
+  const map: DayKey[] = ["domingo", "lunes", "martes", "miercoles", "jueves", "viernes", "sabado"];
+  return map[jsDay] ?? "lunes";
+}
+
 function createInitialDraft(): DraftState {
   return {
     phone: "",
@@ -376,6 +382,7 @@ function CleaningOnboardingPageContent() {
   const [error, setError] = useState("");
   const [feedback, setFeedback] = useState("");
   const [smsPreview, setSmsPreview] = useState("");
+  const [selectedAvailabilityDay, setSelectedAvailabilityDay] = useState<DayKey>(currentWeekDayKey);
   const [addressSuggestions, setAddressSuggestions] = useState<string[]>([]);
   const [autocompleteLoading, setAutocompleteLoading] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -973,6 +980,12 @@ function CleaningOnboardingPageContent() {
       })),
     [draft.availabilityBlocks]
   );
+  const selectedDayConfig = useMemo(
+    () => groupedBlocks.find((day) => day.key === selectedAvailabilityDay) ?? groupedBlocks[0],
+    [groupedBlocks, selectedAvailabilityDay]
+  );
+  const activeAvailabilityDays = useMemo(() => groupedBlocks.filter((day) => day.blocks.length > 0).length, [groupedBlocks]);
+  const totalAvailabilityBlocks = draft.availabilityBlocks.length;
 
   const previousStep = () => {
     if (activeStep <= 1) return;
@@ -1516,28 +1529,135 @@ function CleaningOnboardingPageContent() {
             {activeStep === 8 ? (
               <div className="onboarding-screen">
                 <h3>Disponibilidad</h3>
-                <div className="onboarding-availability-grid">
-                  {groupedBlocks.map((day) => (
-                    <div key={day.key} className="onboarding-day-card">
-                      <div className="onboarding-day-head">
-                        <strong>{day.label}</strong>
-                        <button type="button" className="login-link-button" onClick={() => addAvailabilityBlock(day.key)}>
-                          Agregar bloque
+                <div className="pro-availability-shell onboarding-availability-shell">
+                  <aside className="pro-availability-sidebar">
+                    <div className="pro-availability-overview">
+                      <article className="availability-stat-card tone-indigo">
+                        <span>Bloques</span>
+                        <strong>{totalAvailabilityBlocks}</strong>
+                        <p>horarios configurados en la semana</p>
+                      </article>
+                      <article className="availability-stat-card tone-peach">
+                        <span>Días activos</span>
+                        <strong>{activeAvailabilityDays}</strong>
+                        <p>con disponibilidad cargada</p>
+                      </article>
+                      <article className="availability-stat-card tone-sky">
+                        <span>Día elegido</span>
+                        <strong>{selectedDayConfig?.blocks.length ?? 0}</strong>
+                        <p>bloque(s) en {selectedDayConfig?.label.toLowerCase() ?? "tu día"}</p>
+                      </article>
+                      <article className="availability-stat-card tone-mint">
+                        <span>Modo</span>
+                        <strong>Semanal</strong>
+                        <p>estos horarios se repiten cada semana</p>
+                      </article>
+                    </div>
+
+                    <div className="availability-composer-card">
+                      <div className="availability-composer-head">
+                        <div>
+                          <p className="availability-eyebrow">Nuevo bloque</p>
+                          <h3>{selectedDayConfig?.label ?? "Selecciona un día"}</h3>
+                        </div>
+                        <span className="availability-selected-pill">Disponibilidad recurrente</span>
+                      </div>
+
+                      <p className="input-hint">
+                        Elige un día del planner y agrega uno o varios bloques para mostrar cuándo quieres recibir reservas.
+                      </p>
+
+                      <div className="cta-row availability-form-actions">
+                        <button type="button" className="cta" onClick={() => addAvailabilityBlock(selectedDayConfig?.key ?? "lunes")}>
+                          Agregar bloque a {selectedDayConfig?.label ?? "este día"}
                         </button>
                       </div>
-                      {day.blocks.length === 0 ? <p className="input-hint">Sin horarios definidos.</p> : null}
-                      {day.blocks.map((block) => (
-                        <div key={block.index} className="onboarding-time-row">
-                          <input type="time" value={block.start} onChange={(event) => updateAvailabilityBlock(block.index, { start: event.target.value })} />
-                          <span>–</span>
-                          <input type="time" value={block.end} onChange={(event) => updateAvailabilityBlock(block.index, { end: event.target.value })} />
-                          <button type="button" className="login-link-button" onClick={() => removeAvailabilityBlock(block.index)}>
-                            Quitar
-                          </button>
-                        </div>
+                    </div>
+                  </aside>
+
+                  <div className="availability-board-card">
+                    <div className="availability-board-head">
+                      <div>
+                        <p className="availability-eyebrow">Planner semanal</p>
+                        <h3>Selecciona un día y edita sus horarios</h3>
+                      </div>
+                      <span className="availability-board-chip">{totalAvailabilityBlocks} bloque(s) en total</span>
+                    </div>
+
+                    <div className="availability-weekdays">
+                      {DAY_OPTIONS.map((day) => (
+                        <span key={day.key}>{day.label.slice(0, 3)}</span>
                       ))}
                     </div>
-                  ))}
+
+                    <div className="onboarding-week-grid">
+                      {groupedBlocks.map((day) => {
+                        const isSelected = day.key === selectedAvailabilityDay;
+                        return (
+                          <button
+                            key={day.key}
+                            type="button"
+                            className={`availability-day-card onboarding-week-card ${isSelected ? "selected" : ""}`}
+                            onClick={() => setSelectedAvailabilityDay(day.key)}
+                          >
+                            <span className="availability-day-number">{day.label}</span>
+                            <span className="availability-day-meta">
+                              {day.blocks.length > 0 ? `${day.blocks.length} bloque(s)` : "Sin bloques"}
+                            </span>
+                            <span className="availability-day-dots" aria-hidden>
+                              {day.blocks.length > 0 ? <span className="availability-dot free" /> : <span className="availability-dot" />}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    <div className="availability-task-panel">
+                      <div className="availability-task-head">
+                        <div>
+                          <p className="availability-eyebrow">Detalle del día</p>
+                          <h4>{selectedDayConfig?.label ?? "Sin día seleccionado"}</h4>
+                        </div>
+                        <span className="availability-selected-pill">{selectedDayConfig?.blocks.length ?? 0} bloque(s)</span>
+                      </div>
+
+                      {!selectedDayConfig || selectedDayConfig.blocks.length === 0 ? (
+                        <div className="availability-empty-state">
+                          <strong>No tienes horarios cargados para este día.</strong>
+                          <p>Puedes agregar un bloque nuevo para empezar a recibir reservas en esta jornada.</p>
+                        </div>
+                      ) : (
+                        <div className="availability-task-list">
+                          {selectedDayConfig.blocks.map((block) => (
+                            <article key={block.index} className="availability-task-item open onboarding-task-item">
+                              <div className="availability-task-copy">
+                                <strong>Bloque horario</strong>
+                                <p>Define desde qué hora hasta qué hora quieres estar disponible.</p>
+                              </div>
+                              <div className="onboarding-time-row">
+                                <input
+                                  type="time"
+                                  value={block.start}
+                                  onChange={(event) => updateAvailabilityBlock(block.index, { start: event.target.value })}
+                                />
+                                <span>–</span>
+                                <input
+                                  type="time"
+                                  value={block.end}
+                                  onChange={(event) => updateAvailabilityBlock(block.index, { end: event.target.value })}
+                                />
+                              </div>
+                              <div className="availability-task-actions">
+                                <button type="button" className="cta ghost small" onClick={() => removeAvailabilityBlock(block.index)}>
+                                  Quitar
+                                </button>
+                              </div>
+                            </article>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
                 <div className="auth-flow-actions">
                   <button type="button" className="cta ghost" onClick={previousStep}>
