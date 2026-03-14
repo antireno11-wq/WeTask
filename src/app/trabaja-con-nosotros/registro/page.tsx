@@ -116,8 +116,7 @@ type DraftState = {
   chefServiceType: "comida_diaria" | "eventos" | "meal_prep";
   chefCuisineType: "casera" | "saludable" | "gourmet";
   chefAtClientHome: boolean | null;
-  makeupType: "social" | "eventos" | "novias";
-  makeupHome: boolean | null;
+  makeupType: Array<"social" | "eventos" | "novias">;
   makeupKit: boolean | null;
   ironingType: "casa_cliente" | "retiro_entrega";
   ironingDelicate: boolean | null;
@@ -213,6 +212,17 @@ function currentWeekDayKey(): DayKey {
   return map[jsDay] ?? "lunes";
 }
 
+function normalizeMakeupTypes(value: unknown): Array<"social" | "eventos" | "novias"> {
+  const allowed = new Set(["social", "eventos", "novias"]);
+  if (Array.isArray(value)) {
+    return value.filter((item): item is "social" | "eventos" | "novias" => typeof item === "string" && allowed.has(item));
+  }
+  if (typeof value === "string" && allowed.has(value)) {
+    return [value as "social" | "eventos" | "novias"];
+  }
+  return ["social"];
+}
+
 function createInitialDraft(): DraftState {
   return {
     phone: "",
@@ -244,8 +254,7 @@ function createInitialDraft(): DraftState {
     chefServiceType: "comida_diaria",
     chefCuisineType: "casera",
     chefAtClientHome: null,
-    makeupType: "social",
-    makeupHome: null,
+    makeupType: ["social"],
     makeupKit: null,
     ironingType: "casa_cliente",
     ironingDelicate: null,
@@ -363,9 +372,9 @@ function buildStep7Payload(draft: DraftState) {
       };
     case "maquillaje":
       return {
-        offeredServices: [draft.makeupType],
+        offeredServices: draft.makeupType,
         bringsOwnProducts: draft.makeupKit,
-        worksWithClientProducts: draft.makeupHome
+        worksWithClientProducts: true
       };
     case "planchado":
       return {
@@ -434,7 +443,11 @@ function CleaningOnboardingPageContent() {
     if (!stored) return;
     try {
       const parsed = JSON.parse(stored) as Partial<DraftState> & { activeStep?: WizardStep };
-      setDraft((current) => ({ ...current, ...parsed }));
+      setDraft((current) => ({
+        ...current,
+        ...parsed,
+        makeupType: normalizeMakeupTypes(parsed.makeupType)
+      }));
       if (parsed.activeStep && parsed.activeStep >= 1 && parsed.activeStep <= 12) {
         setActiveStep(parsed.activeStep);
       }
@@ -1500,25 +1513,36 @@ function CleaningOnboardingPageContent() {
 
                 {draft.category === "maquillaje" ? (
                   <div className="grid-form auth-flow-form">
-                    <label>
-                      Tipo
-                      <select value={draft.makeupType} onChange={(event) => updateDraft("makeupType", event.target.value as DraftState["makeupType"])}>
-                        <option value="social">Social</option>
-                        <option value="eventos">Eventos</option>
-                        <option value="novias">Novias</option>
-                      </select>
-                    </label>
-                    <label>
-                      ¿Trabajas a domicilio?
-                      <select
-                        value={draft.makeupHome == null ? "" : draft.makeupHome ? "si" : "no"}
-                        onChange={(event) => updateDraft("makeupHome", event.target.value === "si")}
-                      >
-                        <option value="">Selecciona</option>
-                        <option value="si">Sí</option>
-                        <option value="no">No</option>
-                      </select>
-                    </label>
+                    <div className="full">
+                      <p className="field-label">Tipo</p>
+                      <div className="inline-checks">
+                        {[
+                          { value: "social", label: "Social" },
+                          { value: "eventos", label: "Eventos" },
+                          { value: "novias", label: "Novias" }
+                        ].map((option) => (
+                          <label key={option.value}>
+                            <input
+                              type="checkbox"
+                              checked={draft.makeupType.includes(option.value as "social" | "eventos" | "novias")}
+                              onChange={(event) => {
+                                updateDraft(
+                                  "makeupType",
+                                  event.target.checked
+                                    ? Array.from(new Set([...draft.makeupType, option.value as "social" | "eventos" | "novias"]))
+                                    : draft.makeupType.filter((item) => item !== option.value)
+                                );
+                              }}
+                            />
+                            {option.label}
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="full auth-flow-note-card">
+                      <strong>Atención a domicilio</strong>
+                      <span>En WeTask, maquillaje se considera siempre un servicio a domicilio.</span>
+                    </div>
                     <label>
                       ¿Incluye kit de maquillaje?
                       <select
