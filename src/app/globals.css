@@ -4700,6 +4700,30 @@ textarea {
   color: #9f4e00;
 }
 
+.onboarding-missing-card {
+  margin-top: 12px;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 106, 0, 0.2);
+  background: linear-gradient(180deg, #fffaf4 0%, #fff3e6 100%);
+  padding: 16px 18px;
+  color: #7f4a12;
+  display: grid;
+  gap: 10px;
+}
+
+.onboarding-missing-card strong {
+  color: #7a4510;
+}
+
+.onboarding-missing-card ul {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.onboarding-missing-card li + li {
+  margin-top: 6px;
+}
+
 .onboarding-checkbox-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

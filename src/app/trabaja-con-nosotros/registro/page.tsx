@@ -178,6 +178,34 @@ const DAY_OPTIONS: Array<{ key: DayKey; label: string }> = [
   { key: "sabado", label: "Sábado" },
   { key: "domingo", label: "Domingo" }
 ];
+const SUBMIT_REQUIRED_FIELD_LABELS: Record<string, string> = {
+  categorySlug: "Categoría de servicio (Paso 5)",
+  phoneValidatedAt: "Teléfono verificado (Paso 2)",
+  profilePhotoUrl: "Foto de perfil (Paso 3)",
+  baseCommune: "Comuna donde vive (Paso 3)",
+  referenceAddress: "Dirección validada (Paso 3)",
+  documentId: "RUT (Paso 3)",
+  yearsExperience: "Años de experiencia (Paso 6)",
+  workMode: "Cómo trabajas (Paso 6)",
+  offeredServices: "Preguntas específicas de tu categoría (Paso 7)",
+  serviceCommunes: "Comunas de cobertura (Paso 4)",
+  coverageLatitude: "Ubicación validada desde la dirección (Paso 3)",
+  coverageLongitude: "Ubicación validada desde la dirección (Paso 3)",
+  availabilityBlocks: "Disponibilidad semanal (Paso 8)",
+  hourlyRateClp: "Tarifa por hora (Paso 9)",
+  minBookingHours: "Mínimo de horas por servicio (Paso 9)",
+  weekendSurchargePct: "Recargo fin de semana configurado (Paso 9)",
+  holidaySurchargePct: "Recargo festivos configurado (Paso 9)",
+  bankAccountHolder: "Nombre del titular de la cuenta (Paso 10)",
+  bankAccountHolderRut: "RUT del titular de la cuenta (Paso 10)",
+  bankName: "Banco (Paso 10)",
+  bankAccountType: "Tipo de cuenta (Paso 10)",
+  bankAccountNumber: "Número de cuenta (Paso 10)",
+  acceptsCancellationPolicy: "Aceptación de términos y condiciones (Paso 11)",
+  acceptsServiceProtocol: "Aceptación de términos y condiciones (Paso 11)",
+  acceptsDataProcessing: "Aceptación de términos y condiciones (Paso 11)",
+  confirmsCleaningScope: "Aceptación de términos y condiciones (Paso 11)"
+};
 
 function currentWeekDayKey(): DayKey {
   const jsDay = new Date().getDay();
@@ -381,6 +409,7 @@ function CleaningOnboardingPageContent() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [feedback, setFeedback] = useState("");
+  const [submitMissingFields, setSubmitMissingFields] = useState<string[]>([]);
   const [smsPreview, setSmsPreview] = useState("");
   const [selectedAvailabilityDay, setSelectedAvailabilityDay] = useState<DayKey>(currentWeekDayKey);
   const [addressSuggestions, setAddressSuggestions] = useState<string[]>([]);
@@ -921,11 +950,16 @@ function CleaningOnboardingPageContent() {
     setSaving(true);
     setError("");
     setFeedback("");
+    setSubmitMissingFields([]);
     try {
       await persistServerStep(11, { acceptTerms: true });
       const response = await fetch("/api/onboarding/cleaning/submit", { method: "POST" });
       const data = (await response.json()) as { ok?: boolean; onboarding?: OnboardingPayload; error?: string; detail?: string; missingFields?: string[] };
       if (!response.ok || !data.ok || !data.onboarding) {
+        if (Array.isArray(data.missingFields) && data.missingFields.length > 0) {
+          setSubmitMissingFields(data.missingFields.map((field) => SUBMIT_REQUIRED_FIELD_LABELS[field] ?? `${field} (pendiente)`));
+          throw new Error("Aún faltan campos obligatorios antes de enviar tu perfil a revisión.");
+        }
         throw new Error(data.detail || data.error || "No se pudo finalizar el registro");
       }
       setOnboarding(data.onboarding);
@@ -991,6 +1025,7 @@ function CleaningOnboardingPageContent() {
     if (activeStep <= 1) return;
     setError("");
     setFeedback("");
+    setSubmitMissingFields([]);
     setActiveStep((current) => Math.max(1, current - 1) as WizardStep);
   };
 
@@ -1044,6 +1079,16 @@ function CleaningOnboardingPageContent() {
 
             {feedback ? <p className="feedback ok">{feedback}</p> : null}
             {error ? <p className="feedback error">{error}</p> : null}
+            {submitMissingFields.length > 0 ? (
+              <div className="onboarding-missing-card">
+                <strong>Faltan estos datos antes de enviar tu perfil:</strong>
+                <ul>
+                  {submitMissingFields.map((field) => (
+                    <li key={field}>{field}</li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
 
             {activeStep === 1 ? (
               <div className="onboarding-screen">
