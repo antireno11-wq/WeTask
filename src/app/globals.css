@@ -1141,66 +1141,13 @@ textarea {
   cursor: default;
 }
 
-.coverage-map-google-look {
-  position: absolute;
-  inset: 0;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.18) 0%, rgba(255, 255, 255, 0.02) 100%),
-    linear-gradient(135deg, #f1f4f7 0%, #e8edf3 48%, #dde6ee 100%);
-}
-
-.coverage-map-water {
-  position: absolute;
-  inset: auto 4% 6% auto;
-  width: 30%;
-  height: 30%;
-  border-radius: 34px;
-  background: linear-gradient(180deg, #d9f1ff 0%, #c3e8ff 100%);
-  opacity: 0.9;
-}
-
-.coverage-map-road {
-  position: absolute;
-  background: rgba(255, 255, 255, 0.94);
-  box-shadow: 0 0 0 1px rgba(196, 210, 225, 0.44);
-}
-
-.coverage-map-road.road-one {
-  top: 16%;
-  left: -6%;
-  width: 54%;
-  height: 16px;
-  transform: rotate(18deg);
-}
-
-.coverage-map-road.road-two {
-  top: 38%;
-  left: 24%;
-  width: 58%;
-  height: 18px;
-  transform: rotate(-14deg);
-}
-
-.coverage-map-road.road-three {
-  top: 61%;
-  left: -4%;
-  width: 60%;
-  height: 14px;
-  transform: rotate(11deg);
-}
-
-.coverage-map-road.road-four {
-  top: 8%;
-  left: 62%;
-  width: 16px;
-  height: 68%;
-}
-
-.coverage-map-road.road-five {
-  top: 22%;
-  left: 44%;
-  width: 12px;
-  height: 56%;
+.coverage-map-frame {
+  display: block;
+  width: 100%;
+  height: 320px;
+  border: 0;
+  filter: saturate(1.04) contrast(1.02);
+  pointer-events: none;
 }
 
 .coverage-map-labels {

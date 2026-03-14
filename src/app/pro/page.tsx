@@ -166,6 +166,10 @@ export default function ProPage() {
     () => normalizeCommuneList(serviceCommunes.length > 0 ? serviceCommunes : [coverageComuna]),
     [serviceCommunes, coverageComuna]
   );
+  const mapEmbedUrl = useMemo(() => {
+    const query = encodeURIComponent(`${mapLat},${mapLng}`);
+    return `https://www.google.com/maps?q=${query}&z=11&output=embed`;
+  }, [mapLat, mapLng]);
 
   const slotGroups = useMemo(() => {
     const map = new Map<string, ProSlot[]>();
@@ -675,14 +679,13 @@ export default function ProPage() {
                   tabIndex={0}
                   aria-label="Seleccionar punto de cobertura en el mapa"
                 >
-                  <div className="coverage-map-google-look" aria-hidden>
-                    <div className="coverage-map-water" />
-                    <div className="coverage-map-road road-one" />
-                    <div className="coverage-map-road road-two" />
-                    <div className="coverage-map-road road-three" />
-                    <div className="coverage-map-road road-four" />
-                    <div className="coverage-map-road road-five" />
-                  </div>
+                  <iframe
+                    title="Mapa de cobertura profesional"
+                    src={mapEmbedUrl}
+                    className="coverage-map-frame"
+                    loading="lazy"
+                    referrerPolicy="no-referrer-when-downgrade"
+                  />
                   <div className="coverage-map-labels">
                     {ACTIVE_MVP_COMMUNES.map((commune) => {
                       const position = COMMUNE_MAP_POSITIONS[commune];
