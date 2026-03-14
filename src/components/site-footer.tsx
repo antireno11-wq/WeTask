@@ -16,7 +16,7 @@ export function SiteFooter() {
             <Link href="/como-funciona" className="home-link-item">
               Cómo funciona
             </Link>
-            <Link href="/legal" className="home-link-item">
+            <Link href="/ayuda-soporte" className="home-link-item">
               Ayuda y soporte
             </Link>
           </div>

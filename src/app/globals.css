@@ -2821,6 +2821,330 @@ textarea {
   color: #314055;
 }
 
+.support-page-shell .auth-flow-copy {
+  max-width: 680px;
+}
+
+.support-search-card {
+  margin-top: 16px;
+  padding: 14px;
+  border: 1px solid rgba(214, 231, 245, 0.9);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.82);
+  box-shadow: 0 18px 28px rgba(19, 42, 87, 0.08);
+  display: grid;
+  gap: 8px;
+}
+
+.support-search-label {
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: #5e7590;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.support-search-card input {
+  width: 100%;
+  min-height: 54px;
+  border-radius: 16px;
+  border: 1px solid #d3e3f1;
+  background: #ffffff;
+  padding: 0 16px;
+  font-size: 0.98rem;
+}
+
+.support-hero-actions {
+  margin-top: 16px;
+  flex-wrap: wrap;
+}
+
+.support-hero-panel {
+  display: grid;
+  gap: 18px;
+}
+
+.support-hero-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.support-hero-stat,
+.support-info-card,
+.support-ticket-card {
+  border: 1px solid #d7e6f3;
+  border-radius: 20px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(244, 249, 255, 0.98) 100%);
+  box-shadow: 0 16px 26px rgba(19, 42, 87, 0.07);
+}
+
+.support-hero-stat {
+  padding: 18px;
+  display: grid;
+  gap: 8px;
+}
+
+.support-hero-stat strong,
+.support-info-card h3,
+.support-section-head h3,
+.support-ticket-head strong {
+  color: #132a57;
+}
+
+.support-hero-stat span,
+.support-info-card p,
+.support-empty-search p,
+.support-ticket-card p,
+.support-ticket-head span {
+  color: #48617a;
+}
+
+.support-page-content {
+  padding-bottom: 56px;
+}
+
+.support-card-grid {
+  margin-top: 10px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.support-card-grid-four {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.support-card-grid-five {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.support-info-card {
+  padding: 18px;
+  display: grid;
+  gap: 8px;
+}
+
+.support-info-card h3,
+.support-section-head h3 {
+  margin: 0;
+}
+
+.support-info-card p,
+.support-empty-search p,
+.support-ticket-response {
+  margin: 0;
+}
+
+.support-faq-sections {
+  margin-top: 10px;
+  display: grid;
+  gap: 18px;
+}
+
+.support-faq-group {
+  display: grid;
+  gap: 10px;
+}
+
+.support-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.support-section-head span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid #d7e6f3;
+  background: #f7fbff;
+  color: #35506b;
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.support-faq-list details {
+  border-radius: 16px;
+  padding: 14px 16px;
+}
+
+.support-faq-list summary {
+  list-style: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  color: #173b5f;
+}
+
+.support-faq-list summary::-webkit-details-marker {
+  display: none;
+}
+
+.support-faq-list summary::after {
+  content: "+";
+  font-size: 1.2rem;
+  line-height: 1;
+  color: #5c7690;
+}
+
+.support-faq-list details[open] summary::after {
+  content: "-";
+}
+
+.support-empty-search {
+  margin-top: 10px;
+  border: 1px dashed #c9ddee;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.86);
+  padding: 20px;
+  display: grid;
+  gap: 8px;
+}
+
+.support-empty-search strong {
+  color: #132a57;
+}
+
+.support-section-actions {
+  margin-top: 18px;
+  flex-wrap: wrap;
+}
+
+.support-form-panel,
+.support-contact-form {
+  margin-top: 10px;
+}
+
+.support-report-options {
+  margin-top: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.support-report-chip {
+  border: 1px solid #cfe0ee;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #244668;
+  padding: 10px 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.support-report-chip.active,
+.support-report-chip:hover {
+  border-color: #173b5f;
+  background: #173b5f;
+  color: #ffffff;
+}
+
+.support-form-grid {
+  margin-top: 16px;
+}
+
+.support-checkbox {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-weight: 600;
+}
+
+.support-checkbox input {
+  margin-top: 3px;
+}
+
+.support-success-inline {
+  color: #166a41;
+}
+
+.support-channel-card {
+  min-height: 144px;
+}
+
+.support-status-row {
+  margin-top: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.support-status-chip,
+.support-ticket-status {
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: #eff6fd;
+  border: 1px solid #d2e2f0;
+  color: #23476f;
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.support-ticket-list {
+  margin-top: 14px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.support-ticket-card {
+  padding: 18px;
+  display: grid;
+  gap: 14px;
+}
+
+.support-ticket-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.support-ticket-head div {
+  display: grid;
+  gap: 4px;
+}
+
+.support-ticket-meta {
+  display: grid;
+  gap: 6px;
+}
+
+.support-ticket-meta p {
+  margin: 0;
+}
+
+.support-policy-grid {
+  margin-top: 10px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.support-policy-link {
+  border: 1px solid #d6e7f5;
+  border-radius: 18px;
+  background: linear-gradient(180deg, #ffffff 0%, #f4f9ff 100%);
+  color: #173b5f;
+  text-decoration: none;
+  font-weight: 800;
+  padding: 16px;
+  box-shadow: 0 14px 24px rgba(19, 42, 87, 0.06);
+}
+
+.support-policy-link:hover {
+  border-color: #bdd5e8;
+  transform: translateY(-1px);
+}
+
 .we-cancel-table {
   margin-top: 10px;
   display: grid;
@@ -2872,6 +3196,15 @@ textarea {
   .we-info-grid,
   .we-metrics-grid,
   .we-cancel-table {
+    grid-template-columns: 1fr;
+  }
+
+  .support-hero-grid,
+  .support-card-grid,
+  .support-card-grid-four,
+  .support-card-grid-five,
+  .support-ticket-list,
+  .support-policy-grid {
     grid-template-columns: 1fr;
   }
 }
