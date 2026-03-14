@@ -161,41 +161,28 @@ export default function HomePage() {
       </section>
 
       <footer className="panel home-footer-panel" id="footer">
-        <div className="home-footer-social">
-          <p>Síguenos. WeTask está cerca de ti:</p>
-          <div className="home-footer-social-links" aria-label="Redes sociales de WeTask">
-            <span className="home-footer-social-pill" aria-hidden>Fb</span>
-            <span className="home-footer-social-pill" aria-hidden>X</span>
-            <span className="home-footer-social-pill" aria-hidden>Ig</span>
-            <span className="home-footer-social-pill" aria-hidden>Tk</span>
-            <span className="home-footer-social-pill" aria-hidden>In</span>
-          </div>
-        </div>
-
         <div className="home-footer-grid">
           <div className="home-footer-col">
             <h3>Descubre</h3>
             <div className="home-footer-links">
               <Link href="/trabaja-con-nosotros" className="home-link-item">Trabaja con WeTask</Link>
               <Link href="/servicios" className="home-link-item">Servicios por categoría</Link>
-              <Link href="/solicitar-tecnico" className="home-link-item">Servicios cerca de ti</Link>
-              <Link href="/catalogo" className="home-link-item">Todos los servicios</Link>
               <Link href="/como-funciona" className="home-link-item">Cómo funciona</Link>
-              <Link href="/profesionales" className="home-link-item">Profesionales</Link>
               <Link href="/legal" className="home-link-item">Ayuda y soporte</Link>
             </div>
           </div>
 
-          <div className="home-footer-col">
-            <h3>Empresa</h3>
-            <div className="home-footer-links">
-              <Link href="/como-funciona" className="home-link-item">Sobre WeTask</Link>
-              <Link href="/empleo" className="home-link-item">Oportunidades</Link>
-              <Link href="/registro" className="home-link-item">Crear cuenta</Link>
-              <Link href="/ingresar" className="home-link-item">Acceder</Link>
-              <Link href="/trabaja-con-nosotros/registro" className="home-link-item">Quiero ofrecer servicios</Link>
-              <Link href="/legal" className="home-link-item">Términos y privacidad</Link>
-            </div>
+          <div className="home-footer-col home-footer-story">
+            <h3>Sobre WeTask</h3>
+            <p>
+              Transformamos la vida diaria, una tarea a la vez. En WeTask conectamos personas que necesitan ayuda confiable
+              con profesionales cercanos listos para resolverlo rápido, bien y con seguridad.
+            </p>
+            <p>
+              Queremos que encontrar apoyo para tu casa, tu familia o tu rutina sea simple, humano y sin fricción, para que
+              cada encuentro entre cliente y profesional termine mejorando la vida de ambos.
+            </p>
+            <Link href="/legal" className="home-link-item">Términos y privacidad</Link>
           </div>
         </div>
       </footer>
