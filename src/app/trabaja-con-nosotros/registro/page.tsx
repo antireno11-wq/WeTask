@@ -336,7 +336,7 @@ function buildStep7Payload(draft: DraftState) {
     case "planchado":
       return {
         offeredServices: [draft.ironingType],
-        experienceTypes: [draft.ironingPricing],
+        experienceTypes: ["por_hora"],
         bringsOwnTools: draft.ironingDelicate
       };
     default:
@@ -470,6 +470,12 @@ function CleaningOnboardingPageContent() {
       setActiveStep(6);
     }
   }, [activeStep, presetService]);
+
+  useEffect(() => {
+    if (draft.category === "planchado" && draft.ironingPricing !== "por_hora") {
+      setDraft((current) => ({ ...current, ironingPricing: "por_hora" }));
+    }
+  }, [draft.category, draft.ironingPricing]);
 
   const hydrateFromServer = (nextOnboarding: OnboardingPayload, user?: { fullName?: string | null; email?: string | null; phone?: string | null }) => {
     const { firstName, lastName } = splitFullName(user?.fullName ?? session?.fullName ?? "");
@@ -1491,10 +1497,7 @@ function CleaningOnboardingPageContent() {
                     </label>
                     <label>
                       Cobro
-                      <select value={draft.ironingPricing} onChange={(event) => updateDraft("ironingPricing", event.target.value as DraftState["ironingPricing"])}>
-                        <option value="por_hora">Por hora</option>
-                        <option value="por_prenda">Por prenda</option>
-                      </select>
+                      <input value="Por hora" readOnly />
                     </label>
                   </div>
                 ) : null}
