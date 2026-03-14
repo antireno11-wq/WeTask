@@ -160,11 +160,44 @@ export default function HomePage() {
         </div>
       </section>
 
-      <footer className="panel mvp-footer" id="footer">
-        <Link href="/como-funciona">¿Cómo funciona?</Link>
-        <Link href="/como-funciona">¿Qué es WeTask?</Link>
-        <Link href="/como-funciona">Servicios</Link>
-        <Link href="/legal">Términos y privacidad</Link>
+      <footer className="panel home-footer-panel" id="footer">
+        <div className="home-footer-social">
+          <p>Síguenos. WeTask está cerca de ti:</p>
+          <div className="home-footer-social-links" aria-label="Redes sociales de WeTask">
+            <span className="home-footer-social-pill" aria-hidden>Fb</span>
+            <span className="home-footer-social-pill" aria-hidden>X</span>
+            <span className="home-footer-social-pill" aria-hidden>Ig</span>
+            <span className="home-footer-social-pill" aria-hidden>Tk</span>
+            <span className="home-footer-social-pill" aria-hidden>In</span>
+          </div>
+        </div>
+
+        <div className="home-footer-grid">
+          <div className="home-footer-col">
+            <h3>Descubre</h3>
+            <div className="home-footer-links">
+              <Link href="/trabaja-con-nosotros" className="home-link-item">Trabaja con WeTask</Link>
+              <Link href="/servicios" className="home-link-item">Servicios por categoría</Link>
+              <Link href="/solicitar-tecnico" className="home-link-item">Servicios cerca de ti</Link>
+              <Link href="/catalogo" className="home-link-item">Todos los servicios</Link>
+              <Link href="/como-funciona" className="home-link-item">Cómo funciona</Link>
+              <Link href="/profesionales" className="home-link-item">Profesionales</Link>
+              <Link href="/legal" className="home-link-item">Ayuda y soporte</Link>
+            </div>
+          </div>
+
+          <div className="home-footer-col">
+            <h3>Empresa</h3>
+            <div className="home-footer-links">
+              <Link href="/como-funciona" className="home-link-item">Sobre WeTask</Link>
+              <Link href="/empleo" className="home-link-item">Oportunidades</Link>
+              <Link href="/registro" className="home-link-item">Crear cuenta</Link>
+              <Link href="/ingresar" className="home-link-item">Acceder</Link>
+              <Link href="/trabaja-con-nosotros/registro" className="home-link-item">Quiero ofrecer servicios</Link>
+              <Link href="/legal" className="home-link-item">Términos y privacidad</Link>
+            </div>
+          </div>
+        </div>
       </footer>
       </div>
     </main>
