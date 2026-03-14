@@ -71,13 +71,6 @@ export default function HomePage() {
                 </Link>
               ))}
             </div>
-
-            <div className="mvp-hero-scene home-hero-visual" aria-hidden>
-              <picture>
-                <source srcSet="/hero-webel-twofloor.webp" type="image/webp" />
-                <img src="/hero-webel-reference.webp" alt="" />
-              </picture>
-            </div>
           </section>
         </section>
       </div>
