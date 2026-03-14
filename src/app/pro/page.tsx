@@ -22,6 +22,15 @@ const PRO_STATUS_LABELS: Record<string, string> = {
   ASSIGNED: "Asignado",
   PENDING: "Pendiente"
 };
+const COMMUNE_MAP_POSITIONS: Record<string, { top: string; left: string }> = {
+  Vitacura: { top: "26%", left: "56%" },
+  "Lo Barnechea": { top: "16%", left: "69%" },
+  Chicureo: { top: "8%", left: "51%" },
+  "Las Condes": { top: "38%", left: "60%" },
+  Providencia: { top: "49%", left: "49%" },
+  "La Reina": { top: "55%", left: "67%" },
+  "Ñuñoa": { top: "61%", left: "53%" }
+};
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
@@ -149,8 +158,10 @@ export default function ProPage() {
   const mapLng = Number.isFinite(parsedMapLng) ? parsedMapLng : -70.6693;
   const markerLeftPct = ((mapLng - SANTIAGO_BOUNDS.minLng) / (SANTIAGO_BOUNDS.maxLng - SANTIAGO_BOUNDS.minLng)) * 100;
   const markerTopPct = (1 - (mapLat - SANTIAGO_BOUNDS.minLat) / (SANTIAGO_BOUNDS.maxLat - SANTIAGO_BOUNDS.minLat)) * 100;
-  const radiusPx = Math.max(28, serviceRadiusKm * 10);
-  const mapEmbedUrl = `https://www.openstreetmap.org/export/embed.html?bbox=${SANTIAGO_BOUNDS.minLng}%2C${SANTIAGO_BOUNDS.minLat}%2C${SANTIAGO_BOUNDS.maxLng}%2C${SANTIAGO_BOUNDS.maxLat}&layer=hot&marker=${mapLat}%2C${mapLng}`;
+  const selectedCommunes = useMemo(
+    () => normalizeCommuneList(serviceCommunes.length > 0 ? serviceCommunes : [coverageComuna]),
+    [serviceCommunes, coverageComuna]
+  );
 
   const slotGroups = useMemo(() => {
     const map = new Map<string, ProSlot[]>();
@@ -280,6 +291,15 @@ export default function ProPage() {
   const onCoverageMapClick = (event: MouseEvent<HTMLDivElement>) => {
     const rect = event.currentTarget.getBoundingClientRect();
     updateCoverageFromPointer(event.clientX, event.clientY, rect);
+  };
+
+  const toggleCommune = (commune: string) => {
+    setServiceCommunes((current) => {
+      if (current.includes(commune)) {
+        return current.filter((item) => item !== commune);
+      }
+      return [...current, commune];
+    });
   };
 
   const saveProfile = async () => {
@@ -583,10 +603,6 @@ export default function ProPage() {
                 </select>
               </label>
               <label>
-                Radio cobertura (km)
-                <input type="number" min={2} max={60} value={serviceRadiusKm} onChange={(e) => setServiceRadiusKm(Number(e.target.value) || 8)} />
-              </label>
-              <label>
                 Tarifa desde (CLP/h)
                 <input
                   type="number"
@@ -598,7 +614,7 @@ export default function ProPage() {
               <div className="full coverage-map-card">
                 <div className="coverage-map-head">
                   <h3>Mapa de cobertura</h3>
-                  <p>Haz click para mover tu punto base. El radio se muestra en vivo.</p>
+                  <p>Haz click para mover tu punto base y selecciona las comunas donde quieres trabajar.</p>
                 </div>
                 <div
                   className="coverage-map-wrap coverage-map-interactive"
@@ -613,20 +629,43 @@ export default function ProPage() {
                   tabIndex={0}
                   aria-label="Seleccionar punto de cobertura en el mapa"
                 >
-                  <iframe
-                    title="Mapa de cobertura profesional"
-                    src={mapEmbedUrl}
-                    loading="lazy"
-                    className="coverage-map-frame"
-                    referrerPolicy="no-referrer-when-downgrade"
-                  />
+                  <div className="coverage-map-google-look" aria-hidden>
+                    <div className="coverage-map-water" />
+                    <div className="coverage-map-road road-one" />
+                    <div className="coverage-map-road road-two" />
+                    <div className="coverage-map-road road-three" />
+                    <div className="coverage-map-road road-four" />
+                    <div className="coverage-map-road road-five" />
+                  </div>
+                  <div className="coverage-map-labels">
+                    {ACTIVE_MVP_COMMUNES.map((commune) => {
+                      const position = COMMUNE_MAP_POSITIONS[commune];
+                      const isSelected = selectedCommunes.includes(commune);
+                      return (
+                        <button
+                          key={commune}
+                          type="button"
+                          className={`coverage-commune-pill ${isSelected ? "active" : ""}`}
+                          style={{ top: position.top, left: position.left }}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            toggleCommune(commune);
+                          }}
+                        >
+                          {commune}
+                        </button>
+                      );
+                    })}
+                  </div>
                   <span className="coverage-pin" style={{ left: `${markerLeftPct}%`, top: `${markerTopPct}%` }} aria-hidden>
-                    <span className="coverage-pin-radius" style={{ width: `${radiusPx}px`, height: `${radiusPx}px` }} />
                     <span className="coverage-pin-dot" />
                   </span>
                 </div>
                 <p className="coverage-meta">
-                  Dirección base: {coverageStreet || "Sin dirección"}, {coverageComuna || "Sin comuna"}, {coverageCity} · Radio {serviceRadiusKm} km
+                  Dirección base: {coverageStreet || "Sin dirección"}, {coverageComuna || "Sin comuna"}, {coverageCity}
+                </p>
+                <p className="coverage-meta">
+                  Comunas activas: {selectedCommunes.length > 0 ? selectedCommunes.join(", ") : "Selecciona al menos una comuna."}
                 </p>
               </div>
             </div>

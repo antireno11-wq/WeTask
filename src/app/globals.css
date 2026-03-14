@@ -1130,21 +1130,82 @@ textarea {
   border: 1px solid #cfe2f3;
   border-radius: 12px;
   overflow: hidden;
-  background: #f7fbff;
+  background: #eef3f8;
 }
 
 .coverage-map-interactive {
   position: relative;
   width: 100%;
   padding: 0;
+  min-height: 320px;
   cursor: default;
 }
 
-.coverage-map-frame {
-  width: 100%;
-  height: 260px;
-  border: 0;
-  display: block;
+.coverage-map-google-look {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.18) 0%, rgba(255, 255, 255, 0.02) 100%),
+    linear-gradient(135deg, #f1f4f7 0%, #e8edf3 48%, #dde6ee 100%);
+}
+
+.coverage-map-water {
+  position: absolute;
+  inset: auto 4% 6% auto;
+  width: 30%;
+  height: 30%;
+  border-radius: 34px;
+  background: linear-gradient(180deg, #d9f1ff 0%, #c3e8ff 100%);
+  opacity: 0.9;
+}
+
+.coverage-map-road {
+  position: absolute;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 0 0 1px rgba(196, 210, 225, 0.44);
+}
+
+.coverage-map-road.road-one {
+  top: 16%;
+  left: -6%;
+  width: 54%;
+  height: 16px;
+  transform: rotate(18deg);
+}
+
+.coverage-map-road.road-two {
+  top: 38%;
+  left: 24%;
+  width: 58%;
+  height: 18px;
+  transform: rotate(-14deg);
+}
+
+.coverage-map-road.road-three {
+  top: 61%;
+  left: -4%;
+  width: 60%;
+  height: 14px;
+  transform: rotate(11deg);
+}
+
+.coverage-map-road.road-four {
+  top: 8%;
+  left: 62%;
+  width: 16px;
+  height: 68%;
+}
+
+.coverage-map-road.road-five {
+  top: 22%;
+  left: 44%;
+  width: 12px;
+  height: 56%;
+}
+
+.coverage-map-labels {
+  position: absolute;
+  inset: 0;
 }
 
 .coverage-pin {
@@ -1160,20 +1221,40 @@ textarea {
   top: 50%;
 }
 
-.coverage-pin-radius {
-  position: absolute;
+.coverage-pin-dot {
+  width: 16px;
+  height: 16px;
   border-radius: 999px;
-  border: 1px solid rgba(23, 59, 95, 0.35);
-  background: rgba(23, 59, 95, 0.15);
+  border: 3px solid #ffffff;
+  background: #ff5a1f;
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.22);
 }
 
-.coverage-pin-dot {
-  width: 12px;
-  height: 12px;
+.coverage-commune-pill {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  border: 1px solid rgba(160, 176, 193, 0.78);
   border-radius: 999px;
-  border: 2px solid #ffffff;
-  background: var(--accent);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+  background: rgba(255, 255, 255, 0.95);
+  color: #35506b;
+  font-size: 0.8rem;
+  font-weight: 800;
+  padding: 9px 12px;
+  cursor: pointer;
+  box-shadow: 0 10px 18px rgba(25, 45, 78, 0.08);
+  transition: transform 0.16s ease, background 0.16s ease, color 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease;
+}
+
+.coverage-commune-pill:hover {
+  transform: translate(-50%, -50%) scale(1.03);
+  border-color: rgba(24, 166, 213, 0.42);
+}
+
+.coverage-commune-pill.active {
+  background: linear-gradient(135deg, #1656b0 0%, #18a6d5 100%);
+  border-color: rgba(22, 86, 176, 0.8);
+  color: #ffffff;
+  box-shadow: 0 14px 24px rgba(22, 86, 176, 0.24);
 }
 
 .coverage-meta {
