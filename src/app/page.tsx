@@ -43,27 +43,23 @@ export default function HomePage() {
       <div className="login-screen-content home-auth-content">
         <AuthHeroNav />
 
-        <section className="auth-flow-shell auth-flow-shell-wide home-auth-hero" id="inicio">
-          <div className="auth-flow-copy home-auth-copy">
-            <p className="auth-flow-kicker">Marketplace WeTask</p>
-            <div className="home-auth-copy-top">
+        <section className="home-auth-hero" id="inicio">
+          <section className="auth-flow-panel home-hero-strip">
+            <div className="home-hero-intro">
+              <p className="auth-flow-kicker home-hero-kicker">Marketplace WeTask</p>
               <h1>Servicios a domicilio confiables para tu rutina.</h1>
-              <div className="home-auth-copy-side">
-                <p>Reserva ayuda real para tu casa, bienestar o día a día con pago protegido y profesionales listos para atenderte.</p>
-                <div className="auth-flow-actions">
-                  <Link href="/solicitar-tecnico?source=hero_primary" className="cta">
-                    Buscar servicio
-                  </Link>
-                  <Link href="/trabaja-con-nosotros" className="cta ghost">
-                    Ofrecer servicios
-                  </Link>
-                </div>
+              <p>Reserva ayuda real para tu casa, bienestar o día a día con pago protegido y profesionales listos para atenderte.</p>
+              <div className="auth-flow-actions">
+                <Link href="/solicitar-tecnico?source=hero_primary" className="cta">
+                  Buscar servicio
+                </Link>
+                <Link href="/trabaja-con-nosotros" className="cta ghost">
+                  Ofrecer servicios
+                </Link>
               </div>
             </div>
-          </div>
 
-          <section className="auth-flow-panel home-auth-panel">
-            <div className="mvp-category-top-row" aria-label="Categorías principales">
+            <div className="home-hero-categories mvp-category-top-row" aria-label="Categorías principales">
               {CORE_SERVICES.map((item) => (
                 <Link
                   key={item.slug}
@@ -76,7 +72,7 @@ export default function HomePage() {
               ))}
             </div>
 
-            <div className="mvp-hero-scene" aria-hidden>
+            <div className="mvp-hero-scene home-hero-visual" aria-hidden>
               <picture>
                 <source srcSet="/hero-webel-twofloor.webp" type="image/webp" />
                 <img src="/hero-webel-reference.webp" alt="" />
