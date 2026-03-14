@@ -11,6 +11,7 @@
   --accent: #ff6a00;
   --ok: #177245;
   --err: #b00020;
+  --site-footer-space: 230px;
 }
 
 * {
@@ -39,6 +40,9 @@ body {
 }
 
 .site-footer-wrap {
+  position: relative;
+  z-index: 4;
+  margin-top: 18px;
   padding: 0 18px 28px;
 }
 
@@ -3217,7 +3221,7 @@ textarea {
 
 .home-auth-page {
   position: relative;
-  min-height: 100vh;
+  min-height: calc(100vh - var(--site-footer-space));
   background:
     radial-gradient(circle at 10% 0%, rgba(24, 166, 213, 0.22) 0%, rgba(24, 166, 213, 0) 24%),
     linear-gradient(180deg, #edf5fc 0%, #f5f9fd 34%, #eef4fb 100%);
@@ -3419,7 +3423,7 @@ textarea {
 
 .auth-flow-screen {
   position: relative;
-  min-height: 100vh;
+  min-height: calc(100vh - var(--site-footer-space));
   overflow: hidden;
   padding: 24px;
   display: grid;
@@ -4082,6 +4086,10 @@ textarea {
 }
 
 @media (max-width: 640px) {
+  :root {
+    --site-footer-space: 320px;
+  }
+
   .login-stage-copy h2 {
     font-size: 2rem;
   }
