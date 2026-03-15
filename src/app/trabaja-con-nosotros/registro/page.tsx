@@ -1861,19 +1861,13 @@ function CleaningOnboardingPageContent() {
                     </div>
                   </aside>
 
-                  <div className="availability-board-card">
+                  <div className="availability-board-card onboarding-board-card">
                     <div className="availability-board-head">
                       <div>
                         <p className="availability-eyebrow">Planner semanal</p>
                         <h3>Selecciona un día y edita sus horarios</h3>
                       </div>
                       <span className="availability-board-chip">{totalAvailabilityBlocks} bloque(s) en total</span>
-                    </div>
-
-                    <div className="availability-weekdays">
-                      {DAY_OPTIONS.map((day) => (
-                        <span key={day.key}>{day.label.slice(0, 3)}</span>
-                      ))}
                     </div>
 
                     <div className="onboarding-week-grid">
