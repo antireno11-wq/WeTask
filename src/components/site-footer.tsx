@@ -35,6 +35,9 @@ export function SiteFooter() {
           <Link href="/legal" className="home-link-item">
             Términos y privacidad
           </Link>
+          <Link href="/admin" className="home-link-item">
+            Ingreso equipo WeTask
+          </Link>
         </div>
       </div>
     </footer>
