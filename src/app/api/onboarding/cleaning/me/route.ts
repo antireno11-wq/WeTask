@@ -4,6 +4,10 @@ import { getRequestIdentity, hasRole } from "@/lib/auth";
 import { geocodeAddress } from "@/lib/geo";
 import { CLEANING_WEEK_DAYS } from "@/lib/cleaning-onboarding";
 import { normalizeCommune, normalizeCommuneList } from "@/lib/communes";
+import {
+  PUBLIC_ONBOARDING_PHONE_COOKIE,
+  PUBLIC_ONBOARDING_PHONE_VERIFIED_COOKIE
+} from "@/lib/onboarding-phone";
 import { prisma } from "@/lib/prisma";
 import {
   cleaningOnboardingSaveSchema,
@@ -339,6 +343,53 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json(
       {
         error: "No se pudo guardar etapa de onboarding",
+        detail: error instanceof Error ? error.message : "Error desconocido"
+      },
+      { status: 400 }
+    );
+  }
+}
+
+export async function DELETE(req: NextRequest) {
+  try {
+    const identity = getRequestIdentity(req);
+    if (!hasRole(identity.role, [UserRole.PRO, UserRole.ADMIN])) {
+      return NextResponse.json({ error: "No autorizado" }, { status: 403 });
+    }
+
+    const userId = resolveTargetUserId(req, identity);
+    if (!userId) return NextResponse.json({ error: "userId requerido" }, { status: 400 });
+    if (identity.role === UserRole.PRO && identity.userId !== userId) {
+      return NextResponse.json({ error: "No autorizado" }, { status: 403 });
+    }
+
+    const onboarding = await prisma.cleaningOnboarding.findUnique({
+      where: { userId },
+      select: { id: true, status: true }
+    });
+
+    if (
+      onboarding &&
+      (onboarding.status === CleaningOnboardingStatus.APROBADO || onboarding.status === CleaningOnboardingStatus.ACTIVO)
+    ) {
+      return NextResponse.json(
+        { error: "Tu perfil ya esta aprobado o activo. Si necesitas reiniciarlo, contacta a soporte." },
+        { status: 409 }
+      );
+    }
+
+    if (onboarding) {
+      await prisma.cleaningOnboarding.delete({ where: { userId } });
+    }
+
+    const response = NextResponse.json({ ok: true, reset: true }, { status: 200 });
+    response.cookies.set(PUBLIC_ONBOARDING_PHONE_COOKIE, "", { maxAge: 0, path: "/" });
+    response.cookies.set(PUBLIC_ONBOARDING_PHONE_VERIFIED_COOKIE, "", { maxAge: 0, path: "/" });
+    return response;
+  } catch (error) {
+    return NextResponse.json(
+      {
+        error: "No se pudo reiniciar onboarding",
         detail: error instanceof Error ? error.message : "Error desconocido"
       },
       { status: 400 }

@@ -293,6 +293,14 @@ function createInitialDraft(): DraftState {
   };
 }
 
+function createFreshDraft(presetService: CategorySlug | null): DraftState {
+  const nextDraft = createInitialDraft();
+  if (presetService) {
+    nextDraft.category = presetService;
+  }
+  return nextDraft;
+}
+
 function splitFullName(fullName: string) {
   const parts = fullName.trim().split(/\s+/).filter(Boolean);
   return {
@@ -441,6 +449,7 @@ function CleaningOnboardingPageContent() {
   const [activeStep, setActiveStep] = useState<WizardStep>(1);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [resetting, setResetting] = useState(false);
   const [error, setError] = useState("");
   const [feedback, setFeedback] = useState("");
   const [submitMissingFields, setSubmitMissingFields] = useState<string[]>([]);
@@ -598,7 +607,7 @@ function CleaningOnboardingPageContent() {
     }
 
     const nextStep = Math.max(1, Math.min(11, nextOnboarding.currentStep || 1)) as WizardStep;
-    setActiveStep(nextStep >= 3 ? nextStep : 3);
+    setActiveStep(nextStep);
   };
 
   useEffect(() => {
@@ -754,6 +763,45 @@ function CleaningOnboardingPageContent() {
     setError("");
     setFeedback("");
     setActiveStep(2);
+  };
+
+  const resetOnboarding = async () => {
+    const shouldReset = window.confirm(
+      "Esto borrara el avance guardado de este registro y te llevara de vuelta al inicio. ¿Quieres continuar?"
+    );
+    if (!shouldReset) return;
+
+    setResetting(true);
+    setError("");
+    setFeedback("");
+    setSubmitMissingFields([]);
+    setSmsPreview("");
+    setAddressSuggestions([]);
+    setShowSuggestions(false);
+    setSelectedFromAutocomplete(false);
+    setAddressValidationMessage("");
+    setAddressValidationError("");
+
+    try {
+      if (session?.role === "PRO") {
+        const response = await fetch("/api/onboarding/cleaning/me", { method: "DELETE" });
+        const data = (await response.json()) as { ok?: boolean; error?: string; detail?: string };
+        if (!response.ok || !data.ok) {
+          throw new Error(data.detail || data.error || "No se pudo reiniciar el registro");
+        }
+      }
+
+      window.localStorage.removeItem(STORAGE_KEY);
+      setDraft(createFreshDraft(presetService));
+      setOnboarding(null);
+      setActiveStep(1);
+      setSelectedAvailabilityDay(currentWeekDayKey());
+      setFeedback("Reiniciamos tu registro. Ahora puedes probar el flujo desde cero.");
+    } catch (eventualError) {
+      setError(eventualError instanceof Error ? eventualError.message : "Error inesperado");
+    } finally {
+      setResetting(false);
+    }
   };
 
   const continueStep2 = async () => {
@@ -1110,7 +1158,14 @@ function CleaningOnboardingPageContent() {
                 <p className="onboarding-step-kicker">Paso {activeStep} de {TOTAL_STEPS}</p>
                 <h2>{activeStep === 12 ? "Registro completado" : "Trabaja con WeTask"}</h2>
               </div>
-              <span className="onboarding-progress-label">{progressPercent}%</span>
+              <div className="onboarding-progress-meta">
+                <span className="onboarding-progress-label">{progressPercent}%</span>
+                {(activeStep > 1 || onboarding || session?.role === "PRO") && activeStep < 12 ? (
+                  <button type="button" className="cta ghost small" onClick={resetOnboarding} disabled={resetting || saving}>
+                    {resetting ? "Reiniciando..." : "Empezar de cero"}
+                  </button>
+                ) : null}
+              </div>
             </div>
             <div className="onboarding-progress-track" aria-hidden>
               <div className="onboarding-progress-fill" style={{ width: `${progressPercent}%` }} />
