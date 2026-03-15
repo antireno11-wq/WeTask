@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { AuthHeroNav } from "@/components/auth-hero-nav";
 import { ACTIVE_MVP_COMMUNES, inferCommuneFromAddress, normalizeCommune, type ActiveMvpCommune } from "@/lib/communes";
 
@@ -140,6 +140,7 @@ type DraftState = {
 
 const TOTAL_STEPS = 12;
 const STORAGE_KEY = "wetask_tasker_wizard_v2";
+const CHILE_MOBILE_PREFIX = "+569";
 const COMMUNE_OPTIONS: ActiveMvpCommune[] = [
   "Vitacura",
   "Lo Barnechea",
@@ -216,6 +217,35 @@ function currentWeekDayKey(): DayKey {
   return map[jsDay] ?? "lunes";
 }
 
+function normalizeChileanMobileInput(rawValue: string) {
+  const digits = rawValue.replace(/\D/g, "");
+  let localDigits = digits;
+
+  if (localDigits.startsWith("56")) {
+    localDigits = localDigits.slice(2);
+  }
+  if (localDigits.startsWith("9")) {
+    localDigits = localDigits.slice(1);
+  }
+
+  return `${CHILE_MOBILE_PREFIX}${localDigits.slice(0, 8)}`;
+}
+
+function isValidChileanMobilePhone(value: string) {
+  return /^\+569\d{8}$/.test(normalizeChileanMobileInput(value));
+}
+
+function formatRutInput(rawRut: string) {
+  const clean = rawRut.replace(/[^0-9kK]/g, "").toUpperCase().slice(0, 9);
+  if (!clean) return "";
+  if (clean.length === 1) return clean;
+
+  const body = clean.slice(0, -1);
+  const dv = clean.slice(-1);
+  const formattedBody = body.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  return `${formattedBody}-${dv}`;
+}
+
 function normalizeMakeupTypes(value: unknown): Array<"social" | "eventos" | "novias"> {
   const allowed = new Set(["social", "eventos", "novias"]);
   if (Array.isArray(value)) {
@@ -242,7 +272,7 @@ function normalizeChefServiceTypes(value: unknown): Array<"comida_diaria" | "eve
 
 function createInitialDraft(): DraftState {
   return {
-    phone: "",
+    phone: CHILE_MOBILE_PREFIX,
     smsCode: "",
     phoneVerified: false,
     firstName: "",
@@ -462,6 +492,7 @@ function CleaningOnboardingPageContent() {
   const [validatingAddress, setValidatingAddress] = useState(false);
   const [addressValidationMessage, setAddressValidationMessage] = useState("");
   const [addressValidationError, setAddressValidationError] = useState("");
+  const addressValidationRequestRef = useRef(0);
 
   const chicureoSelected = draft.homeCommune === "Chicureo" || draft.coverageCommunes.includes("Chicureo");
   const selectedCategoryLabel = CATEGORY_OPTIONS.find((option) => option.slug === draft.category)?.label ?? "Limpieza";
@@ -480,6 +511,9 @@ function CleaningOnboardingPageContent() {
       setDraft((current) => ({
         ...current,
         ...parsed,
+        phone: normalizeChileanMobileInput(parsed.phone ?? current.phone),
+        rut: formatRutInput(parsed.rut ?? current.rut),
+        bankOwnerRut: formatRutInput(parsed.bankOwnerRut ?? current.bankOwnerRut),
         chefServiceType: normalizeChefServiceTypes(parsed.chefServiceType),
         makeupType: normalizeMakeupTypes(parsed.makeupType)
       }));
@@ -545,6 +579,21 @@ function CleaningOnboardingPageContent() {
   }, [addressQuery, draft.address, selectedFromAutocomplete]);
 
   useEffect(() => {
+    if (activeStep !== 3) return;
+    if (draft.address.trim().length < 4) {
+      setAddressValidationMessage("");
+      setAddressValidationError("");
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      void validateHomeAddress({ silent: true });
+    }, 650);
+
+    return () => clearTimeout(timer);
+  }, [activeStep, addressQuery]);
+
+  useEffect(() => {
     if (!presetService) return;
     setDraft((current) => ({ ...current, category: presetService }));
   }, [presetService]);
@@ -566,12 +615,12 @@ function CleaningOnboardingPageContent() {
     setOnboarding(nextOnboarding);
     setDraft((current) => ({
       ...current,
-      phone: user?.phone ?? current.phone,
+      phone: normalizeChileanMobileInput(user?.phone ?? current.phone),
       phoneVerified: Boolean(nextOnboarding.phoneValidatedAt),
       firstName: firstName || current.firstName,
       lastName: lastName || current.lastName,
       email: user?.email ?? current.email,
-      rut: nextOnboarding.documentId ?? current.rut,
+      rut: formatRutInput(nextOnboarding.documentId ?? current.rut),
       address: nextOnboarding.referenceAddress ?? current.address,
       homeCommune: (nextOnboarding.baseCommune as ActiveMvpCommune) ?? current.homeCommune,
       profilePhotoUrl: nextOnboarding.profilePhotoUrl ?? current.profilePhotoUrl,
@@ -597,7 +646,7 @@ function CleaningOnboardingPageContent() {
       bankName: nextOnboarding.bankName ?? current.bankName,
       bankAccountType: (nextOnboarding.bankAccountType as DraftState["bankAccountType"]) ?? current.bankAccountType,
       bankAccountNumber: nextOnboarding.bankAccountNumber ?? current.bankAccountNumber,
-      bankOwnerRut: nextOnboarding.bankAccountHolderRut ?? current.bankOwnerRut,
+      bankOwnerRut: formatRutInput(nextOnboarding.bankAccountHolderRut ?? current.bankOwnerRut),
       acceptedTerms: Boolean(nextOnboarding.acceptsCancellationPolicy && nextOnboarding.acceptsDataProcessing)
     }));
 
@@ -660,45 +709,60 @@ function CleaningOnboardingPageContent() {
     setAddressValidationError("");
   };
 
-  const validateHomeAddress = async () => {
-    if (!draft.address.trim()) {
-      setAddressValidationError("Ingresa tu dirección antes de corroborarla con Google.");
+  const validateHomeAddress = async ({
+    silent = false,
+    addressValue = draft.address.trim(),
+    addressQueryValue = [draft.address.trim(), "Santiago", "Chile"].filter(Boolean).join(", ")
+  }: {
+    silent?: boolean;
+    addressValue?: string;
+    addressQueryValue?: string;
+  } = {}) => {
+    if (!addressValue) {
+      if (!silent) {
+        setAddressValidationError("Ingresa tu direccion antes de continuar.");
+      }
       setAddressValidationMessage("");
       return false;
     }
 
+    const validationId = addressValidationRequestRef.current + 1;
+    addressValidationRequestRef.current = validationId;
     setValidatingAddress(true);
-    setAddressValidationError("");
-    setAddressValidationMessage("");
+    if (!silent) {
+      setAddressValidationError("");
+      setAddressValidationMessage("");
+    }
 
     try {
-      const response = await fetch(`/api/maps/validate-address?address=${encodeURIComponent(addressQuery)}`);
+      const response = await fetch(`/api/maps/validate-address?address=${encodeURIComponent(addressQueryValue)}`);
       const data = (await response.json()) as AddressValidationResponse;
       if (!response.ok || !data.valid) {
         throw new Error(data.detail || data.error || "No pudimos validar esa dirección con Google.");
       }
 
-      const detectedCommune = normalizeCommune(data.commune ?? "") ?? inferCommuneFromAddress(data.normalizedAddress ?? addressQuery);
+      const detectedCommune = normalizeCommune(data.commune ?? "") ?? inferCommuneFromAddress(data.normalizedAddress ?? addressQueryValue);
       if (!detectedCommune) {
         throw new Error("No pudimos identificar una comuna válida a partir de esa dirección.");
       }
 
       setDraft((current) => ({
         ...current,
-        address: data.normalizedAddress ?? current.address,
-        homeCommune: detectedCommune
+        address: current.address.trim() === addressValue ? data.normalizedAddress ?? current.address : current.address,
+        homeCommune: current.address.trim() === addressValue ? detectedCommune : current.homeCommune
       }));
-      setAddressValidationMessage(
-        data.skipped
-          ? `Comuna completada automáticamente: ${detectedCommune}.`
-          : `Dirección corroborada con Google y comuna completada: ${detectedCommune}.`
-      );
+      setAddressValidationError("");
+      setAddressValidationMessage(data.skipped ? `Comuna detectada automáticamente: ${detectedCommune}.` : `Dirección corroborada automáticamente con Google: ${detectedCommune}.`);
       return true;
     } catch (eventualError) {
-      setAddressValidationError(eventualError instanceof Error ? eventualError.message : "No pudimos validar esa dirección.");
+      if (!silent) {
+        setAddressValidationError(eventualError instanceof Error ? eventualError.message : "No pudimos validar esa dirección.");
+      }
       return false;
     } finally {
-      setValidatingAddress(false);
+      if (validationId === addressValidationRequestRef.current) {
+        setValidatingAddress(false);
+      }
     }
   };
 
@@ -716,6 +780,10 @@ function CleaningOnboardingPageContent() {
   };
 
   const sendPhoneCode = async () => {
+    if (!isValidChileanMobilePhone(draft.phone)) {
+      setError("Ingresa tu telefono con formato +569 y 8 numeros.");
+      return;
+    }
     setSaving(true);
     setError("");
     setFeedback("");
@@ -805,8 +873,8 @@ function CleaningOnboardingPageContent() {
   };
 
   const continueStep2 = async () => {
-    if (!draft.phone.trim()) {
-      setError("Ingresa tu telefono para continuar.");
+    if (!isValidChileanMobilePhone(draft.phone)) {
+      setError("Ingresa tu telefono con formato +569 y 8 numeros.");
       return;
     }
     if (!draft.phoneVerified) {
@@ -1070,6 +1138,13 @@ function CleaningOnboardingPageContent() {
     });
   };
 
+  const selectAllCoverageCommunes = () => {
+    setDraft((current) => ({
+      ...current,
+      coverageCommunes: [...COMMUNE_OPTIONS]
+    }));
+  };
+
   const updateAvailabilityBlock = (index: number, patch: Partial<AvailabilityBlock>) => {
     setDraft((current) => ({
       ...current,
@@ -1201,7 +1276,23 @@ function CleaningOnboardingPageContent() {
                 <h3>Verificación de teléfono</h3>
                 <label>
                   Teléfono
-                  <input value={draft.phone} onChange={(event) => updateDraft("phone", event.target.value)} placeholder="+56 9 XXXXXXXX" />
+                  <input
+                    value={draft.phone}
+                    onChange={(event) => {
+                      const nextPhone = normalizeChileanMobileInput(event.target.value);
+                      setDraft((current) => ({
+                        ...current,
+                        phone: nextPhone,
+                        phoneVerified: false,
+                        smsCode: ""
+                      }));
+                      setSmsPreview("");
+                    }}
+                    inputMode="numeric"
+                    maxLength={13}
+                    placeholder="+56912345678"
+                  />
+                  <p className="input-hint">El prefijo `+569` queda fijo. Solo debes ingresar los 8 números restantes.</p>
                 </label>
                 <div className="auth-flow-actions">
                   <button type="button" className="cta ghost" onClick={sendPhoneCode} disabled={saving}>
@@ -1245,7 +1336,11 @@ function CleaningOnboardingPageContent() {
                   </label>
                   <label>
                     RUT
-                    <input value={draft.rut} onChange={(event) => updateDraft("rut", event.target.value)} placeholder="12.345.678-5" />
+                    <input
+                      value={draft.rut}
+                      onChange={(event) => updateDraft("rut", formatRutInput(event.target.value))}
+                      placeholder="12.345.678-5"
+                    />
                   </label>
                   <label className="full">
                     Dirección
@@ -1275,22 +1370,11 @@ function CleaningOnboardingPageContent() {
                         ))}
                       </div>
                     ) : null}
-                    <div className="address-inline-actions">
-                      <button className="cta ghost small" type="button" onClick={() => void validateHomeAddress()} disabled={validatingAddress}>
-                        {validatingAddress ? "Corroborando..." : "Corroborar con Google"}
-                      </button>
-                    </div>
-                  </label>
-                  <label>
-                    Comuna donde vive
-                    <select value={draft.homeCommune} onChange={(event) => updateDraft("homeCommune", event.target.value as ActiveMvpCommune)}>
-                      {COMMUNE_OPTIONS.map((commune) => (
-                        <option key={commune} value={commune}>
-                          {commune}
-                        </option>
-                      ))}
-                    </select>
-                    <p className="input-hint">Se rellena automáticamente según la dirección que elijas y corroboras con Google.</p>
+                    <p className="input-hint">
+                      {validatingAddress
+                        ? "Estamos corroborando esta dirección con Google automáticamente."
+                        : "La comuna se detecta automáticamente a partir de la dirección que ingreses."}
+                    </p>
                   </label>
                   <label>
                     Foto de perfil
@@ -1323,6 +1407,11 @@ function CleaningOnboardingPageContent() {
             {activeStep === 4 ? (
               <div className="onboarding-screen">
                 <h3>¿En qué comunas quieres trabajar?</h3>
+                <div className="auth-flow-actions">
+                  <button type="button" className="cta ghost small" onClick={selectAllCoverageCommunes}>
+                    Todas
+                  </button>
+                </div>
                 <div className="onboarding-checkbox-grid">
                   {COMMUNE_OPTIONS.map((commune) => (
                     <label key={commune} className="onboarding-check-card">
@@ -1962,7 +2051,11 @@ function CleaningOnboardingPageContent() {
                   </label>
                   <label>
                     RUT titular
-                    <input value={draft.bankOwnerRut} onChange={(event) => updateDraft("bankOwnerRut", event.target.value)} placeholder="12.345.678-5" />
+                    <input
+                      value={draft.bankOwnerRut}
+                      onChange={(event) => updateDraft("bankOwnerRut", formatRutInput(event.target.value))}
+                      placeholder="12.345.678-5"
+                    />
                   </label>
                 </div>
                 <div className="auth-flow-actions">

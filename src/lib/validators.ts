@@ -219,6 +219,11 @@ const chileanRutSchema = z
   .max(16)
   .refine((value) => isValidChileanRut(value), "RUT chileno invalido");
 
+const chileanMobilePhoneSchema = z
+  .string()
+  .trim()
+  .regex(/^\+569\d{8}$/, "Ingresa un telefono chileno valido con formato +569XXXXXXXX");
+
 export const technicianRegistrationSchema = z.object({
   fullName: z.string().min(3).max(120),
   rut: z.string().min(8).max(16),
@@ -271,7 +276,7 @@ const cleaningAvailabilityBlockSchema = z
 
 export const cleaningOnboardingStartSchema = z.object({
   fullName: z.string().min(3).max(120),
-  phone: z.string().min(7).max(30),
+  phone: chileanMobilePhoneSchema,
   email: z.string().email(),
   password: z.string().min(8).max(120).optional(),
   authProvider: z.enum(["EMAIL", "GOOGLE", "APPLE"]).default("EMAIL"),
@@ -372,7 +377,7 @@ export const cleaningOnboardingSaveSchema = z.object({
 export const taskerOnboardingStep3Schema = z.object({
   fullName: z.string().min(3).max(120),
   email: z.string().email(),
-  phone: z.string().min(7).max(30),
+  phone: chileanMobilePhoneSchema,
   documentId: chileanRutSchema,
   referenceAddress: z.string().min(5).max(240),
   baseCommune: activeCommuneInputSchema,
@@ -429,7 +434,7 @@ export const taskerOnboardingStep11Schema = z.object({
 });
 
 export const cleaningOnboardingPhoneSendSchema = z.object({
-  phone: z.string().min(7).max(30).optional()
+  phone: chileanMobilePhoneSchema.optional()
 });
 
 export const cleaningOnboardingPhoneVerifySchema = z.object({
