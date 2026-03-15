@@ -1,19 +1,15 @@
-import { TechnicianVerificationStatus, UserRole } from "@prisma/client";
+import { TechnicianVerificationStatus } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
-import { getRequestIdentity, hasRole } from "@/lib/auth";
+import { requireAdminRequest } from "@/lib/admin-access";
 import { sendPlatformEmail } from "@/lib/notifications";
 import { prisma } from "@/lib/prisma";
 import { adminTechnicianReviewSchema } from "@/lib/validators";
 
 export const dynamic = "force-dynamic";
 
-function deny() {
-  return NextResponse.json({ error: "No autorizado" }, { status: 403 });
-}
-
 export async function GET(req: NextRequest) {
-  const identity = getRequestIdentity(req);
-  if (!hasRole(identity.role, UserRole.ADMIN)) return deny();
+  const admin = await requireAdminRequest(req);
+  if (!admin.ok) return admin.response;
 
   const technicians = await prisma.technician.findMany({
     orderBy: [{ createdAt: "desc" }],
@@ -36,8 +32,8 @@ export async function GET(req: NextRequest) {
 }
 
 export async function PATCH(req: NextRequest) {
-  const identity = getRequestIdentity(req);
-  if (!hasRole(identity.role, UserRole.ADMIN)) return deny();
+  const admin = await requireAdminRequest(req);
+  if (!admin.ok) return admin.response;
 
   try {
     const body = await req.json();

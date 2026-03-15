@@ -9,12 +9,17 @@ type CleaningOnboardingItem = {
   status: "BORRADOR" | "PENDIENTE_REVISION" | "REQUIERE_CORRECCION" | "APROBADO" | "ACTIVO";
   currentStep: number;
   baseCommune: string | null;
+  referenceAddress: string | null;
   hourlyRateClp: number | null;
   minBookingHours: number | null;
   submittedAt: string | null;
   reviewedAt: string | null;
   activatedAt: string | null;
   adminReviewNotes: string | null;
+  profilePhotoUrl: string | null;
+  identityDocumentFrontFile: string | null;
+  identityDocumentBackFile: string | null;
+  criminalRecordFile: string | null;
   user: {
     id: string;
     fullName: string;
@@ -93,10 +98,16 @@ export default function AdminCleaningOnboardingPage() {
     <main className="page market-shell">
       <MarketNav />
 
-      <section className="panel">
-        <div className="panel-head">
-          <h2>Revision onboarding limpieza</h2>
-          <p>Flujo manual para aprobar y activar profesionales de limpieza.</p>
+      <section className="panel admin-page-shell">
+        <div className="panel-head admin-page-head">
+          <div>
+            <span className="eyebrow">Revisión manual</span>
+            <h2>Validación de profesionales</h2>
+            <p>Flujo interno para revisar documentos, pedir correcciones, aprobar y activar taskers.</p>
+          </div>
+          <Link href="/admin/team" className="cta ghost small">
+            Ver equipo interno
+          </Link>
         </div>
 
         <div className="cta-row">
@@ -132,15 +143,26 @@ export default function AdminCleaningOnboardingPage() {
                 <strong>Email:</strong> {row.user.email} · <strong>Telefono:</strong> {row.user.phone ?? "-"}
               </p>
               <p>
-                <strong>Comuna base:</strong> {row.baseCommune ?? "-"} · <strong>Paso:</strong> {row.currentStep}/9
+                <strong>Comuna base:</strong> {row.baseCommune ?? "-"} · <strong>Dirección:</strong> {row.referenceAddress ?? "-"}
               </p>
               <p>
                 <strong>Tarifa:</strong> {row.hourlyRateClp ? `$${row.hourlyRateClp.toLocaleString("es-CL")}/h` : "-"} ·{" "}
-                <strong>Minimo:</strong> {row.minBookingHours ?? "-"} h
+                <strong>Minimo:</strong> {row.minBookingHours ?? "-"} h · <strong>Paso:</strong> {row.currentStep}
               </p>
               <p>
                 <strong>Enviado:</strong> {formatDate(row.submittedAt)} · <strong>Revisado:</strong> {formatDate(row.reviewedAt)} ·{" "}
                 <strong>Activado:</strong> {formatDate(row.activatedAt)}
+              </p>
+              <p>
+                <strong>Documentos:</strong>{" "}
+                {[
+                  row.profilePhotoUrl ? "foto" : null,
+                  row.identityDocumentFrontFile ? "carnet frente" : null,
+                  row.identityDocumentBackFile ? "carnet reverso" : null,
+                  row.criminalRecordFile ? "antecedentes" : null
+                ]
+                  .filter(Boolean)
+                  .join(", ") || "Faltan archivos"}
               </p>
               {row.adminReviewNotes ? (
                 <p>
@@ -149,6 +171,9 @@ export default function AdminCleaningOnboardingPage() {
               ) : null}
 
               <div className="cta-row">
+                <Link href={`/admin/onboarding-limpieza/${row.id}`} className="cta ghost small">
+                  Ver ficha
+                </Link>
                 <button type="button" className="cta ghost small" onClick={() => void runAction(row.id, "set_pending")}>
                   Pendiente
                 </button>
