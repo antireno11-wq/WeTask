@@ -22,6 +22,8 @@ type TeamUserRow = {
   phone: string | null;
   role: "CUSTOMER" | "PRO" | "ADMIN";
   createdAt: string;
+  latestActivityAt: string;
+  latestActivityLabel: string;
   professionalProfile: {
     isVerified: boolean;
     verificationStatus: string;
@@ -184,7 +186,7 @@ export default function AdminTeamPage() {
             <div className="admin-section-head">
               <div>
                 <h3>Usuarios recientes</h3>
-                <p>Vista rápida para promocionar cuentas nuevas del equipo sin salir del backoffice.</p>
+                <p>Listado reciente con la última actividad de cada cuenta dentro de la plataforma.</p>
               </div>
             </div>
 
@@ -200,20 +202,9 @@ export default function AdminTeamPage() {
                       {user.cleaningOnboarding ? `Onboarding: ${user.cleaningOnboarding.status.toLowerCase()}` : "Sin onboarding"} ·{" "}
                       {user.professionalProfile ? `Perfil pro: ${user.professionalProfile.verificationStatus.toLowerCase()}` : "Cuenta cliente"}
                     </p>
-                  </div>
-
-                  <div className="cta-row">
-                    {user.role === "ADMIN" ? <span className="status status-approved">Ya es admin</span> : null}
-                    {user.role !== "ADMIN" ? (
-                      <button
-                        type="button"
-                        className="cta small"
-                        disabled={busyId === user.id}
-                        onClick={() => void runAction("grant", { userId: user.id })}
-                      >
-                        Convertir en admin
-                      </button>
-                    ) : null}
+                    <p>
+                      Última actividad: {user.latestActivityLabel} · {dateLabel(user.latestActivityAt)}
+                    </p>
                   </div>
                 </article>
               ))}

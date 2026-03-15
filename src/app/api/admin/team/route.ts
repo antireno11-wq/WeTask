@@ -18,6 +18,17 @@ function formatRoleLabel(role: UserRole) {
   return "Cliente";
 }
 
+function formatBookingActivity(kind: "customer" | "pro", booking: { updatedAt: Date; service: { name: string } | null } | null) {
+  if (!booking) return null;
+  return {
+    at: booking.updatedAt,
+    label:
+      kind === "customer"
+        ? `Reserva actualizada como cliente · ${booking.service?.name ?? "Servicio"}`
+        : `Reserva actualizada como tasker · ${booking.service?.name ?? "Servicio"}`
+  };
+}
+
 export async function GET(req: NextRequest) {
   const admin = await requireAdminRequest(req);
   if (!admin.ok) return admin.response;
@@ -45,7 +56,7 @@ export async function GET(req: NextRequest) {
       }
     }),
     prisma.user.findMany({
-      orderBy: [{ createdAt: "desc" }],
+      orderBy: [{ updatedAt: "desc" }],
       take: 18,
       select: {
         id: true,
@@ -54,15 +65,50 @@ export async function GET(req: NextRequest) {
         phone: true,
         role: true,
         createdAt: true,
+        updatedAt: true,
         professionalProfile: {
           select: {
             isVerified: true,
-            verificationStatus: true
+            verificationStatus: true,
+            updatedAt: true
           }
         },
         cleaningOnboarding: {
           select: {
-            status: true
+            status: true,
+            updatedAt: true
+          }
+        },
+        bookings: {
+          orderBy: [{ updatedAt: "desc" }],
+          take: 1,
+          select: {
+            updatedAt: true,
+            service: {
+              select: {
+                name: true
+              }
+            }
+          }
+        },
+        proBookings: {
+          orderBy: [{ updatedAt: "desc" }],
+          take: 1,
+          select: {
+            updatedAt: true,
+            service: {
+              select: {
+                name: true
+              }
+            }
+          }
+        },
+        notifications: {
+          orderBy: [{ createdAt: "desc" }],
+          take: 1,
+          select: {
+            title: true,
+            createdAt: true
           }
         }
       }
@@ -79,7 +125,59 @@ export async function GET(req: NextRequest) {
           label: assignment.role.label
         }))
       })),
-      recentUsers
+      recentUsers: recentUsers.map((user) => {
+        const activityCandidates = [
+          user.notifications[0]
+            ? {
+                at: user.notifications[0].createdAt,
+                label: `Notificación reciente · ${user.notifications[0].title}`
+              }
+            : null,
+          user.cleaningOnboarding
+            ? {
+                at: user.cleaningOnboarding.updatedAt,
+                label: `Onboarding ${user.cleaningOnboarding.status.toLowerCase().replace(/_/g, " ")}`
+              }
+            : null,
+          user.professionalProfile
+            ? {
+                at: user.professionalProfile.updatedAt,
+                label: `Perfil profesional ${user.professionalProfile.verificationStatus.toLowerCase()}`
+              }
+            : null,
+          formatBookingActivity("customer", user.bookings[0] ?? null),
+          formatBookingActivity("pro", user.proBookings[0] ?? null),
+          {
+            at: user.updatedAt,
+            label: "Cuenta actualizada"
+          }
+        ].filter(Boolean) as Array<{ at: Date; label: string }>;
+
+        activityCandidates.sort((a, b) => b.at.getTime() - a.at.getTime());
+        const latest = activityCandidates[0] ?? null;
+
+        return {
+          id: user.id,
+          fullName: user.fullName,
+          email: user.email,
+          phone: user.phone,
+          role: user.role,
+          createdAt: user.createdAt,
+          professionalProfile: user.professionalProfile
+            ? {
+                isVerified: user.professionalProfile.isVerified,
+                verificationStatus: user.professionalProfile.verificationStatus
+              }
+            : null,
+          cleaningOnboarding: user.cleaningOnboarding
+            ? {
+                status: user.cleaningOnboarding.status
+              }
+            : null,
+          latestActivityAt: latest?.at ?? user.createdAt,
+          latestActivityLabel: latest?.label ?? "Cuenta creada"
+        };
+      })
     },
     { status: 200 }
   );
