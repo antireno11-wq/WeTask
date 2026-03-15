@@ -42,6 +42,9 @@ type OnboardingPayload = {
   weekendSurchargePct: number | null;
   holidaySurchargePct: number | null;
   remoteCommuneSurchargeClp: number | null;
+  identityDocumentFrontFile: string | null;
+  identityDocumentBackFile: string | null;
+  criminalRecordFile: string | null;
   bankAccountHolder: string | null;
   bankAccountHolderRut: string | null;
   bankName: string | null;
@@ -135,6 +138,9 @@ type DraftState = {
   bankAccountType: "cuenta_corriente" | "cuenta_vista" | "cuenta_rut" | "cuenta_ahorro";
   bankAccountNumber: string;
   bankOwnerRut: string;
+  identityDocumentFrontFile: string;
+  identityDocumentBackFile: string;
+  criminalRecordFile: string;
   acceptedTerms: boolean;
 };
 
@@ -200,6 +206,9 @@ const SUBMIT_REQUIRED_FIELD_LABELS: Record<string, string> = {
   minBookingHours: "Mínimo de horas por servicio (Paso 9)",
   weekendSurchargePct: "Recargo fin de semana configurado (Paso 9)",
   holidaySurchargePct: "Recargo festivos configurado (Paso 9)",
+  identityDocumentFrontFile: "Foto frontal del carnet (Paso 10)",
+  identityDocumentBackFile: "Foto trasera del carnet (Paso 10)",
+  criminalRecordFile: "Certificado de antecedentes (Paso 10)",
   bankAccountHolder: "Nombre del titular de la cuenta (Paso 10)",
   bankAccountHolderRut: "RUT del titular de la cuenta (Paso 10)",
   bankName: "Banco (Paso 10)",
@@ -381,6 +390,9 @@ function createInitialDraft(): DraftState {
     weekendSurchargePct: "20",
     hasHolidaySurcharge: false,
     holidaySurchargePct: "20",
+    identityDocumentFrontFile: "",
+    identityDocumentBackFile: "",
+    criminalRecordFile: "",
     bankName: BANK_OPTIONS[0],
     bankAccountType: "cuenta_corriente",
     bankAccountNumber: "",
@@ -723,6 +735,9 @@ function CleaningOnboardingPageContent() {
       weekendSurchargePct: nextOnboarding.weekendSurchargePct != null ? String(nextOnboarding.weekendSurchargePct) : current.weekendSurchargePct,
       hasHolidaySurcharge: Boolean((nextOnboarding.holidaySurchargePct ?? 0) > 0),
       holidaySurchargePct: nextOnboarding.holidaySurchargePct != null ? String(nextOnboarding.holidaySurchargePct) : current.holidaySurchargePct,
+      identityDocumentFrontFile: nextOnboarding.identityDocumentFrontFile ?? current.identityDocumentFrontFile,
+      identityDocumentBackFile: nextOnboarding.identityDocumentBackFile ?? current.identityDocumentBackFile,
+      criminalRecordFile: nextOnboarding.criminalRecordFile ?? current.criminalRecordFile,
       bankName: nextOnboarding.bankName ?? current.bankName,
       bankAccountType: (nextOnboarding.bankAccountType as DraftState["bankAccountType"]) ?? current.bankAccountType,
       bankAccountNumber: nextOnboarding.bankAccountNumber ?? current.bankAccountNumber,
@@ -1159,6 +1174,10 @@ function CleaningOnboardingPageContent() {
       setError("Ingresa un RUT titular valido.");
       return;
     }
+    if (!draft.identityDocumentFrontFile || !draft.identityDocumentBackFile || !draft.criminalRecordFile) {
+      setError("Debes subir carnet por delante, carnet por atrás y certificado de antecedentes.");
+      return;
+    }
     setSaving(true);
     setError("");
     try {
@@ -1167,7 +1186,10 @@ function CleaningOnboardingPageContent() {
         bankAccountHolderRut: draft.bankOwnerRut.trim(),
         bankName: draft.bankName,
         bankAccountType: draft.bankAccountType,
-        bankAccountNumber: draft.bankAccountNumber.trim()
+        bankAccountNumber: draft.bankAccountNumber.trim(),
+        identityDocumentFrontFile: draft.identityDocumentFrontFile,
+        identityDocumentBackFile: draft.identityDocumentBackFile,
+        criminalRecordFile: draft.criminalRecordFile
       });
       setActiveStep(11);
     } catch (eventualError) {
@@ -2103,6 +2125,13 @@ function CleaningOnboardingPageContent() {
             {activeStep === 10 ? (
               <div className="onboarding-screen">
                 <h3>Cuenta bancaria</h3>
+                <div className="auth-flow-note-card">
+                  <strong>Verificación manual del perfil</strong>
+                  <span>
+                    Hoy la verificación del tasker sigue siendo manual. Para revisar tu perfil necesitamos el carnet por ambos lados y
+                    tu certificado de antecedentes.
+                  </span>
+                </div>
                 <div className="grid-form auth-flow-form">
                   <label>
                     Banco
@@ -2137,6 +2166,48 @@ function CleaningOnboardingPageContent() {
                     {draft.bankAccountType === "cuenta_rut" ? (
                       <p className="input-hint">Para Cuenta RUT usamos automáticamente tu RUT sin dígito verificador.</p>
                     ) : null}
+                  </label>
+                  <label className="full">
+                    Carnet por delante
+                    <input
+                      type="file"
+                      accept="image/png,image/jpeg"
+                      onChange={async (event) => {
+                        const file = event.target.files?.[0];
+                        if (!file) return;
+                        const content = await fileToDataUrl(file);
+                        updateDraft("identityDocumentFrontFile", content);
+                      }}
+                    />
+                    {draft.identityDocumentFrontFile ? <p className="input-hint">Archivo cargado correctamente.</p> : null}
+                  </label>
+                  <label className="full">
+                    Carnet por atrás
+                    <input
+                      type="file"
+                      accept="image/png,image/jpeg"
+                      onChange={async (event) => {
+                        const file = event.target.files?.[0];
+                        if (!file) return;
+                        const content = await fileToDataUrl(file);
+                        updateDraft("identityDocumentBackFile", content);
+                      }}
+                    />
+                    {draft.identityDocumentBackFile ? <p className="input-hint">Archivo cargado correctamente.</p> : null}
+                  </label>
+                  <label className="full">
+                    Certificado de antecedentes
+                    <input
+                      type="file"
+                      accept=".pdf,image/png,image/jpeg"
+                      onChange={async (event) => {
+                        const file = event.target.files?.[0];
+                        if (!file) return;
+                        const content = await fileToDataUrl(file);
+                        updateDraft("criminalRecordFile", content);
+                      }}
+                    />
+                    {draft.criminalRecordFile ? <p className="input-hint">Archivo cargado correctamente.</p> : null}
                   </label>
                   <label>
                     RUT titular

@@ -285,6 +285,9 @@ export async function PATCH(req: NextRequest) {
         bankName: parsed.bankName.trim(),
         bankAccountType: parsed.bankAccountType,
         bankAccountNumber: parsed.bankAccountNumber.trim(),
+        identityDocumentFrontFile: parsed.identityDocumentFrontFile,
+        identityDocumentBackFile: parsed.identityDocumentBackFile,
+        criminalRecordFile: parsed.criminalRecordFile,
         billingType: "persona_natural",
         currentStep: Math.max(onboarding.currentStep, 11)
       };

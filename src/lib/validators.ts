@@ -426,7 +426,10 @@ export const taskerOnboardingStep10Schema = z.object({
   bankAccountHolderRut: chileanRutSchema,
   bankName: z.string().min(2).max(120),
   bankAccountType: z.enum(["cuenta_corriente", "cuenta_vista", "cuenta_rut", "cuenta_ahorro"]),
-  bankAccountNumber: z.string().regex(/^\d+$/, "La cuenta debe contener solo numeros").min(4).max(40)
+  bankAccountNumber: z.string().regex(/^\d+$/, "La cuenta debe contener solo numeros").min(4).max(40),
+  identityDocumentFrontFile: imageDataUrlSchema,
+  identityDocumentBackFile: imageDataUrlSchema,
+  criminalRecordFile: pdfOrImageDataUrlSchema
 });
 
 export const taskerOnboardingStep11Schema = z.object({
