@@ -246,6 +246,67 @@ function formatRutInput(rawRut: string) {
   return `${formattedBody}-${dv}`;
 }
 
+function formatClp(value: number) {
+  return new Intl.NumberFormat("es-CL").format(value);
+}
+
+function getPricingGuide(draft: DraftState) {
+  const baseByCategory: Record<CategorySlug, { min: number; max: number; note: string }> = {
+    limpieza: { min: 12000, max: 16000, note: "Referencia habitual para limpieza estándar en comunas del MVP." },
+    mascotas: { min: 10000, max: 14000, note: "Útil para paseos, visitas y cuidado básico por hora." },
+    babysitter: { min: 12000, max: 18000, note: "Suele variar según experiencia, cantidad de niños y horario." },
+    "profesor-particular": { min: 15000, max: 25000, note: "Las clases especializadas y universitarias suelen cobrar más." },
+    "personal-trainer": { min: 18000, max: 30000, note: "Depende del tipo de entrenamiento, modalidad e implementos." },
+    chef: { min: 18000, max: 32000, note: "Sube según complejidad del menú y tipo de cocina." },
+    maquillaje: { min: 18000, max: 30000, note: "Novias y eventos suelen estar en el tramo alto." },
+    planchado: { min: 10000, max: 14000, note: "Se recomienda cobrar por hora según volumen y delicadeza." }
+  };
+
+  const base = baseByCategory[draft.category];
+  let min = base.min;
+  let max = base.max;
+  const extras: string[] = [];
+
+  if (draft.category === "limpieza") {
+    if (draft.cleaningBringsProducts) {
+      min += 2000;
+      max += 2000;
+      extras.push("Si incluyes productos de limpieza, puedes subir aprox. $2.000 por hora.");
+    }
+    if (draft.cleaningBringsEquipment) {
+      min += 2000;
+      max += 3000;
+      extras.push("Si llevas aspiradora o equipo propio, puedes sumar entre $2.000 y $3.000 por hora.");
+    }
+  }
+
+  if (draft.category === "maquillaje" && draft.makeupKit) {
+    min += 3000;
+    max += 5000;
+    extras.push("Si incluyes tu kit de maquillaje, conviene cobrar un extra por hora.");
+  }
+
+  if (draft.category === "personal-trainer" && draft.trainerBringsEquipment) {
+    min += 3000;
+    max += 5000;
+    extras.push("Si llevas implementos o equipamiento, puedes posicionarte en la parte alta del rango.");
+  }
+
+  if (draft.category === "chef" && draft.chefCuisineType === "gourmet") {
+    min += 4000;
+    max += 6000;
+    extras.push("Cocina gourmet suele justificar una tarifa superior.");
+  }
+
+  return {
+    title: CATEGORY_OPTIONS.find((option) => option.slug === draft.category)?.label ?? "Servicio",
+    min,
+    max,
+    note: base.note,
+    extras
+  };
+}
+
 function normalizeMakeupTypes(value: unknown): Array<"social" | "eventos" | "novias"> {
   const allowed = new Set(["social", "eventos", "novias"]);
   if (Array.isArray(value)) {
@@ -496,6 +557,7 @@ function CleaningOnboardingPageContent() {
 
   const chicureoSelected = draft.homeCommune === "Chicureo" || draft.coverageCommunes.includes("Chicureo");
   const selectedCategoryLabel = CATEGORY_OPTIONS.find((option) => option.slug === draft.category)?.label ?? "Limpieza";
+  const pricingGuide = useMemo(() => getPricingGuide(draft), [draft]);
   const progressPercent = Math.round((activeStep / TOTAL_STEPS) * 100);
   const addressQuery = useMemo(() => [draft.address.trim(), "Santiago", "Chile"].filter(Boolean).join(", "), [draft.address]);
   const presetService = useMemo(() => {
@@ -1953,6 +2015,17 @@ function CleaningOnboardingPageContent() {
             {activeStep === 9 ? (
               <div className="onboarding-screen">
                 <h3>Tarifas</h3>
+                <div className="auth-flow-note-card">
+                  <strong>Referencia para {pricingGuide.title}</strong>
+                  <span>
+                    En WeTask, para este servicio suele funcionar un rango de <strong>${formatClp(pricingGuide.min)}</strong> a{" "}
+                    <strong>${formatClp(pricingGuide.max)}</strong> por hora.
+                  </span>
+                  <span>{pricingGuide.note}</span>
+                  {pricingGuide.extras.length > 0 ? (
+                    <span>{pricingGuide.extras.join(" ")}</span>
+                  ) : null}
+                </div>
                 <div className="grid-form auth-flow-form">
                   <label>
                     Tarifa por hora
