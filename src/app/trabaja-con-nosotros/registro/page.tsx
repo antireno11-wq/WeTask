@@ -246,6 +246,11 @@ function formatRutInput(rawRut: string) {
   return `${formattedBody}-${dv}`;
 }
 
+function extractRutBody(rawRut: string) {
+  const clean = rawRut.replace(/[^0-9kK]/g, "").toUpperCase();
+  return clean.length > 1 ? clean.slice(0, -1) : "";
+}
+
 function formatClp(value: number) {
   return new Intl.NumberFormat("es-CL").format(value);
 }
@@ -671,6 +676,19 @@ function CleaningOnboardingPageContent() {
       setDraft((current) => ({ ...current, ironingPricing: "por_hora" }));
     }
   }, [draft.category, draft.ironingPricing]);
+
+  useEffect(() => {
+    if (draft.bankAccountType !== "cuenta_rut") return;
+    const rutBody = extractRutBody(draft.bankOwnerRut);
+    setDraft((current) => {
+      if (current.bankAccountType !== "cuenta_rut") return current;
+      if (current.bankAccountNumber === rutBody) return current;
+      return {
+        ...current,
+        bankAccountNumber: rutBody
+      };
+    });
+  }, [draft.bankAccountType, draft.bankOwnerRut]);
 
   const hydrateFromServer = (nextOnboarding: OnboardingPayload, user?: { fullName?: string | null; email?: string | null; phone?: string | null }) => {
     const { firstName, lastName } = splitFullName(user?.fullName ?? session?.fullName ?? "");
@@ -2114,7 +2132,11 @@ function CleaningOnboardingPageContent() {
                       value={draft.bankAccountNumber}
                       onChange={(event) => updateDraft("bankAccountNumber", event.target.value.replace(/\D/g, ""))}
                       placeholder="Solo números"
+                      readOnly={draft.bankAccountType === "cuenta_rut"}
                     />
+                    {draft.bankAccountType === "cuenta_rut" ? (
+                      <p className="input-hint">Para Cuenta RUT usamos automáticamente tu RUT sin dígito verificador.</p>
+                    ) : null}
                   </label>
                   <label>
                     RUT titular
