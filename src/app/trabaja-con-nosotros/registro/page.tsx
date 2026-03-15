@@ -108,7 +108,7 @@ type DraftState = {
   cleaningType: "hogar" | "profunda" | "post_mudanza";
   cleaningBringsProducts: boolean | null;
   cleaningBringsEquipment: boolean | null;
-  petServiceType: "paseo_perros" | "cuidado_casa_cliente" | "cuidado_en_tu_casa";
+  petServiceType: Array<"paseo_perros" | "cuidado_casa_cliente" | "cuidado_en_tu_casa">;
   petAnimals: Array<"perros" | "gatos">;
   petLargePets: boolean | null;
   babysitterAgeRange: "0_2" | "3_6" | "7_plus";
@@ -345,6 +345,19 @@ function normalizeChefServiceTypes(value: unknown): Array<"comida_diaria" | "eve
   return ["comida_diaria"];
 }
 
+function normalizePetServiceTypes(value: unknown): Array<"paseo_perros" | "cuidado_casa_cliente" | "cuidado_en_tu_casa"> {
+  const allowed = new Set(["paseo_perros", "cuidado_casa_cliente", "cuidado_en_tu_casa"]);
+  if (Array.isArray(value)) {
+    return value.filter(
+      (item): item is "paseo_perros" | "cuidado_casa_cliente" | "cuidado_en_tu_casa" => typeof item === "string" && allowed.has(item)
+    );
+  }
+  if (typeof value === "string" && allowed.has(value)) {
+    return [value as "paseo_perros" | "cuidado_casa_cliente" | "cuidado_en_tu_casa"];
+  }
+  return ["paseo_perros"];
+}
+
 function createInitialDraft(): DraftState {
   return {
     phone: CHILE_MOBILE_PREFIX,
@@ -364,7 +377,7 @@ function createInitialDraft(): DraftState {
     cleaningType: "hogar",
     cleaningBringsProducts: null,
     cleaningBringsEquipment: null,
-    petServiceType: "paseo_perros",
+    petServiceType: ["paseo_perros"],
     petAnimals: ["perros"],
     petLargePets: null,
     babysitterAgeRange: "0_2",
@@ -483,7 +496,7 @@ function buildStep7Payload(draft: DraftState) {
       };
     case "mascotas":
       return {
-        offeredServices: [draft.petServiceType],
+        offeredServices: draft.petServiceType,
         experienceTypes: draft.petAnimals,
         acceptsHomesWithPets: draft.petLargePets
       };
@@ -577,6 +590,8 @@ function CleaningOnboardingPageContent() {
   const pricingGuide = useMemo(() => getPricingGuide(draft), [draft]);
   const progressPercent = Math.round((activeStep / TOTAL_STEPS) * 100);
   const addressQuery = useMemo(() => [draft.address.trim(), "Santiago", "Chile"].filter(Boolean).join(", "), [draft.address]);
+  const petSupportsCats = draft.petServiceType.some((item) => item !== "paseo_perros");
+  const petAnimalOptions = (petSupportsCats ? ["perros", "gatos"] : ["perros"]) as Array<"perros" | "gatos">;
   const presetService = useMemo(() => {
     const service = searchParams.get("service");
     return CATEGORY_OPTIONS.some((option) => option.slug === service) ? (service as CategorySlug) : null;
@@ -593,6 +608,7 @@ function CleaningOnboardingPageContent() {
         phone: normalizeChileanMobileInput(parsed.phone ?? current.phone),
         rut: formatRutInput(parsed.rut ?? current.rut),
         bankOwnerRut: formatRutInput(parsed.bankOwnerRut ?? current.bankOwnerRut),
+        petServiceType: normalizePetServiceTypes(parsed.petServiceType),
         chefServiceType: normalizeChefServiceTypes(parsed.chefServiceType),
         makeupType: normalizeMakeupTypes(parsed.makeupType)
       }));
@@ -701,6 +717,21 @@ function CleaningOnboardingPageContent() {
       };
     });
   }, [draft.bankAccountType, draft.bankOwnerRut]);
+
+  useEffect(() => {
+    const normalizedServices = normalizePetServiceTypes(draft.petServiceType);
+    const supportsCats = normalizedServices.some((item) => item !== "paseo_perros");
+    const filteredAnimals = draft.petAnimals.filter((animal): animal is "perros" | "gatos" => supportsCats || animal === "perros");
+    const nextAnimals: Array<"perros" | "gatos"> = filteredAnimals.length > 0 ? filteredAnimals : ["perros"];
+    const servicesChanged = normalizedServices.join("|") !== draft.petServiceType.join("|");
+    const animalsChanged = nextAnimals.join("|") !== draft.petAnimals.join("|");
+    if (!servicesChanged && !animalsChanged) return;
+    setDraft((current) => ({
+      ...current,
+      petServiceType: normalizedServices,
+      petAnimals: nextAnimals
+    }));
+  }, [draft.petAnimals, draft.petServiceType]);
 
   const hydrateFromServer = (nextOnboarding: OnboardingPayload, user?: { fullName?: string | null; email?: string | null; phone?: string | null }) => {
     const { firstName, lastName } = splitFullName(user?.fullName ?? session?.fullName ?? "");
@@ -1114,6 +1145,10 @@ function CleaningOnboardingPageContent() {
     const payload = buildStep7Payload(draft);
     if (!payload.offeredServices || payload.offeredServices.length === 0) {
       setError("Responde las preguntas de tu categoria para continuar.");
+      return;
+    }
+    if (draft.category === "mascotas" && draft.petAnimals.length === 0) {
+      setError("Selecciona al menos un tipo de mascota para continuar.");
       return;
     }
     setSaving(true);
@@ -1643,18 +1678,43 @@ function CleaningOnboardingPageContent() {
 
                 {draft.category === "mascotas" ? (
                   <div className="grid-form auth-flow-form">
-                    <label>
-                      Tipo de servicio
-                      <select value={draft.petServiceType} onChange={(event) => updateDraft("petServiceType", event.target.value as DraftState["petServiceType"])}>
-                        <option value="paseo_perros">Paseo de perros</option>
-                        <option value="cuidado_casa_cliente">Cuidado en casa del cliente</option>
-                        <option value="cuidado_en_tu_casa">Cuidado en tu casa</option>
-                      </select>
-                    </label>
+                    <div className="full">
+                      <p className="field-label">Tipo de servicio</p>
+                      <div className="inline-checks">
+                        {[
+                          { value: "paseo_perros", label: "Paseo de perros" },
+                          { value: "cuidado_casa_cliente", label: "Cuidado en casa del cliente" },
+                          { value: "cuidado_en_tu_casa", label: "Cuidado en mi casa" }
+                        ].map((option) => (
+                          <label key={option.value}>
+                            <input
+                              type="checkbox"
+                              checked={draft.petServiceType.includes(
+                                option.value as "paseo_perros" | "cuidado_casa_cliente" | "cuidado_en_tu_casa"
+                              )}
+                              onChange={(event) => {
+                                updateDraft(
+                                  "petServiceType",
+                                  event.target.checked
+                                    ? Array.from(
+                                        new Set([
+                                          ...draft.petServiceType,
+                                          option.value as "paseo_perros" | "cuidado_casa_cliente" | "cuidado_en_tu_casa"
+                                        ])
+                                      )
+                                    : draft.petServiceType.filter((item) => item !== option.value)
+                                );
+                              }}
+                            />
+                            {option.label}
+                          </label>
+                        ))}
+                      </div>
+                    </div>
                     <div className="full">
                       <p className="field-label">Animales</p>
                       <div className="onboarding-checkbox-grid onboarding-checkbox-grid-compact">
-                        {(["perros", "gatos"] as const).map((animal) => (
+                        {petAnimalOptions.map((animal) => (
                           <label key={animal} className="onboarding-check-card">
                             <input
                               type="checkbox"

@@ -4999,20 +4999,24 @@ textarea {
 
 .onboarding-week-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
 }
 
 .onboarding-week-card {
-  min-height: 132px;
-  padding: 16px 14px;
+  min-height: 152px;
+  padding: 18px 16px;
   align-content: space-between;
 }
 
 .onboarding-week-card .availability-day-number {
-  font-size: 1rem;
-  line-height: 1.2;
+  font-size: 1.02rem;
+  line-height: 1.35;
   white-space: normal;
+}
+
+.onboarding-week-card .availability-day-meta {
+  line-height: 1.45;
 }
 
 .onboarding-task-item {
