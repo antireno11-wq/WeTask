@@ -2,6 +2,11 @@ import { UserRole } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getRequestIdentity, hasRole } from "@/lib/auth";
+import {
+  canShareContactDetails,
+  messageContainsRestrictedContactInfo,
+  PRE_CONFIRMATION_CHAT_BLOCK_MESSAGE
+} from "@/lib/chat-safety";
 import { prisma } from "@/lib/prisma";
 
 const messageSchema = z.object({
@@ -55,9 +60,14 @@ export async function POST(req: NextRequest, context: { params: { bookingId: str
 
     const access = await canAccessBooking(identity.userId, identity.role, context.params.bookingId);
     if (!access.ok) return NextResponse.json({ error: "No autorizado" }, { status: 403 });
+    if (!access.booking) return NextResponse.json({ error: "Reserva no encontrada" }, { status: 404 });
 
     const body = await req.json();
     const input = messageSchema.parse(body);
+
+    if (!canShareContactDetails(access.booking.status) && messageContainsRestrictedContactInfo(input.body)) {
+      return NextResponse.json({ error: PRE_CONFIRMATION_CHAT_BLOCK_MESSAGE }, { status: 400 });
+    }
 
     const message = await prisma.message.create({
       data: {

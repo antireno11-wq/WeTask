@@ -3,6 +3,11 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import { MarketNav } from "@/components/market-nav";
+import {
+  canShareContactDetails,
+  messageContainsRestrictedContactInfo,
+  PRE_CONFIRMATION_CHAT_BLOCK_MESSAGE
+} from "@/lib/chat-safety";
 
 type Message = {
   id: string;
@@ -151,6 +156,12 @@ export default function ClienteBookingActionsPage() {
     event.preventDefault();
     if (!bookingId || !chatBody.trim()) return;
     setError("");
+
+    if (booking && !canShareContactDetails(booking.status) && messageContainsRestrictedContactInfo(chatBody)) {
+      setError(PRE_CONFIRMATION_CHAT_BLOCK_MESSAGE);
+      return;
+    }
+
     try {
       const response = await fetch(`/api/marketplace/bookings/${bookingId}/messages`, {
         method: "POST",
@@ -334,6 +345,13 @@ export default function ClienteBookingActionsPage() {
                   <h2>Chat y seguimiento</h2>
                   <p>Habla con tu profesional o deja constancia si necesitas soporte.</p>
                 </div>
+
+                {booking && !canShareContactDetails(booking.status) ? (
+                  <div className="client-booking-note">
+                    <strong>Regla de seguridad del chat</strong>
+                    <p>{PRE_CONFIRMATION_CHAT_BLOCK_MESSAGE}</p>
+                  </div>
+                ) : null}
 
                 <div className="chat-box client-booking-chat">
                   {messages.length === 0 ? (
