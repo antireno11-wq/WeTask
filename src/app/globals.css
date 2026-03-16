@@ -4495,7 +4495,7 @@ textarea {
 }
 
 .market-shell-auth {
-  background: #183255;
+  background: #244266;
 }
 
 .market-shell-auth-content {
@@ -4521,13 +4521,13 @@ textarea {
 .market-shell-auth .nav-link,
 .market-shell-auth .auth-badge {
   color: #ffffff;
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.16);
   backdrop-filter: blur(10px);
 }
 
 .market-shell-auth .nav-link:hover {
-  background: rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.22);
 }
 
 .market-shell-auth .auth-btn {
