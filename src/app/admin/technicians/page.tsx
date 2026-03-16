@@ -71,11 +71,11 @@ export default function AdminTechniciansPage() {
       <MarketNav />
       <section className="panel">
         <div className="panel-head">
-          <h2>Revision de tecnicos</h2>
-          <p>Panel interno para aprobar, rechazar o solicitar mas informacion.</p>
+          <h2>Revisión de técnicos</h2>
+          <p>Panel interno para aprobar, rechazar o solicitar más información.</p>
         </div>
 
-        {loading ? <p className="empty">Cargando tecnicos...</p> : null}
+        {loading ? <p className="empty">Cargando técnicos...</p> : null}
         {error ? <p className="feedback error">{error}</p> : null}
         {okMessage ? <p className="feedback ok">{okMessage}</p> : null}
 
@@ -90,7 +90,7 @@ export default function AdminTechniciansPage() {
                 <strong>Comuna:</strong> {row.commune} · <strong>Score:</strong> {row.score}/100
               </p>
               <p>
-                <strong>Email:</strong> {row.email} · <strong>Telefono:</strong> {row.phone}
+                <strong>Email:</strong> {row.email} · <strong>Teléfono:</strong> {row.phone}
               </p>
               <p>
                 <strong>Especialidad:</strong> {Array.isArray(row.specialties) ? row.specialties.join(", ") : "-"}
@@ -105,7 +105,7 @@ export default function AdminTechniciansPage() {
                   Aprobar
                 </button>
                 <button type="button" className="cta ghost small" onClick={() => void changeStatus(row.id, "request_info")}>
-                  Solicitar mas informacion
+                  Solicitar más información
                 </button>
                 <button type="button" className="cta ghost small" onClick={() => void changeStatus(row.id, "reject")}>
                   Rechazar

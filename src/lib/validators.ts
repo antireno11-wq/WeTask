@@ -217,12 +217,12 @@ const chileanRutSchema = z
   .trim()
   .min(8)
   .max(16)
-  .refine((value) => isValidChileanRut(value), "RUT chileno invalido");
+  .refine((value) => isValidChileanRut(value), "RUT chileno inválido");
 
 const chileanMobilePhoneSchema = z
   .string()
   .trim()
-  .regex(/^\+569\d{8}$/, "Ingresa un telefono chileno valido con formato +569XXXXXXXX");
+  .regex(/^\+569\d{8}$/, "Ingresa un teléfono chileno válido con formato +569XXXXXXXX");
 
 export const technicianRegistrationSchema = z.object({
   fullName: z.string().min(3).max(120),
@@ -246,7 +246,7 @@ export const technicianRegistrationSchema = z.object({
   criminalRecordFile: pdfOrImageDataUrlSchema,
   identityDocument: imageDataUrlSchema,
   identitySelfie: imageDataUrlSchema,
-  affidavitAccepted: z.boolean().refine((v) => v, { message: "Debes aceptar la declaracion jurada" }),
+  affidavitAccepted: z.boolean().refine((v) => v, { message: "Debes aceptar la declaración jurada" }),
 
   availableCommunes: z.array(activeCommuneInputSchema).min(1),
   coverageRadiusKm: z.coerce.number().int().min(1).max(80),
@@ -262,7 +262,7 @@ export const adminTechnicianReviewSchema = z.object({
   reviewNotes: z.string().max(1000).optional()
 });
 
-const hhmmSchema = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Formato horario invalido (HH:mm)");
+const hhmmSchema = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Formato horario inválido (HH:mm)");
 
 const cleaningAvailabilityBlockSchema = z
   .object({
@@ -271,7 +271,7 @@ const cleaningAvailabilityBlockSchema = z
     end: hhmmSchema
   })
   .refine((value) => value.end > value.start, {
-    message: "El bloque horario debe tener hora de termino mayor que inicio"
+    message: "El bloque horario debe tener hora de término mayor que inicio"
   });
 
 export const cleaningOnboardingStartSchema = z.object({
@@ -337,7 +337,7 @@ export const cleaningOnboardingStage6Schema = z.object({
 
 export const cleaningOnboardingStage7Schema = z.object({
   documentId: z.string().trim().min(6).max(24),
-  birthDate: z.coerce.date().max(new Date(), "Fecha de nacimiento invalida"),
+  birthDate: z.coerce.date().max(new Date(), "Fecha de nacimiento inválida"),
   nationality: z.string().min(2).max(80),
   migrationStatus: z.string().max(120).optional().nullable(),
   emergencyContactName: z.string().min(3).max(120),
@@ -359,7 +359,7 @@ export const cleaningOnboardingStage7Schema = z.object({
 export const cleaningOnboardingStage8Schema = z
   .object({
     completedTopics: z.array(z.enum(CLEANING_TRAINING_TOPICS)).min(CLEANING_TRAINING_TOPICS.length),
-    acceptsCancellationPolicy: z.boolean().refine((v) => v, { message: "Debes aceptar politica de cancelacion" }),
+    acceptsCancellationPolicy: z.boolean().refine((v) => v, { message: "Debes aceptar política de cancelación" }),
     acceptsServiceProtocol: z.boolean().refine((v) => v, { message: "Debes aceptar protocolo de servicio" }),
     acceptsDataProcessing: z.boolean().refine((v) => v, { message: "Debes autorizar tratamiento de datos" }),
     confirmsCleaningScope: z.boolean().refine((v) => v, { message: "Debes confirmar alcance del servicio" })
@@ -367,7 +367,7 @@ export const cleaningOnboardingStage8Schema = z
   .refine((value) => {
     const selected = new Set(value.completedTopics);
     return CLEANING_TRAINING_TOPICS.every((topic) => selected.has(topic));
-  }, "Debes completar todos los puntos de la capacitacion");
+  }, "Debes completar todos los puntos de la capacitación");
 
 export const cleaningOnboardingSaveSchema = z.object({
   step: z.coerce.number().int().min(3).max(11),
@@ -426,14 +426,14 @@ export const taskerOnboardingStep10Schema = z.object({
   bankAccountHolderRut: chileanRutSchema,
   bankName: z.string().min(2).max(120),
   bankAccountType: z.enum(["cuenta_corriente", "cuenta_vista", "cuenta_rut", "cuenta_ahorro"]),
-  bankAccountNumber: z.string().regex(/^\d+$/, "La cuenta debe contener solo numeros").min(4).max(40),
+  bankAccountNumber: z.string().regex(/^\d+$/, "La cuenta debe contener solo números").min(4).max(40),
   identityDocumentFrontFile: imageDataUrlSchema,
   identityDocumentBackFile: imageDataUrlSchema,
   criminalRecordFile: pdfOrImageDataUrlSchema
 });
 
 export const taskerOnboardingStep11Schema = z.object({
-  acceptTerms: z.boolean().refine((v) => v, { message: "Debes aceptar los terminos y condiciones" })
+  acceptTerms: z.boolean().refine((v) => v, { message: "Debes aceptar los términos y condiciones" })
 });
 
 export const cleaningOnboardingPhoneSendSchema = z.object({
@@ -441,7 +441,7 @@ export const cleaningOnboardingPhoneSendSchema = z.object({
 });
 
 export const cleaningOnboardingPhoneVerifySchema = z.object({
-  code: z.string().regex(/^\d{6}$/, "Codigo invalido")
+  code: z.string().regex(/^\d{6}$/, "Código inválido")
 });
 
 export const cleaningOnboardingAdminActionSchema = z.object({

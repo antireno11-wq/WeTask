@@ -70,7 +70,7 @@ export async function POST(req: NextRequest) {
     ]);
 
     if (!customer || customer.role !== UserRole.CUSTOMER) {
-      return NextResponse.json({ error: "Cliente no valido" }, { status: 400 });
+      return NextResponse.json({ error: "Cliente no válido" }, { status: 400 });
     }
 
     if (!service || !service.isActive || !service.category) {
@@ -79,7 +79,7 @@ export async function POST(req: NextRequest) {
 
     if (input.hours < service.category.minHours) {
       return NextResponse.json(
-        { error: `La categoria exige minimo ${service.category.minHours} hora(s)` },
+        { error: `La categoría exige mínimo ${service.category.minHours} hora(s)` },
         { status: 400 }
       );
     }
@@ -239,7 +239,7 @@ export async function POST(req: NextRequest) {
         }
       });
       if (!pro || pro.role !== UserRole.PRO) {
-        return NextResponse.json({ error: "Profesional no valido" }, { status: 400 });
+        return NextResponse.json({ error: "Profesional no válido" }, { status: 400 });
       }
       if (!pro.professionalProfile || pro.professionalProfile.taskerServices.length === 0) {
         return NextResponse.json({ error: "El tasker seleccionado no ofrece este servicio" }, { status: 400 });

@@ -609,7 +609,7 @@ export async function ensureMarketplaceDemoData() {
     {
       slug: "cuidado-animales-visita",
       name: "Cuidado de animales por visita",
-      description: "Alimentacion y cuidados basicos por visita",
+      description: "Alimentación y cuidados básicos por visita",
       basePriceClp: 15000,
       categoryId: categories.cuidadoresAnimales.id
     },
@@ -623,7 +623,7 @@ export async function ensureMarketplaceDemoData() {
     {
       slug: "babysitter-por-horas-standard",
       name: "Babysitter",
-      description: "Cuidado infantil por hora con reserva minima",
+      description: "Cuidado infantil por hora con reserva mínima",
       basePriceClp: 21000,
       categoryId: categories.babysitterHoras.id
     },
@@ -636,15 +636,15 @@ export async function ensureMarketplaceDemoData() {
     },
     {
       slug: "personal-trainer-sesion",
-      name: "Sesion de personal trainer",
-      description: "Entrenamiento personalizado en casa o areas comunes",
+      name: "Sesión de personal trainer",
+      description: "Entrenamiento personalizado en casa o áreas comunes",
       basePriceClp: 24000,
       categoryId: categories.personalTrainer.id
     },
     {
       slug: "chef-a-domicilio-sesion",
-      name: "Chef a domicilio por sesion",
-      description: "Preparacion de menu personalizado en tu hogar",
+      name: "Chef a domicilio por sesión",
+      description: "Preparación de menú personalizado en tu hogar",
       basePriceClp: 48000,
       categoryId: categories.chefDomicilio.id
     },

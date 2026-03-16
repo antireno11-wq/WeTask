@@ -58,7 +58,7 @@ export default function RegistroPage() {
       }
 
       if (!data.session) {
-        throw new Error("No se pudo iniciar sesion tras registro.");
+        throw new Error("No se pudo iniciar sesión tras registro.");
       }
 
       setFeedback(`Cuenta creada para ${data.session.fullName}`);
@@ -93,7 +93,7 @@ export default function RegistroPage() {
               </div>
               <div className="auth-flow-meta-card">
                 <strong>Acceso seguro</strong>
-                <span>Tu informacion queda asociada a tu perfil y puedes continuar el flujo despues desde tu sesion.</span>
+                <span>Tu información queda asociada a tu perfil y puedes continuar el flujo después desde tu sesión.</span>
               </div>
               <div className="auth-flow-meta-card">
                 <strong>¿Quieres ofrecer servicios?</strong>
@@ -104,7 +104,7 @@ export default function RegistroPage() {
             <div className="auth-flow-inline-links">
               <Link href="/ingresar">Ya tengo cuenta</Link>
               <Link href="/trabaja-con-nosotros">Quiero ofrecer servicios</Link>
-              <Link href="/legal">Terminos y privacidad</Link>
+              <Link href="/legal">Términos y privacidad</Link>
             </div>
           </div>
 
@@ -133,12 +133,12 @@ export default function RegistroPage() {
             </label>
 
             <label>
-              Contrasena
+              Contraseña
               <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} minLength={8} required />
             </label>
 
             <label>
-              Telefono
+              Teléfono
               <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+56 9 ..." />
             </label>
 
@@ -149,7 +149,7 @@ export default function RegistroPage() {
 
             <label className="full auth-flow-checkbox">
               <input type="checkbox" checked={acceptTerms} onChange={(e) => setAcceptTerms(e.target.checked)} required />
-              <span>Acepto terminos y condiciones de WeTask.</span>
+              <span>Acepto términos y condiciones de WeTask.</span>
             </label>
 
             <div className="auth-flow-actions full">
@@ -160,7 +160,7 @@ export default function RegistroPage() {
                 Ofrecer servicios
               </Link>
               <Link href="/ingresar" className="cta ghost">
-                Iniciar sesion
+                Iniciar sesión
               </Link>
             </div>
           </form>

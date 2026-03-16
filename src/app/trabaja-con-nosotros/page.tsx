@@ -23,7 +23,7 @@ export default function TrabajaConNosotrosPage() {
 
             <div className="auth-flow-copy-list">
               <div className="auth-flow-meta-card">
-                <strong>Activacion guiada</strong>
+                <strong>Activación guiada</strong>
                 <span>Completarás perfil, cobertura, documentos y condiciones para poder recibir reservas.</span>
               </div>
               <div className="auth-flow-meta-card">
@@ -41,7 +41,7 @@ export default function TrabajaConNosotrosPage() {
           <section className="auth-flow-panel auth-flow-panel-wide">
             <div className="panel-head auth-flow-panel-head">
               <h2>Elige tu servicio principal</h2>
-              <p>Usaremos esta seleccion para personalizar tu onboarding profesional.</p>
+              <p>Usaremos esta selección para personalizar tu onboarding profesional.</p>
             </div>
 
           <form action="/trabaja-con-nosotros/registro" method="GET" className="auth-service-form">
@@ -77,7 +77,7 @@ export default function TrabajaConNosotrosPage() {
                 Continuar onboarding
               </button>
               <Link href="/ingresar/tasker" className="cta ghost">
-                Iniciar sesion
+                Iniciar sesión
               </Link>
             </div>
             </form>

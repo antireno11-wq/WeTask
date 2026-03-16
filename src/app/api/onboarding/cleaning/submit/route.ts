@@ -62,7 +62,7 @@ export async function POST(req: NextRequest) {
     if (missingFields.length > 0) {
       return NextResponse.json(
         {
-          error: "Faltan campos obligatorios antes de enviar a revision",
+          error: "Faltan campos obligatorios antes de enviar a revisión",
           missingFields
         },
         { status: 400 }
@@ -83,7 +83,7 @@ export async function POST(req: NextRequest) {
   } catch (error) {
     return NextResponse.json(
       {
-        error: "No se pudo enviar perfil a revision",
+        error: "No se pudo enviar perfil a revisión",
         detail: error instanceof Error ? error.message : "Error desconocido"
       },
       { status: 400 }

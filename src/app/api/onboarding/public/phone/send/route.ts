@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
     const phone = (input.phone ?? "").trim();
 
     if (phone.length < 7) {
-      return NextResponse.json({ error: "Debes ingresar un telefono valido" }, { status: 400 });
+      return NextResponse.json({ error: "Debes ingresar un teléfono válido" }, { status: 400 });
     }
 
     const code = randomToken(6).replace(/[^0-9]/g, "").slice(0, 6).padEnd(6, "0");
@@ -26,17 +26,17 @@ export async function POST(req: NextRequest) {
 
     const smsResult = await sendTwilioSms({
       to: phone,
-      body: `WeTask: tu codigo de verificacion es ${code}. Expira en 10 minutos.`
+      body: `WeTask: tu código de verificación es ${code}. Expira en 10 minutos.`
     });
 
     if (!smsResult.ok) {
       if (smsResult.reason === "invalid_phone") {
-        return NextResponse.json({ error: smsResult.detail || "Telefono invalido" }, { status: 400 });
+        return NextResponse.json({ error: smsResult.detail || "Teléfono inválido" }, { status: 400 });
       }
       if (!(smsResult.reason === "not_configured" && previewAllowed)) {
         return NextResponse.json(
           {
-            error: "No se pudo enviar SMS de verificacion",
+            error: "No se pudo enviar SMS de verificación",
             detail: smsResult.detail || "Revisa variables TWILIO_* en el servidor"
           },
           { status: 502 }
@@ -47,7 +47,7 @@ export async function POST(req: NextRequest) {
     const response = NextResponse.json(
       {
         ok: true,
-        message: "Codigo de verificacion enviado",
+        message: "Código de verificación enviado",
         codePreview: previewAllowed ? code : undefined,
         smsProvider: smsResult.ok ? "twilio" : "preview",
         expiresAt
@@ -82,7 +82,7 @@ export async function POST(req: NextRequest) {
   } catch (error) {
     return NextResponse.json(
       {
-        error: "No se pudo enviar codigo de verificacion",
+        error: "No se pudo enviar código de verificación",
         detail: error instanceof Error ? error.message : "Error desconocido"
       },
       { status: 400 }

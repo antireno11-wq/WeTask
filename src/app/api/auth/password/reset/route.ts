@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
     });
 
     if (!reset) {
-      return NextResponse.json({ error: "Token invalido o expirado" }, { status: 400 });
+      return NextResponse.json({ error: "Token inválido o expirado" }, { status: 400 });
     }
 
     const passwordHash = await hashPassword(newPassword);

@@ -158,7 +158,7 @@ export default function ServicioCategoriaPage() {
     if (!category) return;
     setCoverageEmailStatus("");
     if (!street.trim()) {
-      setCoverageNote("Completa el servicio y la direccion para ver taskers disponibles.");
+      setCoverageNote("Completa el servicio y la dirección para ver taskers disponibles.");
       return;
     }
     const commune = detectedCommune ?? normalizeCommune(street) ?? inferCommuneFromAddress(street);
@@ -226,7 +226,7 @@ export default function ServicioCategoriaPage() {
                     </select>
                   </label>
                   <label>
-                    Direccion
+                    Dirección
                     <input
                       value={street}
                       onChange={(event) => {
@@ -235,7 +235,7 @@ export default function ServicioCategoriaPage() {
                         setShowSuggestions(true);
                       }}
                       onFocus={() => setShowSuggestions(addressSuggestions.length > 0)}
-                      placeholder="Calle y numero"
+                      placeholder="Calle y número"
                       required
                     />
                     {autocompleteLoading ? <p className="input-hint">Buscando direcciones...</p> : null}
@@ -256,7 +256,7 @@ export default function ServicioCategoriaPage() {
                   </label>
                   <div className="full auth-flow-note-card">
                     <strong>Comuna detectada</strong>
-                    <span>{detectedCommune ?? "Aun no detectamos una comuna valida."}</span>
+                    <span>{detectedCommune ?? "Aún no detectamos una comuna válida."}</span>
                   </div>
                   <div className="auth-flow-actions full">
                     <button type="submit" className="cta">

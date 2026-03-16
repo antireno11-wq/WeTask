@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
 
     if (payload.status !== "OK") {
       return NextResponse.json(
-        { error: payload.error_message || "No se pudo consultar sugerencias de direccion en Google." },
+        { error: payload.error_message || "No se pudo consultar sugerencias de dirección en Google." },
         { status: 502 }
       );
     }
@@ -51,7 +51,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ predictions }, { status: 200 });
   } catch (error) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Error obteniendo sugerencias de direccion." },
+      { error: error instanceof Error ? error.message : "Error obteniendo sugerencias de dirección." },
       { status: 500 }
     );
   }

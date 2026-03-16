@@ -846,7 +846,7 @@ function CleaningOnboardingPageContent() {
   } = {}) => {
     if (!addressValue) {
       if (!silent) {
-        setAddressValidationError("Ingresa tu direccion antes de continuar.");
+        setAddressValidationError("Ingresa tu dirección antes de continuar.");
       }
       setAddressValidationMessage("");
       return false;
@@ -907,7 +907,7 @@ function CleaningOnboardingPageContent() {
 
   const sendPhoneCode = async () => {
     if (!isValidChileanMobilePhone(draft.phone)) {
-      setError("Ingresa tu telefono con formato +569 y 8 numeros.");
+      setError("Ingresa tu teléfono con formato +569 y 8 números.");
       return;
     }
     setSaving(true);
@@ -921,8 +921,8 @@ function CleaningOnboardingPageContent() {
         body: JSON.stringify({ phone: draft.phone.trim() })
       });
       const data = (await response.json()) as { ok?: boolean; codePreview?: string; error?: string; detail?: string };
-      if (!response.ok || !data.ok) throw new Error(data.detail || data.error || "No se pudo enviar el codigo");
-      setFeedback("Codigo enviado por SMS.");
+      if (!response.ok || !data.ok) throw new Error(data.detail || data.error || "No se pudo enviar el código");
+      setFeedback("Código enviado por SMS.");
       setSmsPreview(data.codePreview ?? "");
     } catch (eventualError) {
       setError(eventualError instanceof Error ? eventualError.message : "Error inesperado");
@@ -942,9 +942,9 @@ function CleaningOnboardingPageContent() {
         body: JSON.stringify({ code: draft.smsCode.trim() })
       });
       const data = (await response.json()) as { ok?: boolean; error?: string; detail?: string };
-      if (!response.ok || !data.ok) throw new Error(data.detail || data.error || "No se pudo verificar el telefono");
+      if (!response.ok || !data.ok) throw new Error(data.detail || data.error || "No se pudo verificar el teléfono");
       setDraft((current) => ({ ...current, phoneVerified: true }));
-      setFeedback("Telefono verificado correctamente.");
+      setFeedback("Teléfono verificado correctamente.");
       setActiveStep(3);
     } catch (eventualError) {
       setError(eventualError instanceof Error ? eventualError.message : "Error inesperado");
@@ -961,7 +961,7 @@ function CleaningOnboardingPageContent() {
 
   const resetOnboarding = async () => {
     const shouldReset = window.confirm(
-      "Esto borrara el avance guardado de este registro y te llevara de vuelta al inicio. ¿Quieres continuar?"
+      "Esto borrará el avance guardado de este registro y te llevará de vuelta al inicio. ¿Quieres continuar?"
     );
     if (!shouldReset) return;
 
@@ -1000,11 +1000,11 @@ function CleaningOnboardingPageContent() {
 
   const continueStep2 = async () => {
     if (!isValidChileanMobilePhone(draft.phone)) {
-      setError("Ingresa tu telefono con formato +569 y 8 numeros.");
+      setError("Ingresa tu teléfono con formato +569 y 8 números.");
       return;
     }
     if (!draft.phoneVerified) {
-      setError("Debes verificar tu telefono antes de continuar.");
+      setError("Debes verificar tu teléfono antes de continuar.");
       return;
     }
     setError("");
@@ -1022,11 +1022,11 @@ function CleaningOnboardingPageContent() {
       return;
     }
     if (!isValidRut(draft.rut)) {
-      setError("Ingresa un RUT chileno valido.");
+      setError("Ingresa un RUT chileno válido.");
       return;
     }
     if (!draft.address.trim()) {
-      setError("Ingresa tu direccion.");
+      setError("Ingresa tu dirección.");
       return;
     }
     if (!draft.profilePhotoUrl) {
@@ -1144,7 +1144,7 @@ function CleaningOnboardingPageContent() {
   const continueStep7 = async () => {
     const payload = buildStep7Payload(draft);
     if (!payload.offeredServices || payload.offeredServices.length === 0) {
-      setError("Responde las preguntas de tu categoria para continuar.");
+      setError("Responde las preguntas de tu categoría para continuar.");
       return;
     }
     if (draft.category === "mascotas" && draft.petAnimals.length === 0) {
@@ -1166,7 +1166,7 @@ function CleaningOnboardingPageContent() {
   const continueStep8 = async () => {
     const validBlocks = draft.availabilityBlocks.filter((block) => block.start && block.end && block.end > block.start);
     if (validBlocks.length === 0) {
-      setError("Configura al menos un bloque horario valido.");
+      setError("Configura al menos un bloque horario válido.");
       return;
     }
     setSaving(true);
@@ -1183,7 +1183,7 @@ function CleaningOnboardingPageContent() {
 
   const continueStep9 = async () => {
     if (!draft.hourlyRate.trim() || !draft.minimumHours.trim()) {
-      setError("Completa tu tarifa y minimo de horas.");
+      setError("Completa tu tarifa y mínimo de horas.");
       return;
     }
     setSaving(true);
@@ -1206,7 +1206,7 @@ function CleaningOnboardingPageContent() {
 
   const continueStep10 = async () => {
     if (!isValidRut(draft.bankOwnerRut)) {
-      setError("Ingresa un RUT titular valido.");
+      setError("Ingresa un RUT titular válido.");
       return;
     }
     if (!draft.identityDocumentFrontFile || !draft.identityDocumentBackFile || !draft.criminalRecordFile) {
@@ -1236,7 +1236,7 @@ function CleaningOnboardingPageContent() {
 
   const finalizeRegistration = async () => {
     if (!draft.acceptedTerms) {
-      setError("Debes aceptar los terminos y condiciones para finalizar.");
+      setError("Debes aceptar los términos y condiciones para finalizar.");
       return;
     }
     setSaving(true);

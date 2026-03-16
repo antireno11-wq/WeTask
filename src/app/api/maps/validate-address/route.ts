@@ -8,7 +8,7 @@ export async function GET(request: NextRequest) {
     const address = request.nextUrl.searchParams.get("address")?.trim();
 
     if (!address) {
-      return NextResponse.json({ valid: false, error: "Ingresa una direccion para validar." }, { status: 400 });
+      return NextResponse.json({ valid: false, error: "Ingresa una dirección para validar." }, { status: 400 });
     }
 
     const apiKey = process.env.GOOGLE_MAPS_API_KEY;
@@ -46,7 +46,7 @@ export async function GET(request: NextRequest) {
 
     if (!response.ok || payload.status !== "OK" || !payload.results?.length) {
       return NextResponse.json(
-        { valid: false, error: payload.error_message || "No pudimos validar esa direccion en Google Maps." },
+        { valid: false, error: payload.error_message || "No pudimos validar esa dirección en Google Maps." },
         { status: 400 }
       );
     }
@@ -75,7 +75,7 @@ export async function GET(request: NextRequest) {
     );
   } catch (error) {
     return NextResponse.json(
-      { valid: false, error: error instanceof Error ? error.message : "Error validando direccion." },
+      { valid: false, error: error instanceof Error ? error.message : "Error validando dirección." },
       { status: 500 }
     );
   }

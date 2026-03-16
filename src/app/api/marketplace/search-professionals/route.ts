@@ -151,7 +151,7 @@ export async function GET(req: NextRequest) {
   } catch (error) {
     return NextResponse.json(
       {
-        error: "No se pudo buscar profesionales por direccion",
+        error: "No se pudo buscar profesionales por dirección",
         detail: error instanceof Error ? error.message : "Error desconocido"
       },
       { status: 400 }

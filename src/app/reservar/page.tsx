@@ -240,7 +240,7 @@ export default function ReservarPage() {
 
   const useGeolocation = async () => {
     if (!navigator.geolocation) {
-      setError("Tu navegador no soporta geolocalizacion");
+      setError("Tu navegador no soporta geolocalización");
       return;
     }
 
@@ -251,10 +251,10 @@ export default function ReservarPage() {
           latitude: position.coords.latitude.toString(),
           longitude: position.coords.longitude.toString()
         }));
-        setMessage("Ubicacion detectada. Ahora busca profesionales.");
+        setMessage("Ubicación detectada. Ahora busca profesionales.");
       },
       () => {
-        setError("No pudimos obtener tu ubicacion");
+        setError("No pudimos obtener tu ubicación");
       }
     );
   };
@@ -327,7 +327,7 @@ export default function ReservarPage() {
         if (firstDay) setSelectedDay(firstDay);
       }
 
-      setMessage(`${normalized.length} profesional(es) encontrados para tu direccion.`);
+      setMessage(`${normalized.length} profesional(es) encontrados para tu dirección.`);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error inesperado");
     } finally {
@@ -514,7 +514,7 @@ export default function ReservarPage() {
             <input value={address.commune} onChange={(e) => setAddress((prev) => ({ ...prev, commune: e.target.value }))} required />
           </label>
           <label>
-            Codigo postal
+            Código postal
             <input value={address.postalCode} onChange={(e) => setAddress((prev) => ({ ...prev, postalCode: e.target.value }))} required />
           </label>
           <label className="full">
@@ -545,7 +545,7 @@ export default function ReservarPage() {
 
           <div className="cta-row">
             <button className="cta ghost" type="button" onClick={useGeolocation}>
-              Usar geolocalizacion
+              Usar geolocalización
             </button>
             <button className="cta" type="submit" disabled={loadingSearch || loadingServices}>
               {loadingSearch ? "Buscando..." : "Buscar profesionales"}
@@ -574,10 +574,10 @@ export default function ReservarPage() {
                 <strong>Precio/hora:</strong> {pro.hourlyRateFromClp ? clp(pro.hourlyRateFromClp) : "Por definir"}
               </p>
               <p>
-                <strong>Proxima hora:</strong> {pro.nextAvailableAt ? new Date(pro.nextAvailableAt).toLocaleString("es-ES") : "Sin slots"}
+                <strong>Próxima hora:</strong> {pro.nextAvailableAt ? new Date(pro.nextAvailableAt).toLocaleString("es-ES") : "Sin slots"}
               </p>
               <p>
-                <strong>Radio cobertura:</strong> {pro.serviceRadiusKm} km
+                <strong>Radio de cobertura:</strong> {pro.serviceRadiusKm} km
               </p>
               <button
                 className="cta small"
@@ -600,7 +600,7 @@ export default function ReservarPage() {
         <section className="panel">
           <div className="panel-head">
             <h2>Agenda de {selectedPro.fullName}</h2>
-            <p>Selecciona dia y bloque horario disponible.</p>
+            <p>Selecciona día y bloque horario disponible.</p>
           </div>
 
           <div className="day-tabs">
@@ -647,7 +647,7 @@ export default function ReservarPage() {
           </div>
 
           <div className="price-box" style={{ marginTop: 12 }}>
-            Resumen en vivo: ({clp(baseHourly)} x {hours}h) + extras {clp(extrasTotal)} + comision {clp(commission)} = <strong>{clp(total)}</strong>
+            Resumen en vivo: ({clp(baseHourly)} x {hours}h) + extras {clp(extrasTotal)} + comisión {clp(commission)} = <strong>{clp(total)}</strong>
           </div>
           <p className="minimal-note">Pago seguro procesado por Mercado Pago</p>
 
@@ -672,7 +672,7 @@ export default function ReservarPage() {
 
             <form id="mp-card-form" className="grid-form" onSubmit={(event) => event.preventDefault()}>
               <label>
-                Nombre titular
+                Nombre del titular
                 <input id="mp-cardholder-name" type="text" placeholder="Como aparece en tu tarjeta" />
               </label>
               <label>
@@ -700,11 +700,11 @@ export default function ReservarPage() {
                 <select id="mp-issuer" defaultValue="" />
               </label>
               <label>
-                Tipo identificación
+                Tipo de identificación
                 <select id="mp-identification-type" defaultValue="" />
               </label>
               <label>
-                Número identificación
+                Número de identificación
                 <input id="mp-identification-number" type="text" placeholder="RUT / documento" />
               </label>
             </form>

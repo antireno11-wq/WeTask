@@ -73,18 +73,18 @@ export const CLEANING_ONBOARDING_STEPS = [
   { step: 1, key: "registro_inicial", label: "Registro inicial" },
   { step: 2, key: "perfil_profesional", label: "Perfil profesional" },
   { step: 3, key: "servicios", label: "Servicios ofrecidos" },
-  { step: 4, key: "cobertura", label: "Cobertura geografica" },
+  { step: 4, key: "cobertura", label: "Cobertura geográfica" },
   { step: 5, key: "disponibilidad", label: "Disponibilidad" },
   { step: 6, key: "tarifas", label: "Tarifas" },
-  { step: 7, key: "verificacion", label: "Verificacion" },
-  { step: 8, key: "capacitacion", label: "Capacitacion" },
-  { step: 9, key: "revision", label: "Revision y activacion" }
+  { step: 7, key: "verificacion", label: "Verificación" },
+  { step: 8, key: "capacitacion", label: "Capacitación" },
+  { step: 9, key: "revision", label: "Revisión y activación" }
 ] as const;
 
 export const CLEANING_STATUS_LABELS: Record<string, string> = {
   BORRADOR: "borrador",
-  PENDIENTE_REVISION: "pendiente de revision",
-  REQUIERE_CORRECCION: "requiere correccion",
+  PENDIENTE_REVISION: "pendiente de revisión",
+  REQUIERE_CORRECCION: "requiere corrección",
   APROBADO: "aprobado",
   ACTIVO: "activo"
 };

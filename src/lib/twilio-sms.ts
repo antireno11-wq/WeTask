@@ -52,7 +52,7 @@ export async function sendTwilioSms(input: SendTwilioSmsInput): Promise<TwilioSm
 
   const to = normalizeChileanPhoneToE164(input.to);
   if (!to) {
-    return { ok: false, reason: "invalid_phone", detail: "Telefono invalido. Usa formato chileno (+56 9 ...)." };
+    return { ok: false, reason: "invalid_phone", detail: "Teléfono inválido. Usa formato chileno (+56 9 ...)." };
   }
 
   const endpoint = `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`;

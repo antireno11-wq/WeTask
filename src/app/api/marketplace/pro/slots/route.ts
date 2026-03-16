@@ -90,7 +90,7 @@ export async function POST(req: NextRequest) {
     if (input.serviceId) {
       const service = await prisma.service.findUnique({ where: { id: input.serviceId }, select: { id: true, isActive: true } });
       if (!service || !service.isActive) {
-        return NextResponse.json({ error: "Servicio no valido" }, { status: 400 });
+        return NextResponse.json({ error: "Servicio no válido" }, { status: 400 });
       }
     }
 

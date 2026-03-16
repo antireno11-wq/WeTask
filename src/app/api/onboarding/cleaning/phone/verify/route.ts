@@ -19,15 +19,15 @@ export async function POST(req: NextRequest) {
 
     const onboarding = await prisma.cleaningOnboarding.findUnique({ where: { userId: identity.userId } });
     if (!onboarding || !onboarding.phoneVerificationCodeHash || !onboarding.phoneVerificationExpiresAt) {
-      return NextResponse.json({ error: "Primero solicita un codigo de verificacion" }, { status: 400 });
+      return NextResponse.json({ error: "Primero solicita un código de verificación" }, { status: 400 });
     }
 
     if (onboarding.phoneVerificationExpiresAt.getTime() < Date.now()) {
-      return NextResponse.json({ error: "El codigo expiro. Solicita uno nuevo" }, { status: 400 });
+      return NextResponse.json({ error: "El código expiró. Solicita uno nuevo" }, { status: 400 });
     }
 
     if (sha256(input.code) !== onboarding.phoneVerificationCodeHash) {
-      return NextResponse.json({ error: "Codigo incorrecto" }, { status: 400 });
+      return NextResponse.json({ error: "Código incorrecto" }, { status: 400 });
     }
 
     const updated = await prisma.cleaningOnboarding.update({
@@ -44,7 +44,7 @@ export async function POST(req: NextRequest) {
   } catch (error) {
     return NextResponse.json(
       {
-        error: "No se pudo validar telefono",
+        error: "No se pudo validar teléfono",
         detail: error instanceof Error ? error.message : "Error desconocido"
       },
       { status: 400 }

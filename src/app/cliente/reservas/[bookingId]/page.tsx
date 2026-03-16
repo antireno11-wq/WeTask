@@ -122,7 +122,7 @@ export default function ClienteBookingActionsPage() {
         const sessionRes = await fetch("/api/auth/session");
         const sessionData = (await sessionRes.json()) as { session?: { userId: string } | null; error?: string; detail?: string };
         if (!sessionRes.ok || !sessionData.session?.userId) {
-          throw new Error(sessionData.detail || sessionData.error || "No se pudo cargar sesion");
+          throw new Error(sessionData.detail || sessionData.error || "No se pudo cargar sesión");
         }
         setCustomerId(sessionData.session.userId);
 

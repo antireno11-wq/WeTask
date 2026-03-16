@@ -27,8 +27,8 @@ export async function POST(req: NextRequest) {
 
     await sendPlatformEmail({
       to: email,
-      subject: "Tu codigo de verificacion WeTask",
-      text: `Tu codigo de verificacion es ${code}. Expira en 10 minutos.`
+      subject: "Tu código de verificación WeTask",
+      text: `Tu código de verificación es ${code}. Expira en 10 minutos.`
     });
 
     return NextResponse.json(
@@ -40,6 +40,6 @@ export async function POST(req: NextRequest) {
       { status: 200 }
     );
   } catch (error) {
-    return NextResponse.json({ error: "No se pudo generar verificacion", detail: error instanceof Error ? error.message : "Error desconocido" }, { status: 400 });
+    return NextResponse.json({ error: "No se pudo generar verificación", detail: error instanceof Error ? error.message : "Error desconocido" }, { status: 400 });
   }
 }

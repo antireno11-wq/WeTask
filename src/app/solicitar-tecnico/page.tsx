@@ -324,7 +324,7 @@ export default function SolicitarTecnicoPage() {
 
         <section className="auth-flow-shell auth-flow-shell-wide">
           <div className="auth-flow-copy">
-            <p className="auth-flow-kicker">Solicitar tecnico</p>
+            <p className="auth-flow-kicker">Solicitar técnico</p>
             <h1>Encuentra profesionales cerca de ti en pocos pasos.</h1>
             <p>Elige el tipo de servicio, la fecha y la dirección para ver taskers disponibles en tu zona.</p>
 
@@ -335,7 +335,7 @@ export default function SolicitarTecnicoPage() {
               </div>
               <div className="auth-flow-meta-card">
                 <strong>Comuna detectada</strong>
-                <span>{detectedCommune ?? "Aun no detectamos una comuna valida."}</span>
+                <span>{detectedCommune ?? "Aún no detectamos una comuna válida."}</span>
               </div>
             </div>
           </div>

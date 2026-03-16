@@ -95,7 +95,7 @@ export default function ServiceProsPage() {
         const catalogRes = await fetch("/api/marketplace/catalog");
         const catalogData = (await catalogRes.json()) as { categories?: Category[]; error?: string; detail?: string };
         if (!catalogRes.ok || !catalogData.categories) {
-          throw new Error(catalogData.detail || catalogData.error || "No se pudo cargar catalogo");
+          throw new Error(catalogData.detail || catalogData.error || "No se pudo cargar catálogo");
         }
 
         const match = catalogData.categories.find((item) => item.slug === categorySlug) ?? null;
@@ -120,7 +120,7 @@ export default function ServiceProsPage() {
         setAllPros(prosData.professionals);
 
         if (prosData.professionals.length === 0) {
-          setNotifyMessage("Aun no tenemos cobertura en esta direccion. Puedes activar aviso cuando haya profesionales.");
+          setNotifyMessage("Aún no tenemos cobertura en esta dirección. Puedes activar aviso cuando haya profesionales.");
         }
       } catch (e) {
         setError(e instanceof Error ? e.message : "Error inesperado");
@@ -188,7 +188,7 @@ export default function ServiceProsPage() {
             {category?.name ?? "Servicio"} en {comuna || city}
           </h2>
           <p>
-            {address || "Sin direccion"}
+            {address || "Sin dirección"}
             {comuna ? `, ${comuna}` : ""} · {city}
           </p>
           {requestedDate && requestedTime ? (
@@ -203,8 +203,8 @@ export default function ServiceProsPage() {
             Ordenar por
             <select value={sortBy} onChange={(event) => setSortBy(event.target.value as SortBy)}>
               <option value="best">Mejor valorado</option>
-              <option value="near">Mas cercano</option>
-              <option value="cheap">Mas economico</option>
+              <option value="near">Más cercano</option>
+              <option value="cheap">Más económico</option>
             </select>
           </label>
           <label>
@@ -222,7 +222,7 @@ export default function ServiceProsPage() {
             href={`/services/${categorySlug}?address=${encodeURIComponent(address)}&comuna=${encodeURIComponent(comuna)}&city=${encodeURIComponent(city)}&requestedDate=${encodeURIComponent(requestedDate)}&requestedTime=${encodeURIComponent(requestedTime)}`}
             className="cta ghost small"
           >
-            Cambiar direccion y horario
+            Cambiar dirección y horario
           </Link>
           <button type="button" className="cta ghost small" onClick={() => setNotifyMessage("Te avisaremos cuando haya cobertura en tu zona.")}>
             Avisarme cuando haya
@@ -234,7 +234,7 @@ export default function ServiceProsPage() {
       {error ? <p className="feedback error">{error}</p> : null}
       {notifyMessage ? <p className="feedback ok">{notifyMessage}</p> : null}
       {!loading && !error && professionals.length === 0 ? (
-        <p className="feedback error">No encontramos taskers en esa zona y horario. Prueba otro horario o direccion.</p>
+        <p className="feedback error">No encontramos taskers en esa zona y horario. Prueba otro horario o dirección.</p>
       ) : null}
 
       <section className="we-results-list">

@@ -348,7 +348,7 @@ export default function ProPage() {
     }
     if (!profileRes.ok) throw new Error(profileData.detail || profileData.error || "No se pudo cargar perfil");
     if (!slotsRes.ok || !slotsData.slots) throw new Error(slotsData.detail || slotsData.error || "No se pudo cargar disponibilidad");
-    if (!catalogRes.ok || !catalogData.categories) throw new Error(catalogData.detail || catalogData.error || "No se pudo cargar catalogo");
+    if (!catalogRes.ok || !catalogData.categories) throw new Error(catalogData.detail || catalogData.error || "No se pudo cargar catálogo");
 
     setBookings(bookingsData.bookings);
     const nextStatuses: Record<string, string> = {};

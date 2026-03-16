@@ -75,7 +75,7 @@ async function ensureOnboardingForUser(userId: string) {
 function denyLockedOnboarding(status: CleaningOnboardingStatus, identityRole: UserRole | null) {
   if (identityRole === UserRole.ADMIN) return null;
   if (status === CleaningOnboardingStatus.PENDIENTE_REVISION) {
-    return "Tu perfil esta pendiente de revision. Espera evaluacion del equipo o contacto de soporte.";
+    return "Tu perfil está pendiente de revisión. Espera evaluación del equipo o contacto de soporte.";
   }
   if (status === CleaningOnboardingStatus.APROBADO || status === CleaningOnboardingStatus.ACTIVO) {
     return "Tu perfil ya fue aprobado. Si necesitas cambios, contacta a soporte.";

@@ -36,8 +36,8 @@ type ActionType = "set_pending" | "request_correction" | "approve" | "activate";
 
 const statusLabels: Record<CleaningOnboardingItem["status"], string> = {
   BORRADOR: "borrador",
-  PENDIENTE_REVISION: "pendiente de revision",
-  REQUIERE_CORRECCION: "requiere correccion",
+  PENDIENTE_REVISION: "pendiente de revisión",
+  REQUIERE_CORRECCION: "requiere corrección",
   APROBADO: "aprobado",
   ACTIVO: "activo"
 };
@@ -79,7 +79,7 @@ export default function AdminCleaningOnboardingPage() {
   }, [statusFilter]);
 
   const runAction = async (onboardingId: string, action: ActionType) => {
-    const notes = action === "request_correction" ? window.prompt("Escribe observaciones para correccion:", "") ?? "" : "";
+    const notes = action === "request_correction" ? window.prompt("Escribe observaciones para corrección:", "") ?? "" : "";
     if (action === "request_correction" && !notes.trim()) {
       setError("Debes indicar la causa del rechazo o corrección.");
       setFeedback("");
@@ -155,7 +155,7 @@ export default function AdminCleaningOnboardingPage() {
             <option value="">Todos</option>
             <option value="BORRADOR">Borrador</option>
             <option value="PENDIENTE_REVISION">Pendiente</option>
-            <option value="REQUIERE_CORRECCION">Requiere correccion</option>
+            <option value="REQUIERE_CORRECCION">Requiere corrección</option>
             <option value="APROBADO">Aprobado</option>
             <option value="ACTIVO">Activo</option>
           </select>
@@ -175,14 +175,14 @@ export default function AdminCleaningOnboardingPage() {
             </div>
 
             <p>
-              <strong>Email:</strong> {row.user.email} · <strong>Telefono:</strong> {row.user.phone ?? "-"}
+              <strong>Email:</strong> {row.user.email} · <strong>Teléfono:</strong> {row.user.phone ?? "-"}
             </p>
             <p>
               <strong>Comuna base:</strong> {row.baseCommune ?? "-"} · <strong>Dirección:</strong> {row.referenceAddress ?? "-"}
             </p>
             <p>
               <strong>Tarifa:</strong> {row.hourlyRateClp ? `$${row.hourlyRateClp.toLocaleString("es-CL")}/h` : "-"} ·{" "}
-              <strong>Minimo:</strong> {row.minBookingHours ?? "-"} h · <strong>Paso:</strong> {row.currentStep}
+              <strong>Mínimo:</strong> {row.minBookingHours ?? "-"} h · <strong>Paso:</strong> {row.currentStep}
             </p>
             <p>
               <strong>Enviado:</strong> {formatDate(row.submittedAt)} · <strong>Revisado:</strong> {formatDate(row.reviewedAt)} ·{" "}

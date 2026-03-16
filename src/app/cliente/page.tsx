@@ -82,7 +82,7 @@ export default function ClientePage() {
   );
   const defaultAddress = useMemo(() => {
     const latestWithAddress = bookings.find((item) => item.addressLine1?.trim());
-    if (!latestWithAddress) return "Aun no tienes una direccion guardada.";
+    if (!latestWithAddress) return "Aún no tienes una dirección guardada.";
 
     return [latestWithAddress.addressLine1, latestWithAddress.comuna, latestWithAddress.city]
       .filter((value) => typeof value === "string" && value.trim().length > 0)
@@ -124,7 +124,7 @@ export default function ClientePage() {
         };
 
         if (!sessionRes.ok || !sessionData.session?.userId) {
-          throw new Error(sessionData.detail || sessionData.error || "No se pudo cargar sesion");
+          throw new Error(sessionData.detail || sessionData.error || "No se pudo cargar sesión");
         }
 
         const nextName = sessionData.session.fullName?.trim() || "Cliente";
@@ -256,7 +256,7 @@ export default function ClientePage() {
               </div>
               <div className="client-profile-copy">
                 <h3>{customerName}</h3>
-                <p>Direccion por defecto</p>
+                <p>Dirección por defecto</p>
                 <strong className="client-profile-address">{displayedAddress}</strong>
                 {editingAddress ? (
                   <div className="client-address-editor">

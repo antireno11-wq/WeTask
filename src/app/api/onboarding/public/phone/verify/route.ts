@@ -17,15 +17,15 @@ export async function POST(req: NextRequest) {
     const pending = decodePendingPhoneVerification(req.cookies.get(PUBLIC_ONBOARDING_PHONE_COOKIE)?.value);
 
     if (!pending) {
-      return NextResponse.json({ error: "Primero solicita un codigo de verificacion" }, { status: 400 });
+      return NextResponse.json({ error: "Primero solicita un código de verificación" }, { status: 400 });
     }
 
     if (pending.exp < Math.floor(Date.now() / 1000)) {
-      return NextResponse.json({ error: "El codigo expiro. Solicita uno nuevo" }, { status: 400 });
+      return NextResponse.json({ error: "El código expiró. Solicita uno nuevo" }, { status: 400 });
     }
 
     if (sha256(input.code) !== pending.codeHash) {
-      return NextResponse.json({ error: "Codigo incorrecto" }, { status: 400 });
+      return NextResponse.json({ error: "Código incorrecto" }, { status: 400 });
     }
 
     const response = NextResponse.json({ ok: true, phone: pending.phone }, { status: 200 });
@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
   } catch (error) {
     return NextResponse.json(
       {
-        error: "No se pudo validar telefono",
+        error: "No se pudo validar teléfono",
         detail: error instanceof Error ? error.message : "Error desconocido"
       },
       { status: 400 }

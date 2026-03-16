@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
         }
         const ok = await verifyPassword(body.password, user.passwordHash);
         if (!ok) {
-          return NextResponse.json({ error: "Credenciales invalidas" }, { status: 401 });
+          return NextResponse.json({ error: "Credenciales inválidas" }, { status: 401 });
         }
       }
 
@@ -77,7 +77,7 @@ export async function POST(req: NextRequest) {
   } catch (error) {
     return NextResponse.json(
       {
-        error: "No se pudo iniciar sesion",
+        error: "No se pudo iniciar sesión",
         detail: error instanceof Error ? error.message : "Error desconocido"
       },
       { status: 400 }

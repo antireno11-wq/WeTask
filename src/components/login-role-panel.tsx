@@ -98,9 +98,9 @@ export function LoginRolePanel({
         session?: { fullName: string; role: "CUSTOMER" | "PRO" | "ADMIN" };
       };
       if (!response.ok || !data.session) {
-        throw new Error(data.detail || data.error || "No se pudo iniciar sesion");
+        throw new Error(data.detail || data.error || "No se pudo iniciar sesión");
       }
-      setFeedback(`Sesion iniciada como ${data.session.fullName}`);
+      setFeedback(`Sesión iniciada como ${data.session.fullName}`);
       const profileRoute = data.session.role === "PRO" ? "/pro" : data.session.role === "ADMIN" ? "/admin" : "/cliente";
       const safeNext = nextPath && nextPath.startsWith("/") && !nextPath.startsWith("//") ? nextPath : null;
       router.push(safeNext ?? profileRoute);
@@ -130,7 +130,7 @@ export function LoginRolePanel({
         body: JSON.stringify({ email: email.trim() })
       });
       const data = (await response.json()) as { ok?: boolean; error?: string; detail?: string };
-      if (!response.ok || !data.ok) throw new Error(data.detail || data.error || "No se pudo iniciar recuperacion");
+      if (!response.ok || !data.ok) throw new Error(data.detail || data.error || "No se pudo iniciar recuperación");
       setFeedback("Revisa tu correo para recuperar contraseña.");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error inesperado");
@@ -196,7 +196,7 @@ export function LoginRolePanel({
         </label>
         <div className="login-primary-actions">
           <button className="cta small" type="submit" disabled={loading}>
-            {loading ? "Ingresando..." : "Iniciar sesion"}
+            {loading ? "Ingresando..." : "Iniciar sesión"}
           </button>
           {allowCreateAccount ? (
             <Link href={createAccountHref} className="cta ghost small">
@@ -218,7 +218,7 @@ export function LoginRolePanel({
       </div>
 
       <p className="login-legal-copy">
-        Al acceder, aceptas nuestras <Link href="/legal">Condiciones de uso</Link> y <Link href="/legal">Politica de privacidad</Link>.
+        Al acceder, aceptas nuestras <Link href="/legal">Condiciones de uso</Link> y <Link href="/legal">Política de privacidad</Link>.
       </p>
 
       {feedback ? <p className="feedback ok">{feedback}</p> : null}

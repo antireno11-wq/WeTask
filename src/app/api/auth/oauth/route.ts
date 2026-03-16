@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
     }
 
     if (!body.acceptTerms) {
-      return NextResponse.json({ error: "Debes aceptar terminos y condiciones" }, { status: 400 });
+      return NextResponse.json({ error: "Debes aceptar términos y condiciones" }, { status: 400 });
     }
 
     const user = await prisma.user.upsert({

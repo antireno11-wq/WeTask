@@ -913,10 +913,10 @@ export default function ProDetailPage() {
                   </article>
 
                   <article className="auth-flow-panel client-dashboard-section">
-                    <h2>Garantia WeTask</h2>
+                    <h2>Garantía WeTask</h2>
                     <p>Hasta confirmar que el servicio fue correcto, el pago permanece protegido en plataforma.</p>
                     <ul className="we-check-list">
-                      <li>Garantia de reembolso</li>
+                      <li>Garantía de reembolso</li>
                       <li>Atencion 365 dias</li>
                       <li>Pago protegido</li>
                     </ul>
@@ -935,7 +935,7 @@ export default function ProDetailPage() {
                   </article>
 
                   <article className="auth-flow-panel client-dashboard-section">
-                    <h2>Politica de cancelacion</h2>
+                    <h2>Política de cancelación</h2>
                     <div className="we-cancel-table">
                       <div>
                         <strong>Antelacion</strong>

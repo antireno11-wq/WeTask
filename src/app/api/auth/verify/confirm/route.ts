@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
     });
 
     if (!record) {
-      return NextResponse.json({ error: "Token invalido o expirado" }, { status: 400 });
+      return NextResponse.json({ error: "Token inválido o expirado" }, { status: 400 });
     }
 
     await prisma.$transaction([

@@ -50,11 +50,11 @@ export async function POST(req: NextRequest) {
     }
 
     if (!email || !/^\S+@\S+\.\S+$/.test(email)) {
-      return NextResponse.json({ error: "Email invalido" }, { status: 400 });
+      return NextResponse.json({ error: "Email inválido" }, { status: 400 });
     }
 
     if (!acceptTerms) {
-      return NextResponse.json({ error: "Debes aceptar terminos y condiciones" }, { status: 400 });
+      return NextResponse.json({ error: "Debes aceptar términos y condiciones" }, { status: 400 });
     }
 
     if (authProvider === "EMAIL" && (!password || password.length < 8)) {
@@ -71,7 +71,7 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: "Debes seleccionar tipo de documento" }, { status: 400 });
       }
       if (!documentNumber || documentNumber.length < 5) {
-        return NextResponse.json({ error: "Numero de documento invalido" }, { status: 400 });
+        return NextResponse.json({ error: "Número de documento inválido" }, { status: 400 });
       }
       if (!identityDocumentUrl || !isValidDocumentRef(identityDocumentUrl)) {
         return NextResponse.json({ error: "Debes adjuntar documento de identidad" }, { status: 400 });

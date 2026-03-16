@@ -87,7 +87,7 @@ export async function PATCH(req: NextRequest) {
 
     const user = await prisma.user.findUnique({ where: { id: targetProId }, select: { role: true } });
     if (!user || user.role !== UserRole.PRO) {
-      return NextResponse.json({ error: "Profesional no valido" }, { status: 400 });
+      return NextResponse.json({ error: "Profesional no válido" }, { status: 400 });
     }
 
     const profile = await prisma.professionalProfile.upsert({

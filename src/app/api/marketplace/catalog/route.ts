@@ -31,7 +31,7 @@ export async function GET() {
   } catch (error) {
     return NextResponse.json(
       {
-        error: "No se pudo cargar el catalogo",
+        error: "No se pudo cargar el catálogo",
         detail: error instanceof Error ? error.message : "Error desconocido"
       },
       { status: 400 }

@@ -77,7 +77,7 @@ export default function CatalogoPage() {
         <AuthHeroNav />
         <section className="auth-flow-shell auth-flow-shell-wide">
           <div className="auth-flow-copy">
-            <p className="auth-flow-kicker">Catalogo</p>
+            <p className="auth-flow-kicker">Catálogo</p>
             <h1>Explora todas las categorías y servicios desde un solo lugar.</h1>
             <p>Busca por nombre, compara opciones y entra directo a profesionales o reserva según el servicio que necesites.</p>
           </div>
@@ -105,7 +105,7 @@ export default function CatalogoPage() {
               <div className="panel-head">
                 <h2>{category.name}</h2>
                 <p>
-                  Minimo {category.minHours}h · Bloques de {category.slotMinutes} min
+                  Mínimo {category.minHours}h · Bloques de {category.slotMinutes} min
                 </p>
               </div>
               <div className="service-grid">
