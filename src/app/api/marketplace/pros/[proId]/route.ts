@@ -36,6 +36,23 @@ export async function GET(_: Request, context: { params: { proId: string } }) {
             }
           }
         },
+        taskerServices: {
+          where: { isActive: true },
+          select: {
+            category: {
+              select: {
+                slug: true,
+                name: true
+              }
+            },
+            service: {
+              select: {
+                id: true,
+                name: true
+              }
+            }
+          }
+        },
         slots: {
           where: { isAvailable: true, startsAt: { gte: new Date() } },
           orderBy: [{ startsAt: "asc" }],

@@ -31,6 +31,10 @@ type ProfessionalDetail = {
   coverageLongitude: number | null;
   serviceRadiusKm: number;
   hourlyRateFromClp: number | null;
+  taskerServices: Array<{
+    category: { slug: string; name: string } | null;
+    service: { id: string; name: string } | null;
+  }>;
   user: {
     id: string;
     fullName: string;
@@ -152,7 +156,7 @@ function toLabelList(value: unknown, fallback: string[]) {
 }
 
 function categoryLabel(value: string | null | undefined) {
-  switch (value) {
+  switch (normalizeCategorySlug(value)) {
     case "limpieza":
       return "Limpieza";
     case "mascotas":
@@ -179,7 +183,7 @@ function renderStars(value: number) {
 }
 
 function taskerRoleLabel(value: string | null | undefined) {
-  switch (value) {
+  switch (normalizeCategorySlug(value)) {
     case "limpieza":
       return "Tasker de limpieza";
     case "mascotas":
@@ -202,7 +206,7 @@ function taskerRoleLabel(value: string | null | undefined) {
 }
 
 function faqItemsForCategory(categorySlug: string | null | undefined): FaqItem[] {
-  switch (categorySlug) {
+  switch (normalizeCategorySlug(categorySlug)) {
     case "mascotas":
       return [
         {
@@ -346,6 +350,21 @@ function faqItemsForCategory(categorySlug: string | null | undefined): FaqItem[]
   }
 }
 
+function normalizeCategorySlug(value: string | null | undefined) {
+  switch (value) {
+    case "paseo-cuidado-mascotas":
+      return "mascotas";
+    case "babysitter-por-horas":
+      return "babysitter";
+    case "chef-a-domicilio":
+      return "chef";
+    case "maquillaje-a-domicilio":
+      return "maquillaje";
+    default:
+      return value ?? null;
+  }
+}
+
 function buildDemoProfessional(proId: string): ProfessionalDetail {
   const cleanId = proId.replace(/[-_]/g, " ").trim();
   const fallbackName = cleanId.length > 0 ? labelize(cleanId) : "Tasker WeTask";
@@ -363,6 +382,20 @@ function buildDemoProfessional(proId: string): ProfessionalDetail {
     coverageLongitude: -70.6693,
     serviceRadiusKm: 12,
     hourlyRateFromClp: 15000,
+    taskerServices: [
+      {
+        category: { slug: "limpieza", name: "Limpieza" },
+        service: { id: "demo-limpieza-hogar", name: "Limpieza hogar" }
+      },
+      {
+        category: { slug: "limpieza", name: "Limpieza" },
+        service: { id: "demo-limpieza-profunda", name: "Limpieza profunda" }
+      },
+      {
+        category: { slug: "planchado", name: "Planchado" },
+        service: { id: "demo-planchado", name: "Planchado por hora" }
+      }
+    ],
     user: {
       id: proId,
       fullName: fallbackName,
@@ -527,6 +560,17 @@ export default function ProDetailPage() {
   const professionalismScore = Math.min(5, Math.max(4, rating + 0.15));
   const punctualityScore = Math.min(5, Math.max(4, rating + 0.1));
   const onboarding = data?.user.cleaningOnboarding ?? null;
+  const serviceCategories = useMemo(() => {
+    const bySlug = new Map<string, { slug: string; name: string }>();
+    for (const item of data?.taskerServices ?? []) {
+      const category = item.category;
+      if (!category?.slug) continue;
+      if (!bySlug.has(category.slug)) {
+        bySlug.set(category.slug, category);
+      }
+    }
+    return Array.from(bySlug.values());
+  }, [data?.taskerServices]);
   const profilePhotoUrl = onboarding?.profilePhotoUrl?.trim() || "";
   const summaryDescription =
     onboarding?.shortDescription?.trim() ||
@@ -536,17 +580,19 @@ export default function ProDetailPage() {
   const experienceTypes = toLabelList(onboarding?.experienceTypes, demoExperienceTypes);
   const languages = toLabelList(onboarding?.languages, demoLanguages);
   const workModeLabel = onboarding?.workMode === "EQUIPO" ? "Trabajo en equipo" : "Trabajo individual";
-  const categoryName = categoryLabel(onboarding?.categorySlug);
-  const taskerRole = taskerRoleLabel(onboarding?.categorySlug);
-  const faqItems = faqItemsForCategory(onboarding?.categorySlug);
-  const focusLabel = onboarding?.categorySlug === "mascotas" ? "Tipos de mascota" : "Especialidades";
-  const serviceLabel = onboarding?.categorySlug === "limpieza" ? "Servicios de limpieza" : "Servicios que ofrece";
+  const primaryCategorySlug = serviceCategories[0]?.slug ?? onboarding?.categorySlug ?? null;
+  const normalizedPrimaryCategorySlug = normalizeCategorySlug(primaryCategorySlug);
+  const categoryName = serviceCategories[0]?.name ?? categoryLabel(primaryCategorySlug);
+  const taskerRole = taskerRoleLabel(primaryCategorySlug);
+  const faqItems = faqItemsForCategory(primaryCategorySlug);
+  const focusLabel = normalizedPrimaryCategorySlug === "mascotas" ? "Tipos de mascota" : "Especialidades";
+  const serviceLabel = normalizedPrimaryCategorySlug === "limpieza" ? "Servicios de limpieza" : "Servicios que ofrece";
   const goalText =
-    onboarding?.categorySlug === "mascotas"
+    normalizedPrimaryCategorySlug === "mascotas"
       ? "Cuidar mascotas con confianza, constancia y buena comunicación con cada familia."
-      : onboarding?.categorySlug === "chef"
+      : normalizedPrimaryCategorySlug === "chef"
         ? "Llenar agenda con servicios bien coordinados y experiencias de calidad en cada visita."
-        : onboarding?.categorySlug === "maquillaje"
+        : normalizedPrimaryCategorySlug === "maquillaje"
           ? "Construir una agenda estable con clientas recurrentes y servicios bien evaluados."
           : "Llenar agenda con clientes recurrentes y servicios de calidad.";
 
