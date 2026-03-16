@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import type { UserRole } from "@prisma/client";
 import { BrandLogo } from "@/components/brand-logo";
 
 type DemoUser = {
@@ -15,45 +16,58 @@ type DemoPayload = {
   customer?: DemoUser;
   customers?: DemoUser[];
   professionals?: DemoUser[];
+  admin?: DemoUser | null;
 };
 
-type LoginRole = "CUSTOMER" | "PRO";
+type LoginRole = "CUSTOMER" | "PRO" | "ADMIN";
 
 type LoginRolePanelProps = {
   role: LoginRole;
   showRoleSwitchLink?: boolean;
   showRoleTabs?: boolean;
   onRoleChange?: (role: LoginRole) => void;
+  allowCreateAccount?: boolean;
 };
 
 export function LoginRolePanel({
   role,
   showRoleSwitchLink = true,
   showRoleTabs = false,
-  onRoleChange
+  onRoleChange,
+  allowCreateAccount = true
 }: LoginRolePanelProps) {
   const router = useRouter();
   const isTasker = role === "PRO";
+  const isAdmin = role === "ADMIN";
 
   const [demoPayload, setDemoPayload] = useState<DemoPayload | null>(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [nextPath, setNextPath] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [feedback, setFeedback] = useState("");
   const [error, setError] = useState("");
   const demoPassword = "WetaskDemo2026!";
 
-  const roleTitle = "Acceder";
-  const roleDescription = "Ingresa tus datos o crea una cuenta.";
+  const roleTitle = isAdmin ? "Ingreso equipo WeTask" : "Acceder";
+  const roleDescription = isAdmin
+    ? "Accede con tu cuenta interna para revisar validaciones, usuarios y operación del backoffice."
+    : "Ingresa tus datos o crea una cuenta.";
 
   const createAccountHref = isTasker ? "/trabaja-con-nosotros" : "/registro?role=CUSTOMER";
   const createAccountLabel = isTasker ? "Crear cuenta tasker" : "Crear cuenta cliente";
 
   const demoUser = useMemo(() => {
     if (!demoPayload) return null;
+    if (isAdmin) return demoPayload.admin ?? null;
     if (isTasker) return demoPayload.professionals?.[0] ?? null;
     return demoPayload.customers?.[0] ?? demoPayload.customer ?? null;
-  }, [demoPayload, isTasker]);
+  }, [demoPayload, isAdmin, isTasker]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    setNextPath(new URLSearchParams(window.location.search).get("next"));
+  }, []);
 
   useEffect(() => {
     const load = async () => {
@@ -76,7 +90,7 @@ export function LoginRolePanel({
       const response = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
+        body: JSON.stringify({ ...payload, role: role as UserRole })
       });
       const data = (await response.json()) as {
         error?: string;
@@ -88,7 +102,8 @@ export function LoginRolePanel({
       }
       setFeedback(`Sesion iniciada como ${data.session.fullName}`);
       const profileRoute = data.session.role === "PRO" ? "/pro" : data.session.role === "ADMIN" ? "/admin" : "/cliente";
-      router.push(profileRoute);
+      const safeNext = nextPath && nextPath.startsWith("/") && !nextPath.startsWith("//") ? nextPath : null;
+      router.push(safeNext ?? profileRoute);
       router.refresh();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error inesperado");
@@ -183,9 +198,11 @@ export function LoginRolePanel({
           <button className="cta small" type="submit" disabled={loading}>
             {loading ? "Ingresando..." : "Iniciar sesion"}
           </button>
-          <Link href={createAccountHref} className="cta ghost small">
-            {createAccountLabel}
-          </Link>
+          {allowCreateAccount ? (
+            <Link href={createAccountHref} className="cta ghost small">
+              {createAccountLabel}
+            </Link>
+          ) : null}
         </div>
       </form>
 

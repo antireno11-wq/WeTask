@@ -66,7 +66,7 @@ function hasRequiredRole(role: UserRole | null, allowed: UserRole[]) {
   return allowed.includes(role);
 }
 
-function redirectToLogin(req: NextRequest, mode: "cliente" | "tasker" = "cliente") {
+function redirectToLogin(req: NextRequest, mode: "cliente" | "tasker" | "equipo" = "cliente") {
   const loginUrl = new URL(`/ingresar/${mode}`, req.url);
   loginUrl.searchParams.set("next", req.nextUrl.pathname);
   return NextResponse.redirect(loginUrl);
@@ -87,7 +87,7 @@ export async function middleware(req: NextRequest) {
   }
 
   if (pathname.startsWith("/admin")) {
-    if (!hasRequiredRole(session.role, ["ADMIN"])) return redirectToLogin(req, "cliente");
+    if (!hasRequiredRole(session.role, ["ADMIN"])) return redirectToLogin(req, "equipo");
   }
 
   if (pathname.startsWith("/reservar") || pathname.startsWith("/booking")) {

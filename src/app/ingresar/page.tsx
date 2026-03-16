@@ -24,7 +24,14 @@ export default function IngresarPage() {
             </p>
           </div>
 
-          <LoginRolePanel role={role} showRoleSwitchLink={false} showRoleTabs onRoleChange={setRole} />
+          <LoginRolePanel
+            role={role}
+            showRoleSwitchLink={false}
+            showRoleTabs
+            onRoleChange={(nextRole) => {
+              if (nextRole === "CUSTOMER" || nextRole === "PRO") setRole(nextRole);
+            }}
+          />
         </section>
       </div>
     </main>
