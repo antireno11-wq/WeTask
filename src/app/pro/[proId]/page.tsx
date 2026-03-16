@@ -338,246 +338,276 @@ export default function ProDetailPage() {
           : "Llenar agenda con clientes recurrentes y servicios de calidad.";
 
   return (
-    <main className="page market-shell">
-      <MarketNav />
-      {loading ? <p className="empty">Cargando perfil...</p> : null}
-      {notice ? <p className="feedback ok">{notice}</p> : null}
-      {error ? <p className="feedback error">{error}</p> : null}
+    <main className="auth-flow-screen auth-flow-screen-scroll market-shell-auth">
+      <div className="auth-flow-backdrop" aria-hidden />
 
-      {data ? (
-        <section className="we-pro-detail-layout">
-          <div className="we-pro-detail-main">
-            <article className="panel">
-              <h2>Perfil del tasker</h2>
-              <p>{summaryDescription}</p>
-              <div className="we-info-grid we-profile-quick-grid">
-                <div>
-                  <h3>Experiencia</h3>
-                  <p>{experienceYears} años</p>
-                </div>
-                <div>
-                  <h3>Modalidad</h3>
-                  <p>{workModeLabel}</p>
-                </div>
-                <div>
-                  <h3>Categoría</h3>
-                  <p>{categoryName}</p>
-                </div>
-                <div>
-                  <h3>{focusLabel}</h3>
-                  <p>{experienceTypes.join(", ")}</p>
-                </div>
-                <div>
-                  <h3>Idiomas</h3>
-                  <p>{languages.join(", ")}</p>
-                </div>
-              </div>
-              <div className="we-pro-tags">
-                {offeredServices.map((service) => (
-                  <span key={service} className="we-tag">
-                    {service}
-                  </span>
-                ))}
-              </div>
-            </article>
+      <div className="login-screen-content market-shell-auth-content">
+        <MarketNav />
 
-            <article className="panel">
-              <h2>Sobre mi</h2>
-              <p>{expandedAbout ? aboutText : aboutPreview}</p>
-              {aboutText.length > 340 ? (
-                <button type="button" className="we-text-link" onClick={() => setExpandedAbout((prev) => !prev)}>
-                  {expandedAbout ? "Ver menos" : "Ver mas"}
-                </button>
-              ) : null}
-            </article>
+        {data ? (
+          <>
+            <section className="auth-flow-shell auth-flow-shell-wide client-dashboard-hero">
+              <div className="auth-flow-copy client-dashboard-copy">
+                <p className="auth-flow-kicker">Tasker verificado</p>
+                <h1>{data.user.fullName}</h1>
+                <p>{summaryDescription}</p>
 
-            <article className="panel">
-              <div className="we-section-head">
-                <h2>Galeria</h2>
-                <button type="button" className="we-text-link">
-                  Ver galeria
-                </button>
-              </div>
-              <div className="we-gallery-strip">
-                {galleryImages.map((image, index) => (
-                  <figure key={image} className="we-gallery-item">
-                    <span className="we-gallery-pic" style={{ backgroundImage: `url(${image})` }} aria-hidden />
-                    <figcaption>gallery {index + 1}</figcaption>
-                  </figure>
-                ))}
-              </div>
-            </article>
-
-            <article className="panel">
-              <h2>Informacion de interes</h2>
-              <div className="we-info-grid">
-                <div>
-                  <h3>¿Cuánta experiencia tiene?</h3>
-                  <p>{experienceYears} años trabajando en servicios a domicilio.</p>
+                <div className="auth-flow-copy-list client-dashboard-summary">
+                  <div className="auth-flow-meta-card">
+                    <strong>{categoryName}</strong>
+                    <span>{offeredServices.join(", ")}</span>
+                  </div>
+                  <div className="auth-flow-meta-card">
+                    <strong>Experiencia</strong>
+                    <span>{experienceYears} años de experiencia en servicios a domicilio.</span>
+                  </div>
+                  <div className="auth-flow-meta-card">
+                    <strong>Disponibilidad</strong>
+                    <span>{dayGroups.length} día(s) con agenda visible para reserva.</span>
+                  </div>
                 </div>
-                <div>
-                  <h3>{serviceLabel}</h3>
-                  <p>{offeredServices.join(", ")}</p>
-                </div>
-                <div>
-                  <h3>{focusLabel}</h3>
-                  <p>{experienceTypes.join(", ")}</p>
-                </div>
-                <div>
-                  <h3>¿Qué busca en WeTask?</h3>
-                  <p>{goalText}</p>
-                </div>
-              </div>
-            </article>
-
-            <article id="availability" className="panel">
-              <div className="we-section-head">
-                <h2>Agenda y disponibilidad</h2>
-                <label>
-                  Desde fecha
-                  <input type="date" value={date} onChange={(event) => setDate(event.target.value)} />
-                </label>
               </div>
 
-              <div className="day-tabs">
-                {dayGroups.map(([day]) => (
-                  <button
-                    key={day}
-                    type="button"
-                    className={`day-tab ${selectedDay === day ? "active" : ""}`}
-                    onClick={() => setSelectedDay(day)}
-                  >
-                    {new Date(`${day}T00:00:00`).toLocaleDateString("es-CL", {
-                      weekday: "short",
-                      day: "2-digit",
-                      month: "2-digit"
-                    })}
-                  </button>
-                ))}
-              </div>
-
-              <div className="calendar-slot-grid">
-                {selectedSlots.length === 0 ? (
-                  <p className="empty">No hay horarios disponibles en ese dia.</p>
-                ) : (
-                  selectedSlots.map((slot) => (
-                    <Link
-                      key={slot.id}
-                      className="slot-btn"
-                      href={`/booking/new?proId=${data.userId}${slot.service ? `&serviceId=${slot.service.id}` : ""}&startsAt=${encodeURIComponent(slot.startsAt)}`}
-                    >
-                      {new Date(slot.startsAt).toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" })} -{" "}
-                      {new Date(slot.endsAt).toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" })}
-                    </Link>
-                  ))
-                )}
-              </div>
-            </article>
-
-            <article className="panel">
-              <h2>Valoracion de los clientes</h2>
-              <p className="we-score-big">{rating.toFixed(1)} · Excepcional ({data.ratingsCount} valoraciones)</p>
-              <div className="we-metrics-grid">
-                <p>Servicio: {rating.toFixed(1)}</p>
-                <p>Calidad / Precio: {qualityScore.toFixed(1)}</p>
-                <p>Amabilidad: {friendlinessScore.toFixed(1)}</p>
-                <p>Profesionalidad: {professionalismScore.toFixed(1)}</p>
-                <p>Puntualidad: {punctualityScore.toFixed(1)}</p>
-              </div>
-              <div className="we-comments-list">
-                {sampleComments.map((comment) => (
-                  <article key={comment.name + comment.time} className="we-comment-item">
+              <section className="auth-flow-panel auth-flow-panel-wide client-dashboard-profile-panel we-pro-sticky-card">
+                <div className="we-sticky-head">
+                  <div className="we-pro-avatar large" aria-hidden>
+                    {profilePhotoUrl ? <img src={profilePhotoUrl} alt="" className="we-pro-avatar-image" /> : initials(data.user.fullName)}
+                  </div>
+                  <div>
+                    <h3>{data.user.fullName}</h3>
                     <p>
-                      <strong>{comment.name}</strong> · {comment.time}
+                      <span className="we-star">★</span> {rating.toFixed(1)} ({data.ratingsCount} valoraciones)
                     </p>
-                    <p>{comment.text}</p>
+                  </div>
+                </div>
+
+                <p className="we-sticky-price">{data.hourlyRateFromClp ? clp(data.hourlyRateFromClp) : "Por definir"}/h</p>
+                <p className="we-sticky-meta">{data.coverageCity ?? "Santiago"} · {workModeLabel}</p>
+
+                <div className="cta-row">
+                  <a href="#availability" className="cta small">
+                    Ver agenda
+                  </a>
+                  <Link className="cta small" href={`/booking/new?proId=${data.userId}`}>
+                    Reservar ahora
+                  </Link>
+                </div>
+
+                <p className="minimal-note">Para protegerte, usa siempre WeTask para contratar y comunicarte.</p>
+              </section>
+            </section>
+
+            <div className="page client-dashboard-sections">
+              {loading ? <p className="empty">Cargando perfil...</p> : null}
+              {notice ? <p className="feedback ok">{notice}</p> : null}
+              {error ? <p className="feedback error">{error}</p> : null}
+
+              <section className="we-pro-detail-layout">
+                <div className="we-pro-detail-main">
+                  <article className="auth-flow-panel client-dashboard-section">
+                    <h2>Perfil del tasker</h2>
+                    <p>{summaryDescription}</p>
+                    <div className="we-info-grid we-profile-quick-grid">
+                      <div>
+                        <h3>Experiencia</h3>
+                        <p>{experienceYears} años</p>
+                      </div>
+                      <div>
+                        <h3>Modalidad</h3>
+                        <p>{workModeLabel}</p>
+                      </div>
+                      <div>
+                        <h3>Categoría</h3>
+                        <p>{categoryName}</p>
+                      </div>
+                      <div>
+                        <h3>{focusLabel}</h3>
+                        <p>{experienceTypes.join(", ")}</p>
+                      </div>
+                      <div>
+                        <h3>Idiomas</h3>
+                        <p>{languages.join(", ")}</p>
+                      </div>
+                    </div>
+                    <div className="we-pro-tags">
+                      {offeredServices.map((service) => (
+                        <span key={service} className="we-tag">
+                          {service}
+                        </span>
+                      ))}
+                    </div>
                   </article>
-                ))}
-              </div>
-            </article>
 
-            <article className="panel">
-              <h2>Garantia WeTask</h2>
-              <p>Hasta confirmar que el servicio fue correcto, el pago permanece protegido en plataforma.</p>
-              <ul className="we-check-list">
-                <li>Garantia de reembolso</li>
-                <li>Atencion 365 dias</li>
-                <li>Pago protegido</li>
-              </ul>
-            </article>
+                  <article className="auth-flow-panel client-dashboard-section">
+                    <h2>Sobre mi</h2>
+                    <p>{expandedAbout ? aboutText : aboutPreview}</p>
+                    {aboutText.length > 340 ? (
+                      <button type="button" className="we-text-link" onClick={() => setExpandedAbout((prev) => !prev)}>
+                        {expandedAbout ? "Ver menos" : "Ver mas"}
+                      </button>
+                    ) : null}
+                  </article>
 
-            <article className="panel">
-              <h2>Preguntas frecuentes</h2>
-              <div className="we-faq-list">
-                {faqItems.map((item) => (
-                  <details key={item}>
-                    <summary>{item}</summary>
-                    <p>Este profesional responde por chat y confirma los detalles antes del servicio.</p>
-                  </details>
-                ))}
-              </div>
-            </article>
+                  <article className="auth-flow-panel client-dashboard-section">
+                    <div className="we-section-head">
+                      <h2>Galeria</h2>
+                      <button type="button" className="we-text-link">
+                        Ver galeria
+                      </button>
+                    </div>
+                    <div className="we-gallery-strip">
+                      {galleryImages.map((image, index) => (
+                        <figure key={image} className="we-gallery-item">
+                          <span className="we-gallery-pic" style={{ backgroundImage: `url(${image})` }} aria-hidden />
+                          <figcaption>gallery {index + 1}</figcaption>
+                        </figure>
+                      ))}
+                    </div>
+                  </article>
 
-            <article className="panel">
-              <h2>Politica de cancelacion</h2>
-              <div className="we-cancel-table">
-                <div>
-                  <strong>Antelacion</strong>
-                  <span>Hasta 24h</span>
-                  <span>24h a 4h</span>
-                  <span>4h a 45min</span>
-                  <span>45min a inicio</span>
+                  <article className="auth-flow-panel client-dashboard-section">
+                    <h2>Informacion de interes</h2>
+                    <div className="we-info-grid">
+                      <div>
+                        <h3>¿Cuánta experiencia tiene?</h3>
+                        <p>{experienceYears} años trabajando en servicios a domicilio.</p>
+                      </div>
+                      <div>
+                        <h3>{serviceLabel}</h3>
+                        <p>{offeredServices.join(", ")}</p>
+                      </div>
+                      <div>
+                        <h3>{focusLabel}</h3>
+                        <p>{experienceTypes.join(", ")}</p>
+                      </div>
+                      <div>
+                        <h3>¿Qué busca en WeTask?</h3>
+                        <p>{goalText}</p>
+                      </div>
+                    </div>
+                  </article>
+
+                  <article id="availability" className="auth-flow-panel client-dashboard-section">
+                    <div className="we-section-head">
+                      <h2>Agenda y disponibilidad</h2>
+                      <label>
+                        Desde fecha
+                        <input type="date" value={date} onChange={(event) => setDate(event.target.value)} />
+                      </label>
+                    </div>
+
+                    <div className="day-tabs">
+                      {dayGroups.map(([day]) => (
+                        <button
+                          key={day}
+                          type="button"
+                          className={`day-tab ${selectedDay === day ? "active" : ""}`}
+                          onClick={() => setSelectedDay(day)}
+                        >
+                          {new Date(`${day}T00:00:00`).toLocaleDateString("es-CL", {
+                            weekday: "short",
+                            day: "2-digit",
+                            month: "2-digit"
+                          })}
+                        </button>
+                      ))}
+                    </div>
+
+                    <div className="calendar-slot-grid">
+                      {selectedSlots.length === 0 ? (
+                        <p className="empty">No hay horarios disponibles en ese dia.</p>
+                      ) : (
+                        selectedSlots.map((slot) => (
+                          <Link
+                            key={slot.id}
+                            className="slot-btn"
+                            href={`/booking/new?proId=${data.userId}${slot.service ? `&serviceId=${slot.service.id}` : ""}&startsAt=${encodeURIComponent(slot.startsAt)}`}
+                          >
+                            {new Date(slot.startsAt).toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" })} -{" "}
+                            {new Date(slot.endsAt).toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" })}
+                          </Link>
+                        ))
+                      )}
+                    </div>
+                  </article>
+
+                  <article className="auth-flow-panel client-dashboard-section">
+                    <h2>Valoracion de los clientes</h2>
+                    <p className="we-score-big">{rating.toFixed(1)} · Excepcional ({data.ratingsCount} valoraciones)</p>
+                    <div className="we-metrics-grid">
+                      <p>Servicio: {rating.toFixed(1)}</p>
+                      <p>Calidad / Precio: {qualityScore.toFixed(1)}</p>
+                      <p>Amabilidad: {friendlinessScore.toFixed(1)}</p>
+                      <p>Profesionalidad: {professionalismScore.toFixed(1)}</p>
+                      <p>Puntualidad: {punctualityScore.toFixed(1)}</p>
+                    </div>
+                    <div className="we-comments-list">
+                      {sampleComments.map((comment) => (
+                        <article key={comment.name + comment.time} className="we-comment-item">
+                          <p>
+                            <strong>{comment.name}</strong> · {comment.time}
+                          </p>
+                          <p>{comment.text}</p>
+                        </article>
+                      ))}
+                    </div>
+                  </article>
+
+                  <article className="auth-flow-panel client-dashboard-section">
+                    <h2>Garantia WeTask</h2>
+                    <p>Hasta confirmar que el servicio fue correcto, el pago permanece protegido en plataforma.</p>
+                    <ul className="we-check-list">
+                      <li>Garantia de reembolso</li>
+                      <li>Atencion 365 dias</li>
+                      <li>Pago protegido</li>
+                    </ul>
+                  </article>
+
+                  <article className="auth-flow-panel client-dashboard-section">
+                    <h2>Preguntas frecuentes</h2>
+                    <div className="we-faq-list">
+                      {faqItems.map((item) => (
+                        <details key={item}>
+                          <summary>{item}</summary>
+                          <p>Este profesional responde por chat y confirma los detalles antes del servicio.</p>
+                        </details>
+                      ))}
+                    </div>
+                  </article>
+
+                  <article className="auth-flow-panel client-dashboard-section">
+                    <h2>Politica de cancelacion</h2>
+                    <div className="we-cancel-table">
+                      <div>
+                        <strong>Antelacion</strong>
+                        <span>Hasta 24h</span>
+                        <span>24h a 4h</span>
+                        <span>4h a 45min</span>
+                        <span>45min a inicio</span>
+                      </div>
+                      <div>
+                        <strong>% de reembolso</strong>
+                        <span>Cancelacion gratuita</span>
+                        <span>75% del importe</span>
+                        <span>50% del importe</span>
+                        <span>35% del importe</span>
+                      </div>
+                    </div>
+                  </article>
+
+                  <article className="auth-flow-panel client-dashboard-section">
+                    <h2>¿Podemos ayudarte?</h2>
+                    <p>Si tienes dudas del servicio, horario o materiales, escríbenos antes de reservar.</p>
+                    <button type="button" className="cta small">
+                      Enviar mensaje
+                    </button>
+                  </article>
                 </div>
-                <div>
-                  <strong>% de reembolso</strong>
-                  <span>Cancelacion gratuita</span>
-                  <span>75% del importe</span>
-                  <span>50% del importe</span>
-                  <span>35% del importe</span>
-                </div>
-              </div>
-            </article>
-
-            <article className="panel">
-              <h2>¿Podemos ayudarte?</h2>
-              <p>Si tienes dudas del servicio, horario o materiales, escríbenos antes de reservar.</p>
-              <button type="button" className="cta small">
-                Enviar mensaje
-              </button>
-            </article>
-          </div>
-
-          <aside className="panel we-pro-sticky-card">
-            <div className="we-sticky-head">
-              <div className="we-pro-avatar large" aria-hidden>
-                {profilePhotoUrl ? <img src={profilePhotoUrl} alt="" className="we-pro-avatar-image" /> : initials(data.user.fullName)}
-              </div>
-              <div>
-                <h3>{data.user.fullName}</h3>
-                <p>
-                  <span className="we-star">★</span> {rating.toFixed(1)} ({data.ratingsCount} valoraciones)
-                </p>
-              </div>
+              </section>
             </div>
-
-            <p className="we-sticky-price">{data.hourlyRateFromClp ? clp(data.hourlyRateFromClp) : "Por definir"}/h</p>
-            <p className="we-sticky-meta">
-              {data.coverageCity ?? "Santiago"} · Radio {data.serviceRadiusKm} km
-            </p>
-
-            <div className="cta-row">
-              <a href="#availability" className="cta small">
-                Ver agenda
-              </a>
-              <Link className="cta small" href={`/booking/new?proId=${data.userId}`}>
-                Reservar ahora
-              </Link>
-            </div>
-
-            <p className="minimal-note">Para protegerte, usa siempre WeTask para contratar y comunicarte.</p>
-          </aside>
-        </section>
-      ) : null}
+          </>
+        ) : null}
+      </div>
     </main>
   );
 }
