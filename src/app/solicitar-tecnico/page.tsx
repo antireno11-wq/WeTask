@@ -289,12 +289,6 @@ export default function SolicitarTecnicoPage() {
     }
   };
 
-  const prosHref = selectedCategory
-    ? `/services/${selectedCategory.slug}/pros?city=${encodeURIComponent(city)}&address=${encodeURIComponent(address)}&comuna=${encodeURIComponent(
-        detectedCommune ?? ""
-      )}&requestedDate=${encodeURIComponent(serviceDate)}`
-    : "/services";
-
   const saveCoverageEmail = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setCoverageEmailStatus("");
@@ -452,8 +446,11 @@ export default function SolicitarTecnicoPage() {
             {loadingSamples && !hasSearched ? <p className="empty">Cargando taskers de ejemplo...</p> : null}
             {loadingSearch ? <p className="empty">Buscando taskers en tu zona...</p> : null}
 
-            <div className="we-results-list">
-              {visibleTaskers.map((tasker) => (
+              <div className="we-results-list">
+              {visibleTaskers.map((tasker) => {
+                const availabilityHref = `/profesionales/${tasker.userId}?date=${encodeURIComponent(serviceDate)}#availability`;
+
+                return (
                 <article className="we-pro-card" key={`${tasker.id}-${tasker.userId}`}>
                   <div className="we-pro-main">
                     <div className="we-pro-avatar" aria-hidden>
@@ -479,11 +476,8 @@ export default function SolicitarTecnicoPage() {
                       <p className="we-pro-snippet">Perfil apto para {selectedCategoryName.toLowerCase()} con agenda activa y valoración alta.</p>
 
                       <div className="cta-row we-pro-actions">
-                        <Link href={prosHref} className="cta small">
+                        <Link href={availabilityHref} className="cta small">
                           Ver disponibilidad
-                        </Link>
-                        <Link href="/services" className="cta ghost small">
-                          Más servicios
                         </Link>
                       </div>
                     </div>
@@ -495,7 +489,8 @@ export default function SolicitarTecnicoPage() {
                     <small>{tasker.distanceKm != null ? `${tasker.distanceKm.toFixed(1)} km` : "Distancia referencial"}</small>
                   </aside>
                 </article>
-              ))}
+                );
+              })}
             </div>
 
             {!loadingCatalog && visibleTaskers.length === 0 ? (
