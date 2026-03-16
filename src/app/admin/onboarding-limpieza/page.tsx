@@ -116,9 +116,6 @@ export default function AdminCleaningOnboardingPage() {
         </div>
 
         <div className="cta-row">
-          <Link href="/admin/technicians" className="cta ghost small">
-            Ver tecnicos legacy
-          </Link>
           <label>
             Estado
             <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
