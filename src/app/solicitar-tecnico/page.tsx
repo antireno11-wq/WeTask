@@ -353,7 +353,12 @@ export default function SolicitarTecnicoPage() {
             </div>
 
             <form className="service-search-form" onSubmit={searchTaskersByAddress}>
-              <div className="service-search-row">
+              <div
+                className="service-search-row"
+                style={{
+                  gridTemplateColumns: "minmax(220px, 0.58fr) minmax(190px, 0.42fr)"
+                }}
+              >
                 <label>
                   Tipo de servicio
                   <select
@@ -383,13 +388,21 @@ export default function SolicitarTecnicoPage() {
                   Fecha del servicio
                   <input type="date" value={serviceDate} min={todayYmd()} onChange={(event) => setServiceDate(event.target.value)} required />
                 </label>
+              </div>
 
+              <div
+                className="service-search-row"
+                style={{
+                  gridTemplateColumns: "minmax(0, 1fr) auto"
+                }}
+              >
                 <label>
                   Dirección
                   <input
                     value={address}
                     onChange={(event) => setAddress(event.target.value)}
                     placeholder="Ej: Av. Providencia 1234, Providencia"
+                    style={{ width: "100%", minHeight: "52px" }}
                     required
                   />
                 </label>
