@@ -181,6 +181,29 @@ function renderStars(value: number) {
   return Array.from({ length: 5 }, (_, index) => (index < Math.round(value) ? "★" : "☆")).join("");
 }
 
+function taskerRoleLabel(value: string | null | undefined) {
+  switch (value) {
+    case "limpieza":
+      return "Tasker de limpieza";
+    case "mascotas":
+      return "Tasker de paseo y cuidado de mascotas";
+    case "babysitter":
+      return "Tasker de babysitting";
+    case "profesor-particular":
+      return "Tasker de clases particulares";
+    case "personal-trainer":
+      return "Tasker de personal training";
+    case "chef":
+      return "Tasker chef a domicilio";
+    case "maquillaje":
+      return "Tasker de maquillaje";
+    case "planchado":
+      return "Tasker de planchado";
+    default:
+      return "Tasker de servicios a domicilio";
+  }
+}
+
 function buildDemoProfessional(proId: string): ProfessionalDetail {
   const cleanId = proId.replace(/[-_]/g, " ").trim();
   const fallbackName = cleanId.length > 0 ? labelize(cleanId) : "Tasker WeTask";
@@ -372,6 +395,7 @@ export default function ProDetailPage() {
   const languages = toLabelList(onboarding?.languages, demoLanguages);
   const workModeLabel = onboarding?.workMode === "EQUIPO" ? "Trabajo en equipo" : "Trabajo individual";
   const categoryName = categoryLabel(onboarding?.categorySlug);
+  const taskerRole = taskerRoleLabel(onboarding?.categorySlug);
   const focusLabel = onboarding?.categorySlug === "mascotas" ? "Tipos de mascota" : "Especialidades";
   const serviceLabel = onboarding?.categorySlug === "limpieza" ? "Servicios de limpieza" : "Servicios que ofrece";
   const goalText =
@@ -396,6 +420,17 @@ export default function ProDetailPage() {
               <div className="auth-flow-copy client-dashboard-copy">
                 <p className="auth-flow-kicker">Tasker verificado</p>
                 <h1>{data.user.fullName}</h1>
+                <p
+                  style={{
+                    margin: "14px 0 0",
+                    fontSize: "1.04rem",
+                    fontWeight: 800,
+                    color: "#ffddb9",
+                    letterSpacing: "0.01em"
+                  }}
+                >
+                  {taskerRole}
+                </p>
                 <p>{summaryDescription}</p>
 
                 <div className="auth-flow-copy-list client-dashboard-summary">
@@ -421,6 +456,15 @@ export default function ProDetailPage() {
                   </div>
                   <div>
                     <h3>{data.user.fullName}</h3>
+                    <p
+                      style={{
+                        margin: "4px 0 0",
+                        color: "#264d7a",
+                        fontWeight: 800
+                      }}
+                    >
+                      {taskerRole}
+                    </p>
                     <p>
                       <span className="we-star">★</span> {rating.toFixed(1)} ({data.ratingsCount} valoraciones)
                     </p>
