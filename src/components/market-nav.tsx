@@ -81,6 +81,7 @@ export function MarketNav() {
   };
 
   const role = session?.role ?? null;
+  const roleLabel = role === "PRO" ? "Tasker" : role === "ADMIN" ? "Admin" : role === "CUSTOMER" ? "Cliente" : role;
   const accountHref = role === "PRO" ? "/pro" : "/cliente";
   const isAdminArea = pathname.startsWith("/admin");
   const links = isAdminArea
@@ -104,7 +105,7 @@ export function MarketNav() {
           ))}
         </nav>
         <div className="auth-nav">
-          {session?.role ? <span className="auth-badge">{session.fullName ?? "Usuario"} · {session.role}</span> : null}
+          {session?.role ? <span className="auth-badge">{session.fullName ?? "Usuario"} · {roleLabel}</span> : null}
           {session?.role ? (
             <>
               <Link href={accountHref} className="nav-link auth-btn">
