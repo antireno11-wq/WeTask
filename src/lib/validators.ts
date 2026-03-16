@@ -410,6 +410,7 @@ export const taskerOnboardingStep7Schema = z.object({
 });
 
 export const taskerOnboardingStep8Schema = z.object({
+  availabilityMode: z.enum(["FIJA", "VARIABLE"]).default("FIJA"),
   availabilityBlocks: z.array(cleaningAvailabilityBlockSchema).min(1).max(21)
 });
 

@@ -256,7 +256,7 @@ export async function PATCH(req: NextRequest) {
       });
 
       data = {
-        availabilityMode: "FIJA",
+        availabilityMode: parsed.availabilityMode,
         availabilityBlocks: uniqueBlocks,
         maxServicesPerDay: 3,
         acceptsUrgentBookings: false,

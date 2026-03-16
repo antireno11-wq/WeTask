@@ -36,6 +36,7 @@ type OnboardingPayload = {
   bringsOwnProducts: boolean | null;
   bringsOwnTools: boolean | null;
   serviceCommunes: unknown;
+  availabilityMode: "FIJA" | "VARIABLE" | null;
   availabilityBlocks: unknown;
   hourlyRateClp: number | null;
   minBookingHours: number | null;
@@ -127,6 +128,7 @@ type DraftState = {
   ironingType: "casa_cliente" | "retiro_entrega";
   ironingDelicate: boolean | null;
   ironingPricing: "por_hora" | "por_prenda";
+  availabilityMode: "FIJA" | "VARIABLE";
   availabilityBlocks: AvailabilityBlock[];
   hourlyRate: string;
   minimumHours: string;
@@ -396,6 +398,7 @@ function createInitialDraft(): DraftState {
     ironingType: "casa_cliente",
     ironingDelicate: null,
     ironingPricing: "por_hora",
+    availabilityMode: "FIJA",
     availabilityBlocks: [{ day: "lunes", start: "09:00", end: "13:00" }],
     hourlyRate: "15000",
     minimumHours: "2",
@@ -756,6 +759,7 @@ function CleaningOnboardingPageContent() {
         : current.category) as CategorySlug,
       yearsExperience: nextOnboarding.yearsExperience ? String(Math.min(nextOnboarding.yearsExperience, 10)) : current.yearsExperience,
       workMode: nextOnboarding.workMode ?? current.workMode,
+      availabilityMode: nextOnboarding.availabilityMode ?? current.availabilityMode,
       availabilityBlocks:
         toAvailabilityBlocks(nextOnboarding.availabilityBlocks).length > 0
           ? toAvailabilityBlocks(nextOnboarding.availabilityBlocks)
@@ -1172,7 +1176,7 @@ function CleaningOnboardingPageContent() {
     setSaving(true);
     setError("");
     try {
-      await persistServerStep(8, { availabilityBlocks: validBlocks });
+      await persistServerStep(8, { availabilityMode: draft.availabilityMode, availabilityBlocks: validBlocks });
       setActiveStep(9);
     } catch (eventualError) {
       setError(eventualError instanceof Error ? eventualError.message : "Error inesperado");
@@ -1997,8 +2001,12 @@ function CleaningOnboardingPageContent() {
                       </article>
                       <article className="availability-stat-card tone-mint">
                         <span>Modo</span>
-                        <strong>Semanal</strong>
-                        <p>estos horarios se repiten cada semana</p>
+                        <strong>{draft.availabilityMode === "VARIABLE" ? "Mensual" : "Semanal"}</strong>
+                        <p>
+                          {draft.availabilityMode === "VARIABLE"
+                            ? "puedes ajustar estos horarios mes a mes"
+                            : "estos horarios se repiten cada semana"}
+                        </p>
                       </article>
                     </div>
 
@@ -2008,11 +2016,34 @@ function CleaningOnboardingPageContent() {
                           <p className="availability-eyebrow">Nuevo bloque</p>
                           <h3>{selectedDayConfig?.label ?? "Selecciona un día"}</h3>
                         </div>
-                        <span className="availability-selected-pill">Disponibilidad recurrente</span>
+                        <span className="availability-selected-pill">
+                          {draft.availabilityMode === "VARIABLE" ? "Disponibilidad mensual" : "Disponibilidad recurrente"}
+                        </span>
+                      </div>
+
+                      <div className="availability-mode-tabs" role="tablist" aria-label="Modo de disponibilidad">
+                        <button
+                          type="button"
+                          className={`availability-mode-tab ${draft.availabilityMode === "FIJA" ? "active" : ""}`}
+                          aria-pressed={draft.availabilityMode === "FIJA"}
+                          onClick={() => updateDraft("availabilityMode", "FIJA")}
+                        >
+                          Semanal
+                        </button>
+                        <button
+                          type="button"
+                          className={`availability-mode-tab ${draft.availabilityMode === "VARIABLE" ? "active" : ""}`}
+                          aria-pressed={draft.availabilityMode === "VARIABLE"}
+                          onClick={() => updateDraft("availabilityMode", "VARIABLE")}
+                        >
+                          Mensual
+                        </button>
                       </div>
 
                       <p className="input-hint">
-                        Elige un día del planner y agrega uno o varios bloques para mostrar cuándo quieres recibir reservas.
+                        {draft.availabilityMode === "VARIABLE"
+                          ? "Elige un día del planner y arma una pauta flexible que puedas ajustar cada mes según tu agenda."
+                          : "Elige un día del planner y agrega uno o varios bloques para mostrar cuándo quieres recibir reservas."}
                       </p>
 
                       <div className="cta-row availability-form-actions">
@@ -2026,7 +2057,9 @@ function CleaningOnboardingPageContent() {
                   <div className="availability-board-card onboarding-board-card">
                     <div className="availability-board-head">
                       <div>
-                        <p className="availability-eyebrow">Planner semanal</p>
+                        <p className="availability-eyebrow">
+                          {draft.availabilityMode === "VARIABLE" ? "Planner mensual" : "Planner semanal"}
+                        </p>
                         <h3>Selecciona un día y edita sus horarios</h3>
                       </div>
                       <span className="availability-board-chip">{totalAvailabilityBlocks} bloque(s) en total</span>

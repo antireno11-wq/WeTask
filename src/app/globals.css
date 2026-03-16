@@ -5592,11 +5592,37 @@ textarea {
 }
 
 .onboarding-availability-shell .pro-availability-overview {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
 }
 
 .onboarding-availability-shell .availability-composer-card {
   grid-template-columns: minmax(0, 1fr);
+}
+
+.availability-mode-tabs {
+  display: inline-grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  padding: 6px;
+  border-radius: 999px;
+  background: #edf4fb;
+}
+
+.availability-mode-tab {
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: #4b6783;
+  padding: 10px 14px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: background 0.16s ease, color 0.16s ease, box-shadow 0.16s ease;
+}
+
+.availability-mode-tab.active {
+  background: linear-gradient(135deg, #1656b0 0%, #18a6d5 100%);
+  color: #ffffff;
+  box-shadow: 0 10px 22px rgba(24, 96, 181, 0.2);
 }
 
 .onboarding-availability-shell .availability-task-panel {
