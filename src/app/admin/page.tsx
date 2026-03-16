@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { CleaningOnboardingStatus, PayoutStatus, TicketStatus, UserRole } from "@prisma/client";
-import { MarketNav } from "@/components/market-nav";
+import { AdminHeroShell } from "@/components/admin-hero-shell";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -48,137 +48,161 @@ export default async function AdminPage() {
     ]);
 
   return (
-    <main className="page market-shell">
-      <MarketNav />
-      <section className="panel admin-page-shell">
-        <div className="panel-head admin-page-head">
-          <div>
-            <span className="eyebrow">Backoffice privado</span>
-            <h2>Backoffice WeTask</h2>
-            <p>Centro interno para validar profesionales, coordinar al equipo y monitorear la operación de la plataforma.</p>
+    <AdminHeroShell
+      copy={
+        <>
+          <span className="auth-flow-kicker">Backoffice privado</span>
+          <h1>Controla WeTask con el mismo look del resto de la plataforma.</h1>
+          <p>Desde aquí tu equipo puede revisar perfiles, coordinar aprobaciones, monitorear reservas y seguir la operación diaria sin salir del sistema interno.</p>
+
+          <div className="auth-flow-copy-list admin-copy-list">
+            <article className="auth-flow-meta-card">
+              <strong>{pendingReview} pendientes</strong>
+              <span>Perfiles listos para revisión documental y decisión manual.</span>
+            </article>
+            <article className="auth-flow-meta-card">
+              <strong>{approved} aprobados</strong>
+              <span>Taskers que ya superaron la revisión y pueden pasar a activos.</span>
+            </article>
+            <article className="auth-flow-meta-card">
+              <strong>{openDisputes} casos abiertos</strong>
+              <span>Disputas y pagos que todavía necesitan seguimiento del equipo.</span>
+            </article>
           </div>
-          <Link href="/admin/team" className="cta">
-            Gestionar equipo
-          </Link>
+
+          <div className="auth-flow-inline-links">
+            <Link href="/admin/onboarding-limpieza">Ir a revisión manual</Link>
+            <Link href="/admin/team">Gestionar equipo interno</Link>
+          </div>
+
+          <div className="auth-flow-status">
+            <strong>{admins} administrador(es) activos</strong>
+            <span>{activePros} taskers verificados y {pendingPayouts} payout(s) pendientes dentro del backoffice.</span>
+          </div>
+        </>
+      }
+    >
+      <div className="panel-head admin-page-head">
+        <div>
+          <span className="eyebrow">Backoffice WeTask</span>
+          <h2>Centro de operación interna</h2>
+          <p>Valida profesionales, controla accesos del equipo y mantén pulso diario sobre reservas, payouts y casos abiertos.</p>
         </div>
+        <Link href="/admin/team" className="cta">
+          Gestionar equipo
+        </Link>
+      </div>
 
-        <div className="module-grid admin-metrics-grid">
-          <article className="module-card admin-metric-card">
-            <span className="metric-label">Pendientes de revisión</span>
-            <strong>{pendingReview}</strong>
-            <p>Perfiles listos para que tu equipo revise documentación y apruebe.</p>
-          </article>
-          <article className="module-card admin-metric-card">
-            <span className="metric-label">Correcciones solicitadas</span>
-            <strong>{needsCorrection}</strong>
-            <p>Taskers que deben completar o corregir su información.</p>
-          </article>
-          <article className="module-card admin-metric-card">
-            <span className="metric-label">Listos para activar</span>
-            <strong>{approved}</strong>
-            <p>Profesionales aprobados que ya pueden pasar a activos.</p>
-          </article>
-          <article className="module-card admin-metric-card">
-            <span className="metric-label">Taskers activos</span>
-            <strong>{activePros}</strong>
-            <p>Perfiles verificados y operativos dentro de WeTask.</p>
-          </article>
-          <article className="module-card admin-metric-card">
-            <span className="metric-label">Disputas abiertas</span>
-            <strong>{openDisputes}</strong>
-            <p>Casos que todavía necesitan seguimiento del equipo.</p>
-          </article>
-          <article className="module-card admin-metric-card">
-            <span className="metric-label">Payouts pendientes</span>
-            <strong>{pendingPayouts}</strong>
-            <p>Pagos a profesionales que aún no se han completado.</p>
-          </article>
-        </div>
+      <div className="module-grid admin-metrics-grid">
+        <article className="module-card admin-metric-card">
+          <span className="metric-label">Pendientes de revisión</span>
+          <strong>{pendingReview}</strong>
+          <p>Perfiles listos para que tu equipo revise documentación y apruebe.</p>
+        </article>
+        <article className="module-card admin-metric-card">
+          <span className="metric-label">Correcciones solicitadas</span>
+          <strong>{needsCorrection}</strong>
+          <p>Taskers que deben completar o corregir su información.</p>
+        </article>
+        <article className="module-card admin-metric-card">
+          <span className="metric-label">Listos para activar</span>
+          <strong>{approved}</strong>
+          <p>Profesionales aprobados que ya pueden pasar a activos.</p>
+        </article>
+        <article className="module-card admin-metric-card">
+          <span className="metric-label">Taskers activos</span>
+          <strong>{activePros}</strong>
+          <p>Perfiles verificados y operativos dentro de WeTask.</p>
+        </article>
+        <article className="module-card admin-metric-card">
+          <span className="metric-label">Disputas abiertas</span>
+          <strong>{openDisputes}</strong>
+          <p>Casos que todavía necesitan seguimiento del equipo.</p>
+        </article>
+        <article className="module-card admin-metric-card">
+          <span className="metric-label">Payouts pendientes</span>
+          <strong>{pendingPayouts}</strong>
+          <p>Pagos a profesionales que aún no se han completado.</p>
+        </article>
+      </div>
 
-        <div className="module-grid">
-          <Link href="/admin/onboarding-limpieza" className="module-card module-link">
-            <h3>Validación de profesionales</h3>
-            <p>Revisa onboarding, documentos, tarifas y activa perfiles manualmente.</p>
-            <span className="module-meta">{pendingReview + needsCorrection + approved} casos en cola</span>
-          </Link>
+      <div className="module-grid">
+        <Link href="/admin/onboarding-limpieza" className="module-card module-link">
+          <h3>Validación de profesionales</h3>
+          <p>Revisa onboarding, documentos, tarifas y activa perfiles manualmente.</p>
+          <span className="module-meta">{pendingReview + needsCorrection + approved} casos en cola</span>
+        </Link>
 
-          <Link href="/admin/team" className="module-card module-link">
-            <h3>Equipo interno</h3>
-            <p>Controla qué correos tienen acceso privado al backoffice de WeTask.</p>
-            <span className="module-meta">{admins} admin(s) con acceso</span>
-          </Link>
+        <Link href="/admin/team" className="module-card module-link">
+          <h3>Equipo interno</h3>
+          <p>Controla qué correos tienen acceso privado al backoffice de WeTask.</p>
+          <span className="module-meta">{admins} admin(s) con acceso</span>
+        </Link>
+      </div>
 
-          <Link href="/admin/technicians" className="module-card module-link">
-            <h3>Técnicos legacy</h3>
-            <p>Mantén visible el flujo antiguo mientras migras todo al onboarding nuevo.</p>
-            <span className="module-meta">Panel legado</span>
-          </Link>
-        </div>
-
-        <div className="admin-dashboard-grid">
-          <section className="admin-section-card">
-            <div className="admin-section-head">
-              <div>
-                <h3>Cola de validación</h3>
-                <p>Los próximos perfiles que tu equipo debería revisar.</p>
-              </div>
-              <Link href="/admin/onboarding-limpieza" className="cta ghost small">
-                Ver todo
-              </Link>
+      <div className="admin-dashboard-grid">
+        <section className="admin-section-card">
+          <div className="admin-section-head">
+            <div>
+              <h3>Cola de validación</h3>
+              <p>Los próximos perfiles que tu equipo debería revisar.</p>
             </div>
+            <Link href="/admin/onboarding-limpieza" className="cta ghost small">
+              Ver todo
+            </Link>
+          </div>
 
-            <div className="admin-queue-list">
-              {recentOnboarding.map((item) => (
-                <article key={item.id} className="admin-queue-row">
-                  <div>
-                    <h4>{item.user.fullName}</h4>
-                    <p>{item.user.email}</p>
-                    <p>
-                      {item.categorySlug} · {item.baseCommune ?? "Sin comuna"} · Paso {item.currentStep}
-                    </p>
-                  </div>
-                  <div className="cta-row">
-                    <span className={`status status-${item.status.toLowerCase().replace(/_/g, "-")}`}>{item.status.toLowerCase().replace(/_/g, " ")}</span>
-                    <Link href={`/admin/onboarding-limpieza/${item.id}`} className="cta ghost small">
-                      Abrir ficha
-                    </Link>
-                  </div>
-                </article>
-              ))}
-            </div>
-          </section>
+          <div className="admin-queue-list">
+            {recentOnboarding.map((item) => (
+              <article key={item.id} className="admin-queue-row">
+                <div>
+                  <h4>{item.user.fullName}</h4>
+                  <p>{item.user.email}</p>
+                  <p>
+                    {item.categorySlug} · {item.baseCommune ?? "Sin comuna"} · Paso {item.currentStep}
+                  </p>
+                </div>
+                <div className="cta-row">
+                  <span className={`status status-${item.status.toLowerCase().replace(/_/g, "-")}`}>{item.status.toLowerCase().replace(/_/g, " ")}</span>
+                  <Link href={`/admin/onboarding-limpieza/${item.id}`} className="cta ghost small">
+                    Abrir ficha
+                  </Link>
+                </div>
+              </article>
+            ))}
+          </div>
+        </section>
 
-          <section className="admin-section-card">
-            <div className="admin-section-head">
-              <div>
-                <h3>Actividad reciente</h3>
-                <p>Reservas nuevas para tener pulso operativo de la plataforma.</p>
-              </div>
+        <section className="admin-section-card">
+          <div className="admin-section-head">
+            <div>
+              <h3>Actividad reciente</h3>
+              <p>Reservas nuevas para tener pulso operativo de la plataforma.</p>
             </div>
+          </div>
 
-            <div className="admin-queue-list">
-              {recentBookings.map((booking) => (
-                <article key={booking.id} className="admin-queue-row">
-                  <div>
-                    <h4>{booking.service.name}</h4>
-                    <p>
-                      Cliente: {booking.customer.fullName}
-                      {booking.pro ? ` · Tasker: ${booking.pro.fullName}` : " · Sin tasker asignado"}
-                    </p>
-                    <p>
-                      {booking.comuna} · {new Date(booking.scheduledAt).toLocaleString("es-CL")}
-                    </p>
-                  </div>
-                  <div className="admin-queue-meta">
-                    <span className={`status status-${booking.status.toLowerCase().replace(/_/g, "-")}`}>{booking.status.toLowerCase().replace(/_/g, " ")}</span>
-                    <strong>{money(booking.totalPriceClp)}</strong>
-                  </div>
-                </article>
-              ))}
-            </div>
-          </section>
-        </div>
-      </section>
-    </main>
+          <div className="admin-queue-list">
+            {recentBookings.map((booking) => (
+              <article key={booking.id} className="admin-queue-row">
+                <div>
+                  <h4>{booking.service.name}</h4>
+                  <p>
+                    Cliente: {booking.customer.fullName}
+                    {booking.pro ? ` · Tasker: ${booking.pro.fullName}` : " · Sin tasker asignado"}
+                  </p>
+                  <p>
+                    {booking.comuna} · {new Date(booking.scheduledAt).toLocaleString("es-CL")}
+                  </p>
+                </div>
+                <div className="admin-queue-meta">
+                  <span className={`status status-${booking.status.toLowerCase().replace(/_/g, "-")}`}>{booking.status.toLowerCase().replace(/_/g, " ")}</span>
+                  <strong>{money(booking.totalPriceClp)}</strong>
+                </div>
+              </article>
+            ))}
+          </div>
+        </section>
+      </div>
+    </AdminHeroShell>
   );
 }

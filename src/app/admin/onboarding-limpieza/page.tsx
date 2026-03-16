@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { MarketNav } from "@/components/market-nav";
+import { AdminHeroShell } from "@/components/admin-hero-shell";
 
 type CleaningOnboardingItem = {
   id: string;
@@ -54,6 +54,9 @@ export default function AdminCleaningOnboardingPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [feedback, setFeedback] = useState("");
+  const pendingCount = rows.filter((row) => row.status === "PENDIENTE_REVISION").length;
+  const correctionCount = rows.filter((row) => row.status === "REQUIERE_CORRECCION").length;
+  const activeCount = rows.filter((row) => row.status === "ACTIVO").length;
 
   const load = async () => {
     setLoading(true);
@@ -100,99 +103,128 @@ export default function AdminCleaningOnboardingPage() {
   };
 
   return (
-    <main className="page market-shell">
-      <MarketNav />
+    <AdminHeroShell
+      copy={
+        <>
+          <span className="auth-flow-kicker">Revisión manual</span>
+          <h1>Revisa cada tasker con el mismo diseño del resto de WeTask.</h1>
+          <p>Este flujo está pensado para que tu equipo vea rápido documentos, estado del onboarding, tarifa, cobertura y acciones pendientes antes de aprobar o rechazar.</p>
 
-      <section className="panel admin-page-shell">
-        <div className="panel-head admin-page-head">
-          <div>
-            <span className="eyebrow">Revisión manual</span>
-            <h2>Validación de profesionales</h2>
-            <p>Flujo interno para revisar documentos, pedir correcciones, aprobar y activar taskers.</p>
-          </div>
-          <Link href="/admin/team" className="cta ghost small">
-            Ver equipo interno
-          </Link>
-        </div>
-
-        <div className="cta-row">
-          <label>
-            Estado
-            <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
-              <option value="">Todos</option>
-              <option value="BORRADOR">Borrador</option>
-              <option value="PENDIENTE_REVISION">Pendiente</option>
-              <option value="REQUIERE_CORRECCION">Requiere correccion</option>
-              <option value="APROBADO">Aprobado</option>
-              <option value="ACTIVO">Activo</option>
-            </select>
-          </label>
-        </div>
-
-        {loading ? <p className="empty">Cargando solicitudes...</p> : null}
-        {error ? <p className="feedback error">{error}</p> : null}
-        {feedback ? <p className="feedback ok">{feedback}</p> : null}
-
-        <div className="list">
-          {rows.map((row) => (
-            <article key={row.id} className="booking-card">
-              <div className="booking-head">
-                <h3>{row.user.fullName}</h3>
-                <span className={`status status-${statusLabels[row.status].replace(/\s+/g, "-")}`}>{statusLabels[row.status]}</span>
-              </div>
-
-              <p>
-                <strong>Email:</strong> {row.user.email} · <strong>Telefono:</strong> {row.user.phone ?? "-"}
-              </p>
-              <p>
-                <strong>Comuna base:</strong> {row.baseCommune ?? "-"} · <strong>Dirección:</strong> {row.referenceAddress ?? "-"}
-              </p>
-              <p>
-                <strong>Tarifa:</strong> {row.hourlyRateClp ? `$${row.hourlyRateClp.toLocaleString("es-CL")}/h` : "-"} ·{" "}
-                <strong>Minimo:</strong> {row.minBookingHours ?? "-"} h · <strong>Paso:</strong> {row.currentStep}
-              </p>
-              <p>
-                <strong>Enviado:</strong> {formatDate(row.submittedAt)} · <strong>Revisado:</strong> {formatDate(row.reviewedAt)} ·{" "}
-                <strong>Activado:</strong> {formatDate(row.activatedAt)}
-              </p>
-              <p>
-                <strong>Documentos:</strong>{" "}
-                {[
-                  row.profilePhotoUrl ? "foto" : null,
-                  row.identityDocumentFrontFile ? "carnet frente" : null,
-                  row.identityDocumentBackFile ? "carnet reverso" : null,
-                  row.criminalRecordFile ? "antecedentes" : null
-                ]
-                  .filter(Boolean)
-                  .join(", ") || "Faltan archivos"}
-              </p>
-              {row.adminReviewNotes ? (
-                <p>
-                  <strong>Notas:</strong> {row.adminReviewNotes}
-                </p>
-              ) : null}
-
-              <div className="cta-row">
-                <Link href={`/admin/onboarding-limpieza/${row.id}`} className="cta ghost small">
-                  Ver ficha
-                </Link>
-                <button type="button" className="cta ghost small" onClick={() => void runAction(row.id, "set_pending")}>
-                  Pendiente
-                </button>
-                <button type="button" className="cta ghost small" onClick={() => void runAction(row.id, "request_correction")}>
-                  Rechazar
-                </button>
-                <button type="button" className="cta small" onClick={() => void runAction(row.id, "approve")}>
-                  Aprobar
-                </button>
-                <button type="button" className="cta small" onClick={() => void runAction(row.id, "activate")}>
-                  Activar
-                </button>
-              </div>
+          <div className="auth-flow-copy-list admin-copy-list">
+            <article className="auth-flow-meta-card">
+              <strong>{pendingCount} pendientes</strong>
+              <span>Perfiles listos para revisión documental y decisión.</span>
             </article>
-          ))}
+            <article className="auth-flow-meta-card">
+              <strong>{correctionCount} con correcciones</strong>
+              <span>Solicitudes que necesitan nuevos archivos o ajustes.</span>
+            </article>
+            <article className="auth-flow-meta-card">
+              <strong>{activeCount} activos</strong>
+              <span>Taskers que ya terminaron el proceso y están operativos.</span>
+            </article>
+          </div>
+
+          <div className="auth-flow-inline-links">
+            <Link href="/admin">Volver al backoffice</Link>
+            <Link href="/admin/team">Ver equipo interno</Link>
+          </div>
+
+          <div className="auth-flow-status">
+            <strong>{rows.length} solicitud(es) en esta vista</strong>
+            <span>Usa el filtro por estado para concentrarte en pendientes, aprobados o perfiles ya activos.</span>
+          </div>
+        </>
+      }
+    >
+      <div className="panel-head admin-page-head">
+        <div>
+          <span className="eyebrow">Validación de profesionales</span>
+          <h2>Cola de revisión manual</h2>
+          <p>Revisa documentos, pide correcciones, aprueba perfiles y activa taskers desde un solo flujo interno.</p>
         </div>
-      </section>
-    </main>
+        <Link href="/admin/team" className="cta ghost small">
+          Ver equipo interno
+        </Link>
+      </div>
+
+      <div className="cta-row admin-filter-bar">
+        <label>
+          Estado
+          <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
+            <option value="">Todos</option>
+            <option value="BORRADOR">Borrador</option>
+            <option value="PENDIENTE_REVISION">Pendiente</option>
+            <option value="REQUIERE_CORRECCION">Requiere correccion</option>
+            <option value="APROBADO">Aprobado</option>
+            <option value="ACTIVO">Activo</option>
+          </select>
+        </label>
+      </div>
+
+      {loading ? <p className="empty">Cargando solicitudes...</p> : null}
+      {error ? <p className="feedback error">{error}</p> : null}
+      {feedback ? <p className="feedback ok">{feedback}</p> : null}
+
+      <div className="list">
+        {rows.map((row) => (
+          <article key={row.id} className="booking-card">
+            <div className="booking-head">
+              <h3>{row.user.fullName}</h3>
+              <span className={`status status-${statusLabels[row.status].replace(/\s+/g, "-")}`}>{statusLabels[row.status]}</span>
+            </div>
+
+            <p>
+              <strong>Email:</strong> {row.user.email} · <strong>Telefono:</strong> {row.user.phone ?? "-"}
+            </p>
+            <p>
+              <strong>Comuna base:</strong> {row.baseCommune ?? "-"} · <strong>Dirección:</strong> {row.referenceAddress ?? "-"}
+            </p>
+            <p>
+              <strong>Tarifa:</strong> {row.hourlyRateClp ? `$${row.hourlyRateClp.toLocaleString("es-CL")}/h` : "-"} ·{" "}
+              <strong>Minimo:</strong> {row.minBookingHours ?? "-"} h · <strong>Paso:</strong> {row.currentStep}
+            </p>
+            <p>
+              <strong>Enviado:</strong> {formatDate(row.submittedAt)} · <strong>Revisado:</strong> {formatDate(row.reviewedAt)} ·{" "}
+              <strong>Activado:</strong> {formatDate(row.activatedAt)}
+            </p>
+            <p>
+              <strong>Documentos:</strong>{" "}
+              {[
+                row.profilePhotoUrl ? "foto" : null,
+                row.identityDocumentFrontFile ? "carnet frente" : null,
+                row.identityDocumentBackFile ? "carnet reverso" : null,
+                row.criminalRecordFile ? "antecedentes" : null
+              ]
+                .filter(Boolean)
+                .join(", ") || "Faltan archivos"}
+            </p>
+            {row.adminReviewNotes ? (
+              <p>
+                <strong>Notas:</strong> {row.adminReviewNotes}
+              </p>
+            ) : null}
+
+            <div className="cta-row">
+              <Link href={`/admin/onboarding-limpieza/${row.id}`} className="cta ghost small">
+                Ver ficha
+              </Link>
+              <button type="button" className="cta ghost small" onClick={() => void runAction(row.id, "set_pending")}>
+                Pendiente
+              </button>
+              <button type="button" className="cta ghost small" onClick={() => void runAction(row.id, "request_correction")}>
+                Rechazar
+              </button>
+              <button type="button" className="cta small" onClick={() => void runAction(row.id, "approve")}>
+                Aprobar
+              </button>
+              <button type="button" className="cta small" onClick={() => void runAction(row.id, "activate")}>
+                Activar
+              </button>
+            </div>
+          </article>
+        ))}
+      </div>
+    </AdminHeroShell>
   );
 }
