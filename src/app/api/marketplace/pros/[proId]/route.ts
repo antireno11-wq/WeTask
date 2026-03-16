@@ -26,6 +26,7 @@ export async function GET(_: Request, context: { params: { proId: string } }) {
                 shortDescription: true,
                 yearsExperience: true,
                 workMode: true,
+                categorySlug: true,
                 offeredServices: true,
                 experienceTypes: true,
                 languages: true,

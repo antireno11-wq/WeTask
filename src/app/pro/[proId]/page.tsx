@@ -10,6 +10,7 @@ type CleaningOnboardingSummary = {
   shortDescription: string | null;
   yearsExperience: number | null;
   workMode: "SOLO" | "EQUIPO" | null;
+  categorySlug: string | null;
   offeredServices: unknown;
   experienceTypes: unknown;
   languages: unknown;
@@ -111,6 +112,29 @@ function toLabelList(value: unknown, fallback: string[]) {
   return cleaned.length > 0 ? cleaned : fallback;
 }
 
+function categoryLabel(value: string | null | undefined) {
+  switch (value) {
+    case "limpieza":
+      return "Limpieza";
+    case "mascotas":
+      return "Cuidado de mascotas";
+    case "babysitter":
+      return "Babysitter";
+    case "profesor-particular":
+      return "Profesor particular";
+    case "personal-trainer":
+      return "Personal trainer";
+    case "chef":
+      return "Chef";
+    case "maquillaje":
+      return "Maquillaje";
+    case "planchado":
+      return "Planchado";
+    default:
+      return "Servicios a domicilio";
+  }
+}
+
 function buildDemoProfessional(proId: string): ProfessionalDetail {
   const cleanId = proId.replace(/[-_]/g, " ").trim();
   const fallbackName = cleanId.length > 0 ? labelize(cleanId) : "Tasker WeTask";
@@ -138,6 +162,7 @@ function buildDemoProfessional(proId: string): ProfessionalDetail {
         shortDescription: "Perfil profesional con foco en limpieza del hogar, atención cordial y cumplimiento de horarios.",
         yearsExperience: 7,
         workMode: "SOLO",
+        categorySlug: "limpieza",
         offeredServices: demoOfferedServices,
         experienceTypes: demoExperienceTypes,
         languages: demoLanguages,
@@ -300,8 +325,17 @@ export default function ProDetailPage() {
   const experienceTypes = toLabelList(onboarding?.experienceTypes, demoExperienceTypes);
   const languages = toLabelList(onboarding?.languages, demoLanguages);
   const workModeLabel = onboarding?.workMode === "EQUIPO" ? "Trabajo en equipo" : "Trabajo individual";
-  const baseCommune = onboarding?.baseCommune ?? data?.coverageCity ?? "Santiago";
-  const maxTravelKm = onboarding?.maxTravelKm ?? data?.serviceRadiusKm ?? 10;
+  const categoryName = categoryLabel(onboarding?.categorySlug);
+  const focusLabel = onboarding?.categorySlug === "mascotas" ? "Tipos de mascota" : "Especialidades";
+  const serviceLabel = onboarding?.categorySlug === "limpieza" ? "Servicios de limpieza" : "Servicios que ofrece";
+  const goalText =
+    onboarding?.categorySlug === "mascotas"
+      ? "Cuidar mascotas con confianza, constancia y buena comunicación con cada familia."
+      : onboarding?.categorySlug === "chef"
+        ? "Llenar agenda con servicios bien coordinados y experiencias de calidad en cada visita."
+        : onboarding?.categorySlug === "maquillaje"
+          ? "Construir una agenda estable con clientas recurrentes y servicios bien evaluados."
+          : "Llenar agenda con clientes recurrentes y servicios de calidad.";
 
   return (
     <main className="page market-shell">
@@ -326,15 +360,11 @@ export default function ProDetailPage() {
                   <p>{workModeLabel}</p>
                 </div>
                 <div>
-                  <h3>Comuna base</h3>
-                  <p>{baseCommune}</p>
+                  <h3>Categoría</h3>
+                  <p>{categoryName}</p>
                 </div>
                 <div>
-                  <h3>Cobertura</h3>
-                  <p>{maxTravelKm} km</p>
-                </div>
-                <div>
-                  <h3>Tipos de experiencia</h3>
+                  <h3>{focusLabel}</h3>
                   <p>{experienceTypes.join(", ")}</p>
                 </div>
                 <div>
@@ -382,20 +412,20 @@ export default function ProDetailPage() {
               <h2>Informacion de interes</h2>
               <div className="we-info-grid">
                 <div>
-                  <h3>¿Cuanta experiencia tienes como limpiador/a?</h3>
-                  <p>6-10 años de experiencia</p>
+                  <h3>¿Cuánta experiencia tiene?</h3>
+                  <p>{experienceYears} años trabajando en servicios a domicilio.</p>
                 </div>
                 <div>
-                  <h3>Tipos de limpieza</h3>
-                  <p>Limpieza general, limpieza a fondo, post-obra, ventanas y tapicería.</p>
+                  <h3>{serviceLabel}</h3>
+                  <p>{offeredServices.join(", ")}</p>
                 </div>
                 <div>
-                  <h3>Tareas complementarias</h3>
-                  <p>Planchar, lavar ropa, cocina ligera y apoyo puntual en hogar.</p>
+                  <h3>{focusLabel}</h3>
+                  <p>{experienceTypes.join(", ")}</p>
                 </div>
                 <div>
-                  <h3>¿Que busca en WeTask?</h3>
-                  <p>Llenar agenda con clientes recurrentes y servicios de calidad.</p>
+                  <h3>¿Qué busca en WeTask?</h3>
+                  <p>{goalText}</p>
                 </div>
               </div>
             </article>
