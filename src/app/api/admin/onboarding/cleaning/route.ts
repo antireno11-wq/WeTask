@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAdminRequest } from "@/lib/admin-access";
 import { normalizeCommuneList } from "@/lib/communes";
 import { CORE_SERVICES } from "@/lib/core-services";
+import { sendPlatformEmail } from "@/lib/notifications";
 import { prisma } from "@/lib/prisma";
 import { cleaningOnboardingAdminActionSchema } from "@/lib/validators";
 
@@ -140,20 +141,53 @@ export async function PATCH(req: NextRequest) {
     const body = await req.json();
     const input = cleaningOnboardingAdminActionSchema.parse(body);
 
-    const onboarding = await prisma.cleaningOnboarding.findUnique({ where: { id: input.onboardingId } });
+    const onboarding = await prisma.cleaningOnboarding.findUnique({
+      where: { id: input.onboardingId },
+      include: {
+        user: {
+          select: {
+            fullName: true,
+            email: true
+          }
+        }
+      }
+    });
     if (!onboarding) {
       return NextResponse.json({ error: "Onboarding no encontrado" }, { status: 404 });
     }
 
     if (input.action === "request_correction") {
+      const notes = input.notes?.trim();
+      if (!notes) {
+        return NextResponse.json({ error: "Debes indicar la causa del rechazo o corrección." }, { status: 400 });
+      }
+
       const updated = await prisma.cleaningOnboarding.update({
         where: { id: input.onboardingId },
         data: {
           status: CleaningOnboardingStatus.REQUIERE_CORRECCION,
           reviewedAt: new Date(),
-          adminReviewNotes: input.notes?.trim() || "Requiere ajustes antes de aprobar"
+          adminReviewNotes: notes
         }
       });
+
+      await sendPlatformEmail({
+        to: onboarding.user.email,
+        subject: "WeTask: tu perfil requiere correcciones",
+        text: [
+          `Hola ${onboarding.user.fullName},`,
+          "",
+          "Revisamos tu validación interna en WeTask y por ahora no pudimos aprobar tu perfil.",
+          "",
+          "Motivo indicado por el equipo:",
+          notes,
+          "",
+          "Por favor entra nuevamente a la plataforma, corrige la información solicitada y vuelve a enviar tu perfil a revisión.",
+          "",
+          "Equipo WeTask"
+        ].join("\n")
+      });
+
       return NextResponse.json({ ok: true, onboarding: updated }, { status: 200 });
     }
 

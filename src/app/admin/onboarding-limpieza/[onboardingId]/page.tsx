@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { CleaningOnboardingStatus } from "@prisma/client";
+import { AdminCleaningReviewActions } from "@/components/admin-cleaning-review-actions";
 import { MarketNav } from "@/components/market-nav";
 import { prisma } from "@/lib/prisma";
 
@@ -230,6 +231,8 @@ export default async function AdminCleaningOnboardingDetailPage({ params }: { pa
             <DocumentPreview label="Certificado de antecedentes" value={onboarding.criminalRecordFile} />
           </div>
         </section>
+
+        <AdminCleaningReviewActions onboardingId={onboarding.id} status={onboarding.status} />
       </section>
     </main>
   );

@@ -77,6 +77,11 @@ export default function AdminCleaningOnboardingPage() {
 
   const runAction = async (onboardingId: string, action: ActionType) => {
     const notes = action === "request_correction" ? window.prompt("Escribe observaciones para correccion:", "") ?? "" : "";
+    if (action === "request_correction" && !notes.trim()) {
+      setError("Debes indicar la causa del rechazo o corrección.");
+      setFeedback("");
+      return;
+    }
     setError("");
     setFeedback("");
     try {
@@ -178,7 +183,7 @@ export default function AdminCleaningOnboardingPage() {
                   Pendiente
                 </button>
                 <button type="button" className="cta ghost small" onClick={() => void runAction(row.id, "request_correction")}>
-                  Pedir correccion
+                  Rechazar
                 </button>
                 <button type="button" className="cta small" onClick={() => void runAction(row.id, "approve")}>
                   Aprobar
