@@ -15,6 +15,14 @@ const statusLabels: Record<CleaningOnboardingStatus, string> = {
   ACTIVO: "Activo"
 };
 
+const statusClasses: Record<CleaningOnboardingStatus, string> = {
+  BORRADOR: "status-pending",
+  PENDIENTE_REVISION: "status-pending",
+  REQUIERE_CORRECCION: "status-cancelled",
+  APROBADO: "status-completed",
+  ACTIVO: "status-accepted"
+};
+
 function formatDate(value: Date | null) {
   if (!value) return "-";
   return value.toLocaleString("es-CL");
@@ -95,7 +103,7 @@ export default async function AdminCleaningOnboardingDetailPage({ params }: { pa
           <p>Revisa identidad, cobertura, tarifas y documentación antes de aprobar, rechazar o activar este perfil.</p>
         </div>
         <div className="cta-row">
-          <span className={`status status-${statusLabels[onboarding.status].toLowerCase().replace(/\s+/g, "-")}`}>{statusLabels[onboarding.status]}</span>
+          <span className={`status ${statusClasses[onboarding.status]}`}>{statusLabels[onboarding.status]}</span>
           <Link href="/admin/onboarding-limpieza" className="cta ghost small">
             Volver a solicitudes
           </Link>

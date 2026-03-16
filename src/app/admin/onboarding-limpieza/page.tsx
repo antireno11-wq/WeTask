@@ -42,6 +42,14 @@ const statusLabels: Record<CleaningOnboardingItem["status"], string> = {
   ACTIVO: "activo"
 };
 
+const statusClasses: Record<CleaningOnboardingItem["status"], string> = {
+  BORRADOR: "status-pending",
+  PENDIENTE_REVISION: "status-pending",
+  REQUIERE_CORRECCION: "status-cancelled",
+  APROBADO: "status-completed",
+  ACTIVO: "status-accepted"
+};
+
 function formatDate(value: string | null) {
   if (!value) return "-";
   const date = new Date(value);
@@ -110,8 +118,8 @@ export default function AdminCleaningOnboardingPage() {
           <h2>Cola de revisión manual</h2>
           <p>Revisa documentos, pide correcciones, aprueba perfiles y activa taskers desde un solo flujo interno.</p>
         </div>
-        <Link href="/admin/team" className="cta ghost small">
-          Ver equipo interno
+        <Link href="/admin/team" className="cta">
+          Crear otro administrador
         </Link>
       </div>
 
@@ -138,7 +146,7 @@ export default function AdminCleaningOnboardingPage() {
           <article key={row.id} className="booking-card">
             <div className="booking-head">
               <h3>{row.user.fullName}</h3>
-              <span className={`status status-${statusLabels[row.status].replace(/\s+/g, "-")}`}>{statusLabels[row.status]}</span>
+              <span className={`status ${statusClasses[row.status]}`}>{statusLabels[row.status]}</span>
             </div>
 
             <p>

@@ -5,6 +5,42 @@ import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
+const onboardingStatusLabel: Record<CleaningOnboardingStatus, string> = {
+  BORRADOR: "Borrador",
+  PENDIENTE_REVISION: "Pendiente de revisión",
+  REQUIERE_CORRECCION: "Requiere corrección",
+  APROBADO: "Aprobado",
+  ACTIVO: "Activo"
+};
+
+const onboardingStatusClass: Record<CleaningOnboardingStatus, string> = {
+  BORRADOR: "status-pending",
+  PENDIENTE_REVISION: "status-pending",
+  REQUIERE_CORRECCION: "status-cancelled",
+  APROBADO: "status-completed",
+  ACTIVO: "status-accepted"
+};
+
+function bookingStatusLabel(status: string) {
+  if (status === "COMPLETED") return "Completado";
+  if (status === "IN_PROGRESS") return "En curso";
+  if (status === "CONFIRMED") return "Confirmado";
+  if (status === "ACCEPTED") return "Aceptado";
+  if (status === "ASSIGNED") return "Asignado";
+  if (status === "CANCELLED") return "Cancelado";
+  if (status === "REFUNDED") return "Reembolsado";
+  if (status === "PAYMENT_FAILED") return "Pago rechazado";
+  if (status === "PENDING") return "Pendiente";
+  return status.toLowerCase().replace(/_/g, " ");
+}
+
+function bookingStatusClass(status: string) {
+  if (status === "COMPLETED") return "status-completed";
+  if (status === "IN_PROGRESS" || status === "CONFIRMED" || status === "ACCEPTED" || status === "ASSIGNED") return "status-accepted";
+  if (status === "CANCELLED" || status === "REFUNDED" || status === "PAYMENT_FAILED") return "status-cancelled";
+  return "status-pending";
+}
+
 function money(value: number) {
   return `$${value.toLocaleString("es-CL")}`;
 }
@@ -105,6 +141,12 @@ export default async function AdminPage() {
           <p>Controla qué correos tienen acceso privado al backoffice de WeTask.</p>
           <span className="module-meta">{admins} admin(s) con acceso</span>
         </Link>
+
+        <Link href="/admin/team" className="module-card module-link">
+          <h3>Crear otro administrador</h3>
+          <p>Invita a otra persona del equipo para que también pueda revisar y aprobar usuarios.</p>
+          <span className="module-meta">Acceso para aprobaciones</span>
+        </Link>
       </div>
 
       <div className="admin-dashboard-grid">
@@ -130,7 +172,7 @@ export default async function AdminPage() {
                   </p>
                 </div>
                 <div className="cta-row">
-                  <span className={`status status-${item.status.toLowerCase().replace(/_/g, "-")}`}>{item.status.toLowerCase().replace(/_/g, " ")}</span>
+                  <span className={`status ${onboardingStatusClass[item.status]}`}>{onboardingStatusLabel[item.status]}</span>
                   <Link href={`/admin/onboarding-limpieza/${item.id}`} className="cta ghost small">
                     Abrir ficha
                   </Link>
@@ -162,7 +204,7 @@ export default async function AdminPage() {
                   </p>
                 </div>
                 <div className="admin-queue-meta">
-                  <span className={`status status-${booking.status.toLowerCase().replace(/_/g, "-")}`}>{booking.status.toLowerCase().replace(/_/g, " ")}</span>
+                  <span className={`status ${bookingStatusClass(booking.status)}`}>{bookingStatusLabel(booking.status)}</span>
                   <strong>{money(booking.totalPriceClp)}</strong>
                 </div>
               </article>

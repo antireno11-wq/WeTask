@@ -115,8 +115,8 @@ export default function AdminTeamPage() {
       <section className="admin-section-card">
         <div className="admin-section-head">
           <div>
-            <h3>Agregar admin por correo</h3>
-            <p>La persona debe tener una cuenta ya creada en WeTask.</p>
+            <h3>Crear otro administrador</h3>
+            <p>Ingresa el correo de una cuenta existente para darle acceso y permitirle aprobar usuarios.</p>
           </div>
         </div>
 
@@ -136,7 +136,7 @@ export default function AdminTeamPage() {
             disabled={!email.trim() || busyId === email.trim().toLowerCase()}
             onClick={() => void runAction("grant", { email: email.trim().toLowerCase() })}
           >
-            Dar acceso admin
+            Crear administrador
           </button>
         </div>
       </section>
