@@ -87,42 +87,7 @@ export default async function AdminCleaningOnboardingDetailPage({ params }: { pa
   ].filter(Boolean).length;
 
   return (
-    <AdminHeroShell
-      copy={
-        <>
-          <span className="auth-flow-kicker">Validación interna</span>
-          <h1>Revisa la ficha completa antes de aprobar al tasker.</h1>
-          <p>Aquí tu equipo puede validar identidad, datos bancarios, disponibilidad de documentos y trazabilidad del onboarding antes de tomar una decisión final.</p>
-
-          <div className="auth-flow-copy-list admin-copy-list">
-            <article className="auth-flow-meta-card">
-              <strong>{statusLabels[onboarding.status]}</strong>
-              <span>Estado actual del onboarding y de la revisión manual.</span>
-            </article>
-            <article className="auth-flow-meta-card">
-              <strong>{onboarding.categorySlug}</strong>
-              <span>Categoría principal con la que este tasker quiere operar en WeTask.</span>
-            </article>
-            <article className="auth-flow-meta-card">
-              <strong>{documentCount} documento(s) cargados</strong>
-              <span>Foto, carnet y antecedentes listos para la validación interna.</span>
-            </article>
-          </div>
-
-          <div className="auth-flow-inline-links">
-            <Link href="/admin/onboarding-limpieza">Volver a solicitudes</Link>
-            <Link href="/admin">Ir al backoffice</Link>
-          </div>
-
-          <div className="auth-flow-status">
-            <strong>{onboarding.user.fullName}</strong>
-            <span>
-              {onboarding.referenceAddress ?? "Sin dirección base"} · {onboarding.phoneValidatedAt ? "Teléfono validado" : "Teléfono pendiente"}
-            </span>
-          </div>
-        </>
-      }
-    >
+    <AdminHeroShell>
       <div className="panel-head admin-page-head">
         <div>
           <span className="eyebrow">Ficha del profesional</span>

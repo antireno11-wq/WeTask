@@ -100,36 +100,7 @@ export default function AdminTeamPage() {
   };
 
   return (
-    <AdminHeroShell
-      copy={
-        <>
-          <span className="auth-flow-kicker">Equipo interno</span>
-          <h1>Administra accesos del backoffice con el mismo estilo de WeTask.</h1>
-          <p>Invita administradores, revisa quién tiene acceso hoy y sigue la actividad más reciente de las cuentas que pasan por la plataforma.</p>
-
-          <div className="auth-flow-copy-list admin-copy-list">
-            <article className="auth-flow-meta-card">
-              <strong>{data?.admins.length ?? 0} admins activos</strong>
-              <span>Correos autorizados para entrar al panel privado y revisar validaciones.</span>
-            </article>
-            <article className="auth-flow-meta-card">
-              <strong>{data?.recentUsers.length ?? 0} usuarios recientes</strong>
-              <span>Actividad reciente para mantener visibilidad operativa del equipo.</span>
-            </article>
-          </div>
-
-          <div className="auth-flow-inline-links">
-            <Link href="/admin">Volver al backoffice</Link>
-            <Link href="/admin/onboarding-limpieza">Ir a revisión manual</Link>
-          </div>
-
-          <div className="auth-flow-status">
-            <strong>Acceso administrado por rol</strong>
-            <span>Los cambios toman efecto en el próximo inicio de sesión de cada integrante.</span>
-          </div>
-        </>
-      }
-    >
+    <AdminHeroShell>
       <div className="panel-head admin-page-head">
         <div>
           <span className="eyebrow">Backoffice WeTask</span>

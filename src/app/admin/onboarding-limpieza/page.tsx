@@ -103,40 +103,7 @@ export default function AdminCleaningOnboardingPage() {
   };
 
   return (
-    <AdminHeroShell
-      copy={
-        <>
-          <span className="auth-flow-kicker">Revisión manual</span>
-          <h1>Revisa cada tasker con el mismo diseño del resto de WeTask.</h1>
-          <p>Este flujo está pensado para que tu equipo vea rápido documentos, estado del onboarding, tarifa, cobertura y acciones pendientes antes de aprobar o rechazar.</p>
-
-          <div className="auth-flow-copy-list admin-copy-list">
-            <article className="auth-flow-meta-card">
-              <strong>{pendingCount} pendientes</strong>
-              <span>Perfiles listos para revisión documental y decisión.</span>
-            </article>
-            <article className="auth-flow-meta-card">
-              <strong>{correctionCount} con correcciones</strong>
-              <span>Solicitudes que necesitan nuevos archivos o ajustes.</span>
-            </article>
-            <article className="auth-flow-meta-card">
-              <strong>{activeCount} activos</strong>
-              <span>Taskers que ya terminaron el proceso y están operativos.</span>
-            </article>
-          </div>
-
-          <div className="auth-flow-inline-links">
-            <Link href="/admin">Volver al backoffice</Link>
-            <Link href="/admin/team">Ver equipo interno</Link>
-          </div>
-
-          <div className="auth-flow-status">
-            <strong>{rows.length} solicitud(es) en esta vista</strong>
-            <span>Usa el filtro por estado para concentrarte en pendientes, aprobados o perfiles ya activos.</span>
-          </div>
-        </>
-      }
-    >
+    <AdminHeroShell>
       <div className="panel-head admin-page-head">
         <div>
           <span className="eyebrow">Validación de profesionales</span>

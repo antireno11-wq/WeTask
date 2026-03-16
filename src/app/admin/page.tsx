@@ -48,40 +48,7 @@ export default async function AdminPage() {
     ]);
 
   return (
-    <AdminHeroShell
-      copy={
-        <>
-          <span className="auth-flow-kicker">Backoffice privado</span>
-          <h1>Controla WeTask con el mismo look del resto de la plataforma.</h1>
-          <p>Desde aquí tu equipo puede revisar perfiles, coordinar aprobaciones, monitorear reservas y seguir la operación diaria sin salir del sistema interno.</p>
-
-          <div className="auth-flow-copy-list admin-copy-list">
-            <article className="auth-flow-meta-card">
-              <strong>{pendingReview} pendientes</strong>
-              <span>Perfiles listos para revisión documental y decisión manual.</span>
-            </article>
-            <article className="auth-flow-meta-card">
-              <strong>{approved} aprobados</strong>
-              <span>Taskers que ya superaron la revisión y pueden pasar a activos.</span>
-            </article>
-            <article className="auth-flow-meta-card">
-              <strong>{openDisputes} casos abiertos</strong>
-              <span>Disputas y pagos que todavía necesitan seguimiento del equipo.</span>
-            </article>
-          </div>
-
-          <div className="auth-flow-inline-links">
-            <Link href="/admin/onboarding-limpieza">Ir a revisión manual</Link>
-            <Link href="/admin/team">Gestionar equipo interno</Link>
-          </div>
-
-          <div className="auth-flow-status">
-            <strong>{admins} administrador(es) activos</strong>
-            <span>{activePros} taskers verificados y {pendingPayouts} payout(s) pendientes dentro del backoffice.</span>
-          </div>
-        </>
-      }
-    >
+    <AdminHeroShell>
       <div className="panel-head admin-page-head">
         <div>
           <span className="eyebrow">Backoffice WeTask</span>

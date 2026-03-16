@@ -4548,7 +4548,7 @@ textarea {
 .admin-auth-shell {
   width: 100%;
   margin: 10px auto 0;
-  align-items: start;
+  display: block;
 }
 
 .admin-auth-copy {
@@ -4563,6 +4563,10 @@ textarea {
 .admin-auth-panel {
   display: grid;
   gap: 1.25rem;
+}
+
+.admin-auth-panel-full {
+  width: 100%;
 }
 
 .admin-page-head {
