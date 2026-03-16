@@ -59,6 +59,11 @@ type SampleReview = {
   text: string;
 };
 
+type FaqItem = {
+  question: string;
+  answer: string;
+};
+
 const galleryImages = [
   "https://images.unsplash.com/photo-1581578731548-c64695cc6952?auto=format&fit=crop&w=900&q=80",
   "https://images.unsplash.com/photo-1527515637462-cff94eecc1ac?auto=format&fit=crop&w=900&q=80",
@@ -66,14 +71,6 @@ const galleryImages = [
   "https://images.unsplash.com/photo-1484154218962-a197022b5858?auto=format&fit=crop&w=900&q=80",
   "https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?auto=format&fit=crop&w=900&q=80",
   "https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?auto=format&fit=crop&w=900&q=80"
-];
-
-const faqItems = [
-  "¿Qué incluye la limpieza estándar?",
-  "¿Puede realizar tareas adicionales como planchar o cocinar?",
-  "¿Qué pasa si no tengo materiales de limpieza?",
-  "¿Puedo reservar de forma semanal?",
-  "¿Qué significa reserva mínima?"
 ];
 
 const sampleComments: SampleReview[] = [
@@ -201,6 +198,151 @@ function taskerRoleLabel(value: string | null | undefined) {
       return "Tasker de planchado";
     default:
       return "Tasker de servicios a domicilio";
+  }
+}
+
+function faqItemsForCategory(categorySlug: string | null | undefined): FaqItem[] {
+  switch (categorySlug) {
+    case "mascotas":
+      return [
+        {
+          question: "¿Qué tipo de cuidado de mascotas ofrece?",
+          answer:
+            "Puedes revisar en el perfil si hace paseos, cuidado en casa del cliente o cuidado en su propio domicilio. Antes de reservar, por chat puedes confirmar detalles como tamaño, rutina y necesidades de tu mascota."
+        },
+        {
+          question: "¿Puede cuidar más de una mascota a la vez?",
+          answer:
+            "Sí, pero depende del tipo de servicio y de la rutina de cada mascota. Lo ideal es indicar cuántas mascotas son y sus necesidades para confirmar disponibilidad real."
+        },
+        {
+          question: "¿Qué pasa si mi mascota necesita cuidados especiales?",
+          answer:
+            "Puedes dejar esa información en la reserva y volver a confirmarla por chat. Así el tasker puede decirte si cuenta con la experiencia adecuada antes del servicio."
+        },
+        {
+          question: "¿Puedo agendar paseos o cuidados recurrentes?",
+          answer:
+            "Sí. En WeTask puedes reservar nuevamente al mismo profesional o coordinar servicios frecuentes según su agenda disponible."
+        },
+        {
+          question: "¿Cómo se confirma la disponibilidad?",
+          answer:
+            "La agenda visible muestra horarios abiertos. Una vez que eliges un bloque y completas la reserva, el servicio queda confirmado dentro de la plataforma."
+        }
+      ];
+    case "chef":
+      return [
+        {
+          question: "¿Qué tipo de servicios de chef ofrece?",
+          answer:
+            "Depende del perfil: puede incluir comida diaria, eventos o meal prep semanal. En la ficha se muestran sus especialidades y puedes confirmar el detalle antes de reservar."
+        },
+        {
+          question: "¿Cocina en la casa del cliente?",
+          answer:
+            "Sí. En WeTask este servicio está pensado para realizarse en el domicilio del cliente, siguiendo las condiciones y requerimientos acordados en la reserva."
+        },
+        {
+          question: "¿Puedo pedir un menú especial o restricciones alimentarias?",
+          answer:
+            "Sí. Puedes dejar observaciones en tu reserva y usar el chat para detallar alergias, preferencias o restricciones antes de la visita."
+        },
+        {
+          question: "¿Quién pone los ingredientes?",
+          answer:
+            "Eso puede acordarse según el tipo de servicio. Algunos servicios consideran lista de compras sugerida y otros se coordinan directamente con el cliente antes de la fecha."
+        },
+        {
+          question: "¿Puedo reservar de forma recurrente?",
+          answer:
+            "Sí. Si te gusta la experiencia, puedes volver a reservar al mismo profesional según su disponibilidad visible en WeTask."
+        }
+      ];
+    case "maquillaje":
+      return [
+        {
+          question: "¿Qué tipos de maquillaje realiza?",
+          answer:
+            "El perfil puede incluir maquillaje social, para eventos y novias. Revisa sus especialidades y confirma por chat si necesitas algo específico."
+        },
+        {
+          question: "¿El kit de maquillaje está incluido?",
+          answer:
+            "Si el profesional trabaja con kit propio, eso queda indicado en su perfil u observaciones del servicio. También puedes consultarlo antes de reservar."
+        },
+        {
+          question: "¿Puede atender a domicilio?",
+          answer:
+            "Sí. Este servicio está pensado para coordinarse de forma cómoda a través de WeTask y concretarse en el lugar indicado por el cliente."
+        },
+        {
+          question: "¿Puedo reservar para una ocasión especial?",
+          answer:
+            "Sí. Puedes reservar para eventos, celebraciones, sesiones o matrimonio, indicando fecha, hora y referencias importantes en la solicitud."
+        },
+        {
+          question: "¿Cómo aseguro mi horario?",
+          answer:
+            "La mejor forma es reservar directamente el bloque disponible dentro de la plataforma, así el servicio queda protegido y confirmado."
+        }
+      ];
+    case "planchado":
+      return [
+        {
+          question: "¿Cómo cobra este servicio de planchado?",
+          answer:
+            "En WeTask el servicio de planchado se maneja por hora. En el perfil puedes ver la tarifa referencial y reservar según la duración estimada."
+        },
+        {
+          question: "¿Puede planchar ropa delicada?",
+          answer:
+            "Si el profesional ofrece ese tipo de servicio, puedes verlo en sus especialidades o confirmarlo antes de la reserva para evitar errores con prendas sensibles."
+        },
+        {
+          question: "¿El servicio se hace en mi casa?",
+          answer:
+            "Sí, salvo que el profesional haya indicado otra modalidad específica. Lo importante es revisar el detalle del perfil antes de confirmar."
+        },
+        {
+          question: "¿Puedo agendar varias horas seguidas?",
+          answer:
+            "Sí. Puedes elegir un bloque disponible y reservar el tiempo que necesites según la cantidad de ropa y el ritmo del servicio."
+        },
+        {
+          question: "¿Qué debo tener listo antes de la visita?",
+          answer:
+            "Idealmente deja la ropa separada y comenta si hay prendas delicadas o instrucciones especiales para que el servicio sea más fluido."
+        }
+      ];
+    default:
+      return [
+        {
+          question: "¿Qué incluye este servicio?",
+          answer:
+            "Cada tasker detalla en su perfil las tareas y especialidades que ofrece. Antes de reservar puedes revisar esa información y usar el chat para confirmar dudas puntuales."
+        },
+        {
+          question: "¿Puede realizar tareas adicionales?",
+          answer:
+            "Depende del tipo de servicio y de lo que el profesional haya definido en su perfil. Si necesitas algo extra, lo mejor es consultarlo antes de confirmar la reserva."
+        },
+        {
+          question: "¿Qué pasa si no cuento con materiales o implementos?",
+          answer:
+            "Algunos taskers trabajan con sus propios productos o herramientas y otros requieren que el cliente los tenga disponibles. Eso se puede aclarar antes del servicio."
+        },
+        {
+          question: "¿Puedo reservar de forma semanal o recurrente?",
+          answer:
+            "Sí. Si el profesional tiene disponibilidad, puedes volver a reservarlo y coordinar servicios frecuentes desde la plataforma."
+        },
+        {
+          question: "¿Qué significa reserva mínima?",
+          answer:
+            "Es el tiempo base o la condición mínima que el profesional requiere para aceptar un servicio. Esa información se considera en la reserva y el valor estimado."
+        }
+      ];
   }
 }
 
@@ -396,6 +538,7 @@ export default function ProDetailPage() {
   const workModeLabel = onboarding?.workMode === "EQUIPO" ? "Trabajo en equipo" : "Trabajo individual";
   const categoryName = categoryLabel(onboarding?.categorySlug);
   const taskerRole = taskerRoleLabel(onboarding?.categorySlug);
+  const faqItems = faqItemsForCategory(onboarding?.categorySlug);
   const focusLabel = onboarding?.categorySlug === "mascotas" ? "Tipos de mascota" : "Especialidades";
   const serviceLabel = onboarding?.categorySlug === "limpieza" ? "Servicios de limpieza" : "Servicios que ofrece";
   const goalText =
@@ -737,9 +880,9 @@ export default function ProDetailPage() {
                     <h2>Preguntas frecuentes</h2>
                     <div className="we-faq-list">
                       {faqItems.map((item) => (
-                        <details key={item}>
-                          <summary>{item}</summary>
-                          <p>Este profesional responde por chat y confirma los detalles antes del servicio.</p>
+                        <details key={item.question}>
+                          <summary>{item.question}</summary>
+                          <p>{item.answer}</p>
                         </details>
                       ))}
                     </div>
