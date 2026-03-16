@@ -264,12 +264,12 @@ export default function ServiceProsPage() {
                 <p className="we-pro-snippet">{profileSnippet(category?.name ?? "servicios")}</p>
 
                 <div className="cta-row we-pro-actions">
-                  <Link className="cta small" href={`/pro/${pro.userId}`}>
+                  <Link className="cta small" href={`/profesionales/${pro.userId}`}>
                     Ver perfil
                   </Link>
                   <Link
                     className="cta small"
-                    href={`/pro/${pro.userId}?date=${encodeURIComponent(requestedDate || localYmd(new Date()))}#availability`}
+                    href={`/profesionales/${pro.userId}?date=${encodeURIComponent(requestedDate || localYmd(new Date()))}#availability`}
                   >
                     Ver agenda
                   </Link>
