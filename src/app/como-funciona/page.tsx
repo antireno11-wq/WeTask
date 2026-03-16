@@ -35,7 +35,7 @@ export default function ComoFuncionaPage() {
 
         <section className="auth-flow-shell auth-flow-shell-wide">
           <div className="auth-flow-copy">
-            <p className="auth-flow-kicker">Como funciona</p>
+            <p className="auth-flow-kicker">Cómo funciona</p>
             <h1>Desde la búsqueda hasta la reserva, todo pasa en pocos pasos.</h1>
             <p>WeTask conecta a personas que necesitan ayuda en casa con profesionales confiables cerca de ti.</p>
 

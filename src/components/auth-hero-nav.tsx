@@ -6,7 +6,7 @@ import { BrandLogo } from "@/components/brand-logo";
 const navLinks = [
   { href: "/", label: "Inicio" },
   { href: "/services", label: "Servicios" },
-  { href: "/como-funciona", label: "Como funciona" },
+  { href: "/como-funciona", label: "Cómo funciona" },
   { href: "/trabaja-con-nosotros", label: "Ofrecer servicios" }
 ];
 
@@ -17,7 +17,7 @@ export function AuthHeroNav() {
         <BrandLogo width={180} height={60} />
       </Link>
 
-      <nav className="auth-hero-links" aria-label="Navegacion principal">
+      <nav className="auth-hero-links" aria-label="Navegación principal">
         {navLinks.map((item) => (
           <Link key={item.href} href={item.href} className="auth-hero-link">
             {item.label}
