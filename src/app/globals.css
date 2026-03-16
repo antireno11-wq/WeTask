@@ -2131,11 +2131,15 @@ textarea {
 
 .status {
   display: inline-flex;
+  align-items: center;
+  justify-content: center;
   border-radius: 999px;
   font-size: 0.76rem;
   font-weight: 800;
   padding: 6px 10px;
   border: 1px solid transparent;
+  white-space: nowrap;
+  text-transform: none;
 }
 
 .status-pending {
@@ -2145,10 +2149,23 @@ textarea {
 }
 
 .status-accepted,
-.status-in_progress {
+.status-in_progress,
+.status-assigned {
   background: #e7f7ff;
   color: #005f83;
   border-color: #9ddffa;
+}
+
+.status-confirmed {
+  background: #eef1ff;
+  color: #3348a5;
+  border-color: #c5cffd;
+}
+
+.status-in-progress {
+  background: #fff4db;
+  color: #8a5200;
+  border-color: #f6d48a;
 }
 
 .status-completed {
@@ -2161,6 +2178,18 @@ textarea {
   background: #ffedf0;
   color: #7d001f;
   border-color: #f6c1cc;
+}
+
+.status-refunded {
+  background: #f5edff;
+  color: #6431a7;
+  border-color: #d7befb;
+}
+
+.status-payment-failed {
+  background: #ffe8e8;
+  color: #9d1b1b;
+  border-color: #f4b0b0;
 }
 
 .status-editor {
@@ -4630,6 +4659,7 @@ textarea {
   align-items: flex-start;
   gap: 1rem;
   margin-bottom: 1rem;
+  flex-wrap: wrap;
 }
 
 .admin-section-head h3 {
@@ -4658,6 +4688,13 @@ textarea {
   border: 1px solid rgba(139, 177, 235, 0.26);
   border-radius: 22px;
   background: rgba(255, 255, 255, 0.82);
+}
+
+.admin-section-head .cta,
+.admin-section-head .cta.ghost,
+.admin-queue-row .cta,
+.admin-queue-row .cta.ghost {
+  white-space: nowrap;
 }
 
 .admin-queue-row h4,

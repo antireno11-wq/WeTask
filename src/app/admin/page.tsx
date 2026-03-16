@@ -36,8 +36,12 @@ function bookingStatusLabel(status: string) {
 
 function bookingStatusClass(status: string) {
   if (status === "COMPLETED") return "status-completed";
-  if (status === "IN_PROGRESS" || status === "CONFIRMED" || status === "ACCEPTED" || status === "ASSIGNED") return "status-accepted";
-  if (status === "CANCELLED" || status === "REFUNDED" || status === "PAYMENT_FAILED") return "status-cancelled";
+  if (status === "IN_PROGRESS") return "status-in-progress";
+  if (status === "CONFIRMED") return "status-confirmed";
+  if (status === "ACCEPTED" || status === "ASSIGNED") return "status-assigned";
+  if (status === "CANCELLED") return "status-cancelled";
+  if (status === "REFUNDED") return "status-refunded";
+  if (status === "PAYMENT_FAILED") return "status-payment-failed";
   return "status-pending";
 }
 
