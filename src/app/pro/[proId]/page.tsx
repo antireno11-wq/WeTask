@@ -47,6 +47,18 @@ type AvailabilitySlot = {
   service: { id: string; name: string } | null;
 };
 
+type SampleReview = {
+  name: string;
+  time: string;
+  serviceLabel: string;
+  overall: number;
+  punctuality: number;
+  communication: number;
+  quality: number;
+  wouldBookAgain: boolean;
+  text: string;
+};
+
 const galleryImages = [
   "https://images.unsplash.com/photo-1581578731548-c64695cc6952?auto=format&fit=crop&w=900&q=80",
   "https://images.unsplash.com/photo-1527515637462-cff94eecc1ac?auto=format&fit=crop&w=900&q=80",
@@ -64,10 +76,40 @@ const faqItems = [
   "¿Qué significa reserva mínima?"
 ];
 
-const sampleComments = [
-  { name: "Jose", time: "hace 1 mes", text: "Mucha seriedad y profesionalismo." },
-  { name: "Maria", time: "hace 1 mes", text: "Perfecto, muy puntuales y ordenados." },
-  { name: "Victor", time: "hace 1 mes", text: "Como siempre, trato impecable." }
+const sampleComments: SampleReview[] = [
+  {
+    name: "Josefa R.",
+    time: "hace 6 dias",
+    serviceLabel: "Limpieza profunda",
+    overall: 5,
+    punctuality: 5,
+    communication: 5,
+    quality: 5,
+    wouldBookAgain: true,
+    text: "Llegó puntual, explicó todo antes de empezar y dejó la cocina impecable. La volvería a reservar sin dudar."
+  },
+  {
+    name: "Martin P.",
+    time: "hace 2 semanas",
+    serviceLabel: "Limpieza general",
+    overall: 4,
+    punctuality: 5,
+    communication: 4,
+    quality: 4,
+    wouldBookAgain: true,
+    text: "Muy buena experiencia. Ordenó bien los espacios y mantuvo una comunicación clara durante toda la visita."
+  },
+  {
+    name: "Carolina S.",
+    time: "hace 1 mes",
+    serviceLabel: "Orden y organizacion",
+    overall: 5,
+    punctuality: 4,
+    communication: 5,
+    quality: 5,
+    wouldBookAgain: true,
+    text: "Fue muy profesional y cuidadosa con mis cosas. Se nota la experiencia y el trato amable con el cliente."
+  }
 ];
 
 const demoOfferedServices = ["Limpieza general", "Limpieza profunda", "Planchado", "Orden y organización"];
@@ -133,6 +175,10 @@ function categoryLabel(value: string | null | undefined) {
     default:
       return "Servicios a domicilio";
   }
+}
+
+function renderStars(value: number) {
+  return Array.from({ length: 5 }, (_, index) => (index < Math.round(value) ? "★" : "☆")).join("");
 }
 
 function buildDemoProfessional(proId: string): ProfessionalDetail {
@@ -541,13 +587,93 @@ export default function ProDetailPage() {
                       <p>Profesionalidad: {professionalismScore.toFixed(1)}</p>
                       <p>Puntualidad: {punctualityScore.toFixed(1)}</p>
                     </div>
-                    <div className="we-comments-list">
+                    <div
+                      className="we-comments-list"
+                      style={{ display: "grid", gap: "16px", marginTop: "18px" }}
+                    >
                       {sampleComments.map((comment) => (
-                        <article key={comment.name + comment.time} className="we-comment-item">
-                          <p>
-                            <strong>{comment.name}</strong> · {comment.time}
+                        <article
+                          key={comment.name + comment.time}
+                          className="we-comment-item"
+                          style={{
+                            border: "1px solid #d6e3f2",
+                            borderRadius: "22px",
+                            padding: "18px 20px",
+                            background: "linear-gradient(180deg, #ffffff 0%, #f7fbff 100%)",
+                            boxShadow: "0 12px 30px rgba(16, 44, 84, 0.08)"
+                          }}
+                        >
+                          <div
+                            style={{
+                              display: "flex",
+                              justifyContent: "space-between",
+                              gap: "12px",
+                              alignItems: "flex-start",
+                              flexWrap: "wrap"
+                            }}
+                          >
+                            <div style={{ display: "grid", gap: "4px" }}>
+                              <p style={{ margin: 0, color: "#203a63" }}>
+                                <strong>{comment.name}</strong> · {comment.time}
+                              </p>
+                              <p style={{ margin: 0, color: "#58708f", fontSize: "0.92rem" }}>{comment.serviceLabel}</p>
+                            </div>
+                            <div style={{ display: "grid", justifyItems: "end", gap: "4px" }}>
+                              <strong style={{ color: "#f59e0b", fontSize: "1.05rem", letterSpacing: "0.08em" }}>
+                                {renderStars(comment.overall)}
+                              </strong>
+                              <span style={{ color: "#203a63", fontWeight: 700 }}>{comment.overall.toFixed(1)} / 5</span>
+                            </div>
+                          </div>
+
+                          <div
+                            style={{
+                              display: "grid",
+                              gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
+                              gap: "10px",
+                              marginTop: "14px"
+                            }}
+                          >
+                            <div
+                              style={{
+                                padding: "10px 12px",
+                                borderRadius: "16px",
+                                background: "#edf5ff",
+                                color: "#203a63"
+                              }}
+                            >
+                              <strong style={{ display: "block", fontSize: "0.82rem" }}>Puntualidad</strong>
+                              <span>{comment.punctuality.toFixed(1)} / 5</span>
+                            </div>
+                            <div
+                              style={{
+                                padding: "10px 12px",
+                                borderRadius: "16px",
+                                background: "#fef4e8",
+                                color: "#203a63"
+                              }}
+                            >
+                              <strong style={{ display: "block", fontSize: "0.82rem" }}>Comunicacion</strong>
+                              <span>{comment.communication.toFixed(1)} / 5</span>
+                            </div>
+                            <div
+                              style={{
+                                padding: "10px 12px",
+                                borderRadius: "16px",
+                                background: "#eefaf2",
+                                color: "#203a63"
+                              }}
+                            >
+                              <strong style={{ display: "block", fontSize: "0.82rem" }}>Calidad del servicio</strong>
+                              <span>{comment.quality.toFixed(1)} / 5</span>
+                            </div>
+                          </div>
+
+                          <p style={{ margin: "14px 0 0", color: "#385170", lineHeight: 1.6 }}>{comment.text}</p>
+
+                          <p style={{ margin: "12px 0 0", color: "#1f6a43", fontWeight: 700 }}>
+                            {comment.wouldBookAgain ? "Lo volveria a contratar" : "No volveria a contratar"}
                           </p>
-                          <p>{comment.text}</p>
                         </article>
                       ))}
                     </div>
