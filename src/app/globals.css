@@ -4854,6 +4854,87 @@ textarea {
   margin-top: 0;
 }
 
+.booking-flow-page .auth-flow-backdrop {
+  background:
+    linear-gradient(118deg, rgba(11, 32, 67, 0.84) 0%, rgba(18, 86, 176, 0.38) 44%, rgba(255, 106, 0, 0.16) 100%),
+    url("/services/limpieza-opt.jpg");
+  background-position: center;
+  background-size: cover;
+}
+
+.booking-flow-hero {
+  align-items: start;
+}
+
+.booking-summary-panel {
+  display: grid;
+}
+
+.booking-summary-card {
+  display: grid;
+  gap: 16px;
+}
+
+.booking-summary-list {
+  display: grid;
+  gap: 10px;
+}
+
+.booking-summary-list span {
+  padding: 12px 14px;
+  border: 1px solid #d6e7f5;
+  border-radius: 16px;
+  background: linear-gradient(180deg, #fbfdff 0%, #f2f8ff 100%);
+  color: #58718c;
+  font-weight: 700;
+}
+
+.booking-summary-list .is-complete {
+  border-color: #a8d5be;
+  background: linear-gradient(180deg, #f5fff8 0%, #edf9f1 100%);
+  color: #1f6a43;
+}
+
+.booking-flow-sections {
+  display: grid;
+  gap: 18px;
+}
+
+.booking-flow-grid {
+  display: grid;
+  gap: 18px;
+  grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.08fr);
+}
+
+.booking-results-list {
+  margin-top: 18px;
+}
+
+.booking-price-box {
+  border-radius: 18px;
+  border: 1px solid #d6e7f5;
+  background: linear-gradient(180deg, #ffffff 0%, #f2f8ff 100%);
+}
+
+.booking-checkout-summary {
+  display: grid;
+  gap: 6px;
+  padding: 16px 18px;
+  border: 1px solid #d6e7f5;
+  border-radius: 20px;
+  background: linear-gradient(180deg, #ffffff 0%, #f7fbff 100%);
+}
+
+.booking-checkout-summary p {
+  margin: 0;
+}
+
+@media (max-width: 980px) {
+  .booking-flow-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 .client-dashboard-section + .client-dashboard-section {
   margin-top: 18px;
 }

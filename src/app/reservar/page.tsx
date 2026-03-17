@@ -529,273 +529,328 @@ export default function ReservarPage() {
   };
 
   return (
-    <main className="page market-shell">
-      <MarketNav />
+    <main className="auth-flow-screen auth-flow-screen-scroll market-shell-auth booking-flow-page">
+      <div className="auth-flow-backdrop" aria-hidden />
 
-      <section className="panel">
-        <div className="panel-head">
-          <h2>Checkout de reserva</h2>
-          <p>Servicio, profesional, fecha/hora y pago protegido en un solo flujo.</p>
-        </div>
+      <div className="login-screen-content market-shell-auth-content">
+        <MarketNav />
 
-        <form className="grid-form" onSubmit={searchPros}>
-          <label>
-            Ciudad
-            <input value={address.city} onChange={(e) => setAddress((prev) => ({ ...prev, city: e.target.value }))} required />
-          </label>
-          <label>
-            Comuna
-            <input value={address.commune} onChange={(e) => setAddress((prev) => ({ ...prev, commune: e.target.value }))} required />
-          </label>
-          <label>
-            Código postal
-            <input value={address.postalCode} onChange={(e) => setAddress((prev) => ({ ...prev, postalCode: e.target.value }))} required />
-          </label>
-          <label className="full">
-            Calle
-            <input value={address.street} onChange={(e) => setAddress((prev) => ({ ...prev, street: e.target.value }))} required />
-          </label>
+        <section className="auth-flow-shell auth-flow-shell-wide client-dashboard-hero booking-flow-hero">
+          <div className="auth-flow-copy client-dashboard-copy">
+            <p className="auth-flow-kicker">Reserva protegida</p>
+            <h1>Agenda, compara y paga en un solo flujo.</h1>
+            <p>Elige el servicio, encuentra profesionales disponibles en tu zona y confirma tu reserva con pago seguro dentro de WeTask.</p>
 
-          <label>
-            Servicio
-            <select value={filters.serviceId} onChange={(e) => setFilters((prev) => ({ ...prev, serviceId: e.target.value }))}>
-              <option value="">Selecciona</option>
-              {services.map((service) => (
-                <option key={service.id} value={service.id}>
-                  {service.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            Fecha deseada
-            <input type="date" value={filters.date} onChange={(e) => setFilters((prev) => ({ ...prev, date: e.target.value }))} />
-          </label>
-
-          <label>
-            Customer ID
-            <input value={customerId} onChange={(e) => setCustomerId(e.target.value)} placeholder="cliente demo o real" required />
-          </label>
-
-          <div className="cta-row">
-            <button className="cta ghost" type="button" onClick={useGeolocation}>
-              Usar geolocalización
-            </button>
-            <button className="cta" type="submit" disabled={loadingSearch || loadingServices}>
-              {loadingSearch ? "Buscando..." : "Buscar profesionales"}
-            </button>
-          </div>
-        </form>
-      </section>
-
-      <section className="panel">
-        <div className="panel-head">
-          <h2>Profesionales disponibles</h2>
-          <p>Ordenados por distancia, disponibilidad, rating y precio.</p>
-        </div>
-
-        <div className="list">
-          {matches.map((pro) => (
-            <article className={`booking-card ${selectedProId === pro.userId ? "selected-pro" : ""}`} key={pro.id}>
-              <div className="booking-head">
-                <h3>{pro.fullName}</h3>
-                <span className="status status-completed">{pro.distanceKm} km</span>
+            <div className="auth-flow-copy-list client-dashboard-summary">
+              <div className="auth-flow-meta-card">
+                <strong>Dirección</strong>
+                <span>{address.street}, {address.commune}</span>
               </div>
-              <p>
-                <strong>Rating:</strong> {starsText(pro.ratingAvg)} {pro.ratingAvg.toFixed(1)} ({pro.ratingsCount})
-              </p>
-              <p>
-                <strong>Precio/hora:</strong> {pro.hourlyRateFromClp ? clp(pro.hourlyRateFromClp) : "Por definir"}
-              </p>
-              <p>
-                <strong>Próxima hora:</strong> {pro.nextAvailableAt ? new Date(pro.nextAvailableAt).toLocaleString("es-ES") : "Sin slots"}
-              </p>
-              <p>
-                <strong>Radio de cobertura:</strong> {pro.serviceRadiusKm} km
-              </p>
-              <button
-                className="cta small"
-                type="button"
-                onClick={() => {
-                  setSelectedProId(pro.userId);
-                  const firstDay = isoDay(pro.slots[0]?.startsAt ?? "");
-                  setSelectedDay(firstDay);
-                  setSelectedSlotId("");
-                }}
-              >
-                Elegir profesional
-              </button>
-            </article>
-          ))}
-        </div>
-      </section>
-
-      {selectedPro ? (
-        <section className="panel">
-          <div className="panel-head">
-            <h2>Agenda de {selectedPro.fullName}</h2>
-            <p>Selecciona día y bloque horario disponible.</p>
-          </div>
-
-          <div className="day-tabs">
-            {dayGroups.map(([day]) => (
-              <button key={day} type="button" className={`day-tab ${selectedDay === day ? "active" : ""}`} onClick={() => setSelectedDay(day)}>
-                {new Date(`${day}T00:00:00`).toLocaleDateString("es-ES", { weekday: "short", day: "2-digit", month: "2-digit" })}
-              </button>
-            ))}
-          </div>
-
-          <div className="calendar-slot-grid">
-            {selectedSlots.map((slot) => (
-              <button
-                key={slot.id}
-                type="button"
-                className={`slot-btn ${selectedSlotId === slot.id ? "slot-btn-active" : ""}`}
-                onClick={() => setSelectedSlotId(slot.id)}
-              >
-                {new Date(slot.startsAt).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" })}
-              </button>
-            ))}
-          </div>
-
-          <div className="grid-form" style={{ marginTop: 12 }}>
-            <label>
-              Horas (1-8)
-              <input type="number" min={1} max={8} value={hours} onChange={(e) => setHours(Number(e.target.value) || 1)} />
-            </label>
-            <label>
-              Desplazamiento (CLP)
-              <input type="number" min={0} value={travelFeeClp} onChange={(e) => setTravelFeeClp(Number(e.target.value) || 0)} />
-            </label>
-            <label>
-              <span>Extras</span>
-              <div className="inline-checks">
-                <label><input type="checkbox" checked={materials} onChange={(e) => setMaterials(e.target.checked)} /> Materiales</label>
-                <label><input type="checkbox" checked={urgency} onChange={(e) => setUrgency(e.target.checked)} /> Urgencia</label>
+              <div className="auth-flow-meta-card">
+                <strong>Servicio</strong>
+                <span>{selectedService?.name ?? "Selecciona un servicio"}</span>
               </div>
-            </label>
-            <label className="full">
-              Detalles del trabajo
-              <textarea value={details} onChange={(e) => setDetails(e.target.value)} />
-            </label>
-            {isChefService ? (
-              <div className="full auth-flow-note-card">
-                <strong>¿Deberíamos saber algo sobre tu alimentación?</strong>
-                <span>Cuéntanos si necesitas comida libre de alérgenos, sin gluten, APLV u otra consideración importante.</span>
-                <div className="inline-checks" style={{ marginTop: 12 }}>
-                  {DIETARY_OPTIONS.map((option) => (
-                    <label key={option}>
-                      <input
-                        type="checkbox"
-                        checked={dietaryFlags.includes(option)}
-                        onChange={(event) =>
-                          setDietaryFlags((current) =>
-                            event.target.checked ? Array.from(new Set([...current, option])) : current.filter((item) => item !== option)
-                          )
-                        }
-                      />
-                      {option}
-                    </label>
-                  ))}
-                </div>
-                <textarea
-                  style={{ marginTop: 12 }}
-                  value={dietaryNotes}
-                  onChange={(event) => setDietaryNotes(event.target.value)}
-                  placeholder="Ejemplo: una persona es celíaca, evitar contaminación cruzada, sin mariscos, menú infantil, etc."
-                />
+              <div className="auth-flow-meta-card">
+                <strong>Total estimado</strong>
+                <span>{selectedPro ? clp(total) : "Busca profesionales para calcularlo"}</span>
               </div>
-            ) : null}
+            </div>
           </div>
 
-          <div className="price-box" style={{ marginTop: 12 }}>
-            Resumen en vivo: ({clp(baseHourly)} x {hours}h) + extras {clp(extrasTotal)} + comisión {clp(commission)} = <strong>{clp(total)}</strong>
-          </div>
-          <p className="minimal-note">Pago seguro procesado por Mercado Pago</p>
+          <section className="auth-flow-panel auth-flow-panel-wide booking-summary-panel">
+            <div className="booking-summary-card">
+              <strong>Estado de tu reserva</strong>
+              <div className="booking-summary-list">
+                <span className={filters.serviceId ? "is-complete" : ""}>1. Servicio seleccionado</span>
+                <span className={matches.length > 0 ? "is-complete" : ""}>2. Profesionales encontrados</span>
+                <span className={selectedSlot ? "is-complete" : ""}>3. Horario elegido</span>
+                <span className={checkoutState === "approved" ? "is-complete" : ""}>4. Pago confirmado</span>
+              </div>
+              <div className="auth-flow-note-card">
+                <strong>Resumen rápido</strong>
+                <span>{selectedPro ? `${selectedPro.fullName} · ${selectedSlot ? new Date(selectedSlot.startsAt).toLocaleString("es-CL") : "falta horario"}` : "Aún no eliges profesional."}</span>
+              </div>
+            </div>
+          </section>
+        </section>
 
-          <div className="panel" style={{ marginTop: 12 }}>
-            <h3>Checkout</h3>
-            <p>
-              Servicio: <strong>{selectedService?.name ?? "Servicio seleccionado"}</strong>
-            </p>
-            <p>
-              Fecha y hora: <strong>{selectedSlot ? new Date(selectedSlot.startsAt).toLocaleString("es-CL") : "Selecciona un horario"}</strong>
-            </p>
-            <p>
-              Dirección: <strong>{address.street}, {address.commune}, {address.city}</strong>
-            </p>
-            <p>
-              Horas estimadas: <strong>{hours}</strong> · Total: <strong>{clp(total)}</strong>
-            </p>
-
-            {!mercadoPagoPublicKey ? (
-              <p className="feedback error">Configura `NEXT_PUBLIC_MERCADOPAGO_PUBLIC_KEY` para habilitar pagos.</p>
-            ) : null}
-
-            <form id="mp-card-form" className="grid-form" onSubmit={(event) => event.preventDefault()}>
-              <label>
-                Nombre del titular
-                <input id="mp-cardholder-name" type="text" placeholder="Como aparece en tu tarjeta" />
-              </label>
-              <label>
-                Email pagador
-                <input id="mp-cardholder-email" type="email" placeholder="correo@ejemplo.com" />
-              </label>
-              <label className="full">
-                Número de tarjeta
-                <div id="mp-card-number" className="mp-secure-field" />
-              </label>
-              <label>
-                Vencimiento
-                <div id="mp-expiration-date" className="mp-secure-field" />
-              </label>
-              <label>
-                Código de seguridad
-                <div id="mp-security-code" className="mp-secure-field" />
-              </label>
-              <label>
-                Cuotas
-                <select id="mp-installments" defaultValue="" />
-              </label>
-              <label>
-                Banco emisor
-                <select id="mp-issuer" defaultValue="" />
-              </label>
-              <label>
-                Tipo de identificación
-                <select id="mp-identification-type" defaultValue="" />
-              </label>
-              <label>
-                Número de identificación
-                <input id="mp-identification-number" type="text" placeholder="RUT / documento" />
-              </label>
-            </form>
-
-            <div className="cta-row">
-              <button className="cta" type="button" onClick={submitCheckout} disabled={loadingCheckout || !selectedSlot || !cardFormReady}>
-                {loadingCheckout ? "Procesando pago..." : "Pagar y confirmar reserva"}
-              </button>
-              <Link className="cta ghost" href="/cliente">
-                Ver mis reservas
-              </Link>
+        <div className="page client-dashboard-sections booking-flow-sections">
+          <section className="auth-flow-panel client-dashboard-section">
+            <div className="panel-head auth-flow-panel-head">
+              <h2>Busca tu servicio</h2>
+              <p>Completa la ubicación, elige la fecha deseada y encuentra profesionales disponibles en tiempo real.</p>
             </div>
 
-            {checkoutState === "processing" ? <p className="feedback ok">Procesando pago...</p> : null}
-            {checkoutState === "approved" ? <p className="feedback ok">Pago aprobado. Redirigiendo a tu confirmación...</p> : null}
-            {checkoutState === "rejected" ? <p className="feedback error">Pago rechazado. Revisa los datos o prueba otra tarjeta.</p> : null}
-            {checkoutState === "connection_error" ? <p className="feedback error">Error de conexión con el proveedor de pago.</p> : null}
-            {checkoutStatusText ? <p className="minimal-note">Estado checkout: {checkoutStatusText}</p> : null}
-            {createdBooking ? (
-              <p className="minimal-note">
-                Reserva {createdBooking.id} · Estado {createdBooking.status} · Pago {createdBooking.paymentStatus}
-              </p>
+            <form className="grid-form auth-flow-form" onSubmit={searchPros}>
+              <label>
+                Ciudad
+                <input value={address.city} onChange={(e) => setAddress((prev) => ({ ...prev, city: e.target.value }))} required />
+              </label>
+              <label>
+                Comuna
+                <input value={address.commune} onChange={(e) => setAddress((prev) => ({ ...prev, commune: e.target.value }))} required />
+              </label>
+              <label>
+                Código postal
+                <input value={address.postalCode} onChange={(e) => setAddress((prev) => ({ ...prev, postalCode: e.target.value }))} required />
+              </label>
+              <label className="full">
+                Calle
+                <input value={address.street} onChange={(e) => setAddress((prev) => ({ ...prev, street: e.target.value }))} required />
+              </label>
+
+              <label>
+                Servicio
+                <select value={filters.serviceId} onChange={(e) => setFilters((prev) => ({ ...prev, serviceId: e.target.value }))}>
+                  <option value="">Selecciona</option>
+                  {services.map((service) => (
+                    <option key={service.id} value={service.id}>
+                      {service.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Fecha deseada
+                <input type="date" value={filters.date} onChange={(e) => setFilters((prev) => ({ ...prev, date: e.target.value }))} />
+              </label>
+              <label>
+                ID cliente
+                <input value={customerId} onChange={(e) => setCustomerId(e.target.value)} placeholder="cliente demo o real" required />
+              </label>
+
+              <div className="cta-row">
+                <button className="cta ghost" type="button" onClick={useGeolocation}>
+                  Usar geolocalización
+                </button>
+                <button className="cta" type="submit" disabled={loadingSearch || loadingServices}>
+                  {loadingSearch ? "Buscando..." : "Buscar profesionales"}
+                </button>
+              </div>
+            </form>
+          </section>
+
+          <div className="booking-flow-grid">
+            <section className="auth-flow-panel client-dashboard-section">
+              <div className="panel-head auth-flow-panel-head">
+                <h2>Profesionales disponibles</h2>
+                <p>Ordenados por distancia, disponibilidad, valoración y precio estimado por hora.</p>
+              </div>
+
+              <div className="list booking-results-list">
+                {matches.map((pro) => (
+                  <article className={`booking-card ${selectedProId === pro.userId ? "selected-pro" : ""}`} key={pro.id}>
+                    <div className="booking-head">
+                      <h3>{pro.fullName}</h3>
+                      <span className="status status-completed">{pro.distanceKm} km</span>
+                    </div>
+                    <p>
+                      <strong>Rating:</strong> {starsText(pro.ratingAvg)} {pro.ratingAvg.toFixed(1)} ({pro.ratingsCount})
+                    </p>
+                    <p>
+                      <strong>Precio/hora:</strong> {pro.hourlyRateFromClp ? clp(pro.hourlyRateFromClp) : "Por definir"}
+                    </p>
+                    <p>
+                      <strong>Próxima hora:</strong> {pro.nextAvailableAt ? new Date(pro.nextAvailableAt).toLocaleString("es-ES") : "Sin slots"}
+                    </p>
+                    <p>
+                      <strong>Cobertura:</strong> hasta {pro.serviceRadiusKm} km
+                    </p>
+                    <button
+                      className="cta small"
+                      type="button"
+                      onClick={() => {
+                        setSelectedProId(pro.userId);
+                        const firstDay = isoDay(pro.slots[0]?.startsAt ?? "");
+                        setSelectedDay(firstDay);
+                        setSelectedSlotId("");
+                      }}
+                    >
+                      Elegir profesional
+                    </button>
+                  </article>
+                ))}
+                {!loadingSearch && matches.length === 0 ? <p className="empty">Aún no hay profesionales cargados para esta búsqueda.</p> : null}
+              </div>
+            </section>
+
+            {selectedPro ? (
+              <section className="auth-flow-panel client-dashboard-section">
+                <div className="panel-head auth-flow-panel-head">
+                  <h2>Agenda de {selectedPro.fullName}</h2>
+                  <p>Selecciona día, horario y define los detalles del trabajo antes de pagar.</p>
+                </div>
+
+                <div className="day-tabs">
+                  {dayGroups.map(([day]) => (
+                    <button key={day} type="button" className={`day-tab ${selectedDay === day ? "active" : ""}`} onClick={() => setSelectedDay(day)}>
+                      {new Date(`${day}T00:00:00`).toLocaleDateString("es-ES", { weekday: "short", day: "2-digit", month: "2-digit" })}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="calendar-slot-grid">
+                  {selectedSlots.map((slot) => (
+                    <button
+                      key={slot.id}
+                      type="button"
+                      className={`slot-btn ${selectedSlotId === slot.id ? "slot-btn-active" : ""}`}
+                      onClick={() => setSelectedSlotId(slot.id)}
+                    >
+                      {new Date(slot.startsAt).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" })}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="grid-form auth-flow-form" style={{ marginTop: 12 }}>
+                  <label>
+                    Horas (1-8)
+                    <input type="number" min={1} max={8} value={hours} onChange={(e) => setHours(Number(e.target.value) || 1)} />
+                  </label>
+                  <label>
+                    Desplazamiento (CLP)
+                    <input type="number" min={0} value={travelFeeClp} onChange={(e) => setTravelFeeClp(Number(e.target.value) || 0)} />
+                  </label>
+                  <label>
+                    <span>Extras</span>
+                    <div className="inline-checks">
+                      <label><input type="checkbox" checked={materials} onChange={(e) => setMaterials(e.target.checked)} /> Materiales</label>
+                      <label><input type="checkbox" checked={urgency} onChange={(e) => setUrgency(e.target.checked)} /> Urgencia</label>
+                    </div>
+                  </label>
+                  <label className="full">
+                    Detalles del trabajo
+                    <textarea value={details} onChange={(e) => setDetails(e.target.value)} />
+                  </label>
+                  {isChefService ? (
+                    <div className="full auth-flow-note-card">
+                      <strong>¿Deberíamos saber algo sobre tu alimentación?</strong>
+                      <span>Cuéntanos si necesitas comida libre de alérgenos, sin gluten, APLV u otra consideración importante.</span>
+                      <div className="inline-checks" style={{ marginTop: 12 }}>
+                        {DIETARY_OPTIONS.map((option) => (
+                          <label key={option}>
+                            <input
+                              type="checkbox"
+                              checked={dietaryFlags.includes(option)}
+                              onChange={(event) =>
+                                setDietaryFlags((current) =>
+                                  event.target.checked ? Array.from(new Set([...current, option])) : current.filter((item) => item !== option)
+                                )
+                              }
+                            />
+                            {option}
+                          </label>
+                        ))}
+                      </div>
+                      <textarea
+                        style={{ marginTop: 12 }}
+                        value={dietaryNotes}
+                        onChange={(event) => setDietaryNotes(event.target.value)}
+                        placeholder="Ejemplo: una persona es celíaca, evitar contaminación cruzada, sin mariscos, menú infantil, etc."
+                      />
+                    </div>
+                  ) : null}
+                </div>
+
+                <div className="price-box booking-price-box" style={{ marginTop: 12 }}>
+                  Resumen en vivo: ({clp(baseHourly)} x {hours}h) + extras {clp(extrasTotal)} + comisión {clp(commission)} = <strong>{clp(total)}</strong>
+                </div>
+                <p className="minimal-note">Pago seguro procesado por Mercado Pago.</p>
+              </section>
             ) : null}
           </div>
-        </section>
-      ) : null}
 
-      {message ? <p className="feedback ok">{message}</p> : null}
-      {error ? <p className="feedback error">{error}</p> : null}
+          {selectedPro ? (
+            <section className="auth-flow-panel client-dashboard-section booking-checkout-section">
+              <div className="panel-head auth-flow-panel-head">
+                <h2>Checkout</h2>
+                <p>Confirma el horario elegido y completa el pago con Mercado Pago sin salir de WeTask.</p>
+              </div>
+
+              <div className="booking-checkout-summary">
+                <p>
+                  Servicio: <strong>{selectedService?.name ?? "Servicio seleccionado"}</strong>
+                </p>
+                <p>
+                  Fecha y hora: <strong>{selectedSlot ? new Date(selectedSlot.startsAt).toLocaleString("es-CL") : "Selecciona un horario"}</strong>
+                </p>
+                <p>
+                  Dirección: <strong>{address.street}, {address.commune}, {address.city}</strong>
+                </p>
+                <p>
+                  Horas estimadas: <strong>{hours}</strong> · Total: <strong>{clp(total)}</strong>
+                </p>
+              </div>
+
+              {!mercadoPagoPublicKey ? (
+                <p className="feedback error">Configura `NEXT_PUBLIC_MERCADOPAGO_PUBLIC_KEY` para habilitar pagos.</p>
+              ) : null}
+
+              <form id="mp-card-form" className="grid-form auth-flow-form" onSubmit={(event) => event.preventDefault()}>
+                <label>
+                  Nombre del titular
+                  <input id="mp-cardholder-name" type="text" placeholder="Como aparece en tu tarjeta" />
+                </label>
+                <label>
+                  Email pagador
+                  <input id="mp-cardholder-email" type="email" placeholder="correo@ejemplo.com" />
+                </label>
+                <label className="full">
+                  Número de tarjeta
+                  <div id="mp-card-number" className="mp-secure-field" />
+                </label>
+                <label>
+                  Vencimiento
+                  <div id="mp-expiration-date" className="mp-secure-field" />
+                </label>
+                <label>
+                  Código de seguridad
+                  <div id="mp-security-code" className="mp-secure-field" />
+                </label>
+                <label>
+                  Cuotas
+                  <select id="mp-installments" defaultValue="" />
+                </label>
+                <label>
+                  Banco emisor
+                  <select id="mp-issuer" defaultValue="" />
+                </label>
+                <label>
+                  Tipo de identificación
+                  <select id="mp-identification-type" defaultValue="" />
+                </label>
+                <label>
+                  Número de identificación
+                  <input id="mp-identification-number" type="text" placeholder="RUT / documento" />
+                </label>
+              </form>
+
+              <div className="cta-row">
+                <button className="cta" type="button" onClick={submitCheckout} disabled={loadingCheckout || !selectedSlot || !cardFormReady}>
+                  {loadingCheckout ? "Procesando pago..." : "Pagar y confirmar reserva"}
+                </button>
+                <Link className="cta ghost" href="/cliente">
+                  Ver mis reservas
+                </Link>
+              </div>
+
+              {checkoutState === "processing" ? <p className="feedback ok">Procesando pago...</p> : null}
+              {checkoutState === "approved" ? <p className="feedback ok">Pago aprobado. Redirigiendo a tu confirmación...</p> : null}
+              {checkoutState === "rejected" ? <p className="feedback error">Pago rechazado. Revisa los datos o prueba otra tarjeta.</p> : null}
+              {checkoutState === "connection_error" ? <p className="feedback error">Error de conexión con el proveedor de pago.</p> : null}
+              {checkoutStatusText ? <p className="minimal-note">Estado checkout: {checkoutStatusText}</p> : null}
+              {createdBooking ? (
+                <p className="minimal-note">
+                  Reserva {createdBooking.id} · Estado {createdBooking.status} · Pago {createdBooking.paymentStatus}
+                </p>
+              ) : null}
+            </section>
+          ) : null}
+
+          {message ? <p className="feedback ok">{message}</p> : null}
+          {error ? <p className="feedback error">{error}</p> : null}
+        </div>
+      </div>
     </main>
   );
 }
