@@ -208,6 +208,11 @@ const DAY_OPTIONS: Array<{ key: DayKey; label: string }> = [
   { key: "sabado", label: "Sábado" },
   { key: "domingo", label: "Domingo" }
 ];
+const AVAILABILITY_TIME_OPTIONS = Array.from({ length: 31 }, (_, index) => {
+  const hour = 7 + Math.floor(index / 2);
+  const minutes = index % 2 === 0 ? "00" : "30";
+  return `${String(hour).padStart(2, "0")}:${minutes}`;
+});
 const SUBMIT_REQUIRED_FIELD_LABELS: Record<string, string> = {
   categorySlug: "Categoría de servicio (Paso 5)",
   phoneValidatedAt: "Teléfono verificado (Paso 2)",
@@ -1430,8 +1435,8 @@ function CleaningOnboardingPageContent() {
       if (!panel) return;
       panel.scrollIntoView({ behavior: "smooth", block: "start" });
       if (focusFirstInput) {
-        const firstInput = panel.querySelector<HTMLInputElement>('input[type="time"]');
-        firstInput?.focus();
+        const firstField = panel.querySelector<HTMLElement>("select");
+        firstField?.focus();
       }
     }, 80);
   };
@@ -2259,9 +2264,21 @@ function CleaningOnboardingPageContent() {
                       </div>
 
                       <div className="onboarding-time-row">
-                        <input type="time" value={newAvailabilityStart} onChange={(event) => setNewAvailabilityStart(event.target.value)} />
+                        <select value={newAvailabilityStart} onChange={(event) => setNewAvailabilityStart(event.target.value)}>
+                          {AVAILABILITY_TIME_OPTIONS.map((time) => (
+                            <option key={time} value={time}>
+                              {time}
+                            </option>
+                          ))}
+                        </select>
                         <span>–</span>
-                        <input type="time" value={newAvailabilityEnd} onChange={(event) => setNewAvailabilityEnd(event.target.value)} />
+                        <select value={newAvailabilityEnd} onChange={(event) => setNewAvailabilityEnd(event.target.value)}>
+                          {AVAILABILITY_TIME_OPTIONS.map((time) => (
+                            <option key={time} value={time}>
+                              {time}
+                            </option>
+                          ))}
+                        </select>
                       </div>
 
                       <div className="cta-row availability-form-actions">
@@ -2328,17 +2345,21 @@ function CleaningOnboardingPageContent() {
                                 <p>Define desde qué hora hasta qué hora quieres estar disponible.</p>
                               </div>
                               <div className="onboarding-time-row">
-                                <input
-                                  type="time"
-                                  value={block.start}
-                                  onChange={(event) => updateAvailabilityBlock(block.index, { start: event.target.value })}
-                                />
+                                <select value={block.start} onChange={(event) => updateAvailabilityBlock(block.index, { start: event.target.value })}>
+                                  {AVAILABILITY_TIME_OPTIONS.map((time) => (
+                                    <option key={time} value={time}>
+                                      {time}
+                                    </option>
+                                  ))}
+                                </select>
                                 <span>–</span>
-                                <input
-                                  type="time"
-                                  value={block.end}
-                                  onChange={(event) => updateAvailabilityBlock(block.index, { end: event.target.value })}
-                                />
+                                <select value={block.end} onChange={(event) => updateAvailabilityBlock(block.index, { end: event.target.value })}>
+                                  {AVAILABILITY_TIME_OPTIONS.map((time) => (
+                                    <option key={time} value={time}>
+                                      {time}
+                                    </option>
+                                  ))}
+                                </select>
                               </div>
                               <div className="availability-task-actions">
                                 <button type="button" className="cta ghost small" onClick={() => removeAvailabilityBlock(block.index)}>
