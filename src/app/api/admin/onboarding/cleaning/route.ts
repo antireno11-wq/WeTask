@@ -1,6 +1,7 @@
 import { CleaningOnboardingStatus } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdminRequest } from "@/lib/admin-access";
+import { ensureAdminCleaningDemoData } from "@/lib/admin-demo-data";
 import { normalizeCommuneList } from "@/lib/communes";
 import { CORE_SERVICES } from "@/lib/core-services";
 import { sendPlatformEmail } from "@/lib/notifications";
@@ -95,6 +96,8 @@ async function ensureCleaningTaskerService(userId: string) {
 export async function GET(req: NextRequest) {
   const admin = await requireAdminRequest(req);
   if (!admin.ok) return admin.response;
+
+  await ensureAdminCleaningDemoData();
 
   const status = req.nextUrl.searchParams.get("status") ?? undefined;
 
