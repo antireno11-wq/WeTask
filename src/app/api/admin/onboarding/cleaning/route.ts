@@ -248,6 +248,39 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ ok: true, onboarding: updated }, { status: 200 });
     }
 
+    if (input.action === "delete_record") {
+      await prisma.$transaction(async (tx) => {
+        const profile = await tx.professionalProfile.findUnique({
+          where: { userId: onboarding.userId },
+          select: { id: true }
+        });
+
+        if (profile) {
+          await tx.taskerService.deleteMany({
+            where: { professionalProfileId: profile.id }
+          });
+          await tx.availabilitySlot.deleteMany({
+            where: { professionalProfileId: profile.id }
+          });
+          await tx.professionalProfile.delete({
+            where: { userId: onboarding.userId }
+          });
+        }
+
+        await tx.cleaningOnboarding.delete({
+          where: { id: input.onboardingId }
+        });
+      });
+
+      return NextResponse.json(
+        {
+          ok: true,
+          message: "El registro del profesional fue eliminado correctamente."
+        },
+        { status: 200 }
+      );
+    }
+
     if (onboarding.status !== CleaningOnboardingStatus.APROBADO) {
       return NextResponse.json({ error: "Solo perfiles aprobados se pueden activar" }, { status: 409 });
     }

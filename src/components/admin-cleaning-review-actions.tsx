@@ -11,15 +11,20 @@ type ReviewActionProps = {
 export function AdminCleaningReviewActions({ onboardingId, status }: ReviewActionProps) {
   const router = useRouter();
   const [notes, setNotes] = useState("");
-  const [loadingAction, setLoadingAction] = useState<"approve" | "request_correction" | "activate" | null>(null);
+  const [loadingAction, setLoadingAction] = useState<"approve" | "request_correction" | "activate" | "delete_record" | null>(null);
   const [error, setError] = useState("");
   const [feedback, setFeedback] = useState("");
 
-  const runAction = async (action: "approve" | "request_correction" | "activate") => {
+  const runAction = async (action: "approve" | "request_correction" | "activate" | "delete_record") => {
     if (action === "request_correction" && !notes.trim()) {
       setError("Debes escribir la causa del rechazo antes de continuar.");
       setFeedback("");
       return;
+    }
+
+    if (action === "delete_record") {
+      const confirmed = window.confirm("Esto eliminará el registro del onboarding y el perfil profesional asociado. ¿Quieres continuar?");
+      if (!confirmed) return;
     }
 
     setLoadingAction(action);
@@ -47,10 +52,17 @@ export function AdminCleaningReviewActions({ onboardingId, status }: ReviewActio
           ? "La revisión fue aprobada correctamente."
           : action === "request_correction"
             ? "Se rechazó la revisión y se envió el motivo por correo."
-            : "El perfil fue activado correctamente."
+            : action === "activate"
+              ? "El perfil fue activado correctamente."
+              : "El registro fue eliminado correctamente."
       );
       if (action === "request_correction") {
         setNotes("");
+      }
+      if (action === "delete_record") {
+        router.push("/admin/onboarding-limpieza");
+        router.refresh();
+        return;
       }
       router.refresh();
     } catch (eventualError) {
@@ -103,6 +115,9 @@ export function AdminCleaningReviewActions({ onboardingId, status }: ReviewActio
             {loadingAction === "activate" ? "Activando..." : "Activar perfil"}
           </button>
         ) : null}
+        <button type="button" className="cta ghost small" onClick={() => void runAction("delete_record")} disabled={loadingAction !== null}>
+          {loadingAction === "delete_record" ? "Eliminando..." : "Eliminar registro"}
+        </button>
       </div>
 
       {feedback ? <p className="feedback ok">{feedback}</p> : null}

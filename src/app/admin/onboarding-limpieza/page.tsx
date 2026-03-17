@@ -32,7 +32,7 @@ type CleaningOnboardingItem = {
   };
 };
 
-type ActionType = "set_pending" | "request_correction" | "approve" | "activate";
+type ActionType = "set_pending" | "request_correction" | "approve" | "activate" | "delete_record";
 
 const statusLabels: Record<CleaningOnboardingItem["status"], string> = {
   BORRADOR: "borrador",
@@ -87,6 +87,10 @@ export default function AdminCleaningOnboardingPage() {
   }, [statusFilter]);
 
   const runAction = async (onboardingId: string, action: ActionType) => {
+    if (action === "delete_record") {
+      const confirmed = window.confirm("Esto eliminará el registro del onboarding y el perfil profesional asociado. ¿Quieres continuar?");
+      if (!confirmed) return;
+    }
     const notes = action === "request_correction" ? window.prompt("Escribe observaciones para corrección:", "") ?? "" : "";
     if (action === "request_correction" && !notes.trim()) {
       setError("Debes indicar la causa del rechazo o corrección.");
@@ -195,6 +199,9 @@ export default function AdminCleaningOnboardingPage() {
               </button>
               <button type="button" className="cta small" onClick={() => void runAction(row.id, "activate")}>
                 Activar
+              </button>
+              <button type="button" className="cta ghost small" onClick={() => void runAction(row.id, "delete_record")}>
+                Eliminar
               </button>
             </div>
           </article>
