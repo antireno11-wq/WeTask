@@ -38,6 +38,7 @@ export default function ServicioCategoriaPage() {
   const [selectedServiceId, setSelectedServiceId] = useState(query.get("serviceId") ?? "");
   const [street, setStreet] = useState(query.get("address") ?? "");
   const city = query.get("city") ?? "Santiago";
+  const isCleaningCategory = category?.slug === "limpieza";
 
   useEffect(() => {
     const load = async () => {
@@ -218,36 +219,6 @@ export default function ServicioCategoriaPage() {
 
                 <form className="grid-form auth-flow-form" onSubmit={openPros}>
                   <label>
-                    Tipo de servicio
-                      <div className="auth-service-grid auth-service-grid-cleaning">
-                      {category.services.map((service) => {
-                        const cleaningDefinition = category.slug === "limpieza" ? getCleaningServiceDefinition(service.slug) : null;
-                        const chefDefinition = category.slug === "chef-a-domicilio" ? getChefServiceDefinition(service.slug) : null;
-                        return (
-                          <label key={service.id} className={`auth-service-card ${selectedServiceId === service.id ? "active" : ""}`}>
-                            <input
-                              type="radio"
-                              name="selectedService"
-                              value={service.id}
-                              checked={selectedServiceId === service.id}
-                              onChange={() => setSelectedServiceId(service.id)}
-                              required
-                            />
-                            <strong>{service.name}</strong>
-                            <span>{cleaningDefinition?.forClients ?? chefDefinition?.forClients ?? service.description}</span>
-                            {cleaningDefinition ? <span>Incluye: {cleaningDefinition.includes.slice(0, 4).join(", ")}.</span> : null}
-                            {chefDefinition ? <span>Incluye: {chefDefinition.includes.slice(0, 4).join(", ")}.</span> : null}
-                            {cleaningDefinition?.excludes?.length ? <span>No incluye: {cleaningDefinition.excludes.slice(0, 3).join(", ")}.</span> : null}
-                            {chefDefinition?.excludes?.length ? <span>No incluye: {chefDefinition.excludes.slice(0, 3).join(", ")}.</span> : null}
-                            <span>
-                              Desde <strong>${new Intl.NumberFormat("es-CL").format(service.basePriceClp)}</strong> por hora
-                            </span>
-                          </label>
-                        );
-                      })}
-                    </div>
-                  </label>
-                  <label>
                     Dirección
                     <input
                       value={street}
@@ -280,6 +251,46 @@ export default function ServicioCategoriaPage() {
                     <strong>Comuna detectada</strong>
                     <span>{detectedCommune ?? "Aún no detectamos una comuna válida."}</span>
                   </div>
+                  <label className="full">
+                    Tipo de servicio
+                    <div className={`auth-service-grid ${isCleaningCategory ? "auth-service-grid-compact" : "auth-service-grid-cleaning"}`}>
+                      {category.services.map((service) => {
+                        const cleaningDefinition = category.slug === "limpieza" ? getCleaningServiceDefinition(service.slug) : null;
+                        const chefDefinition = category.slug === "chef-a-domicilio" ? getChefServiceDefinition(service.slug) : null;
+                        const isActive = selectedServiceId === service.id;
+                        return (
+                          <label
+                            key={service.id}
+                            className={`auth-service-card ${isActive ? "active" : ""} ${isCleaningCategory ? "auth-service-card-collapsible" : ""}`}
+                          >
+                            <input
+                              type="radio"
+                              name="selectedService"
+                              value={service.id}
+                              checked={isActive}
+                              onChange={() => setSelectedServiceId(service.id)}
+                              required
+                            />
+                            <div className="auth-service-card-head">
+                              <strong>{service.name}</strong>
+                              <span className="auth-service-price-inline">
+                                Desde <strong>${new Intl.NumberFormat("es-CL").format(service.basePriceClp)}</strong>/h
+                              </span>
+                            </div>
+                            <span>{cleaningDefinition?.forClients ?? chefDefinition?.forClients ?? service.description}</span>
+                            {isActive ? (
+                              <div className="auth-service-card-detail">
+                                {cleaningDefinition ? <span>Incluye: {cleaningDefinition.includes.slice(0, 4).join(", ")}.</span> : null}
+                                {chefDefinition ? <span>Incluye: {chefDefinition.includes.slice(0, 4).join(", ")}.</span> : null}
+                                {cleaningDefinition?.excludes?.length ? <span>No incluye: {cleaningDefinition.excludes.slice(0, 3).join(", ")}.</span> : null}
+                                {chefDefinition?.excludes?.length ? <span>No incluye: {chefDefinition.excludes.slice(0, 3).join(", ")}.</span> : null}
+                              </div>
+                            ) : null}
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </label>
                   <div className="auth-flow-actions full">
                     <button type="submit" className="cta">
                       Ver profesionales disponibles

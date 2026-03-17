@@ -5261,6 +5261,10 @@ textarea {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.auth-service-grid-compact {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .auth-service-card {
   position: relative;
   display: grid;
@@ -5287,6 +5291,42 @@ textarea {
 
 .auth-service-card strong {
   font-size: 1rem;
+}
+
+.auth-service-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.auth-service-price-inline {
+  color: #264d7a;
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+
+.auth-service-card-detail {
+  display: grid;
+  gap: 6px;
+}
+
+.auth-service-card-collapsible {
+  gap: 0;
+}
+
+.auth-service-card-collapsible > span,
+.auth-service-card-collapsible .auth-service-card-detail {
+  display: none;
+}
+
+.auth-service-card-collapsible.active {
+  gap: 10px;
+}
+
+.auth-service-card-collapsible.active > span,
+.auth-service-card-collapsible.active .auth-service-card-detail {
+  display: block;
 }
 
 .auth-service-card span:last-child {
