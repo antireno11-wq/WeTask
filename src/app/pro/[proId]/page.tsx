@@ -465,6 +465,12 @@ export default function ProDetailPage() {
   const params = useParams<{ proId: string }>();
   const searchParams = useSearchParams();
   const requestedDate = searchParams.get("date");
+  const requestedAddress = searchParams.get("address") ?? "";
+  const requestedApartment = searchParams.get("apartment") ?? "";
+  const requestedReference = searchParams.get("reference") ?? "";
+  const requestedCommune = searchParams.get("commune") ?? searchParams.get("comuna") ?? "";
+  const requestedCity = searchParams.get("city") ?? "";
+  const requestedServiceId = searchParams.get("serviceId") ?? "";
   const initialDate = isValidYmd(requestedDate) ? requestedDate! : dateInputDefault();
   const [date, setDate] = useState(initialDate);
   const [selectedDay, setSelectedDay] = useState(initialDate);
@@ -603,6 +609,18 @@ export default function ProDetailPage() {
   const categoryName = serviceCategories[0]?.name ?? categoryLabel(primaryCategorySlug);
   const taskerRole = taskerRoleLabel(primaryCategorySlug);
   const faqItems = faqItemsForCategory(primaryCategorySlug);
+  const buildReserveHref = (options?: { startsAt?: string; serviceId?: string | null }) => {
+    const qs = new URLSearchParams();
+    qs.set("proId", data?.userId ?? params.proId);
+    if (options?.serviceId || requestedServiceId) qs.set("serviceId", options?.serviceId || requestedServiceId);
+    if (options?.startsAt) qs.set("startsAt", options.startsAt);
+    if (requestedAddress) qs.set("address", requestedAddress);
+    if (requestedApartment) qs.set("apartment", requestedApartment);
+    if (requestedReference) qs.set("reference", requestedReference);
+    if (requestedCommune) qs.set("commune", requestedCommune);
+    if (requestedCity) qs.set("city", requestedCity);
+    return `/reservar?${qs.toString()}`;
+  };
   const focusLabel = normalizedPrimaryCategorySlug === "mascotas" ? "Tipos de mascota" : "Especialidades";
   const serviceLabel = normalizedPrimaryCategorySlug === "limpieza" ? "Servicios de limpieza" : "Servicios que ofrece";
   const goalText =
@@ -685,7 +703,7 @@ export default function ProDetailPage() {
                   <a href="#availability" className="cta small">
                     Ver agenda
                   </a>
-                  <Link className="cta small" href={`/booking/new?proId=${data.userId}`}>
+                  <Link className="cta small" href={buildReserveHref()}>
                     Reservar ahora
                   </Link>
                 </div>
@@ -818,7 +836,7 @@ export default function ProDetailPage() {
                           <Link
                             key={slot.id}
                             className="slot-btn"
-                            href={`/booking/new?proId=${data.userId}${slot.service ? `&serviceId=${slot.service.id}` : ""}&startsAt=${encodeURIComponent(slot.startsAt)}`}
+                            href={buildReserveHref({ startsAt: slot.startsAt, serviceId: slot.service?.id })}
                           >
                             {new Date(slot.startsAt).toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" })} -{" "}
                             {new Date(slot.endsAt).toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" })}

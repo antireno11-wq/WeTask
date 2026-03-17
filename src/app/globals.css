@@ -4906,6 +4906,10 @@ textarea {
   grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.08fr);
 }
 
+.booking-flow-grid-compact {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .booking-results-list {
   margin-top: 18px;
 }

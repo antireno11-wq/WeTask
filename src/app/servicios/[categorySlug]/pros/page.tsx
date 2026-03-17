@@ -87,6 +87,18 @@ export default function ServiceProsPage() {
     if (Number.isNaN(parsed.getTime())) return undefined;
     return parsed.toISOString();
   }, [requestedDate, requestedTime]);
+  const contextQuery = useMemo(() => {
+    const qs = new URLSearchParams();
+    if (address) qs.set("address", address);
+    if (apartment) qs.set("apartment", apartment);
+    if (reference) qs.set("reference", reference);
+    if (comuna) qs.set("comuna", comuna);
+    if (city) qs.set("city", city);
+    if (requestedDate) qs.set("date", requestedDate);
+    if (requestedTime) qs.set("requestedTime", requestedTime);
+    if (selectedServiceId) qs.set("serviceId", selectedServiceId);
+    return qs.toString();
+  }, [address, apartment, city, comuna, reference, requestedDate, requestedTime, selectedServiceId]);
 
   useEffect(() => {
     const load = async () => {
@@ -275,12 +287,12 @@ export default function ServiceProsPage() {
                 <p className="we-pro-snippet">{profileSnippet(category?.name ?? "servicios")}</p>
 
                 <div className="cta-row we-pro-actions">
-                  <Link className="cta small" href={`/profesionales/${pro.userId}`}>
+                  <Link className="cta small" href={`/profesionales/${pro.userId}${contextQuery ? `?${contextQuery}` : ""}`}>
                     Ver perfil
                   </Link>
                   <Link
                     className="cta small"
-                    href={`/profesionales/${pro.userId}?date=${encodeURIComponent(requestedDate || localYmd(new Date()))}#availability`}
+                    href={`/profesionales/${pro.userId}?${contextQuery || `date=${encodeURIComponent(requestedDate || localYmd(new Date()))}`}#availability`}
                   >
                     Ver agenda
                   </Link>

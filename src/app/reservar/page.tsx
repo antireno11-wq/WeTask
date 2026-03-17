@@ -133,11 +133,14 @@ export default function ReservarPage() {
   const [dietaryNotes, setDietaryNotes] = useState("");
 
   const [createdBooking, setCreatedBooking] = useState<BookingResponse | null>(null);
+  const [preferredStartsAt, setPreferredStartsAt] = useState("");
+  const [quickCheckoutEnabled, setQuickCheckoutEnabled] = useState(false);
   const mercadoPagoPublicKey = process.env.NEXT_PUBLIC_MERCADOPAGO_PUBLIC_KEY ?? "";
 
   const selectedPro = useMemo(() => matches.find((pro) => pro.userId === selectedProId) ?? null, [matches, selectedProId]);
   const selectedService = useMemo(() => services.find((service) => service.id === filters.serviceId) ?? null, [services, filters.serviceId]);
   const isChefService = Boolean(selectedService?.slug?.startsWith("cocina-") || selectedService?.slug === "reposteria" || selectedService?.slug === "cumpleanos");
+  const quickCheckoutMode = quickCheckoutEnabled && !createdBooking;
 
   const dayGroups = useMemo(() => {
     if (!selectedPro) return [] as Array<[string, Slot[]]>;
@@ -219,13 +222,23 @@ export default function ReservarPage() {
     const params = new URLSearchParams(window.location.search);
     const serviceId = params.get("serviceId");
     const proId = params.get("proId");
+    const startsAt = params.get("startsAt");
     const addressLine = params.get("address");
     const city = params.get("city");
     const commune = params.get("commune") ?? params.get("comuna");
     const postalCode = params.get("postalCode");
+    const hasBookingAddress = Boolean(addressLine || city || commune || postalCode);
 
     if (serviceId) setFilters((prev) => ({ ...prev, serviceId }));
     if (proId) setSelectedProId(proId);
+    if (startsAt) {
+      setPreferredStartsAt(startsAt);
+      setQuickCheckoutEnabled(hasBookingAddress);
+      const derivedDate = startsAt.slice(0, 10);
+      if (derivedDate) {
+        setFilters((prev) => ({ ...prev, date: derivedDate }));
+      }
+    }
     if (addressLine || city || postalCode) {
       setAddress((prev) => ({
         ...prev,
@@ -302,11 +315,9 @@ export default function ReservarPage() {
     );
   };
 
-  const searchPros = async (event: FormEvent) => {
-    event.preventDefault();
+  const loadProfessionals = async (options?: { preferredProId?: string; preferredStartsAt?: string; silent?: boolean }) => {
     setError("");
-    setMessage("");
-    setSelectedProId("");
+    if (!options?.silent) setMessage("");
     setSelectedSlotId("");
     setSelectedDay("");
 
@@ -365,18 +376,47 @@ export default function ReservarPage() {
 
       setMatches(normalized);
       if (normalized[0]) {
-        setSelectedProId(normalized[0].userId);
-        const firstDay = isoDay(normalized[0].slots[0]?.startsAt ?? "");
-        if (firstDay) setSelectedDay(firstDay);
+        const preferredPro = options?.preferredProId ? normalized.find((item) => item.userId === options.preferredProId) ?? null : null;
+        const nextPro = preferredPro ?? normalized[0];
+        setSelectedProId(nextPro.userId);
+
+        const preferredSlot = options?.preferredStartsAt
+          ? nextPro.slots.find((slot) => slot.startsAt === options.preferredStartsAt) ?? null
+          : null;
+
+        if (preferredSlot) {
+          setSelectedDay(isoDay(preferredSlot.startsAt));
+          setSelectedSlotId(preferredSlot.id);
+        } else {
+          const firstDay = isoDay(nextPro.slots[0]?.startsAt ?? "");
+          if (firstDay) setSelectedDay(firstDay);
+        }
       }
 
-      setMessage(`${normalized.length} profesional(es) encontrados para tu dirección.`);
+      if (!options?.silent) {
+        setMessage(`${normalized.length} profesional(es) encontrados para tu dirección.`);
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error inesperado");
     } finally {
       setLoadingSearch(false);
     }
   };
+
+  const searchPros = async (event: FormEvent) => {
+    event.preventDefault();
+    setQuickCheckoutEnabled(false);
+    await loadProfessionals();
+  };
+
+  useEffect(() => {
+    if (!quickCheckoutEnabled || !filters.serviceId || !selectedProId || !preferredStartsAt || services.length === 0) return;
+    void loadProfessionals({
+      preferredProId: selectedProId,
+      preferredStartsAt,
+      silent: true
+    });
+  }, [filters.serviceId, preferredStartsAt, quickCheckoutEnabled, selectedProId, services.length]);
 
   useEffect(() => {
     setCardFormReady(false);
@@ -585,103 +625,137 @@ export default function ReservarPage() {
 
         <div className="page client-dashboard-sections booking-flow-sections">
           <section className="auth-flow-panel client-dashboard-section">
-            <div className="panel-head auth-flow-panel-head">
-              <h2>Busca tu servicio</h2>
-              <p>Completa la ubicación, elige la fecha deseada y encuentra profesionales disponibles en tiempo real.</p>
-            </div>
+            {quickCheckoutMode ? (
+              <>
+                <div className="panel-head auth-flow-panel-head">
+                  <h2>Resumen antes de confirmar</h2>
+                  <p>Ya vienes con tasker y horario elegidos. Aquí solo revisas el resumen y continúas al pago.</p>
+                </div>
 
-            <form className="grid-form auth-flow-form" onSubmit={searchPros}>
-              <label>
-                Ciudad
-                <input value={address.city} onChange={(e) => setAddress((prev) => ({ ...prev, city: e.target.value }))} required />
-              </label>
-              <label>
-                Comuna
-                <input value={address.commune} onChange={(e) => setAddress((prev) => ({ ...prev, commune: e.target.value }))} required />
-              </label>
-              <label>
-                Código postal
-                <input value={address.postalCode} onChange={(e) => setAddress((prev) => ({ ...prev, postalCode: e.target.value }))} required />
-              </label>
-              <label className="full">
-                Calle
-                <input value={address.street} onChange={(e) => setAddress((prev) => ({ ...prev, street: e.target.value }))} required />
-              </label>
+                <div className="booking-checkout-summary">
+                  <p>
+                    Servicio: <strong>{selectedService?.name ?? "Servicio seleccionado"}</strong>
+                  </p>
+                  <p>
+                    Tasker: <strong>{selectedPro?.fullName ?? "Cargando profesional"}</strong>
+                  </p>
+                  <p>
+                    Fecha y hora: <strong>{selectedSlot ? new Date(selectedSlot.startsAt).toLocaleString("es-CL") : "Cargando horario"}</strong>
+                  </p>
+                  <p>
+                    Dirección: <strong>{address.street}, {address.commune}, {address.city}</strong>
+                  </p>
+                </div>
 
-              <label>
-                Servicio
-                <select value={filters.serviceId} onChange={(e) => setFilters((prev) => ({ ...prev, serviceId: e.target.value }))}>
-                  <option value="">Selecciona</option>
-                  {services.map((service) => (
-                    <option key={service.id} value={service.id}>
-                      {service.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                Fecha deseada
-                <input type="date" value={filters.date} onChange={(e) => setFilters((prev) => ({ ...prev, date: e.target.value }))} />
-              </label>
-              <label>
-                ID cliente
-                <input value={customerId} onChange={(e) => setCustomerId(e.target.value)} placeholder="cliente demo o real" required />
-              </label>
+                <div className="cta-row">
+                  <button className="cta ghost" type="button" onClick={() => setQuickCheckoutEnabled(false)}>
+                    Editar búsqueda
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="panel-head auth-flow-panel-head">
+                  <h2>Busca tu servicio</h2>
+                  <p>Completa la ubicación, elige la fecha deseada y encuentra profesionales disponibles en tiempo real.</p>
+                </div>
 
-              <div className="cta-row">
-                <button className="cta ghost" type="button" onClick={useGeolocation}>
-                  Usar geolocalización
-                </button>
-                <button className="cta" type="submit" disabled={loadingSearch || loadingServices}>
-                  {loadingSearch ? "Buscando..." : "Buscar profesionales"}
-                </button>
-              </div>
-            </form>
+                <form className="grid-form auth-flow-form" onSubmit={searchPros}>
+                  <label>
+                    Ciudad
+                    <input value={address.city} onChange={(e) => setAddress((prev) => ({ ...prev, city: e.target.value }))} required />
+                  </label>
+                  <label>
+                    Comuna
+                    <input value={address.commune} onChange={(e) => setAddress((prev) => ({ ...prev, commune: e.target.value }))} required />
+                  </label>
+                  <label>
+                    Código postal
+                    <input value={address.postalCode} onChange={(e) => setAddress((prev) => ({ ...prev, postalCode: e.target.value }))} required />
+                  </label>
+                  <label className="full">
+                    Calle
+                    <input value={address.street} onChange={(e) => setAddress((prev) => ({ ...prev, street: e.target.value }))} required />
+                  </label>
+
+                  <label>
+                    Servicio
+                    <select value={filters.serviceId} onChange={(e) => setFilters((prev) => ({ ...prev, serviceId: e.target.value }))}>
+                      <option value="">Selecciona</option>
+                      {services.map((service) => (
+                        <option key={service.id} value={service.id}>
+                          {service.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    Fecha deseada
+                    <input type="date" value={filters.date} onChange={(e) => setFilters((prev) => ({ ...prev, date: e.target.value }))} />
+                  </label>
+                  <label>
+                    ID cliente
+                    <input value={customerId} onChange={(e) => setCustomerId(e.target.value)} placeholder="cliente demo o real" required />
+                  </label>
+
+                  <div className="cta-row">
+                    <button className="cta ghost" type="button" onClick={useGeolocation}>
+                      Usar geolocalización
+                    </button>
+                    <button className="cta" type="submit" disabled={loadingSearch || loadingServices}>
+                      {loadingSearch ? "Buscando..." : "Buscar profesionales"}
+                    </button>
+                  </div>
+                </form>
+              </>
+            )}
           </section>
 
-          <div className="booking-flow-grid">
-            <section className="auth-flow-panel client-dashboard-section">
-              <div className="panel-head auth-flow-panel-head">
-                <h2>Profesionales disponibles</h2>
-                <p>Ordenados por distancia, disponibilidad, valoración y precio estimado por hora.</p>
-              </div>
+          <div className={`booking-flow-grid ${quickCheckoutMode ? "booking-flow-grid-compact" : ""}`}>
+            {!quickCheckoutMode ? (
+              <section className="auth-flow-panel client-dashboard-section">
+                <div className="panel-head auth-flow-panel-head">
+                  <h2>Profesionales disponibles</h2>
+                  <p>Ordenados por distancia, disponibilidad, valoración y precio estimado por hora.</p>
+                </div>
 
-              <div className="list booking-results-list">
-                {matches.map((pro) => (
-                  <article className={`booking-card ${selectedProId === pro.userId ? "selected-pro" : ""}`} key={pro.id}>
-                    <div className="booking-head">
-                      <h3>{pro.fullName}</h3>
-                      <span className="status status-completed">{pro.distanceKm} km</span>
-                    </div>
-                    <p>
-                      <strong>Rating:</strong> {starsText(pro.ratingAvg)} {pro.ratingAvg.toFixed(1)} ({pro.ratingsCount})
-                    </p>
-                    <p>
-                      <strong>Precio/hora:</strong> {pro.hourlyRateFromClp ? clp(pro.hourlyRateFromClp) : "Por definir"}
-                    </p>
-                    <p>
-                      <strong>Próxima hora:</strong> {pro.nextAvailableAt ? new Date(pro.nextAvailableAt).toLocaleString("es-ES") : "Sin slots"}
-                    </p>
-                    <p>
-                      <strong>Cobertura:</strong> hasta {pro.serviceRadiusKm} km
-                    </p>
-                    <button
-                      className="cta small"
-                      type="button"
-                      onClick={() => {
-                        setSelectedProId(pro.userId);
-                        const firstDay = isoDay(pro.slots[0]?.startsAt ?? "");
-                        setSelectedDay(firstDay);
-                        setSelectedSlotId("");
-                      }}
-                    >
-                      Elegir profesional
-                    </button>
-                  </article>
-                ))}
-                {!loadingSearch && matches.length === 0 ? <p className="empty">Aún no hay profesionales cargados para esta búsqueda.</p> : null}
-              </div>
-            </section>
+                <div className="list booking-results-list">
+                  {matches.map((pro) => (
+                    <article className={`booking-card ${selectedProId === pro.userId ? "selected-pro" : ""}`} key={pro.id}>
+                      <div className="booking-head">
+                        <h3>{pro.fullName}</h3>
+                        <span className="status status-completed">{pro.distanceKm} km</span>
+                      </div>
+                      <p>
+                        <strong>Rating:</strong> {starsText(pro.ratingAvg)} {pro.ratingAvg.toFixed(1)} ({pro.ratingsCount})
+                      </p>
+                      <p>
+                        <strong>Precio/hora:</strong> {pro.hourlyRateFromClp ? clp(pro.hourlyRateFromClp) : "Por definir"}
+                      </p>
+                      <p>
+                        <strong>Próxima hora:</strong> {pro.nextAvailableAt ? new Date(pro.nextAvailableAt).toLocaleString("es-ES") : "Sin slots"}
+                      </p>
+                      <p>
+                        <strong>Cobertura:</strong> hasta {pro.serviceRadiusKm} km
+                      </p>
+                      <button
+                        className="cta small"
+                        type="button"
+                        onClick={() => {
+                          setSelectedProId(pro.userId);
+                          const firstDay = isoDay(pro.slots[0]?.startsAt ?? "");
+                          setSelectedDay(firstDay);
+                          setSelectedSlotId("");
+                        }}
+                      >
+                        Elegir profesional
+                      </button>
+                    </article>
+                  ))}
+                  {!loadingSearch && matches.length === 0 ? <p className="empty">Aún no hay profesionales cargados para esta búsqueda.</p> : null}
+                </div>
+              </section>
+            ) : null}
 
             {selectedPro ? (
               <div className="booking-selection-column">
