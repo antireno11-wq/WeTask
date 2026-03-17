@@ -4910,10 +4910,105 @@ textarea {
   margin-top: 18px;
 }
 
+.booking-selection-column {
+  display: grid;
+  gap: 18px;
+}
+
+.booking-pro-profile-panel,
+.booking-agenda-section {
+  height: fit-content;
+}
+
+.booking-pro-card {
+  display: grid;
+  gap: 18px;
+}
+
+.booking-pro-card-head {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.booking-pro-card-head h3 {
+  margin: 0 0 4px;
+  color: #173b5f;
+}
+
+.booking-pro-card-head p {
+  margin: 0;
+  color: #5b748e;
+}
+
+.booking-pro-avatar {
+  display: grid;
+  place-items: center;
+  width: 72px;
+  height: 72px;
+  border-radius: 24px;
+  background: linear-gradient(135deg, #1656b0 0%, #18a6d5 100%);
+  color: #ffffff;
+  font-size: 1.35rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  box-shadow: 0 14px 30px rgba(22, 86, 176, 0.22);
+}
+
+.booking-pro-highlights {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.booking-pro-highlights article {
+  display: grid;
+  gap: 6px;
+  padding: 14px 16px;
+  border: 1px solid #d6e7f5;
+  border-radius: 18px;
+  background: linear-gradient(180deg, #ffffff 0%, #f5faff 100%);
+}
+
+.booking-pro-highlights span {
+  color: #6c87a3;
+  font-size: 0.8rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.booking-pro-highlights strong {
+  color: #173b5f;
+  line-height: 1.45;
+}
+
+.booking-pro-meta {
+  padding: 16px 18px;
+  border: 1px solid #d6e7f5;
+  border-radius: 18px;
+  background: linear-gradient(180deg, #fbfdff 0%, #f2f8ff 100%);
+}
+
+.booking-pro-meta p {
+  margin: 0;
+  color: #5b748e;
+  line-height: 1.6;
+}
+
+.booking-agenda-form {
+  margin-top: 16px;
+}
+
+.booking-agenda-empty {
+  margin: 12px 0 0;
+}
+
 .booking-price-box {
   border-radius: 18px;
   border: 1px solid #d6e7f5;
   background: linear-gradient(180deg, #ffffff 0%, #f2f8ff 100%);
+  margin-top: 16px;
 }
 
 .booking-checkout-summary {
@@ -4931,6 +5026,10 @@ textarea {
 
 @media (max-width: 980px) {
   .booking-flow-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .booking-pro-highlights {
     grid-template-columns: minmax(0, 1fr);
   }
 }

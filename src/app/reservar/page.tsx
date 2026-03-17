@@ -77,6 +77,15 @@ function starsText(value: number) {
   return `${"★".repeat(rounded)}${"☆".repeat(5 - rounded)}`;
 }
 
+function initials(name: string) {
+  return name
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((chunk) => chunk[0]?.toUpperCase() ?? "")
+    .join("");
+}
+
 export default function ReservarPage() {
   const router = useRouter();
   const checkoutFormRef = useRef<any>(null);
@@ -675,88 +684,140 @@ export default function ReservarPage() {
             </section>
 
             {selectedPro ? (
-              <section className="auth-flow-panel client-dashboard-section">
-                <div className="panel-head auth-flow-panel-head">
-                  <h2>Agenda de {selectedPro.fullName}</h2>
-                  <p>Selecciona día, horario y define los detalles del trabajo antes de pagar.</p>
-                </div>
+              <div className="booking-selection-column">
+                <section className="auth-flow-panel client-dashboard-section booking-pro-profile-panel">
+                  <div className="panel-head auth-flow-panel-head">
+                    <h2>Perfil del tasker</h2>
+                    <p>Revisa su información principal y luego elige horario en la agenda.</p>
+                  </div>
 
-                <div className="day-tabs">
-                  {dayGroups.map(([day]) => (
-                    <button key={day} type="button" className={`day-tab ${selectedDay === day ? "active" : ""}`} onClick={() => setSelectedDay(day)}>
-                      {new Date(`${day}T00:00:00`).toLocaleDateString("es-ES", { weekday: "short", day: "2-digit", month: "2-digit" })}
-                    </button>
-                  ))}
-                </div>
-
-                <div className="calendar-slot-grid">
-                  {selectedSlots.map((slot) => (
-                    <button
-                      key={slot.id}
-                      type="button"
-                      className={`slot-btn ${selectedSlotId === slot.id ? "slot-btn-active" : ""}`}
-                      onClick={() => setSelectedSlotId(slot.id)}
-                    >
-                      {new Date(slot.startsAt).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" })}
-                    </button>
-                  ))}
-                </div>
-
-                <div className="grid-form auth-flow-form" style={{ marginTop: 12 }}>
-                  <label>
-                    Horas (1-8)
-                    <input type="number" min={1} max={8} value={hours} onChange={(e) => setHours(Number(e.target.value) || 1)} />
-                  </label>
-                  <label>
-                    Desplazamiento (CLP)
-                    <input type="number" min={0} value={travelFeeClp} onChange={(e) => setTravelFeeClp(Number(e.target.value) || 0)} />
-                  </label>
-                  <label>
-                    <span>Extras</span>
-                    <div className="inline-checks">
-                      <label><input type="checkbox" checked={materials} onChange={(e) => setMaterials(e.target.checked)} /> Materiales</label>
-                      <label><input type="checkbox" checked={urgency} onChange={(e) => setUrgency(e.target.checked)} /> Urgencia</label>
-                    </div>
-                  </label>
-                  <label className="full">
-                    Detalles del trabajo
-                    <textarea value={details} onChange={(e) => setDetails(e.target.value)} />
-                  </label>
-                  {isChefService ? (
-                    <div className="full auth-flow-note-card">
-                      <strong>¿Deberíamos saber algo sobre tu alimentación?</strong>
-                      <span>Cuéntanos si necesitas comida libre de alérgenos, sin gluten, APLV u otra consideración importante.</span>
-                      <div className="inline-checks" style={{ marginTop: 12 }}>
-                        {DIETARY_OPTIONS.map((option) => (
-                          <label key={option}>
-                            <input
-                              type="checkbox"
-                              checked={dietaryFlags.includes(option)}
-                              onChange={(event) =>
-                                setDietaryFlags((current) =>
-                                  event.target.checked ? Array.from(new Set([...current, option])) : current.filter((item) => item !== option)
-                                )
-                              }
-                            />
-                            {option}
-                          </label>
-                        ))}
+                  <div className="booking-pro-card">
+                    <div className="booking-pro-card-head">
+                      <div className="booking-pro-avatar" aria-hidden>
+                        {initials(selectedPro.fullName)}
                       </div>
-                      <textarea
-                        style={{ marginTop: 12 }}
-                        value={dietaryNotes}
-                        onChange={(event) => setDietaryNotes(event.target.value)}
-                        placeholder="Ejemplo: una persona es celíaca, evitar contaminación cruzada, sin mariscos, menú infantil, etc."
-                      />
+                      <div>
+                        <h3>{selectedPro.fullName}</h3>
+                        <p>{starsText(selectedPro.ratingAvg)} {selectedPro.ratingAvg.toFixed(1)} · {selectedPro.ratingsCount} reseñas</p>
+                      </div>
                     </div>
-                  ) : null}
-                </div>
 
-                <div className="price-box booking-price-box" style={{ marginTop: 12 }}>
-                  Resumen en vivo: ({clp(baseHourly)} x {hours}h) + extras {clp(extrasTotal)} + comisión {clp(commission)} = <strong>{clp(total)}</strong>
-                </div>
-                <p className="minimal-note">Pago seguro procesado por Mercado Pago.</p>
-              </section>
+                    <div className="booking-pro-highlights">
+                      <article>
+                        <span>Precio por hora</span>
+                        <strong>{selectedPro.hourlyRateFromClp ? clp(selectedPro.hourlyRateFromClp) : "Por definir"}</strong>
+                      </article>
+                      <article>
+                        <span>Próximo bloque</span>
+                        <strong>{selectedPro.nextAvailableAt ? new Date(selectedPro.nextAvailableAt).toLocaleString("es-CL") : "Sin bloques"}</strong>
+                      </article>
+                      <article>
+                        <span>Distancia</span>
+                        <strong>{selectedPro.distanceKm} km</strong>
+                      </article>
+                      <article>
+                        <span>Cobertura</span>
+                        <strong>{selectedPro.coverageCity ?? "Santiago"} · {selectedPro.serviceRadiusKm} km</strong>
+                      </article>
+                    </div>
+
+                    <div className="booking-pro-meta">
+                      <p>Este bloque es solo para revisar el perfil rápido del profesional antes de reservar.</p>
+                    </div>
+
+                    <div className="cta-row">
+                      <Link className="cta ghost small" href={`/pro/${selectedPro.userId}`}>
+                        Ver perfil completo
+                      </Link>
+                    </div>
+                  </div>
+                </section>
+
+                <section className="auth-flow-panel client-dashboard-section booking-agenda-section">
+                  <div className="panel-head auth-flow-panel-head">
+                    <h2>Agenda y detalles de la reserva</h2>
+                    <p>Selecciona un día, elige un horario y completa abajo los detalles del servicio.</p>
+                  </div>
+
+                  <div className="day-tabs">
+                    {dayGroups.map(([day]) => (
+                      <button key={day} type="button" className={`day-tab ${selectedDay === day ? "active" : ""}`} onClick={() => setSelectedDay(day)}>
+                        {new Date(`${day}T00:00:00`).toLocaleDateString("es-ES", { weekday: "short", day: "2-digit", month: "2-digit" })}
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="calendar-slot-grid">
+                    {selectedSlots.map((slot) => (
+                      <button
+                        key={slot.id}
+                        type="button"
+                        className={`slot-btn ${selectedSlotId === slot.id ? "slot-btn-active" : ""}`}
+                        onClick={() => setSelectedSlotId(slot.id)}
+                      >
+                        {new Date(slot.startsAt).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" })}
+                      </button>
+                    ))}
+                  </div>
+
+                  {!selectedSlots.length ? <p className="minimal-note booking-agenda-empty">Este día todavía no tiene bloques disponibles.</p> : null}
+
+                  <div className="grid-form auth-flow-form booking-agenda-form">
+                    <label>
+                      Horas (1-8)
+                      <input type="number" min={1} max={8} value={hours} onChange={(e) => setHours(Number(e.target.value) || 1)} />
+                    </label>
+                    <label>
+                      Desplazamiento (CLP)
+                      <input type="number" min={0} value={travelFeeClp} onChange={(e) => setTravelFeeClp(Number(e.target.value) || 0)} />
+                    </label>
+                    <label>
+                      <span>Extras</span>
+                      <div className="inline-checks">
+                        <label><input type="checkbox" checked={materials} onChange={(e) => setMaterials(e.target.checked)} /> Materiales</label>
+                        <label><input type="checkbox" checked={urgency} onChange={(e) => setUrgency(e.target.checked)} /> Urgencia</label>
+                      </div>
+                    </label>
+                    <label className="full">
+                      Detalles del trabajo
+                      <textarea value={details} onChange={(e) => setDetails(e.target.value)} />
+                    </label>
+                    {isChefService ? (
+                      <div className="full auth-flow-note-card">
+                        <strong>¿Deberíamos saber algo sobre tu alimentación?</strong>
+                        <span>Cuéntanos si necesitas comida libre de alérgenos, sin gluten, APLV u otra consideración importante.</span>
+                        <div className="inline-checks" style={{ marginTop: 12 }}>
+                          {DIETARY_OPTIONS.map((option) => (
+                            <label key={option}>
+                              <input
+                                type="checkbox"
+                                checked={dietaryFlags.includes(option)}
+                                onChange={(event) =>
+                                  setDietaryFlags((current) =>
+                                    event.target.checked ? Array.from(new Set([...current, option])) : current.filter((item) => item !== option)
+                                  )
+                                }
+                              />
+                              {option}
+                            </label>
+                          ))}
+                        </div>
+                        <textarea
+                          style={{ marginTop: 12 }}
+                          value={dietaryNotes}
+                          onChange={(event) => setDietaryNotes(event.target.value)}
+                          placeholder="Ejemplo: una persona es celíaca, evitar contaminación cruzada, sin mariscos, menú infantil, etc."
+                        />
+                      </div>
+                    ) : null}
+                  </div>
+
+                  <div className="price-box booking-price-box">
+                    Resumen en vivo: ({clp(baseHourly)} x {hours}h) + extras {clp(extrasTotal)} + comisión {clp(commission)} = <strong>{clp(total)}</strong>
+                  </div>
+                  <p className="minimal-note">Pago seguro procesado por Mercado Pago.</p>
+                </section>
+              </div>
             ) : null}
           </div>
 
