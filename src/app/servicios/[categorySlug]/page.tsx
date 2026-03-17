@@ -160,8 +160,7 @@ export default function ServicioCategoriaPage() {
     }
   };
 
-  const openPros = (event: FormEvent) => {
-    event.preventDefault();
+  const goToPros = (serviceIdOverride?: string) => {
     if (!category) return;
     setCoverageEmailStatus("");
     if (!street.trim()) {
@@ -183,9 +182,15 @@ export default function ServicioCategoriaPage() {
     });
     if (apartment.trim()) qs.set("apartment", apartment.trim());
     if (reference.trim()) qs.set("reference", reference.trim());
-    if (selectedServiceId) qs.set("serviceId", selectedServiceId);
+    const nextServiceId = serviceIdOverride ?? selectedServiceId;
+    if (nextServiceId) qs.set("serviceId", nextServiceId);
 
     router.push(`/servicios/${category.slug}/pros?${qs.toString()}`);
+  };
+
+  const openPros = (event: FormEvent) => {
+    event.preventDefault();
+    goToPros();
   };
 
   return (
@@ -290,7 +295,12 @@ export default function ServicioCategoriaPage() {
                               name="selectedService"
                               value={service.id}
                               checked={isActive}
-                              onChange={() => setSelectedServiceId(service.id)}
+                              onChange={() => {
+                                setSelectedServiceId(service.id);
+                                if (isCleaningCategory) {
+                                  goToPros(service.id);
+                                }
+                              }}
                               required
                             />
                             <div className="auth-service-card-head">
@@ -313,14 +323,16 @@ export default function ServicioCategoriaPage() {
                       })}
                     </div>
                   </label>
-                  <div className="auth-flow-actions full">
-                    <button type="submit" className="cta">
-                      Ver profesionales disponibles
-                    </button>
-                    <Link href="/services" className="cta ghost">
-                      Ver todas las categorias
-                    </Link>
-                  </div>
+                  {!isCleaningCategory ? (
+                    <div className="auth-flow-actions full">
+                      <button type="submit" className="cta">
+                        Ver profesionales disponibles
+                      </button>
+                      <Link href="/services" className="cta ghost">
+                        Ver todas las categorias
+                      </Link>
+                    </div>
+                  ) : null}
                 </form>
 
                 {coverageNote ? <p className="feedback error">{coverageNote}</p> : null}
