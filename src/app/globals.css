@@ -5543,6 +5543,24 @@ textarea {
   transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease, background 0.16s ease;
 }
 
+.input-with-suffix {
+  position: relative;
+}
+
+.input-with-suffix input {
+  padding-right: 40px;
+}
+
+.input-with-suffix span {
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #5d7691;
+  font-weight: 800;
+  pointer-events: none;
+}
+
 .onboarding-check-card:hover {
   transform: translateY(-1px);
   border-color: #9bc8e7;

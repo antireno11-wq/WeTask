@@ -2475,11 +2475,14 @@ function CleaningOnboardingPageContent() {
                   {draft.hasWeekendSurcharge ? (
                     <label>
                       Porcentaje fin de semana
-                      <input
-                        value={draft.weekendSurchargePct}
-                        onChange={(event) => updateDraft("weekendSurchargePct", event.target.value.replace(/\D/g, ""))}
-                        placeholder="20"
-                      />
+                      <div className="input-with-suffix">
+                        <input
+                          value={draft.weekendSurchargePct}
+                          onChange={(event) => updateDraft("weekendSurchargePct", event.target.value.replace(/\D/g, ""))}
+                          placeholder="20"
+                        />
+                        <span>%</span>
+                      </div>
                     </label>
                   ) : null}
                   <label>
@@ -2492,11 +2495,14 @@ function CleaningOnboardingPageContent() {
                   {draft.hasHolidaySurcharge ? (
                     <label>
                       Porcentaje festivos
-                      <input
-                        value={draft.holidaySurchargePct}
-                        onChange={(event) => updateDraft("holidaySurchargePct", event.target.value.replace(/\D/g, ""))}
-                        placeholder="20"
-                      />
+                      <div className="input-with-suffix">
+                        <input
+                          value={draft.holidaySurchargePct}
+                          onChange={(event) => updateDraft("holidaySurchargePct", event.target.value.replace(/\D/g, ""))}
+                          placeholder="20"
+                        />
+                        <span>%</span>
+                      </div>
                     </label>
                   ) : null}
                 </div>
