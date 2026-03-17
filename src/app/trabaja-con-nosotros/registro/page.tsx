@@ -5,6 +5,12 @@ import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { AuthHeroNav } from "@/components/auth-hero-nav";
 import {
+  CHEF_SERVICE_DEFINITIONS,
+  type ChefServiceDefinition,
+  type ChefServiceSlug,
+  isChefServiceSlug
+} from "@/lib/chef-service-types";
+import {
   CLEANING_SERVICE_DEFINITIONS,
   type CleaningServiceDefinition,
   type CleaningServiceSlug,
@@ -119,6 +125,8 @@ type DraftState = {
   workMode: "SOLO" | "EQUIPO";
   cleaningServices: CleaningServiceSlug[];
   cleaningServiceRates: Partial<Record<CleaningServiceSlug, string>>;
+  chefServiceType: ChefServiceSlug[];
+  chefServiceRates: Partial<Record<ChefServiceSlug, string>>;
   cleaningBringsProducts: boolean | null;
   cleaningBringsEquipment: boolean | null;
   petServiceType: Array<"paseo_perros" | "cuidado_casa_cliente" | "cuidado_en_tu_casa">;
@@ -133,8 +141,6 @@ type DraftState = {
   trainerServiceType: "funcional" | "fuerza" | "perdida_peso" | "movilidad";
   trainerMode: "presencial" | "online" | "ambas";
   trainerBringsEquipment: boolean | null;
-  chefServiceType: Array<"comida_diaria" | "eventos" | "meal_prep">;
-  chefCuisineType: "casera" | "saludable" | "gourmet";
   makeupType: Array<"social" | "eventos" | "novias">;
   makeupKit: boolean | null;
   ironingType: "casa_cliente" | "retiro_entrega";
@@ -176,7 +182,7 @@ const CATEGORY_OPTIONS: Array<{ slug: CategorySlug; label: string; icon: string;
   { slug: "babysitter", label: "Babysitter", icon: "👶", description: "Cuidado infantil responsable en casa del cliente." },
   { slug: "profesor-particular", label: "Profesor particular", icon: "📚", description: "Clases personalizadas presenciales u online." },
   { slug: "personal-trainer", label: "Personal trainer", icon: "🏋️", description: "Entrenamiento personalizado según objetivo y modalidad." },
-  { slug: "chef", label: "Chef", icon: "👨‍🍳", description: "Comida diaria, eventos y meal prep semanal." },
+  { slug: "chef", label: "Chef", icon: "👨‍🍳", description: "Cocina gourmet, casera, repostería, eventos y cumpleaños." },
   { slug: "maquillaje", label: "Maquillaje", icon: "💄", description: "Servicios sociales, eventos y novias." },
   { slug: "planchado", label: "Planchado", icon: "👕", description: "Planchado en casa o con retiro y entrega." }
 ];
@@ -285,7 +291,7 @@ function getPricingGuide(draft: DraftState) {
     babysitter: { min: 12000, max: 18000, note: "Suele variar según experiencia, cantidad de niños y horario." },
     "profesor-particular": { min: 15000, max: 25000, note: "Las clases especializadas y universitarias suelen cobrar más." },
     "personal-trainer": { min: 18000, max: 30000, note: "Depende del tipo de entrenamiento, modalidad e implementos." },
-    chef: { min: 18000, max: 32000, note: "Sube según complejidad del menú y tipo de cocina." },
+    chef: { min: 18000, max: 42000, note: "Varía según el tipo de cocina, la cantidad de personas y la complejidad del servicio." },
     maquillaje: { min: 18000, max: 30000, note: "Novias y eventos suelen estar en el tramo alto." },
     planchado: { min: 10000, max: 14000, note: "Se recomienda cobrar por hora según volumen y delicadeza." }
   };
@@ -315,10 +321,19 @@ function getPricingGuide(draft: DraftState) {
     extras.push("Si llevas implementos o equipamiento, puedes posicionarte en la parte alta del rango.");
   }
 
-  if (draft.category === "chef" && draft.chefCuisineType === "gourmet") {
-    min += 4000;
-    max += 6000;
-    extras.push("Cocina gourmet suele justificar una tarifa superior.");
+  if (draft.category === "chef") {
+    const chefDefinitions = selectedChefServiceDefinitions(draft);
+    if (chefDefinitions.length > 0) {
+      min = Math.min(...chefDefinitions.map((service) => service.recommendedMinClp));
+      max = Math.max(...chefDefinitions.map((service) => service.recommendedMaxClp));
+      extras.push("En chef puedes definir una tarifa distinta por hora para cada tipo de servicio que ofrezcas.");
+    }
+    if (draft.chefServiceType.includes("cocina-gourmet")) {
+      extras.push("Cocina gourmet suele quedar en la parte alta del rango por presentación y complejidad.");
+    }
+    if (draft.chefServiceType.includes("cocina-eventos") || draft.chefServiceType.includes("cumpleanos")) {
+      extras.push("Eventos y cumpleaños suelen requerir más coordinación, por lo que pueden cobrar más por hora.");
+    }
   }
 
   return {
@@ -345,6 +360,10 @@ function selectedCleaningServiceDefinitions(draft: DraftState): CleaningServiceD
   return CLEANING_SERVICE_DEFINITIONS.filter((service) => draft.cleaningServices.includes(service.slug));
 }
 
+function selectedChefServiceDefinitions(draft: DraftState): ChefServiceDefinition[] {
+  return CHEF_SERVICE_DEFINITIONS.filter((service) => draft.chefServiceType.includes(service.slug));
+}
+
 function normalizeMakeupTypes(value: unknown): Array<"social" | "eventos" | "novias"> {
   const allowed = new Set(["social", "eventos", "novias"]);
   if (Array.isArray(value)) {
@@ -356,17 +375,15 @@ function normalizeMakeupTypes(value: unknown): Array<"social" | "eventos" | "nov
   return ["social"];
 }
 
-function normalizeChefServiceTypes(value: unknown): Array<"comida_diaria" | "eventos" | "meal_prep"> {
-  const allowed = new Set(["comida_diaria", "eventos", "meal_prep"]);
+function normalizeChefServiceTypes(value: unknown): ChefServiceSlug[] {
   if (Array.isArray(value)) {
-    return value.filter(
-      (item): item is "comida_diaria" | "eventos" | "meal_prep" => typeof item === "string" && allowed.has(item)
-    );
+    const items = value.filter((item): item is ChefServiceSlug => typeof item === "string" && isChefServiceSlug(item));
+    return items.length > 0 ? Array.from(new Set(items)) : ["cocina-casera"];
   }
-  if (typeof value === "string" && allowed.has(value)) {
-    return [value as "comida_diaria" | "eventos" | "meal_prep"];
+  if (typeof value === "string" && isChefServiceSlug(value)) {
+    return [value];
   }
-  return ["comida_diaria"];
+  return ["cocina-casera"];
 }
 
 function normalizePetServiceTypes(value: unknown): Array<"paseo_perros" | "cuidado_casa_cliente" | "cuidado_en_tu_casa"> {
@@ -400,6 +417,8 @@ function createInitialDraft(): DraftState {
     workMode: "SOLO",
     cleaningServices: ["limpieza-hogar"],
     cleaningServiceRates: { "limpieza-hogar": "" },
+    chefServiceType: ["cocina-casera"],
+    chefServiceRates: { "cocina-casera": "" },
     cleaningBringsProducts: null,
     cleaningBringsEquipment: null,
     petServiceType: ["paseo_perros"],
@@ -414,8 +433,6 @@ function createInitialDraft(): DraftState {
     trainerServiceType: "funcional",
     trainerMode: "presencial",
     trainerBringsEquipment: null,
-    chefServiceType: ["comida_diaria"],
-    chefCuisineType: "casera",
     makeupType: ["social"],
     makeupKit: null,
     ironingType: "casa_cliente",
@@ -541,7 +558,7 @@ function buildStep7Payload(draft: DraftState) {
     case "chef":
       return {
         offeredServices: draft.chefServiceType,
-        experienceTypes: [draft.chefCuisineType],
+        experienceTypes: draft.chefServiceType,
         worksWithClientProducts: true
       };
     case "maquillaje":
@@ -633,8 +650,12 @@ function CleaningOnboardingPageContent() {
           parsed.cleaningServiceRates && typeof parsed.cleaningServiceRates === "object"
             ? (parsed.cleaningServiceRates as Partial<Record<CleaningServiceSlug, string>>)
             : current.cleaningServiceRates,
-        petServiceType: normalizePetServiceTypes(parsed.petServiceType),
         chefServiceType: normalizeChefServiceTypes(parsed.chefServiceType),
+        chefServiceRates:
+          parsed.chefServiceRates && typeof parsed.chefServiceRates === "object"
+            ? (parsed.chefServiceRates as Partial<Record<ChefServiceSlug, string>>)
+            : current.chefServiceRates,
+        petServiceType: normalizePetServiceTypes(parsed.petServiceType),
         makeupType: normalizeMakeupTypes(parsed.makeupType)
       }));
       if (parsed.activeStep && parsed.activeStep >= 1 && parsed.activeStep <= 12) {
@@ -775,6 +796,23 @@ function CleaningOnboardingPageContent() {
     }));
   }, [draft.category, draft.cleaningServiceRates, draft.cleaningServices]);
 
+  useEffect(() => {
+    if (draft.category !== "chef") return;
+    const normalizedServices = normalizeChefServiceTypes(draft.chefServiceType);
+    const nextRates = normalizedServices.reduce<Partial<Record<ChefServiceSlug, string>>>((acc, slug) => {
+      acc[slug] = draft.chefServiceRates[slug] ?? "";
+      return acc;
+    }, {});
+    const servicesChanged = normalizedServices.join("|") !== draft.chefServiceType.join("|");
+    const ratesChanged = JSON.stringify(nextRates) !== JSON.stringify(draft.chefServiceRates);
+    if (!servicesChanged && !ratesChanged) return;
+    setDraft((current) => ({
+      ...current,
+      chefServiceType: normalizedServices,
+      chefServiceRates: nextRates
+    }));
+  }, [draft.category, draft.chefServiceRates, draft.chefServiceType]);
+
   const hydrateFromServer = (nextOnboarding: OnboardingPayload, user?: { fullName?: string | null; email?: string | null; phone?: string | null }) => {
     const { firstName, lastName } = splitFullName(user?.fullName ?? session?.fullName ?? "");
     setOnboarding(nextOnboarding);
@@ -798,6 +836,7 @@ function CleaningOnboardingPageContent() {
         : current.category) as CategorySlug,
       cleaningServices:
         nextOnboarding.categorySlug === "limpieza" ? normalizeCleaningServiceSlugs(nextOnboarding.offeredServices) : current.cleaningServices,
+      chefServiceType: nextOnboarding.categorySlug === "chef" ? normalizeChefServiceTypes(nextOnboarding.offeredServices) : current.chefServiceType,
       yearsExperience: nextOnboarding.yearsExperience ? String(Math.min(nextOnboarding.yearsExperience, 10)) : current.yearsExperience,
       workMode: nextOnboarding.workMode ?? current.workMode,
       availabilityMode: nextOnboarding.availabilityMode ?? current.availabilityMode,
@@ -862,7 +901,14 @@ function CleaningOnboardingPageContent() {
                 }
                 return acc;
               }, { ...current.cleaningServiceRates }),
+              chefServiceRates: serviceRates.reduce<Partial<Record<ChefServiceSlug, string>>>((acc, item) => {
+                if (isChefServiceSlug(item.serviceSlug)) {
+                  acc[item.serviceSlug] = String(item.hourlyRateClp);
+                }
+                return acc;
+              }, { ...current.chefServiceRates }),
               hourlyRate: serviceRates.find((item) => isCleaningServiceSlug(item.serviceSlug) && item.serviceSlug === "limpieza-hogar")?.hourlyRateClp?.toString() ??
+                serviceRates.find((item) => isChefServiceSlug(item.serviceSlug) && item.serviceSlug === "cocina-casera")?.hourlyRateClp?.toString() ??
                 serviceRates[0]?.hourlyRateClp?.toString() ??
                 current.hourlyRate
             }));
@@ -1250,10 +1296,18 @@ function CleaningOnboardingPageContent() {
             hourlyRateClp: Number(draft.cleaningServiceRates[service.slug] || 0)
           }))
         : [];
+    const chefRates =
+      draft.category === "chef"
+        ? selectedChefServiceDefinitions(draft).map((service) => ({
+            serviceSlug: service.slug,
+            hourlyRateClp: Number(draft.chefServiceRates[service.slug] || 0)
+          }))
+        : [];
+    const categoryRates = draft.category === "limpieza" ? cleaningRates : draft.category === "chef" ? chefRates : [];
 
     if (
-      (draft.category === "limpieza" && cleaningRates.some((item) => !item.hourlyRateClp)) ||
-      (draft.category !== "limpieza" && !draft.hourlyRate.trim()) ||
+      ((draft.category === "limpieza" || draft.category === "chef") && categoryRates.some((item) => !item.hourlyRateClp)) ||
+      (draft.category !== "limpieza" && draft.category !== "chef" && !draft.hourlyRate.trim()) ||
       !draft.minimumHours.trim()
     ) {
       setError("Completa tu tarifa y mínimo de horas.");
@@ -1267,10 +1321,14 @@ function CleaningOnboardingPageContent() {
           ? cleaningRates.find((item) => item.serviceSlug === "limpieza-hogar")?.hourlyRateClp ??
             cleaningRates[0]?.hourlyRateClp ??
             Number(draft.hourlyRate || 0)
-          : Number(draft.hourlyRate);
+          : draft.category === "chef"
+            ? chefRates.find((item) => item.serviceSlug === "cocina-casera")?.hourlyRateClp ??
+              chefRates[0]?.hourlyRateClp ??
+              Number(draft.hourlyRate || 0)
+            : Number(draft.hourlyRate);
       await persistServerStep(9, {
         hourlyRateClp: fallbackRate,
-        serviceRates: cleaningRates,
+        serviceRates: categoryRates,
         minBookingHours: Number(draft.minimumHours),
         weekendSurchargePct: draft.hasWeekendSurcharge ? Number(draft.weekendSurchargePct || 0) : 0,
         holidaySurchargePct: draft.hasHolidaySurcharge ? Number(draft.holidaySurchargePct || 0) : 0,
@@ -1949,42 +2007,35 @@ function CleaningOnboardingPageContent() {
                 {draft.category === "chef" ? (
                   <div className="grid-form auth-flow-form">
                     <div className="full">
-                      <p className="field-label">Tipo de servicio</p>
-                      <div className="inline-checks">
-                        {[
-                          { value: "comida_diaria", label: "Comida diaria" },
-                          { value: "eventos", label: "Eventos" },
-                          { value: "meal_prep", label: "Meal prep semanal" }
-                        ].map((option) => (
-                          <label key={option.value}>
+                      <p className="field-label">Tipos de servicio que quieres ofrecer</p>
+                      <div className="auth-service-grid auth-service-grid-cleaning">
+                        {CHEF_SERVICE_DEFINITIONS.map((service) => (
+                          <label key={service.slug} className={`auth-service-card ${draft.chefServiceType.includes(service.slug) ? "active" : ""}`}>
                             <input
                               type="checkbox"
-                              checked={draft.chefServiceType.includes(option.value as "comida_diaria" | "eventos" | "meal_prep")}
+                              checked={draft.chefServiceType.includes(service.slug)}
                               onChange={(event) => {
-                                updateDraft(
-                                  "chefServiceType",
-                                  event.target.checked
-                                    ? Array.from(new Set([...draft.chefServiceType, option.value as "comida_diaria" | "eventos" | "meal_prep"]))
-                                    : draft.chefServiceType.filter((item) => item !== option.value)
-                                );
+                                setDraft((current) => ({
+                                  ...current,
+                                  chefServiceType: event.target.checked
+                                    ? Array.from(new Set([...current.chefServiceType, service.slug]))
+                                    : current.chefServiceType.filter((item) => item !== service.slug)
+                                }));
                               }}
                             />
-                            {option.label}
+                            <strong>{service.name}</strong>
+                            <span>{service.description}</span>
+                            <span>{service.forClients}</span>
+                            <span>
+                              Incluye: <strong>{service.includes.slice(0, 3).join(", ")}</strong>
+                            </span>
                           </label>
                         ))}
                       </div>
                     </div>
-                    <label>
-                      Tipo de cocina
-                      <select value={draft.chefCuisineType} onChange={(event) => updateDraft("chefCuisineType", event.target.value as DraftState["chefCuisineType"])}>
-                        <option value="casera">Casera</option>
-                        <option value="saludable">Saludable</option>
-                        <option value="gourmet">Gourmet</option>
-                      </select>
-                    </label>
                     <div className="full auth-flow-note-card">
                       <strong>Cocina en casa del cliente</strong>
-                      <span>En WeTask, el servicio de chef se considera siempre realizado en casa del cliente.</span>
+                      <span>En WeTask, chef se considera siempre un servicio realizado en casa del cliente.</span>
                     </div>
                   </div>
                 ) : null}
@@ -2276,6 +2327,34 @@ function CleaningOnboardingPageContent() {
                                   [service.slug]: value
                                 },
                                 hourlyRate: service.slug === "limpieza-hogar" ? value : current.hourlyRate
+                              }));
+                            }}
+                            placeholder={String(service.recommendedMinClp)}
+                          />
+                        </label>
+                      ))}
+                    </div>
+                  ) : draft.category === "chef" ? (
+                    <div className="full cleaning-rate-grid">
+                      {selectedChefServiceDefinitions(draft).map((service) => (
+                        <label key={service.slug} className="auth-flow-note-card cleaning-rate-card">
+                          <strong>{service.name}</strong>
+                          <span>{service.forClients}</span>
+                          <span>
+                            Rango sugerido: <strong>${formatClp(service.recommendedMinClp)}</strong> a{" "}
+                            <strong>${formatClp(service.recommendedMaxClp)}</strong> por hora.
+                          </span>
+                          <input
+                            value={draft.chefServiceRates[service.slug] ?? ""}
+                            onChange={(event) => {
+                              const value = event.target.value.replace(/\D/g, "");
+                              setDraft((current) => ({
+                                ...current,
+                                chefServiceRates: {
+                                  ...current.chefServiceRates,
+                                  [service.slug]: value
+                                },
+                                hourlyRate: service.slug === "cocina-casera" ? value : current.hourlyRate
                               }));
                             }}
                             placeholder={String(service.recommendedMinClp)}

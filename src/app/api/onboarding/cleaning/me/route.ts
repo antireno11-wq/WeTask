@@ -1,7 +1,9 @@
 import { CleaningOnboardingStatus, Prisma, UserRole } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { getRequestIdentity, hasRole } from "@/lib/auth";
+import { isChefServiceSlug } from "@/lib/chef-service-types";
 import { isCleaningServiceSlug } from "@/lib/cleaning-service-types";
+import { CORE_SERVICES } from "@/lib/core-services";
 import { geocodeAddress } from "@/lib/geo";
 import { CLEANING_WEEK_DAYS } from "@/lib/cleaning-onboarding";
 import { normalizeCommune, normalizeCommuneList } from "@/lib/communes";
@@ -84,12 +86,12 @@ function denyLockedOnboarding(status: CleaningOnboardingStatus, identityRole: Us
   return null;
 }
 
-function getCleaningOnboardingServiceSlugs(value: Prisma.JsonValue | null): string[] {
+function getOnboardingServiceSlugs(value: Prisma.JsonValue | null): string[] {
   if (!Array.isArray(value)) return [];
-  return value.filter((item): item is string => typeof item === "string" && isCleaningServiceSlug(item));
+  return value.filter((item): item is string => typeof item === "string");
 }
 
-async function upsertCleaningTaskerServices(
+async function upsertOnboardingTaskerServices(
   userId: string,
   onboarding: {
     categorySlug: string;
@@ -99,9 +101,10 @@ async function upsertCleaningTaskerServices(
   },
   explicitServiceRates: Array<{ serviceSlug: string; hourlyRateClp: number }>
 ) {
-  if (onboarding.categorySlug !== "limpieza") return;
+  const selectedCoreService = CORE_SERVICES.find((service) => service.slug === onboarding.categorySlug);
+  if (!selectedCoreService) return;
 
-  const selectedServiceSlugs = getCleaningOnboardingServiceSlugs(onboarding.offeredServices);
+  const selectedServiceSlugs = getOnboardingServiceSlugs(onboarding.offeredServices);
   if (selectedServiceSlugs.length === 0) return;
 
   const profile = await prisma.professionalProfile.findUnique({
@@ -111,7 +114,7 @@ async function upsertCleaningTaskerServices(
   if (!profile) return;
 
   const category = await prisma.category.findUnique({
-    where: { slug: "limpieza" },
+    where: { slug: selectedCoreService.categorySlug },
     select: { id: true }
   });
   if (!category) return;
@@ -128,7 +131,9 @@ async function upsertCleaningTaskerServices(
 
   const explicitRateMap = new Map(
     explicitServiceRates
-      .filter((item) => isCleaningServiceSlug(item.serviceSlug))
+      .filter((item) =>
+        onboarding.categorySlug === "limpieza" ? isCleaningServiceSlug(item.serviceSlug) : onboarding.categorySlug === "chef" ? isChefServiceSlug(item.serviceSlug) : true
+      )
       .map((item) => [item.serviceSlug, item.hourlyRateClp])
   );
 
@@ -213,7 +218,7 @@ export async function GET(req: NextRequest) {
     ]);
 
     const serviceRates = taskerServices
-      .filter((item) => item.service.category?.slug === "limpieza" && isCleaningServiceSlug(item.service.slug))
+      .filter((item) => item.service.category?.slug && typeof item.service.slug === "string")
       .map((item) => ({
         serviceSlug: item.service.slug,
         hourlyRateClp: item.priceClp
@@ -434,7 +439,7 @@ export async function PATCH(req: NextRequest) {
 
     if (input.step === 9) {
       const parsed = taskerOnboardingStep9Schema.parse(input.payload);
-      await upsertCleaningTaskerServices(userId, updated, parsed.serviceRates);
+      await upsertOnboardingTaskerServices(userId, updated, parsed.serviceRates);
     }
 
     if (input.step === 4 || input.step === 9) {

@@ -1,4 +1,5 @@
 import { PaymentStatus, UserRole } from "@prisma/client";
+import { CHEF_SERVICE_DEFINITIONS } from "@/lib/chef-service-types";
 import { CLEANING_SERVICE_DEFINITIONS } from "@/lib/cleaning-service-types";
 import { prisma } from "@/lib/prisma";
 
@@ -48,6 +49,18 @@ export async function ensureMarketplaceDemoData() {
   if (legacyService) {
     await prisma.service.update({
       where: { id: legacyService.id },
+      data: { isActive: false }
+    });
+  }
+
+  const legacyChefService = await prisma.service.findUnique({ where: { slug: "chef-a-domicilio-sesion" } });
+  if (legacyChefService) {
+    await prisma.taskerService.updateMany({
+      where: { serviceId: legacyChefService.id },
+      data: { isActive: false }
+    });
+    await prisma.service.update({
+      where: { id: legacyChefService.id },
       data: { isActive: false }
     });
   }
@@ -638,13 +651,13 @@ export async function ensureMarketplaceDemoData() {
       basePriceClp: 24000,
       categoryId: categories.personalTrainer.id
     },
-    {
-      slug: "chef-a-domicilio-sesion",
-      name: "Chef a domicilio por sesión",
-      description: "Preparación de menú personalizado en tu hogar",
-      basePriceClp: 48000,
+    ...CHEF_SERVICE_DEFINITIONS.map((service) => ({
+      slug: service.slug,
+      name: service.name,
+      description: service.forClients,
+      basePriceClp: service.recommendedMinClp,
       categoryId: categories.chefDomicilio.id
-    },
+    })),
     {
       slug: "maquillaje-a-domicilio-sesion",
       name: "Maquillaje a domicilio por sesión",
@@ -726,7 +739,8 @@ export async function ensureMarketplaceDemoData() {
         "limpieza-hogar",
         "limpieza-oficina",
         "paseo-cuidado-mascotas",
-        "chef-a-domicilio-sesion",
+        "cocina-casera",
+        "cocina-eventos",
         "maquillaje-a-domicilio-sesion",
         "planchado-por-hora"
       ],
@@ -734,7 +748,8 @@ export async function ensureMarketplaceDemoData() {
         "limpieza-hogar": 15000,
         "limpieza-oficina": 16000,
         "paseo-cuidado-mascotas": 15000,
-        "chef-a-domicilio-sesion": 15000,
+        "cocina-casera": 22000,
+        "cocina-eventos": 32000,
         "maquillaje-a-domicilio-sesion": 15000,
         "planchado-por-hora": 15000
       }
@@ -807,9 +822,20 @@ export async function ensureMarketplaceDemoData() {
         "babysitter-por-horas-standard",
         "profesor-particular-clase",
         "personal-trainer-sesion",
-        "chef-a-domicilio-sesion",
+        "cocina-gourmet",
+        "reposteria",
+        "cumpleanos",
         "maquillaje-a-domicilio-sesion"
-      ]
+      ],
+      serviceRates: {
+        "babysitter-por-horas-standard": 21000,
+        "profesor-particular-clase": 21000,
+        "personal-trainer-sesion": 21000,
+        "cocina-gourmet": 34000,
+        "reposteria": 28000,
+        "cumpleanos": 30000,
+        "maquillaje-a-domicilio-sesion": 21000
+      }
     }
   ];
 

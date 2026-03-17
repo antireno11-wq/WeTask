@@ -2,6 +2,7 @@ import { CleaningOnboardingStatus } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdminRequest } from "@/lib/admin-access";
 import { ensureAdminCleaningDemoData } from "@/lib/admin-demo-data";
+import { isChefServiceSlug } from "@/lib/chef-service-types";
 import { isCleaningServiceSlug } from "@/lib/cleaning-service-types";
 import { normalizeCommuneList } from "@/lib/communes";
 import { CORE_SERVICES } from "@/lib/core-services";
@@ -58,17 +59,19 @@ async function ensureCleaningTaskerService(userId: string) {
   });
   if (!category) return;
 
-  const selectedCleaningServices =
-    onboarding.categorySlug === "limpieza" && Array.isArray(onboarding.offeredServices)
+  const selectedOnboardingServices =
+    Array.isArray(onboarding.offeredServices) && onboarding.categorySlug === "limpieza"
       ? onboarding.offeredServices.filter((item): item is string => typeof item === "string" && isCleaningServiceSlug(item))
-      : [];
+      : Array.isArray(onboarding.offeredServices) && onboarding.categorySlug === "chef"
+        ? onboarding.offeredServices.filter((item): item is string => typeof item === "string" && isChefServiceSlug(item))
+        : [];
 
-  const services = selectedCleaningServices.length
+  const services = selectedOnboardingServices.length
     ? await prisma.service.findMany({
         where: {
           categoryId: category.id,
           isActive: true,
-          slug: { in: selectedCleaningServices }
+          slug: { in: selectedOnboardingServices }
         },
         orderBy: [{ basePriceClp: "asc" }]
       })

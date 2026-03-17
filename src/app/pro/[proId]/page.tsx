@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { MarketNav } from "@/components/market-nav";
+import { getChefServiceDefinition } from "@/lib/chef-service-types";
 import { getCleaningServiceDefinition } from "@/lib/cleaning-service-types";
 
 type CleaningOnboardingSummary = {
@@ -145,6 +146,8 @@ function initials(name: string) {
 function labelize(value: string) {
   const cleaningService = getCleaningServiceDefinition(value);
   if (cleaningService) return cleaningService.name;
+  const chefService = getChefServiceDefinition(value);
+  if (chefService) return chefService.name;
   return value
     .replace(/[_-]+/g, " ")
     .split(" ")
@@ -244,7 +247,7 @@ function faqItemsForCategory(categorySlug: string | null | undefined): FaqItem[]
         {
           question: "¿Qué tipo de servicios de chef ofrece?",
           answer:
-            "Depende del perfil: puede incluir comida diaria, eventos o meal prep semanal. En la ficha se muestran sus especialidades y puedes confirmar el detalle antes de reservar."
+            "Depende del perfil: puede incluir cocina gourmet, cocina casera, repostería, cocina para eventos o cumpleaños. En la ficha se muestran sus especialidades y puedes confirmar el detalle antes de reservar."
         },
         {
           question: "¿Cocina en la casa del cliente?",

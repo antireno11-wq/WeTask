@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { FormEvent, useEffect, useState } from "react";
 import { AuthHeroNav } from "@/components/auth-hero-nav";
+import { getChefServiceDefinition } from "@/lib/chef-service-types";
 import { getCleaningServiceDefinition } from "@/lib/cleaning-service-types";
 import { COVERAGE_UNAVAILABLE_MESSAGE, inferCommuneFromAddress, normalizeCommune } from "@/lib/communes";
 
@@ -218,9 +219,10 @@ export default function ServicioCategoriaPage() {
                 <form className="grid-form auth-flow-form" onSubmit={openPros}>
                   <label>
                     Tipo de servicio
-                    <div className="auth-service-grid auth-service-grid-cleaning">
+                      <div className="auth-service-grid auth-service-grid-cleaning">
                       {category.services.map((service) => {
                         const cleaningDefinition = category.slug === "limpieza" ? getCleaningServiceDefinition(service.slug) : null;
+                        const chefDefinition = category.slug === "chef-a-domicilio" ? getChefServiceDefinition(service.slug) : null;
                         return (
                           <label key={service.id} className={`auth-service-card ${selectedServiceId === service.id ? "active" : ""}`}>
                             <input
@@ -232,9 +234,11 @@ export default function ServicioCategoriaPage() {
                               required
                             />
                             <strong>{service.name}</strong>
-                            <span>{cleaningDefinition?.forClients ?? service.description}</span>
+                            <span>{cleaningDefinition?.forClients ?? chefDefinition?.forClients ?? service.description}</span>
                             {cleaningDefinition ? <span>Incluye: {cleaningDefinition.includes.slice(0, 4).join(", ")}.</span> : null}
+                            {chefDefinition ? <span>Incluye: {chefDefinition.includes.slice(0, 4).join(", ")}.</span> : null}
                             {cleaningDefinition?.excludes?.length ? <span>No incluye: {cleaningDefinition.excludes.slice(0, 3).join(", ")}.</span> : null}
+                            {chefDefinition?.excludes?.length ? <span>No incluye: {chefDefinition.excludes.slice(0, 3).join(", ")}.</span> : null}
                             <span>
                               Desde <strong>${new Intl.NumberFormat("es-CL").format(service.basePriceClp)}</strong> por hora
                             </span>

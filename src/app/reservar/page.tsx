@@ -54,6 +54,16 @@ type CardFormData = {
   identificationNumber?: string;
 };
 
+const DIETARY_OPTIONS = [
+  "Sin gluten",
+  "Sin lactosa",
+  "APLV",
+  "Vegetariana",
+  "Vegana",
+  "Sin frutos secos",
+  "Otra alergia o indicación"
+] as const;
+
 function clp(value: number) {
   return new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP", maximumFractionDigits: 0 }).format(value);
 }
@@ -110,11 +120,15 @@ export default function ReservarPage() {
   const [urgency, setUrgency] = useState(false);
   const [travelFeeClp, setTravelFeeClp] = useState(0);
   const [details, setDetails] = useState("");
+  const [dietaryFlags, setDietaryFlags] = useState<string[]>([]);
+  const [dietaryNotes, setDietaryNotes] = useState("");
 
   const [createdBooking, setCreatedBooking] = useState<BookingResponse | null>(null);
   const mercadoPagoPublicKey = process.env.NEXT_PUBLIC_MERCADOPAGO_PUBLIC_KEY ?? "";
 
   const selectedPro = useMemo(() => matches.find((pro) => pro.userId === selectedProId) ?? null, [matches, selectedProId]);
+  const selectedService = useMemo(() => services.find((service) => service.id === filters.serviceId) ?? null, [services, filters.serviceId]);
+  const isChefService = Boolean(selectedService?.slug?.startsWith("cocina-") || selectedService?.slug === "reposteria" || selectedService?.slug === "cumpleanos");
 
   const dayGroups = useMemo(() => {
     if (!selectedPro) return [] as Array<[string, Slot[]]>;
@@ -134,6 +148,26 @@ export default function ReservarPage() {
     if (!selectedPro || !selectedSlotId) return null;
     return selectedPro.slots.find((slot) => slot.id === selectedSlotId) ?? null;
   }, [selectedPro, selectedSlotId]);
+
+  const bookingDetails = useMemo(() => {
+    const sections = [details.trim()].filter(Boolean);
+    if (isChefService) {
+      const dietarySummary = dietaryFlags.length > 0 ? dietaryFlags.join(", ") : "";
+      const extraNotes = dietaryNotes.trim();
+      if (dietarySummary || extraNotes) {
+        sections.push(
+          [
+            "Información sobre alimentación:",
+            dietarySummary ? `Preferencias o restricciones: ${dietarySummary}.` : "",
+            extraNotes ? `Detalle adicional: ${extraNotes}` : ""
+          ]
+            .filter(Boolean)
+            .join(" ")
+        );
+      }
+    }
+    return sections.join("\n\n");
+  }, [details, dietaryFlags, dietaryNotes, isChefService]);
 
   const baseHourly = selectedPro?.hourlyRateFromClp ?? services.find((s) => s.id === filters.serviceId)?.basePriceClp ?? 0;
   const extrasTotal = (materials ? 5000 : 0) + (urgency ? 9000 : 0) + travelFeeClp;
@@ -438,7 +472,7 @@ export default function ReservarPage() {
             postalCode: address.postalCode,
             region: address.city
           },
-          details,
+          details: bookingDetails,
           extras: {
             materials,
             urgency,
@@ -644,6 +678,34 @@ export default function ReservarPage() {
               Detalles del trabajo
               <textarea value={details} onChange={(e) => setDetails(e.target.value)} />
             </label>
+            {isChefService ? (
+              <div className="full auth-flow-note-card">
+                <strong>¿Deberíamos saber algo sobre tu alimentación?</strong>
+                <span>Cuéntanos si necesitas comida libre de alérgenos, sin gluten, APLV u otra consideración importante.</span>
+                <div className="inline-checks" style={{ marginTop: 12 }}>
+                  {DIETARY_OPTIONS.map((option) => (
+                    <label key={option}>
+                      <input
+                        type="checkbox"
+                        checked={dietaryFlags.includes(option)}
+                        onChange={(event) =>
+                          setDietaryFlags((current) =>
+                            event.target.checked ? Array.from(new Set([...current, option])) : current.filter((item) => item !== option)
+                          )
+                        }
+                      />
+                      {option}
+                    </label>
+                  ))}
+                </div>
+                <textarea
+                  style={{ marginTop: 12 }}
+                  value={dietaryNotes}
+                  onChange={(event) => setDietaryNotes(event.target.value)}
+                  placeholder="Ejemplo: una persona es celíaca, evitar contaminación cruzada, sin mariscos, menú infantil, etc."
+                />
+              </div>
+            ) : null}
           </div>
 
           <div className="price-box" style={{ marginTop: 12 }}>
@@ -654,7 +716,7 @@ export default function ReservarPage() {
           <div className="panel" style={{ marginTop: 12 }}>
             <h3>Checkout</h3>
             <p>
-              Servicio: <strong>{services.find((service) => service.id === filters.serviceId)?.name ?? "Servicio seleccionado"}</strong>
+              Servicio: <strong>{selectedService?.name ?? "Servicio seleccionado"}</strong>
             </p>
             <p>
               Fecha y hora: <strong>{selectedSlot ? new Date(selectedSlot.startsAt).toLocaleString("es-CL") : "Selecciona un horario"}</strong>
