@@ -37,6 +37,8 @@ export default function ServicioCategoriaPage() {
 
   const [selectedServiceId, setSelectedServiceId] = useState(query.get("serviceId") ?? "");
   const [street, setStreet] = useState(query.get("address") ?? "");
+  const [apartment, setApartment] = useState(query.get("apartment") ?? "");
+  const [reference, setReference] = useState(query.get("reference") ?? "");
   const city = query.get("city") ?? "Santiago";
   const isCleaningCategory = category?.slug === "limpieza";
 
@@ -141,7 +143,9 @@ export default function ServicioCategoriaPage() {
         body: JSON.stringify({
           email: coverageEmail.trim(),
           commune: detectedCommune ?? undefined,
-          address: street.trim(),
+          address: [street.trim(), apartment.trim() ? `Depto ${apartment.trim()}` : "", reference.trim() ? `Ref: ${reference.trim()}` : ""]
+            .filter(Boolean)
+            .join(", "),
           source: "services_category_form"
         })
       });
@@ -177,6 +181,8 @@ export default function ServicioCategoriaPage() {
       comuna: commune,
       commune
     });
+    if (apartment.trim()) qs.set("apartment", apartment.trim());
+    if (reference.trim()) qs.set("reference", reference.trim());
     if (selectedServiceId) qs.set("serviceId", selectedServiceId);
 
     router.push(`/servicios/${category.slug}/pros?${qs.toString()}`);
@@ -246,6 +252,22 @@ export default function ServicioCategoriaPage() {
                         ))}
                       </div>
                     ) : null}
+                  </label>
+                  <label>
+                    Departamento
+                    <input
+                      value={apartment}
+                      onChange={(event) => setApartment(event.target.value)}
+                      placeholder="Ej: 504, Torre B"
+                    />
+                  </label>
+                  <label>
+                    Referencia
+                    <input
+                      value={reference}
+                      onChange={(event) => setReference(event.target.value)}
+                      placeholder="Ej: portón gris, frente a la plaza"
+                    />
                   </label>
                   <div className="full auth-flow-note-card">
                     <strong>Comuna detectada</strong>

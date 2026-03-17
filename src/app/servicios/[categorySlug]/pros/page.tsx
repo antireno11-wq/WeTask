@@ -73,6 +73,8 @@ export default function ServiceProsPage() {
   const [notifyMessage, setNotifyMessage] = useState("");
 
   const address = search.get("address") ?? "";
+  const apartment = search.get("apartment") ?? "";
+  const reference = search.get("reference") ?? "";
   const comuna = search.get("comuna") ?? search.get("commune") ?? "";
   const city = search.get("city") ?? "Santiago";
   const requestedDate = search.get("requestedDate") ?? "";
@@ -193,6 +195,13 @@ export default function ServiceProsPage() {
             {address || "Sin dirección"}
             {comuna ? `, ${comuna}` : ""} · {city}
           </p>
+          {apartment || reference ? (
+            <p>
+              {apartment ? <>Depto: <strong>{apartment}</strong></> : null}
+              {apartment && reference ? " · " : null}
+              {reference ? <>Referencia: <strong>{reference}</strong></> : null}
+            </p>
+          ) : null}
           {requestedDate && requestedTime ? (
             <p>
               Horario solicitado: <strong>{requestedDate}</strong> a las <strong>{requestedTime}</strong>
@@ -221,7 +230,7 @@ export default function ServiceProsPage() {
 
         <div className="cta-row">
           <Link
-            href={`/servicios/${categorySlug}?address=${encodeURIComponent(address)}&comuna=${encodeURIComponent(comuna)}&city=${encodeURIComponent(city)}&requestedDate=${encodeURIComponent(requestedDate)}&requestedTime=${encodeURIComponent(requestedTime)}`}
+            href={`/servicios/${categorySlug}?address=${encodeURIComponent(address)}&apartment=${encodeURIComponent(apartment)}&reference=${encodeURIComponent(reference)}&comuna=${encodeURIComponent(comuna)}&city=${encodeURIComponent(city)}&requestedDate=${encodeURIComponent(requestedDate)}&requestedTime=${encodeURIComponent(requestedTime)}`}
             className="cta ghost small"
           >
             Cambiar dirección y horario
