@@ -356,9 +356,13 @@ export async function PATCH(req: NextRequest) {
 
     if (input.step === 7) {
       const parsed = taskerOnboardingStep7Schema.parse(input.payload);
+      if (onboarding.categorySlug === "limpieza" && !parsed.cleaningScope) {
+        return NextResponse.json({ error: "Debes definir el alcance de tu servicio de limpieza." }, { status: 400 });
+      }
       data = {
         offeredServices: parsed.offeredServices,
         experienceTypes: parsed.experienceTypes,
+        cleaningScope: parsed.cleaningScope ?? undefined,
         acceptsHomesWithPets: parsed.acceptsHomesWithPets ?? null,
         acceptsHomesWithChildren: parsed.acceptsHomesWithChildren ?? null,
         acceptsHomesWithElderly: parsed.acceptsHomesWithElderly ?? null,

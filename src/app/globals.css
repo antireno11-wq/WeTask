@@ -5445,6 +5445,34 @@ textarea {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.onboarding-step-mini-progress {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.onboarding-step-mini-progress span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  padding: 8px 10px;
+  border-radius: 999px;
+  border: 1px solid #d6e7f5;
+  background: #f8fbff;
+  color: #6b86a1;
+  font-size: 0.82rem;
+  font-weight: 800;
+  text-align: center;
+}
+
+.onboarding-step-mini-progress span.active {
+  border-color: #9bc8e7;
+  background: linear-gradient(180deg, #ffffff 0%, #eef7ff 100%);
+  color: #173b5f;
+}
+
 .auth-service-grid-compact {
   grid-template-columns: minmax(0, 1fr);
 }
@@ -5525,6 +5553,12 @@ textarea {
   border-color: #9bc8e7;
   background: linear-gradient(180deg, #ffffff 0%, #f1f8ff 100%);
   box-shadow: 0 14px 28px rgba(19, 42, 87, 0.08);
+}
+
+.onboarding-scope-review-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
 }
 
 .cleaning-rate-grid {
@@ -5750,6 +5784,26 @@ textarea {
 
 .onboarding-checkbox-grid-compact {
   grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.service-task-filter-card {
+  display: grid;
+  gap: 14px;
+  margin-top: 16px;
+  padding: 18px;
+  border: 1px solid #d6e7f5;
+  border-radius: 22px;
+  background: linear-gradient(180deg, #ffffff 0%, #f6faff 100%);
+  box-shadow: 0 14px 28px rgba(19, 42, 87, 0.06);
+}
+
+.service-task-filter-card .panel-head {
+  margin: 0;
+}
+
+.service-task-filter-card .panel-head h3,
+.service-task-filter-card .panel-head p {
+  margin: 0;
 }
 
 .onboarding-check-card {
@@ -6055,7 +6109,12 @@ textarea {
   }
 
   .onboarding-checkbox-grid,
+  .onboarding-scope-review-grid,
   .onboarding-availability-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .onboarding-step-mini-progress {
     grid-template-columns: 1fr;
   }
 

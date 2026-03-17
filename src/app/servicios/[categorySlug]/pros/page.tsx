@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { MarketNav } from "@/components/market-nav";
+import { CLEANING_TASK_INCLUDED_OPTIONS, type CleaningTaskIncludedSlug } from "@/lib/cleaning-scope";
 
 type Category = {
   id: string;
@@ -22,6 +23,7 @@ type Professional = {
   distanceKm: number;
   coverageCity: string | null;
   serviceRadiusKm: number;
+  cleaningScope?: unknown;
   user: { fullName: string };
   slots: Array<{ id: string; startsAt: string }>;
 };
@@ -79,6 +81,12 @@ export default function ServiceProsPage() {
   const city = search.get("city") ?? "Santiago";
   const requestedDate = search.get("requestedDate") ?? "";
   const requestedTime = search.get("requestedTime") ?? "";
+  const initialRequestedTasks = (search.get("tasks") ?? "")
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .filter((item): item is CleaningTaskIncludedSlug => CLEANING_TASK_INCLUDED_OPTIONS.some((option) => option.value === item));
+  const [selectedTasks, setSelectedTasks] = useState<CleaningTaskIncludedSlug[]>(initialRequestedTasks);
   const selectedServiceId = search.get("serviceId") ?? "";
   const requestedMinutes = requestedTime ? timeToMinutes(requestedTime) : null;
   const requestedIso = useMemo(() => {
@@ -97,8 +105,9 @@ export default function ServiceProsPage() {
     if (requestedDate) qs.set("date", requestedDate);
     if (requestedTime) qs.set("requestedTime", requestedTime);
     if (selectedServiceId) qs.set("serviceId", selectedServiceId);
+    if (selectedTasks.length > 0) qs.set("tasks", selectedTasks.join(","));
     return qs.toString();
-  }, [address, apartment, city, comuna, reference, requestedDate, requestedTime, selectedServiceId]);
+  }, [address, apartment, city, comuna, reference, requestedDate, requestedTime, selectedServiceId, selectedTasks]);
 
   useEffect(() => {
     const load = async () => {
@@ -126,6 +135,7 @@ export default function ServiceProsPage() {
         if (address.trim()) qs.set("street", address.trim());
         if (comuna) qs.set("commune", comuna);
         if (requestedIso) qs.set("date", requestedIso);
+        if (selectedTasks.length > 0) qs.set("tasks", selectedTasks.join(","));
 
         const prosRes = await fetch(`/api/marketplace/search-professionals?${qs.toString()}`);
         const prosData = (await prosRes.json()) as { professionals?: Professional[]; error?: string; detail?: string };
@@ -146,7 +156,7 @@ export default function ServiceProsPage() {
     };
 
     if (categorySlug) void load();
-  }, [address, categorySlug, city, comuna, requestedIso, selectedServiceId]);
+  }, [address, categorySlug, city, comuna, requestedIso, selectedServiceId, selectedTasks]);
 
   const professionals = useMemo(() => {
     let filtered = [...allPros];
@@ -194,6 +204,10 @@ export default function ServiceProsPage() {
     return filtered;
   }, [allPros, availability, requestedDate, requestedMinutes, sortBy]);
 
+  const toggleTask = (task: CleaningTaskIncludedSlug) => {
+    setSelectedTasks((current) => (current.includes(task) ? current.filter((item) => item !== task) : [...current, task]));
+  };
+
   return (
     <main className="page market-shell">
       <MarketNav />
@@ -239,6 +253,23 @@ export default function ServiceProsPage() {
             </select>
           </label>
         </div>
+
+        {category?.slug === "limpieza" ? (
+          <div className="service-task-filter-card">
+            <div className="panel-head">
+              <h3>Tareas que necesitas</h3>
+              <p>Filtra profesionales según lo que sí realizan dentro del servicio base.</p>
+            </div>
+            <div className="onboarding-checkbox-grid onboarding-checkbox-grid-compact">
+              {CLEANING_TASK_INCLUDED_OPTIONS.map((task) => (
+                <label key={task.value} className="onboarding-check-card">
+                  <input type="checkbox" checked={selectedTasks.includes(task.value)} onChange={() => toggleTask(task.value)} />
+                  <span>{task.label}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+        ) : null}
 
         <div className="cta-row">
           <Link

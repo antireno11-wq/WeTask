@@ -29,6 +29,7 @@ export async function GET(_: Request, context: { params: { proId: string } }) {
                 categorySlug: true,
                 offeredServices: true,
                 experienceTypes: true,
+                cleaningScope: true,
                 languages: true,
                 baseCommune: true,
                 maxTravelKm: true

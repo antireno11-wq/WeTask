@@ -6,6 +6,12 @@ import { useEffect, useMemo, useState } from "react";
 import { MarketNav } from "@/components/market-nav";
 import { getChefServiceDefinition } from "@/lib/chef-service-types";
 import { getCleaningServiceDefinition } from "@/lib/cleaning-service-types";
+import {
+  getCleaningExcludedTaskLabel,
+  getCleaningIncludedTaskLabel,
+  getCleaningScopeServiceLabel,
+  normalizeCleaningScope
+} from "@/lib/cleaning-scope";
 
 type CleaningOnboardingSummary = {
   profilePhotoUrl: string | null;
@@ -15,6 +21,7 @@ type CleaningOnboardingSummary = {
   categorySlug: string | null;
   offeredServices: unknown;
   experienceTypes: unknown;
+  cleaningScope: unknown;
   languages: unknown;
   baseCommune: string | null;
   maxTravelKm: number | null;
@@ -419,6 +426,12 @@ function buildDemoProfessional(proId: string): ProfessionalDetail {
         categorySlug: "limpieza",
         offeredServices: demoOfferedServices,
         experienceTypes: demoExperienceTypes,
+        cleaningScope: {
+          services_offered: ["aseo_general", "aseo_profundo", "organizacion_espacios"],
+          tasks_included: ["barrer", "aspirar", "trapear", "limpiar_banos", "limpiar_cocina_por_fuera", "sacar_basura"],
+          tasks_excluded: ["limpieza_en_altura", "mover_muebles_pesados"],
+          special_conditions: "No mueve muebles pesados ni trabaja en altura."
+        },
         languages: demoLanguages,
         baseCommune: "Santiago",
         maxTravelKm: 12
@@ -576,6 +589,7 @@ export default function ProDetailPage() {
   const professionalismScore = Math.min(5, Math.max(4, rating + 0.15));
   const punctualityScore = Math.min(5, Math.max(4, rating + 0.1));
   const onboarding = data?.user.cleaningOnboarding ?? null;
+  const cleaningScope = useMemo(() => normalizeCleaningScope(onboarding?.cleaningScope), [onboarding?.cleaningScope]);
   const serviceCategories = useMemo(() => {
     const bySlug = new Map<string, { slug: string; name: string }>();
     for (const item of data?.taskerServices ?? []) {
@@ -609,6 +623,9 @@ export default function ProDetailPage() {
   const categoryName = serviceCategories[0]?.name ?? categoryLabel(primaryCategorySlug);
   const taskerRole = taskerRoleLabel(primaryCategorySlug);
   const faqItems = faqItemsForCategory(primaryCategorySlug);
+  const cleaningScopeServices = cleaningScope.services_offered.map(getCleaningScopeServiceLabel);
+  const cleaningScopeIncludedTasks = cleaningScope.tasks_included.map(getCleaningIncludedTaskLabel);
+  const cleaningScopeExcludedTasks = cleaningScope.tasks_excluded.map(getCleaningExcludedTaskLabel);
   const buildReserveHref = (options?: { startsAt?: string; serviceId?: string | null }) => {
     const qs = new URLSearchParams();
     qs.set("proId", data?.userId ?? params.proId);
@@ -801,6 +818,31 @@ export default function ProDetailPage() {
                       </div>
                     </div>
                   </article>
+
+                  {normalizedPrimaryCategorySlug === "limpieza" ? (
+                    <article className="auth-flow-panel client-dashboard-section">
+                      <h2>Alcance del servicio</h2>
+                      <div className="we-info-grid">
+                        <div>
+                          <h3>Servicios que ofrece</h3>
+                          <p>{cleaningScopeServices.length > 0 ? cleaningScopeServices.join(", ") : "Aún no informado."}</p>
+                        </div>
+                        <div>
+                          <h3>Tareas que sí realiza</h3>
+                          <p>{cleaningScopeIncludedTasks.length > 0 ? cleaningScopeIncludedTasks.join(", ") : "Aún no informado."}</p>
+                        </div>
+                        <div>
+                          <h3>Tareas que no realiza</h3>
+                          <p>{cleaningScopeExcludedTasks.length > 0 ? cleaningScopeExcludedTasks.join(", ") : "No reporta exclusiones."}</p>
+                        </div>
+                        <div>
+                          <h3>Condiciones especiales</h3>
+                          <p>{cleaningScope.special_conditions || "Sin condiciones especiales reportadas."}</p>
+                        </div>
+                      </div>
+                      <p className="minimal-note">Si necesitas tareas fuera de este alcance base, revísalo antes de reservar para evitar malos entendidos.</p>
+                    </article>
+                  ) : null}
 
                   <article id="availability" className="auth-flow-panel client-dashboard-section">
                     <div className="we-section-head">

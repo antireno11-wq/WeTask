@@ -16,6 +16,20 @@ import {
   type CleaningServiceSlug,
   isCleaningServiceSlug
 } from "@/lib/cleaning-service-types";
+import {
+  CLEANING_SCOPE_SERVICE_OPTIONS,
+  CLEANING_TASK_EXCLUDED_OPTIONS,
+  CLEANING_TASK_INCLUDED_OPTIONS,
+  emptyCleaningScope,
+  getCleaningExcludedTaskLabel,
+  getCleaningIncludedTaskLabel,
+  getCleaningScopeServiceLabel,
+  normalizeCleaningScope,
+  type CleaningScopeData,
+  type CleaningScopeServiceSlug,
+  type CleaningTaskExcludedSlug,
+  type CleaningTaskIncludedSlug
+} from "@/lib/cleaning-scope";
 import { ACTIVE_MVP_COMMUNES, inferCommuneFromAddress, normalizeCommune, type ActiveMvpCommune } from "@/lib/communes";
 
 type SessionPayload = {
@@ -41,6 +55,7 @@ type OnboardingPayload = {
   workMode: "SOLO" | "EQUIPO" | null;
   offeredServices: unknown;
   experienceTypes: unknown;
+  cleaningScope: unknown;
   acceptsHomesWithPets: boolean | null;
   acceptsHomesWithChildren: boolean | null;
   acceptsHomesWithElderly: boolean | null;
@@ -125,6 +140,7 @@ type DraftState = {
   workMode: "SOLO" | "EQUIPO";
   cleaningServices: CleaningServiceSlug[];
   cleaningServiceRates: Partial<Record<CleaningServiceSlug, string>>;
+  cleaningScope: CleaningScopeData;
   chefServiceType: ChefServiceSlug[];
   chefServiceRates: Partial<Record<ChefServiceSlug, string>>;
   cleaningBringsProducts: boolean | null;
@@ -163,6 +179,8 @@ type DraftState = {
   criminalRecordFile: string;
   acceptedTerms: boolean;
 };
+
+type CleaningScopeScreen = 1 | 2 | 3 | 4 | 5;
 
 const TOTAL_STEPS = 12;
 const STORAGE_KEY = "wetask_tasker_wizard_v2";
@@ -223,6 +241,7 @@ const SUBMIT_REQUIRED_FIELD_LABELS: Record<string, string> = {
   yearsExperience: "Años de experiencia (Paso 6)",
   workMode: "Cómo trabajas (Paso 6)",
   offeredServices: "Preguntas específicas de tu categoría (Paso 7)",
+  cleaningScope: "Alcance del servicio de limpieza (Paso 7)",
   serviceCommunes: "Comunas de cobertura (Paso 4)",
   coverageLatitude: "Ubicación validada desde la dirección (Paso 3)",
   coverageLongitude: "Ubicación validada desde la dirección (Paso 3)",
@@ -365,6 +384,41 @@ function selectedCleaningServiceDefinitions(draft: DraftState): CleaningServiceD
   return CLEANING_SERVICE_DEFINITIONS.filter((service) => draft.cleaningServices.includes(service.slug));
 }
 
+function deriveCleaningServicesFromScope(scope: CleaningScopeData): CleaningServiceSlug[] {
+  const derived = new Set<CleaningServiceSlug>();
+
+  for (const item of scope.services_offered) {
+    if (
+      item === "aseo_general" ||
+      item === "limpieza_bano" ||
+      item === "limpieza_cocina" ||
+      item === "organizacion_espacios" ||
+      item === "limpieza_vidrios_interiores"
+    ) {
+      derived.add("limpieza-hogar");
+    }
+
+    if (
+      item === "aseo_profundo" ||
+      item === "limpieza_refrigerador" ||
+      item === "limpieza_horno" ||
+      item === "limpieza_post_remodelacion"
+    ) {
+      derived.add("limpieza-profunda");
+    }
+
+    if (item === "limpieza_post_mudanza") {
+      derived.add("limpieza-post-mudanza");
+    }
+
+    if (item === "planchado" || item === "lavado_ropa") {
+      derived.add("limpieza-por-horas");
+    }
+  }
+
+  return derived.size > 0 ? Array.from(derived) : ["limpieza-hogar"];
+}
+
 function selectedChefServiceDefinitions(draft: DraftState): ChefServiceDefinition[] {
   return CHEF_SERVICE_DEFINITIONS.filter((service) => draft.chefServiceType.includes(service.slug));
 }
@@ -422,6 +476,7 @@ function createInitialDraft(): DraftState {
     workMode: "SOLO",
     cleaningServices: ["limpieza-hogar"],
     cleaningServiceRates: { "limpieza-hogar": "" },
+    cleaningScope: emptyCleaningScope(),
     chefServiceType: ["cocina-casera"],
     chefServiceRates: { "cocina-casera": "" },
     cleaningBringsProducts: null,
@@ -532,6 +587,7 @@ function buildStep7Payload(draft: DraftState) {
       return {
         offeredServices: draft.cleaningServices,
         experienceTypes: draft.cleaningServices,
+        cleaningScope: draft.cleaningScope,
         worksWithClientProducts: false,
         bringsOwnProducts: draft.cleaningBringsProducts,
         bringsOwnTools: draft.cleaningBringsEquipment
@@ -617,6 +673,7 @@ function CleaningOnboardingPageContent() {
   const [feedback, setFeedback] = useState("");
   const [submitMissingFields, setSubmitMissingFields] = useState<string[]>([]);
   const [smsPreview, setSmsPreview] = useState("");
+  const [cleaningScopeScreen, setCleaningScopeScreen] = useState<CleaningScopeScreen>(1);
   const [selectedAvailabilityDay, setSelectedAvailabilityDay] = useState<DayKey>(currentWeekDayKey);
   const [bulkAvailabilityDays, setBulkAvailabilityDays] = useState<DayKey[]>([currentWeekDayKey()]);
   const [newAvailabilityStart, setNewAvailabilityStart] = useState("14:00");
@@ -633,6 +690,9 @@ function CleaningOnboardingPageContent() {
 
   const chicureoSelected = draft.homeCommune === "Chicureo" || draft.coverageCommunes.includes("Chicureo");
   const selectedCategoryLabel = CATEGORY_OPTIONS.find((option) => option.slug === draft.category)?.label ?? "Limpieza";
+  const cleaningScopeServicesPreview = draft.cleaningScope.services_offered.map(getCleaningScopeServiceLabel);
+  const cleaningScopeIncludedPreview = draft.cleaningScope.tasks_included.map(getCleaningIncludedTaskLabel);
+  const cleaningScopeExcludedPreview = draft.cleaningScope.tasks_excluded.map(getCleaningExcludedTaskLabel);
   const pricingGuide = useMemo(() => getPricingGuide(draft), [draft]);
   const progressPercent = Math.round((activeStep / TOTAL_STEPS) * 100);
   const addressQuery = useMemo(() => [draft.address.trim(), "Santiago", "Chile"].filter(Boolean).join(", "), [draft.address]);
@@ -655,6 +715,7 @@ function CleaningOnboardingPageContent() {
         rut: formatRutInput(parsed.rut ?? current.rut),
         bankOwnerRut: formatRutInput(parsed.bankOwnerRut ?? current.bankOwnerRut),
         cleaningServices: normalizeCleaningServiceSlugs(parsed.cleaningServices),
+        cleaningScope: normalizeCleaningScope(parsed.cleaningScope ?? current.cleaningScope),
         cleaningServiceRates:
           parsed.cleaningServiceRates && typeof parsed.cleaningServiceRates === "object"
             ? (parsed.cleaningServiceRates as Partial<Record<CleaningServiceSlug, string>>)
@@ -790,20 +851,23 @@ function CleaningOnboardingPageContent() {
 
   useEffect(() => {
     if (draft.category !== "limpieza") return;
+    const derivedServices = deriveCleaningServicesFromScope(draft.cleaningScope);
+    const scopeServicesChanged = derivedServices.join("|") !== draft.cleaningServices.join("|");
     const normalizedServices = normalizeCleaningServiceSlugs(draft.cleaningServices);
-    const nextRates = normalizedServices.reduce<Partial<Record<CleaningServiceSlug, string>>>((acc, slug) => {
+    const targetServices = scopeServicesChanged ? derivedServices : normalizedServices;
+    const nextRates = targetServices.reduce<Partial<Record<CleaningServiceSlug, string>>>((acc, slug) => {
       acc[slug] = draft.cleaningServiceRates[slug] ?? "";
       return acc;
     }, {});
     const servicesChanged = normalizedServices.join("|") !== draft.cleaningServices.join("|");
     const ratesChanged = JSON.stringify(nextRates) !== JSON.stringify(draft.cleaningServiceRates);
-    if (!servicesChanged && !ratesChanged) return;
+    if (!servicesChanged && !ratesChanged && !scopeServicesChanged) return;
     setDraft((current) => ({
       ...current,
-      cleaningServices: normalizedServices,
+      cleaningServices: targetServices,
       cleaningServiceRates: nextRates
     }));
-  }, [draft.category, draft.cleaningServiceRates, draft.cleaningServices]);
+  }, [draft.category, draft.cleaningScope, draft.cleaningServiceRates, draft.cleaningServices]);
 
   useEffect(() => {
     if (draft.category !== "chef") return;
@@ -821,6 +885,12 @@ function CleaningOnboardingPageContent() {
       chefServiceRates: nextRates
     }));
   }, [draft.category, draft.chefServiceRates, draft.chefServiceType]);
+
+  useEffect(() => {
+    if (activeStep !== 7 || draft.category !== "limpieza") {
+      setCleaningScopeScreen(1);
+    }
+  }, [activeStep, draft.category]);
 
   const hydrateFromServer = (nextOnboarding: OnboardingPayload, user?: { fullName?: string | null; email?: string | null; phone?: string | null }) => {
     const { firstName, lastName } = splitFullName(user?.fullName ?? session?.fullName ?? "");
@@ -845,6 +915,7 @@ function CleaningOnboardingPageContent() {
         : current.category) as CategorySlug,
       cleaningServices:
         nextOnboarding.categorySlug === "limpieza" ? normalizeCleaningServiceSlugs(nextOnboarding.offeredServices) : current.cleaningServices,
+      cleaningScope: nextOnboarding.categorySlug === "limpieza" ? normalizeCleaningScope(nextOnboarding.cleaningScope) : current.cleaningScope,
       chefServiceType: nextOnboarding.categorySlug === "chef" ? normalizeChefServiceTypes(nextOnboarding.offeredServices) : current.chefServiceType,
       yearsExperience: nextOnboarding.yearsExperience ? String(Math.min(nextOnboarding.yearsExperience, 10)) : current.yearsExperience,
       workMode: nextOnboarding.workMode ?? current.workMode,
@@ -1257,11 +1328,39 @@ function CleaningOnboardingPageContent() {
     }
   };
 
+  const continueCleaningScopeScreen = () => {
+    if (cleaningScopeScreen === 1 && draft.cleaningScope.services_offered.length === 0) {
+      setError("Selecciona al menos un servicio de limpieza que sí ofreces.");
+      return;
+    }
+    if (cleaningScopeScreen === 2 && draft.cleaningScope.tasks_included.length === 0) {
+      setError("Selecciona al menos una tarea que sí realizas.");
+      return;
+    }
+    setError("");
+    setCleaningScopeScreen((current) => (Math.min(5, current + 1) as CleaningScopeScreen));
+  };
+
+  const previousCleaningScopeScreen = () => {
+    setError("");
+    setCleaningScopeScreen((current) => (Math.max(1, current - 1) as CleaningScopeScreen));
+  };
+
   const continueStep7 = async () => {
     const payload = buildStep7Payload(draft);
     if (!payload.offeredServices || payload.offeredServices.length === 0) {
       setError("Responde las preguntas de tu categoría para continuar.");
       return;
+    }
+    if (draft.category === "limpieza") {
+      if (draft.cleaningScope.services_offered.length === 0) {
+        setError("Selecciona al menos un servicio de limpieza que ofreces.");
+        return;
+      }
+      if (draft.cleaningScope.tasks_included.length === 0) {
+        setError("Selecciona al menos una tarea que sí realizas.");
+        return;
+      }
     }
     if (draft.category === "mascotas" && draft.petAnimals.length === 0) {
       setError("Selecciona al menos un tipo de mascota para continuar.");
@@ -1839,55 +1938,176 @@ function CleaningOnboardingPageContent() {
 
                 {draft.category === "limpieza" ? (
                   <div className="grid-form auth-flow-form">
-                    <div className="full">
-                      <p className="field-label">Tipos de limpieza que quieres ofrecer</p>
-                      <div className="auth-service-grid auth-service-grid-cleaning">
-                        {CLEANING_SERVICE_DEFINITIONS.map((service) => (
-                          <label key={service.slug} className={`auth-service-card ${draft.cleaningServices.includes(service.slug) ? "active" : ""}`}>
-                            <input
-                              type="checkbox"
-                              checked={draft.cleaningServices.includes(service.slug)}
-                              onChange={(event) =>
-                                setDraft((current) => ({
-                                  ...current,
-                                  cleaningServices: event.target.checked
-                                    ? Array.from(new Set([...current.cleaningServices, service.slug]))
-                                    : current.cleaningServices.filter((item) => item !== service.slug)
-                                }))
-                              }
-                            />
-                            <strong>{service.name}</strong>
-                            <span>{service.description}</span>
-                            <span>{service.forClients}</span>
-                            <span>
-                              Incluye: <strong>{service.includes.slice(0, 3).join(", ")}</strong>
-                            </span>
-                          </label>
-                        ))}
-                      </div>
+                    <div className="full onboarding-step-mini-progress">
+                      <span className={cleaningScopeScreen >= 1 ? "active" : ""}>Servicios</span>
+                      <span className={cleaningScopeScreen >= 2 ? "active" : ""}>Sí realiza</span>
+                      <span className={cleaningScopeScreen >= 3 ? "active" : ""}>No realiza</span>
+                      <span className={cleaningScopeScreen >= 4 ? "active" : ""}>Condiciones</span>
+                      <span className={cleaningScopeScreen >= 5 ? "active" : ""}>Revisión</span>
                     </div>
-                    <label>
-                      ¿Llevas productos de limpieza?
-                      <select
-                        value={draft.cleaningBringsProducts == null ? "" : draft.cleaningBringsProducts ? "si" : "no"}
-                        onChange={(event) => updateDraft("cleaningBringsProducts", event.target.value === "si")}
-                      >
-                        <option value="">Selecciona</option>
-                        <option value="si">Sí</option>
-                        <option value="no">No</option>
-                      </select>
-                    </label>
-                    <label>
-                      ¿Llevas aspiradora o equipos?
-                      <select
-                        value={draft.cleaningBringsEquipment == null ? "" : draft.cleaningBringsEquipment ? "si" : "no"}
-                        onChange={(event) => updateDraft("cleaningBringsEquipment", event.target.value === "si")}
-                      >
-                        <option value="">Selecciona</option>
-                        <option value="si">Sí</option>
-                        <option value="no">No</option>
-                      </select>
-                    </label>
+
+                    {cleaningScopeScreen === 1 ? (
+                      <div className="full">
+                        <p className="field-label">¿Qué servicios de limpieza ofreces?</p>
+                        <p className="input-hint">Selecciona todo lo que sí ofreces para que los clientes entiendan mejor tu alcance.</p>
+                        <div className="auth-service-grid auth-service-grid-cleaning">
+                          {CLEANING_SCOPE_SERVICE_OPTIONS.map((service) => (
+                            <label
+                              key={service.value}
+                              className={`auth-service-card ${draft.cleaningScope.services_offered.includes(service.value) ? "active" : ""}`}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={draft.cleaningScope.services_offered.includes(service.value)}
+                                onChange={(event) =>
+                                  setDraft((current) => ({
+                                    ...current,
+                                    cleaningScope: {
+                                      ...current.cleaningScope,
+                                      services_offered: event.target.checked
+                                        ? Array.from(new Set([...current.cleaningScope.services_offered, service.value]))
+                                        : current.cleaningScope.services_offered.filter((item) => item !== service.value)
+                                    }
+                                  }))
+                                }
+                              />
+                              <strong>{service.label}</strong>
+                              <span>{service.description}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    ) : null}
+
+                    {cleaningScopeScreen === 2 ? (
+                      <div className="full">
+                        <p className="field-label">¿Qué tareas sí realizas?</p>
+                        <p className="input-hint">Esto se mostrará en tu perfil y se usará para filtrar reservas con tareas específicas.</p>
+                        <div className="onboarding-checkbox-grid">
+                          {CLEANING_TASK_INCLUDED_OPTIONS.map((task) => (
+                            <label key={task.value} className="onboarding-check-card">
+                              <input
+                                type="checkbox"
+                                checked={draft.cleaningScope.tasks_included.includes(task.value)}
+                                onChange={(event) =>
+                                  setDraft((current) => ({
+                                    ...current,
+                                    cleaningScope: {
+                                      ...current.cleaningScope,
+                                      tasks_included: event.target.checked
+                                        ? Array.from(new Set([...current.cleaningScope.tasks_included, task.value]))
+                                        : current.cleaningScope.tasks_included.filter((item) => item !== task.value)
+                                    }
+                                  }))
+                                }
+                              />
+                              <span>{task.label}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    ) : null}
+
+                    {cleaningScopeScreen === 3 ? (
+                      <div className="full">
+                        <p className="field-label">¿Qué tareas no realizas?</p>
+                        <p className="input-hint">Así evitamos malos entendidos y ayudamos a prevenir disputas antes de la reserva.</p>
+                        <div className="onboarding-checkbox-grid">
+                          {CLEANING_TASK_EXCLUDED_OPTIONS.map((task) => (
+                            <label key={task.value} className="onboarding-check-card">
+                              <input
+                                type="checkbox"
+                                checked={draft.cleaningScope.tasks_excluded.includes(task.value)}
+                                onChange={(event) =>
+                                  setDraft((current) => ({
+                                    ...current,
+                                    cleaningScope: {
+                                      ...current.cleaningScope,
+                                      tasks_excluded: event.target.checked
+                                        ? Array.from(new Set([...current.cleaningScope.tasks_excluded, task.value]))
+                                        : current.cleaningScope.tasks_excluded.filter((item) => item !== task.value)
+                                    }
+                                  }))
+                                }
+                              />
+                              <span>{task.label}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    ) : null}
+
+                    {cleaningScopeScreen === 4 ? (
+                      <>
+                        <label className="full">
+                          Condiciones especiales de tu servicio
+                          <textarea
+                            value={draft.cleaningScope.special_conditions}
+                            onChange={(event) =>
+                              setDraft((current) => ({
+                                ...current,
+                                cleaningScope: {
+                                  ...current.cleaningScope,
+                                  special_conditions: event.target.value
+                                }
+                              }))
+                            }
+                            placeholder="Ejemplo: Solo realizo aseo general, no profundo. No trabajo en altura. Sí hago planchado, pero no lavado."
+                            rows={5}
+                          />
+                          <span className="input-hint">Escribe cualquier condición importante que el cliente deba saber antes de reservar.</span>
+                        </label>
+                      </>
+                    ) : null}
+
+                    {cleaningScopeScreen === 5 ? (
+                      <>
+                        <div className="full auth-flow-note-card">
+                          <strong>Revisa tu perfil</strong>
+                          <span>Así verán tu alcance base de servicio los clientes y el motor de matching.</span>
+                        </div>
+                        <div className="full onboarding-scope-review-grid">
+                          <article className="auth-flow-note-card">
+                            <strong>Servicios ofrecidos</strong>
+                            <span>{cleaningScopeServicesPreview.length > 0 ? cleaningScopeServicesPreview.join(", ") : "Sin información aún."}</span>
+                          </article>
+                          <article className="auth-flow-note-card">
+                            <strong>Tareas que sí realiza</strong>
+                            <span>{cleaningScopeIncludedPreview.length > 0 ? cleaningScopeIncludedPreview.join(", ") : "Sin información aún."}</span>
+                          </article>
+                          <article className="auth-flow-note-card">
+                            <strong>Tareas que no realiza</strong>
+                            <span>{cleaningScopeExcludedPreview.length > 0 ? cleaningScopeExcludedPreview.join(", ") : "No marcaste exclusiones."}</span>
+                          </article>
+                          <article className="auth-flow-note-card">
+                            <strong>Condiciones especiales</strong>
+                            <span>{draft.cleaningScope.special_conditions.trim() || "No agregaste condiciones especiales."}</span>
+                          </article>
+                        </div>
+                        <label>
+                          ¿Llevas productos de limpieza?
+                          <select
+                            value={draft.cleaningBringsProducts == null ? "" : draft.cleaningBringsProducts ? "si" : "no"}
+                            onChange={(event) => updateDraft("cleaningBringsProducts", event.target.value === "si")}
+                          >
+                            <option value="">Selecciona</option>
+                            <option value="si">Sí</option>
+                            <option value="no">No</option>
+                          </select>
+                        </label>
+                        <label>
+                          ¿Llevas aspiradora o equipos?
+                          <select
+                            value={draft.cleaningBringsEquipment == null ? "" : draft.cleaningBringsEquipment ? "si" : "no"}
+                            onChange={(event) => updateDraft("cleaningBringsEquipment", event.target.value === "si")}
+                          >
+                            <option value="">Selecciona</option>
+                            <option value="si">Sí</option>
+                            <option value="no">No</option>
+                          </select>
+                        </label>
+                      </>
+                    ) : null}
                   </div>
                 ) : null}
 
@@ -2172,12 +2392,24 @@ function CleaningOnboardingPageContent() {
                 ) : null}
 
                 <div className="auth-flow-actions">
-                  <button type="button" className="cta ghost" onClick={previousStep}>
-                    Volver
-                  </button>
-                  <button type="button" className="cta" onClick={continueStep7} disabled={saving}>
-                    {saving ? "Guardando..." : "Continuar"}
-                  </button>
+                  {draft.category === "limpieza" && cleaningScopeScreen > 1 ? (
+                    <button type="button" className="cta ghost" onClick={previousCleaningScopeScreen}>
+                      Volver
+                    </button>
+                  ) : (
+                    <button type="button" className="cta ghost" onClick={previousStep}>
+                      Volver
+                    </button>
+                  )}
+                  {draft.category === "limpieza" && cleaningScopeScreen < 5 ? (
+                    <button type="button" className="cta" onClick={continueCleaningScopeScreen}>
+                      Siguiente
+                    </button>
+                  ) : (
+                    <button type="button" className="cta" onClick={continueStep7} disabled={saving}>
+                      {saving ? "Guardando..." : "Continuar"}
+                    </button>
+                  )}
                 </div>
               </div>
             ) : null}

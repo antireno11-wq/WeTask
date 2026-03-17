@@ -532,6 +532,7 @@ model CleaningOnboarding {
   workMode                   CleaningWorkMode?
   experienceTypes            Json?
   offeredServices            Json?
+  cleaningScope              Json?
   acceptsHomesWithPets       Boolean?
   acceptsHomesWithChildren   Boolean?
   acceptsHomesWithElderly    Boolean?

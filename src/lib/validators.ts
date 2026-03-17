@@ -7,6 +7,11 @@ import {
   CLEANING_TRAINING_TOPICS,
   CLEANING_WEEK_DAYS
 } from "@/lib/cleaning-onboarding";
+import {
+  CLEANING_SCOPE_SERVICE_OPTIONS,
+  CLEANING_TASK_EXCLUDED_OPTIONS,
+  CLEANING_TASK_INCLUDED_OPTIONS
+} from "@/lib/cleaning-scope";
 import { isActiveMvpCommune, normalizeCommune } from "@/lib/communes";
 
 const activeCommuneInputSchema = z
@@ -14,6 +19,10 @@ const activeCommuneInputSchema = z
   .min(2)
   .refine((value) => isActiveMvpCommune(value), "Comuna fuera de cobertura MVP")
   .transform((value) => normalizeCommune(value) ?? value);
+
+const cleaningScopeServiceEnum = z.enum(CLEANING_SCOPE_SERVICE_OPTIONS.map((option) => option.value) as [string, ...string[]]);
+const cleaningIncludedTaskEnum = z.enum(CLEANING_TASK_INCLUDED_OPTIONS.map((option) => option.value) as [string, ...string[]]);
+const cleaningExcludedTaskEnum = z.enum(CLEANING_TASK_EXCLUDED_OPTIONS.map((option) => option.value) as [string, ...string[]]);
 
 export const createBookingSchema = z.object({
   customerId: z.string().min(1),
@@ -139,6 +148,16 @@ export const marketplaceSearchProsSchema = z.object({
   longitude: z.coerce.number().min(-180).max(180).optional(),
   categoryId: z.string().min(1).optional(),
   serviceId: z.string().min(1).optional(),
+  tasks: z.preprocess(
+    (value) => {
+      if (typeof value !== "string") return [];
+      return value
+        .split(",")
+        .map((item) => item.trim())
+        .filter(Boolean);
+    },
+    z.array(cleaningIncludedTaskEnum).optional().default([])
+  ),
   date: z.coerce.date().optional(),
   limit: z.coerce.number().int().min(1).max(50).default(20)
 });
@@ -401,6 +420,15 @@ export const taskerOnboardingStep6Schema = z.object({
 export const taskerOnboardingStep7Schema = z.object({
   offeredServices: z.array(z.string().min(1)).min(1),
   experienceTypes: z.array(z.string().min(1)).optional().default([]),
+  cleaningScope: z
+    .object({
+      services_offered: z.array(cleaningScopeServiceEnum).min(1),
+      tasks_included: z.array(cleaningIncludedTaskEnum).min(1),
+      tasks_excluded: z.array(cleaningExcludedTaskEnum).optional().default([]),
+      special_conditions: z.string().max(600).optional().default("")
+    })
+    .optional()
+    .nullable(),
   acceptsHomesWithPets: z.boolean().optional().nullable(),
   acceptsHomesWithChildren: z.boolean().optional().nullable(),
   acceptsHomesWithElderly: z.boolean().optional().nullable(),

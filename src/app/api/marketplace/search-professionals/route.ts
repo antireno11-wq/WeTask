@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { supportsCleaningRequestedTasks } from "@/lib/cleaning-scope";
 import { distanceKm, geocodeAddress } from "@/lib/geo";
 import { COVERAGE_UNAVAILABLE_MESSAGE, inferCommuneFromAddress, normalizeCommune, taskerServesCommune } from "@/lib/communes";
 import { ensureMarketplaceDemoData } from "@/lib/marketplace-demo-data";
@@ -20,6 +21,7 @@ export async function GET(req: NextRequest) {
       longitude: req.nextUrl.searchParams.get("longitude") ?? undefined,
       categoryId: req.nextUrl.searchParams.get("categoryId") ?? undefined,
       serviceId: req.nextUrl.searchParams.get("serviceId") ?? undefined,
+      tasks: req.nextUrl.searchParams.get("tasks") ?? undefined,
       date: req.nextUrl.searchParams.get("date") ?? undefined,
       limit: req.nextUrl.searchParams.get("limit") ?? undefined
     });
@@ -73,6 +75,8 @@ export async function GET(req: NextRequest) {
             email: true,
             cleaningOnboarding: {
               select: {
+                categorySlug: true,
+                cleaningScope: true,
                 serviceCommunes: true,
                 baseCommune: true
               }
@@ -114,6 +118,14 @@ export async function GET(req: NextRequest) {
           clientCommune
         );
         if (!servesCommune) return null;
+
+        if (
+          input.tasks.length > 0 &&
+          profile.user.cleaningOnboarding?.categorySlug === "limpieza" &&
+          !supportsCleaningRequestedTasks(profile.user.cleaningOnboarding.cleaningScope, input.tasks)
+        ) {
+          return null;
+        }
 
         if (profile.coverageLatitude == null || profile.coverageLongitude == null) return null;
 

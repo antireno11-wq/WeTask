@@ -1,6 +1,7 @@
 import { PaymentStatus, UserRole } from "@prisma/client";
 import { CHEF_SERVICE_DEFINITIONS } from "@/lib/chef-service-types";
 import { CLEANING_SERVICE_DEFINITIONS } from "@/lib/cleaning-service-types";
+import { type CleaningScopeData } from "@/lib/cleaning-scope";
 import { prisma } from "@/lib/prisma";
 
 const DEMO_PASSWORD_HASH = "$2a$12$LX3eD21fpfkg/xsBDNBrkeBrgQdo9iLcWaG1jOOMonHmBMChElxva";
@@ -21,6 +22,42 @@ type DemoPro = {
   serviceSlugs: string[];
   serviceRates?: Record<string, number>;
 };
+
+function buildDemoCleaningScope(serviceSlugs: string[]): CleaningScopeData {
+  const servicesOffered: CleaningScopeData["services_offered"] = [];
+
+  if (serviceSlugs.includes("limpieza-hogar")) {
+    servicesOffered.push("aseo_general", "limpieza_bano", "limpieza_cocina", "organizacion_espacios");
+  }
+  if (serviceSlugs.includes("limpieza-profunda")) {
+    servicesOffered.push("aseo_profundo", "limpieza_refrigerador", "limpieza_horno");
+  }
+  if (serviceSlugs.includes("limpieza-post-mudanza")) {
+    servicesOffered.push("limpieza_post_mudanza");
+  }
+  if (serviceSlugs.includes("limpieza-oficina")) {
+    servicesOffered.push("limpieza_vidrios_interiores");
+  }
+  if (serviceSlugs.includes("planchado-por-hora")) {
+    servicesOffered.push("planchado");
+  }
+
+  return {
+    services_offered: Array.from(new Set(servicesOffered)),
+    tasks_included: [
+      "barrer",
+      "aspirar",
+      "trapear",
+      "sacudir_polvo",
+      "limpiar_banos",
+      "limpiar_cocina_por_fuera",
+      "sacar_basura",
+      "orden_basico"
+    ],
+    tasks_excluded: ["limpieza_en_altura", "mover_muebles_pesados", "limpieza_heces_vomito_fluidos"],
+    special_conditions: "El alcance base se confirma antes de la reserva. Tareas fuera de este listado se revisan por separado."
+  };
+}
 
 async function ensureRoleAssignment(userId: string, code: UserRole, label: string) {
   const role = await prisma.role.upsert({
@@ -900,14 +937,16 @@ export async function ensureMarketplaceDemoData() {
       update: {
         categorySlug: pro.serviceSlugs.some((slug) => slug.startsWith("limpieza-")) ? "limpieza" : undefined,
         baseCommune: pro.baseCommune,
-        serviceCommunes: pro.serviceCommunes
+        serviceCommunes: pro.serviceCommunes,
+        cleaningScope: pro.serviceSlugs.some((slug) => slug.startsWith("limpieza-")) ? buildDemoCleaningScope(pro.serviceSlugs) : undefined
       },
       create: {
         userId: user.id,
         categorySlug: pro.serviceSlugs.some((slug) => slug.startsWith("limpieza-")) ? "limpieza" : "mascotas",
         currentStep: 12,
         baseCommune: pro.baseCommune,
-        serviceCommunes: pro.serviceCommunes
+        serviceCommunes: pro.serviceCommunes,
+        cleaningScope: pro.serviceSlugs.some((slug) => slug.startsWith("limpieza-")) ? buildDemoCleaningScope(pro.serviceSlugs) : undefined
       }
     });
 
