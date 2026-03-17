@@ -73,6 +73,7 @@ export default function ServiceProsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [notifyMessage, setNotifyMessage] = useState("");
+  const [usedCategoryFallback, setUsedCategoryFallback] = useState(false);
 
   const address = search.get("address") ?? "";
   const apartment = search.get("apartment") ?? "";
@@ -108,6 +109,10 @@ export default function ServiceProsPage() {
     if (selectedTasks.length > 0) qs.set("tasks", selectedTasks.join(","));
     return qs.toString();
   }, [address, apartment, city, comuna, reference, requestedDate, requestedTime, selectedServiceId, selectedTasks]);
+  const selectedService = useMemo(
+    () => category?.services.find((service) => service.id === selectedServiceId) ?? null,
+    [category, selectedServiceId]
+  );
 
   useEffect(() => {
     const load = async () => {
@@ -115,6 +120,7 @@ export default function ServiceProsPage() {
         setLoading(true);
         setError("");
         setNotifyMessage("");
+        setUsedCategoryFallback(false);
 
         const catalogRes = await fetch("/api/marketplace/catalog");
         const catalogData = (await catalogRes.json()) as { categories?: Category[]; error?: string; detail?: string };
@@ -126,26 +132,41 @@ export default function ServiceProsPage() {
         if (!match) throw new Error("Categoria no encontrada");
         setCategory(match);
 
-        const qs = new URLSearchParams({
-          city,
-          categoryId: match.id,
-          limit: "40"
-        });
-        if (selectedServiceId) qs.set("serviceId", selectedServiceId);
-        if (address.trim()) qs.set("street", address.trim());
-        if (comuna) qs.set("commune", comuna);
-        if (requestedIso) qs.set("date", requestedIso);
-        if (selectedTasks.length > 0) qs.set("tasks", selectedTasks.join(","));
+        const fetchProfessionals = async (strictServiceFilter: boolean) => {
+          const qs = new URLSearchParams({
+            city,
+            categoryId: match.id,
+            limit: "40"
+          });
+          if (strictServiceFilter && selectedServiceId) qs.set("serviceId", selectedServiceId);
+          if (address.trim()) qs.set("street", address.trim());
+          if (comuna) qs.set("commune", comuna);
+          if (requestedIso) qs.set("date", requestedIso);
+          if (selectedTasks.length > 0) qs.set("tasks", selectedTasks.join(","));
 
-        const prosRes = await fetch(`/api/marketplace/search-professionals?${qs.toString()}`);
-        const prosData = (await prosRes.json()) as { professionals?: Professional[]; error?: string; detail?: string };
-        if (!prosRes.ok || !prosData.professionals) {
-          throw new Error(prosData.detail || prosData.error || "No se pudieron cargar profesionales");
+          const response = await fetch(`/api/marketplace/search-professionals?${qs.toString()}`);
+          const data = (await response.json()) as { professionals?: Professional[]; error?: string; detail?: string };
+          if (!response.ok || !data.professionals) {
+            throw new Error(data.detail || data.error || "No se pudieron cargar profesionales");
+          }
+          return data.professionals;
+        };
+
+        let nextProfessionals = await fetchProfessionals(true);
+
+        if (nextProfessionals.length === 0 && match.slug === "limpieza" && selectedServiceId) {
+          nextProfessionals = await fetchProfessionals(false);
+          if (nextProfessionals.length > 0) {
+            setUsedCategoryFallback(true);
+            setNotifyMessage(
+              "No encontramos taskers publicados para ese tipo exacto todavía, así que te mostramos profesionales disponibles de limpieza en tu comuna."
+            );
+          }
         }
 
-        setAllPros(prosData.professionals);
+        setAllPros(nextProfessionals);
 
-        if (prosData.professionals.length === 0) {
+        if (nextProfessionals.length === 0) {
           setNotifyMessage("Aún no tenemos cobertura en esta dirección. Puedes activar aviso cuando haya profesionales.");
         }
       } catch (e) {
@@ -209,136 +230,154 @@ export default function ServiceProsPage() {
   };
 
   return (
-    <main className="page market-shell">
-      <MarketNav />
+    <main className="auth-flow-screen auth-flow-screen-scroll market-shell-auth">
+      <div className="auth-flow-backdrop" aria-hidden />
+      <div className="login-screen-content market-shell-auth-content">
+        <MarketNav />
 
-      <section className="panel">
-        <div className="panel-head">
-          <h2>
-            {category?.name ?? "Servicio"} en {comuna || city}
-          </h2>
-          <p>
-            {address || "Sin dirección"}
-            {comuna ? `, ${comuna}` : ""} · {city}
-          </p>
-          {apartment || reference ? (
+        <section className="auth-flow-shell auth-flow-shell-wide service-pros-shell">
+          <div className="auth-flow-copy service-pros-copy">
+            <p className="auth-flow-kicker">Profesionales disponibles</p>
+            <h1>{category?.name ?? "Servicio"} en {comuna || city}</h1>
             <p>
-              {apartment ? <>Depto: <strong>{apartment}</strong></> : null}
-              {apartment && reference ? " · " : null}
-              {reference ? <>Referencia: <strong>{reference}</strong></> : null}
+              {selectedService ? `Mostrando resultados para ${selectedService.name.toLowerCase()}. ` : ""}
+              Compara perfiles, agenda y precios antes de confirmar tu reserva.
             </p>
-          ) : null}
-          {requestedDate && requestedTime ? (
-            <p>
-              Horario solicitado: <strong>{requestedDate}</strong> a las <strong>{requestedTime}</strong>
-            </p>
-          ) : null}
-        </div>
 
-        <div className="query-row">
-          <label>
-            Ordenar por
-            <select value={sortBy} onChange={(event) => setSortBy(event.target.value as SortBy)}>
-              <option value="best">Mejor valorado</option>
-              <option value="near">Más cercano</option>
-              <option value="cheap">Más económico</option>
-            </select>
-          </label>
-          <label>
-            Disponibilidad
-            <select value={availability} onChange={(event) => setAvailability(event.target.value as AvailabilityFilter)}>
-              <option value="all">Todas</option>
-              <option value="today">Disponible hoy</option>
-              <option value="week">Disponible esta semana</option>
-            </select>
-          </label>
-        </div>
-
-        {category?.slug === "limpieza" ? (
-          <div className="service-task-filter-card">
-            <div className="panel-head">
-              <h3>Tareas que necesitas</h3>
-              <p>Filtra profesionales según lo que sí realizan dentro del servicio base.</p>
-            </div>
-            <div className="onboarding-checkbox-grid onboarding-checkbox-grid-compact">
-              {CLEANING_TASK_INCLUDED_OPTIONS.map((task) => (
-                <label key={task.value} className="onboarding-check-card">
-                  <input type="checkbox" checked={selectedTasks.includes(task.value)} onChange={() => toggleTask(task.value)} />
-                  <span>{task.label}</span>
-                </label>
-              ))}
+            <div className="auth-flow-copy-list">
+              <div className="auth-flow-meta-card">
+                <strong>Dirección</strong>
+                <span>
+                  {address || "Sin dirección"}
+                  {comuna ? `, ${comuna}` : ""}
+                </span>
+              </div>
+              <div className="auth-flow-meta-card">
+                <strong>Detalles</strong>
+                <span>
+                  {apartment ? `Depto ${apartment}` : "Sin depto"}
+                  {reference ? ` · Ref. ${reference}` : ""}
+                </span>
+              </div>
+              <div className="auth-flow-meta-card">
+                <strong>Horario</strong>
+                <span>{requestedDate && requestedTime ? `${requestedDate} a las ${requestedTime}` : "Aún no definido"}</span>
+              </div>
             </div>
           </div>
-        ) : null}
 
-        <div className="cta-row">
-          <Link
-            href={`/servicios/${categorySlug}?address=${encodeURIComponent(address)}&apartment=${encodeURIComponent(apartment)}&reference=${encodeURIComponent(reference)}&comuna=${encodeURIComponent(comuna)}&city=${encodeURIComponent(city)}&requestedDate=${encodeURIComponent(requestedDate)}&requestedTime=${encodeURIComponent(requestedTime)}`}
-            className="cta ghost small"
-          >
-            Cambiar dirección y horario
-          </Link>
-          <button type="button" className="cta ghost small" onClick={() => setNotifyMessage("Te avisaremos cuando haya cobertura en tu zona.")}>
-            Avisarme cuando haya
-          </button>
-        </div>
-      </section>
-
-      {loading ? <p className="empty">Buscando profesionales...</p> : null}
-      {error ? <p className="feedback error">{error}</p> : null}
-      {notifyMessage ? <p className="feedback ok">{notifyMessage}</p> : null}
-      {!loading && !error && professionals.length === 0 ? (
-        <p className="feedback error">No encontramos taskers en esa zona y horario. Prueba otro horario o dirección.</p>
-      ) : null}
-
-      <section className="we-results-list">
-        {professionals.map((pro) => (
-          <article className="we-pro-card" key={pro.id}>
-            <div className="we-pro-main">
-              <div className="we-pro-avatar" aria-hidden>
-                {initials(pro.user.fullName)}
-              </div>
-
-              <div className="we-pro-content">
-                <div className="we-pro-title-row">
-                  <h3>{pro.user.fullName}</h3>
-                  <span className="we-verified-badge">Verificado</span>
-                </div>
-
-                <p className="we-pro-rating-line">
-                  <span className="we-star">★</span> {Number(pro.ratingAvg || 0).toFixed(1)} ({pro.ratingsCount}) · {Math.max(8, pro.ratingsCount * 3)} servicios
-                </p>
-
-                <div className="we-pro-tags">
-                  <span className="we-tag">Equipo de trabajo</span>
-                  <span className="we-tag">Agenda actualizada</span>
-                  <span className="we-tag">Radio {pro.serviceRadiusKm} km</span>
-                </div>
-
-                <p className="we-pro-snippet">{profileSnippet(category?.name ?? "servicios")}</p>
-
-                <div className="cta-row we-pro-actions">
-                  <Link className="cta small" href={`/profesionales/${pro.userId}${contextQuery ? `?${contextQuery}` : ""}`}>
-                    Ver perfil
-                  </Link>
-                  <Link
-                    className="cta small"
-                    href={`/profesionales/${pro.userId}?${contextQuery || `date=${encodeURIComponent(requestedDate || localYmd(new Date()))}`}#availability`}
-                  >
-                    Ver agenda
-                  </Link>
-                </div>
-              </div>
+          <section className="auth-flow-panel auth-flow-panel-wide service-pros-panel">
+            <div className="panel-head auth-flow-panel-head">
+              <h2>Taskers para tu búsqueda</h2>
+              <p>Si quieres, puedes ajustar filtros antes de entrar al perfil o ver la agenda del tasker.</p>
             </div>
 
-            <aside className="we-pro-price">
-              <strong>{pro.hourlyRateFromClp ? clp(pro.hourlyRateFromClp) : "Por definir"}</strong>
-              <span>por hora</span>
-              <small>{pro.distanceKm.toFixed(1)} km</small>
-            </aside>
-          </article>
-        ))}
-      </section>
+            <div className="query-row service-pros-query-row">
+              <label>
+                Ordenar por
+                <select value={sortBy} onChange={(event) => setSortBy(event.target.value as SortBy)}>
+                  <option value="best">Mejor valorado</option>
+                  <option value="near">Más cercano</option>
+                  <option value="cheap">Más económico</option>
+                </select>
+              </label>
+              <label>
+                Disponibilidad
+                <select value={availability} onChange={(event) => setAvailability(event.target.value as AvailabilityFilter)}>
+                  <option value="all">Todas</option>
+                  <option value="today">Disponible hoy</option>
+                  <option value="week">Disponible esta semana</option>
+                </select>
+              </label>
+            </div>
+
+            {category?.slug === "limpieza" ? (
+              <div className="service-task-filter-card">
+                <div className="panel-head">
+                  <h3>Tareas que necesitas</h3>
+                  <p>Filtra profesionales según lo que sí realizan dentro del servicio base.</p>
+                </div>
+                <div className="onboarding-checkbox-grid onboarding-checkbox-grid-compact">
+                  {CLEANING_TASK_INCLUDED_OPTIONS.map((task) => (
+                    <label key={task.value} className="onboarding-check-card">
+                      <input type="checkbox" checked={selectedTasks.includes(task.value)} onChange={() => toggleTask(task.value)} />
+                      <span>{task.label}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+
+            <div className="cta-row service-pros-top-actions">
+              <Link
+                href={`/servicios/${categorySlug}?address=${encodeURIComponent(address)}&apartment=${encodeURIComponent(apartment)}&reference=${encodeURIComponent(reference)}&comuna=${encodeURIComponent(comuna)}&city=${encodeURIComponent(city)}&requestedDate=${encodeURIComponent(requestedDate)}&requestedTime=${encodeURIComponent(requestedTime)}`}
+                className="cta ghost small"
+              >
+                Cambiar dirección y horario
+              </Link>
+              <button type="button" className="cta ghost small" onClick={() => setNotifyMessage("Te avisaremos cuando haya cobertura en tu zona.")}>
+                Avisarme cuando haya
+              </button>
+            </div>
+
+            {loading ? <p className="empty">Buscando profesionales...</p> : null}
+            {error ? <p className="feedback error">{error}</p> : null}
+            {notifyMessage ? <p className={`feedback ${usedCategoryFallback ? "warn" : "ok"}`}>{notifyMessage}</p> : null}
+            {!loading && !error && professionals.length === 0 ? (
+              <p className="feedback error">No encontramos taskers en esa zona y horario. Prueba otro horario, otra dirección o menos filtros.</p>
+            ) : null}
+
+            <section className="we-results-list">
+              {professionals.map((pro) => (
+                <article className="we-pro-card" key={pro.id}>
+                  <div className="we-pro-main">
+                    <div className="we-pro-avatar" aria-hidden>
+                      {initials(pro.user.fullName)}
+                    </div>
+
+                    <div className="we-pro-content">
+                      <div className="we-pro-title-row">
+                        <h3>{pro.user.fullName}</h3>
+                        <span className="we-verified-badge">Verificado</span>
+                      </div>
+
+                      <p className="we-pro-rating-line">
+                        <span className="we-star">★</span> {Number(pro.ratingAvg || 0).toFixed(1)} ({pro.ratingsCount}) · {Math.max(8, pro.ratingsCount * 3)} servicios
+                      </p>
+
+                      <div className="we-pro-tags">
+                        <span className="we-tag">Agenda actualizada</span>
+                        <span className="we-tag">Radio {pro.serviceRadiusKm} km</span>
+                        <span className="we-tag">{pro.distanceKm.toFixed(1)} km de distancia</span>
+                      </div>
+
+                      <p className="we-pro-snippet">{profileSnippet(category?.name ?? "servicios")}</p>
+
+                      <div className="cta-row we-pro-actions">
+                        <Link className="cta small" href={`/pro/${pro.id}${contextQuery ? `?${contextQuery}` : ""}`}>
+                          Ver perfil
+                        </Link>
+                        <Link
+                          className="cta small"
+                          href={`/pro/${pro.id}?${contextQuery || `date=${encodeURIComponent(requestedDate || localYmd(new Date()))}`}#availability`}
+                        >
+                          Ver agenda
+                        </Link>
+                      </div>
+                    </div>
+                  </div>
+
+                  <aside className="we-pro-price">
+                    <strong>{pro.hourlyRateFromClp ? clp(pro.hourlyRateFromClp) : "Por definir"}</strong>
+                    <span>por hora</span>
+                    <small>{pro.coverageCity ?? city}</small>
+                  </aside>
+                </article>
+              ))}
+            </section>
+          </section>
+        </section>
+      </div>
     </main>
   );
 }

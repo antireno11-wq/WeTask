@@ -5806,6 +5806,30 @@ textarea {
   margin: 0;
 }
 
+.service-pros-shell {
+  align-items: start;
+}
+
+.service-pros-copy {
+  max-width: 560px;
+}
+
+.service-pros-panel {
+  display: grid;
+  gap: 16px;
+}
+
+.service-pros-query-row,
+.service-pros-top-actions {
+  margin-top: 0;
+}
+
+.feedback.warn {
+  background: #fff8e8;
+  border-color: #f3d58b;
+  color: #7b5610;
+}
+
 .onboarding-check-card {
   position: relative;
   display: flex;
