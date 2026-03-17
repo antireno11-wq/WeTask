@@ -5257,6 +5257,10 @@ textarea {
   gap: 12px;
 }
 
+.auth-service-grid-cleaning {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 .auth-service-card {
   position: relative;
   display: grid;
@@ -5267,6 +5271,12 @@ textarea {
   background: #f9fbff;
   cursor: pointer;
   transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease, background 0.16s ease;
+}
+
+.auth-service-grid-cleaning .auth-service-card span {
+  color: #5b748e;
+  font-size: 0.92rem;
+  line-height: 1.5;
 }
 
 .auth-service-card input {
@@ -5291,6 +5301,27 @@ textarea {
   border-color: #9bc8e7;
   background: linear-gradient(180deg, #ffffff 0%, #f1f8ff 100%);
   box-shadow: 0 14px 28px rgba(19, 42, 87, 0.08);
+}
+
+.cleaning-rate-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.cleaning-rate-card {
+  align-content: start;
+}
+
+.cleaning-rate-card input {
+  width: 100%;
+  min-height: 52px;
+  border-radius: 16px;
+  border: 1px solid #d3e3f1;
+  background: #ffffff;
+  padding: 0 14px;
+  font-size: 0.98rem;
+  color: #163254;
 }
 
 .auth-service-icon {
@@ -5753,6 +5784,10 @@ textarea {
   }
 
   .auth-service-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .cleaning-rate-grid {
     grid-template-columns: 1fr;
   }
 

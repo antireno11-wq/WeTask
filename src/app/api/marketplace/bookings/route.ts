@@ -85,8 +85,8 @@ export async function POST(req: NextRequest) {
     }
 
     const requestedSlotMinutes = service.category.slotMinutes;
-    const baseRate = service.basePriceClp;
     const platformFeePct = Number(service.category.basePlatformFeePct);
+    let baseRate = service.basePriceClp;
 
     let assignedProId = input.proId ?? null;
     let selectedSlotId = input.slotId ?? null;
@@ -104,7 +104,7 @@ export async function POST(req: NextRequest) {
                   serviceId: input.serviceId,
                   isActive: true
                 },
-                select: { id: true }
+                select: { id: true, priceClp: true }
               },
               user: {
                 select: {
@@ -149,6 +149,7 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: "El tasker seleccionado no atiende esa comuna" }, { status: 400 });
       }
 
+      baseRate = selectedSlot.professionalProfile.taskerServices[0]?.priceClp ?? baseRate;
       assignedProId = selectedSlot.professionalProfile.userId;
     } else if (input.autoAssign && !assignedProId) {
       const candidates = await prisma.availabilitySlot.findMany({
@@ -179,7 +180,7 @@ export async function POST(req: NextRequest) {
                   serviceId: input.serviceId,
                   isActive: true
                 },
-                select: { id: true }
+                select: { id: true, priceClp: true }
               },
               user: {
                 select: {
@@ -210,6 +211,7 @@ export async function POST(req: NextRequest) {
 
       assignedProId = candidate?.professionalProfile.userId ?? null;
       selectedSlotId = candidate?.id ?? null;
+      baseRate = candidate?.professionalProfile.taskerServices[0]?.priceClp ?? baseRate;
     }
 
     if (assignedProId) {
@@ -226,7 +228,7 @@ export async function POST(req: NextRequest) {
                   serviceId: input.serviceId,
                   isActive: true
                 },
-                select: { id: true }
+                select: { id: true, priceClp: true }
               }
             }
           },
@@ -244,6 +246,8 @@ export async function POST(req: NextRequest) {
       if (!pro.professionalProfile || pro.professionalProfile.taskerServices.length === 0) {
         return NextResponse.json({ error: "El tasker seleccionado no ofrece este servicio" }, { status: 400 });
       }
+
+      baseRate = pro.professionalProfile.taskerServices[0]?.priceClp ?? baseRate;
 
       const taskerCanServe = taskerServesCommune(
         {

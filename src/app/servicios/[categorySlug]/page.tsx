@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { FormEvent, useEffect, useState } from "react";
 import { AuthHeroNav } from "@/components/auth-hero-nav";
+import { getCleaningServiceDefinition } from "@/lib/cleaning-service-types";
 import { COVERAGE_UNAVAILABLE_MESSAGE, inferCommuneFromAddress, normalizeCommune } from "@/lib/communes";
 
 type Category = {
@@ -11,7 +12,7 @@ type Category = {
   slug: string;
   name: string;
   description: string | null;
-  services: Array<{ id: string; name: string; basePriceClp: number }>;
+  services: Array<{ id: string; slug: string; name: string; description: string; basePriceClp: number }>;
 };
 
 export default function ServicioCategoriaPage() {
@@ -216,14 +217,31 @@ export default function ServicioCategoriaPage() {
 
                 <form className="grid-form auth-flow-form" onSubmit={openPros}>
                   <label>
-                    Servicio
-                    <select value={selectedServiceId} onChange={(event) => setSelectedServiceId(event.target.value)} required>
-                      {category.services.map((service) => (
-                        <option key={service.id} value={service.id}>
-                          {service.name}
-                        </option>
-                      ))}
-                    </select>
+                    Tipo de servicio
+                    <div className="auth-service-grid auth-service-grid-cleaning">
+                      {category.services.map((service) => {
+                        const cleaningDefinition = category.slug === "limpieza" ? getCleaningServiceDefinition(service.slug) : null;
+                        return (
+                          <label key={service.id} className={`auth-service-card ${selectedServiceId === service.id ? "active" : ""}`}>
+                            <input
+                              type="radio"
+                              name="selectedService"
+                              value={service.id}
+                              checked={selectedServiceId === service.id}
+                              onChange={() => setSelectedServiceId(service.id)}
+                              required
+                            />
+                            <strong>{service.name}</strong>
+                            <span>{cleaningDefinition?.forClients ?? service.description}</span>
+                            {cleaningDefinition ? <span>Incluye: {cleaningDefinition.includes.slice(0, 4).join(", ")}.</span> : null}
+                            {cleaningDefinition?.excludes?.length ? <span>No incluye: {cleaningDefinition.excludes.slice(0, 3).join(", ")}.</span> : null}
+                            <span>
+                              Desde <strong>${new Intl.NumberFormat("es-CL").format(service.basePriceClp)}</strong> por hora
+                            </span>
+                          </label>
+                        );
+                      })}
+                    </div>
                   </label>
                   <label>
                     Dirección

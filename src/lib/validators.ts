@@ -414,8 +414,14 @@ export const taskerOnboardingStep8Schema = z.object({
   availabilityBlocks: z.array(cleaningAvailabilityBlockSchema).min(1).max(21)
 });
 
+const taskerServiceRateSchema = z.object({
+  serviceSlug: z.string().min(1),
+  hourlyRateClp: z.coerce.number().int().min(5000).max(200000)
+});
+
 export const taskerOnboardingStep9Schema = z.object({
   hourlyRateClp: z.coerce.number().int().min(5000).max(200000),
+  serviceRates: z.array(taskerServiceRateSchema).optional().default([]),
   minBookingHours: z.coerce.number().int().min(1).max(12),
   weekendSurchargePct: z.coerce.number().int().min(0).max(100),
   holidaySurchargePct: z.coerce.number().int().min(0).max(100),

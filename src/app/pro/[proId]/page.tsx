@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { MarketNav } from "@/components/market-nav";
+import { getCleaningServiceDefinition } from "@/lib/cleaning-service-types";
 
 type CleaningOnboardingSummary = {
   profilePhotoUrl: string | null;
@@ -32,6 +33,7 @@ type ProfessionalDetail = {
   serviceRadiusKm: number;
   hourlyRateFromClp: number | null;
   taskerServices: Array<{
+    priceClp: number;
     category: { slug: string; name: string } | null;
     service: { id: string; name: string } | null;
   }>;
@@ -141,6 +143,8 @@ function initials(name: string) {
 }
 
 function labelize(value: string) {
+  const cleaningService = getCleaningServiceDefinition(value);
+  if (cleaningService) return cleaningService.name;
   return value
     .replace(/[_-]+/g, " ")
     .split(" ")
@@ -384,14 +388,17 @@ function buildDemoProfessional(proId: string): ProfessionalDetail {
     hourlyRateFromClp: 15000,
     taskerServices: [
       {
+        priceClp: 14000,
         category: { slug: "limpieza", name: "Limpieza" },
-        service: { id: "demo-limpieza-hogar", name: "Limpieza hogar" }
+        service: { id: "demo-limpieza-hogar", name: "Limpieza estándar" }
       },
       {
+        priceClp: 18000,
         category: { slug: "limpieza", name: "Limpieza" },
         service: { id: "demo-limpieza-profunda", name: "Limpieza profunda" }
       },
       {
+        priceClp: 14000,
         category: { slug: "planchado", name: "Planchado" },
         service: { id: "demo-planchado", name: "Planchado por hora" }
       }
@@ -571,6 +578,14 @@ export default function ProDetailPage() {
     }
     return Array.from(bySlug.values());
   }, [data?.taskerServices]);
+  const servicePriceTags = useMemo(() => {
+    return (data?.taskerServices ?? [])
+      .filter((item) => item.service?.name)
+      .map((item) => ({
+        key: `${item.service?.id ?? item.service?.name}`,
+        label: `${item.service?.name} · ${item.priceClp ? clp(item.priceClp) : "Por definir"}/h`
+      }));
+  }, [data?.taskerServices]);
   const profilePhotoUrl = onboarding?.profilePhotoUrl?.trim() || "";
   const summaryDescription =
     onboarding?.shortDescription?.trim() ||
@@ -709,9 +724,9 @@ export default function ProDetailPage() {
                       </div>
                     </div>
                     <div className="we-pro-tags">
-                      {offeredServices.map((service) => (
-                        <span key={service} className="we-tag">
-                          {service}
+                      {(servicePriceTags.length > 0 ? servicePriceTags : offeredServices.map((service) => ({ key: service, label: service }))).map((service) => (
+                        <span key={service.key} className="we-tag">
+                          {service.label}
                         </span>
                       ))}
                     </div>

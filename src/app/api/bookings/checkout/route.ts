@@ -94,6 +94,7 @@ export async function POST(req: NextRequest) {
 
     let assignedProId = input.proId ?? null;
     let selectedSlotId = input.slotId ?? null;
+    let hourlyRateClp = service.basePriceClp;
 
     if (selectedSlotId) {
       const slot = await prisma.availabilitySlot.findUnique({
@@ -105,7 +106,7 @@ export async function POST(req: NextRequest) {
               coverageComuna: true,
               taskerServices: {
                 where: { serviceId: input.serviceId, isActive: true },
-                select: { id: true }
+                select: { id: true, priceClp: true }
               },
               user: {
                 select: {
@@ -147,6 +148,7 @@ export async function POST(req: NextRequest) {
       }
 
       assignedProId = slot.professionalProfile.userId;
+      hourlyRateClp = slot.professionalProfile.taskerServices[0]?.priceClp ?? hourlyRateClp;
     } else if (assignedProId) {
       const pro = await prisma.user.findUnique({
         where: { id: assignedProId },
@@ -157,7 +159,7 @@ export async function POST(req: NextRequest) {
               coverageComuna: true,
               taskerServices: {
                 where: { serviceId: input.serviceId, isActive: true },
-                select: { id: true }
+                select: { id: true, priceClp: true }
               }
             }
           },
@@ -184,10 +186,12 @@ export async function POST(req: NextRequest) {
       if (!canServe) {
         return NextResponse.json({ error: "El tasker no atiende esa comuna" }, { status: 400 });
       }
+
+      hourlyRateClp = pro.professionalProfile.taskerServices[0]?.priceClp ?? hourlyRateClp;
     }
 
     const price = calculateMarketplacePrice({
-      hourlyRateClp: service.basePriceClp,
+      hourlyRateClp,
       hours: input.hours,
       materials: Boolean(input.extras?.materials),
       urgency: Boolean(input.extras?.urgency),

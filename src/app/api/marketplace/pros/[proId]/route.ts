@@ -39,6 +39,7 @@ export async function GET(_: Request, context: { params: { proId: string } }) {
         taskerServices: {
           where: { isActive: true },
           select: {
+            priceClp: true,
             category: {
               select: {
                 slug: true,

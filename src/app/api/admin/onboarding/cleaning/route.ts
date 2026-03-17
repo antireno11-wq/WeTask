@@ -2,6 +2,7 @@ import { CleaningOnboardingStatus } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdminRequest } from "@/lib/admin-access";
 import { ensureAdminCleaningDemoData } from "@/lib/admin-demo-data";
+import { isCleaningServiceSlug } from "@/lib/cleaning-service-types";
 import { normalizeCommuneList } from "@/lib/communes";
 import { CORE_SERVICES } from "@/lib/core-services";
 import { sendPlatformEmail } from "@/lib/notifications";
@@ -57,40 +58,69 @@ async function ensureCleaningTaskerService(userId: string) {
   });
   if (!category) return;
 
-  const mainService = await prisma.service.findFirst({
-    where: {
-      categoryId: category.id,
-      isActive: true,
-      OR: [
-        { slug: { contains: selectedCoreService.slug } },
-        { name: { contains: selectedCoreService.label, mode: "insensitive" } }
-      ]
-    },
-    orderBy: [{ basePriceClp: "asc" }]
-  });
-  if (!mainService) return;
+  const selectedCleaningServices =
+    onboarding.categorySlug === "limpieza" && Array.isArray(onboarding.offeredServices)
+      ? onboarding.offeredServices.filter((item): item is string => typeof item === "string" && isCleaningServiceSlug(item))
+      : [];
 
-  await prisma.taskerService.upsert({
+  const services = selectedCleaningServices.length
+    ? await prisma.service.findMany({
+        where: {
+          categoryId: category.id,
+          isActive: true,
+          slug: { in: selectedCleaningServices }
+        },
+        orderBy: [{ basePriceClp: "asc" }]
+      })
+    : await prisma.service.findMany({
+        where: {
+          categoryId: category.id,
+          isActive: true,
+          OR: [
+            { slug: { contains: selectedCoreService.slug } },
+            { name: { contains: selectedCoreService.label, mode: "insensitive" } }
+          ]
+        },
+        orderBy: [{ basePriceClp: "asc" }]
+      });
+
+  if (services.length === 0) return;
+
+  const existingTaskerServices = await prisma.taskerService.findMany({
     where: {
-      professionalProfileId_serviceId: {
-        professionalProfileId: profile.id,
-        serviceId: mainService.id
-      }
-    },
-    create: {
       professionalProfileId: profile.id,
-      categoryId: category.id,
-      serviceId: mainService.id,
-      priceClp: onboarding.hourlyRateClp ?? mainService.basePriceClp,
-      minBooking: onboarding.minBookingHours ?? category.minHours,
-      isActive: true
+      serviceId: { in: services.map((service) => service.id) }
     },
-    update: {
-      priceClp: onboarding.hourlyRateClp ?? mainService.basePriceClp,
-      minBooking: onboarding.minBookingHours ?? category.minHours,
-      isActive: true
+    select: {
+      serviceId: true,
+      priceClp: true
     }
   });
+  const existingPriceMap = new Map(existingTaskerServices.map((item) => [item.serviceId, item.priceClp]));
+
+  for (const service of services) {
+    await prisma.taskerService.upsert({
+      where: {
+        professionalProfileId_serviceId: {
+          professionalProfileId: profile.id,
+          serviceId: service.id
+        }
+      },
+      create: {
+        professionalProfileId: profile.id,
+        categoryId: category.id,
+        serviceId: service.id,
+        priceClp: existingPriceMap.get(service.id) ?? onboarding.hourlyRateClp ?? service.basePriceClp,
+        minBooking: onboarding.minBookingHours ?? category.minHours,
+        isActive: true
+      },
+      update: {
+        priceClp: existingPriceMap.get(service.id) ?? onboarding.hourlyRateClp ?? service.basePriceClp,
+        minBooking: onboarding.minBookingHours ?? category.minHours,
+        isActive: true
+      }
+    });
+  }
 }
 
 export async function GET(req: NextRequest) {

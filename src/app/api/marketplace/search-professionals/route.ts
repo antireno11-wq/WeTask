@@ -79,6 +79,17 @@ export async function GET(req: NextRequest) {
             }
           }
         },
+        taskerServices: {
+          where: {
+            isActive: true,
+            serviceId: input.serviceId ?? undefined,
+            categoryId: input.categoryId ?? undefined
+          },
+          select: {
+            priceClp: true,
+            serviceId: true
+          }
+        },
         slots: {
           where: {
             isAvailable: true,
@@ -117,6 +128,7 @@ export async function GET(req: NextRequest) {
 
         return {
           ...profile,
+          hourlyRateFromClp: profile.taskerServices[0]?.priceClp ?? profile.hourlyRateFromClp,
           distanceKm: Number(distance.toFixed(2)),
           nextAvailableAt: profile.slots[0]?.startsAt ?? null
         };

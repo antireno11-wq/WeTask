@@ -1,6 +1,7 @@
 import { CleaningOnboardingStatus, Prisma, UserRole } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { getRequestIdentity, hasRole } from "@/lib/auth";
+import { isCleaningServiceSlug } from "@/lib/cleaning-service-types";
 import { geocodeAddress } from "@/lib/geo";
 import { CLEANING_WEEK_DAYS } from "@/lib/cleaning-onboarding";
 import { normalizeCommune, normalizeCommuneList } from "@/lib/communes";
@@ -83,6 +84,97 @@ function denyLockedOnboarding(status: CleaningOnboardingStatus, identityRole: Us
   return null;
 }
 
+function getCleaningOnboardingServiceSlugs(value: Prisma.JsonValue | null): string[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter((item): item is string => typeof item === "string" && isCleaningServiceSlug(item));
+}
+
+async function upsertCleaningTaskerServices(
+  userId: string,
+  onboarding: {
+    categorySlug: string;
+    offeredServices: Prisma.JsonValue | null;
+    hourlyRateClp: number | null;
+    minBookingHours: number | null;
+  },
+  explicitServiceRates: Array<{ serviceSlug: string; hourlyRateClp: number }>
+) {
+  if (onboarding.categorySlug !== "limpieza") return;
+
+  const selectedServiceSlugs = getCleaningOnboardingServiceSlugs(onboarding.offeredServices);
+  if (selectedServiceSlugs.length === 0) return;
+
+  const profile = await prisma.professionalProfile.findUnique({
+    where: { userId },
+    select: { id: true, hourlyRateFromClp: true }
+  });
+  if (!profile) return;
+
+  const category = await prisma.category.findUnique({
+    where: { slug: "limpieza" },
+    select: { id: true }
+  });
+  if (!category) return;
+
+  const services = await prisma.service.findMany({
+    where: {
+      categoryId: category.id,
+      slug: { in: selectedServiceSlugs },
+      isActive: true
+    },
+    select: { id: true, slug: true, basePriceClp: true }
+  });
+  if (services.length === 0) return;
+
+  const explicitRateMap = new Map(
+    explicitServiceRates
+      .filter((item) => isCleaningServiceSlug(item.serviceSlug))
+      .map((item) => [item.serviceSlug, item.hourlyRateClp])
+  );
+
+  for (const service of services) {
+    const nextRate = explicitRateMap.get(service.slug) ?? onboarding.hourlyRateClp ?? service.basePriceClp;
+    await prisma.taskerService.upsert({
+      where: {
+        professionalProfileId_serviceId: {
+          professionalProfileId: profile.id,
+          serviceId: service.id
+        }
+      },
+      update: {
+        categoryId: category.id,
+        priceClp: nextRate,
+        minBooking: onboarding.minBookingHours ?? 1,
+        isActive: true
+      },
+      create: {
+        professionalProfileId: profile.id,
+        categoryId: category.id,
+        serviceId: service.id,
+        priceClp: nextRate,
+        minBooking: onboarding.minBookingHours ?? 1,
+        isActive: true
+      }
+    });
+  }
+
+  const activeServiceIds = services.map((service) => service.id);
+  await prisma.taskerService.updateMany({
+    where: {
+      professionalProfileId: profile.id,
+      categoryId: category.id,
+      serviceId: { notIn: activeServiceIds }
+    },
+    data: { isActive: false }
+  });
+
+  const fallbackRate = Math.min(...services.map((service) => explicitRateMap.get(service.slug) ?? onboarding.hourlyRateClp ?? service.basePriceClp));
+  await prisma.professionalProfile.update({
+    where: { userId },
+    data: { hourlyRateFromClp: fallbackRate }
+  });
+}
+
 export async function GET(req: NextRequest) {
   try {
     const identity = getRequestIdentity(req);
@@ -98,12 +190,36 @@ export async function GET(req: NextRequest) {
     }
 
     const onboarding = await ensureOnboardingForUser(userId);
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { id: true, fullName: true, email: true, phone: true, role: true }
-    });
+    const [user, taskerServices] = await Promise.all([
+      prisma.user.findUnique({
+        where: { id: userId },
+        select: { id: true, fullName: true, email: true, phone: true, role: true }
+      }),
+      prisma.taskerService.findMany({
+        where: {
+          professionalProfile: { userId },
+          isActive: true
+        },
+        select: {
+          priceClp: true,
+          service: {
+            select: {
+              slug: true,
+              category: { select: { slug: true } }
+            }
+          }
+        }
+      })
+    ]);
 
-    return NextResponse.json({ onboarding, user }, { status: 200 });
+    const serviceRates = taskerServices
+      .filter((item) => item.service.category?.slug === "limpieza" && isCleaningServiceSlug(item.service.slug))
+      .map((item) => ({
+        serviceSlug: item.service.slug,
+        hourlyRateClp: item.priceClp
+      }));
+
+    return NextResponse.json({ onboarding, user, serviceRates }, { status: 200 });
   } catch (error) {
     return NextResponse.json(
       {
@@ -315,6 +431,11 @@ export async function PATCH(req: NextRequest) {
       where: { userId },
       data
     });
+
+    if (input.step === 9) {
+      const parsed = taskerOnboardingStep9Schema.parse(input.payload);
+      await upsertCleaningTaskerServices(userId, updated, parsed.serviceRates);
+    }
 
     if (input.step === 4 || input.step === 9) {
       await prisma.professionalProfile.upsert({

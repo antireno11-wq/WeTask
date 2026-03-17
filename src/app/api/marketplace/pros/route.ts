@@ -42,6 +42,16 @@ export async function GET(req: NextRequest) {
       take: input.limit,
       include: {
         user: { select: { id: true, fullName: true, email: true } },
+        taskerServices: {
+          where: {
+            isActive: true,
+            serviceId: input.serviceId ?? undefined,
+            categoryId: input.categoryId ?? undefined
+          },
+          select: {
+            priceClp: true
+          }
+        },
         slots: {
           where: {
             isAvailable: true,
@@ -55,7 +65,11 @@ export async function GET(req: NextRequest) {
         }
       }
     });
-    return NextResponse.json({ professionals: profiles }, { status: 200 });
+    const normalized = profiles.map((profile) => ({
+      ...profile,
+      hourlyRateFromClp: profile.taskerServices[0]?.priceClp ?? profile.hourlyRateFromClp
+    }));
+    return NextResponse.json({ professionals: normalized }, { status: 200 });
   } catch (error) {
     return NextResponse.json(
       {

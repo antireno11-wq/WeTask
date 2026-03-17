@@ -77,6 +77,7 @@ export default function ServiceProsPage() {
   const city = search.get("city") ?? "Santiago";
   const requestedDate = search.get("requestedDate") ?? "";
   const requestedTime = search.get("requestedTime") ?? "";
+  const selectedServiceId = search.get("serviceId") ?? "";
   const requestedMinutes = requestedTime ? timeToMinutes(requestedTime) : null;
   const requestedIso = useMemo(() => {
     if (!requestedDate || !requestedTime) return undefined;
@@ -107,6 +108,7 @@ export default function ServiceProsPage() {
           categoryId: match.id,
           limit: "40"
         });
+        if (selectedServiceId) qs.set("serviceId", selectedServiceId);
         if (address.trim()) qs.set("street", address.trim());
         if (comuna) qs.set("commune", comuna);
         if (requestedIso) qs.set("date", requestedIso);
@@ -130,7 +132,7 @@ export default function ServiceProsPage() {
     };
 
     if (categorySlug) void load();
-  }, [address, categorySlug, city, comuna, requestedIso]);
+  }, [address, categorySlug, city, comuna, requestedIso, selectedServiceId]);
 
   const professionals = useMemo(() => {
     let filtered = [...allPros];

@@ -1,4 +1,5 @@
 import { PaymentStatus, UserRole } from "@prisma/client";
+import { CLEANING_SERVICE_DEFINITIONS } from "@/lib/cleaning-service-types";
 import { prisma } from "@/lib/prisma";
 
 const DEMO_PASSWORD_HASH = "$2a$12$LX3eD21fpfkg/xsBDNBrkeBrgQdo9iLcWaG1jOOMonHmBMChElxva";
@@ -15,6 +16,7 @@ type DemoPro = {
   rating: number;
   count: number;
   serviceSlugs: string[];
+  serviceRates?: Record<string, number>;
 };
 
 async function ensureRoleAssignment(userId: string, code: UserRole, label: string) {
@@ -508,20 +510,13 @@ export async function ensureMarketplaceDemoData() {
   };
 
   const serviceSpecs = [
-    {
-      slug: "limpieza-hogar",
-      name: "Limpieza hogar",
-      description: "Aseo general por hora para departamento o casa",
-      basePriceClp: 22000,
+    ...CLEANING_SERVICE_DEFINITIONS.map((service) => ({
+      slug: service.slug,
+      name: service.name,
+      description: service.description,
+      basePriceClp: service.recommendedMinClp,
       categoryId: categories.limpieza.id
-    },
-    {
-      slug: "limpieza-profunda",
-      name: "Limpieza profunda",
-      description: "Limpieza completa de cocina, baños y superficies",
-      basePriceClp: 26000,
-      categoryId: categories.limpieza.id
-    },
+    })),
     {
       slug: "maestro-hogar",
       name: "Maestro a domicilio",
@@ -698,10 +693,17 @@ export async function ensureMarketplaceDemoData() {
       latitude: -33.4477,
       longitude: -70.6506,
       radiusKm: 7,
-      rate: 22000,
+      rate: 14000,
       rating: 4.9,
       count: 184,
-      serviceSlugs: ["limpieza-hogar", "limpieza-profunda", "planchado-por-hora"]
+      serviceSlugs: ["limpieza-hogar", "limpieza-profunda", "limpieza-por-horas", "limpieza-post-mudanza", "planchado-por-hora"],
+      serviceRates: {
+        "limpieza-hogar": 14000,
+        "limpieza-profunda": 18000,
+        "limpieza-por-horas": 13000,
+        "limpieza-post-mudanza": 19000,
+        "planchado-por-hora": 14000
+      }
     },
     {
       email: "pro.carlos@wetask.cl",
@@ -711,16 +713,25 @@ export async function ensureMarketplaceDemoData() {
       latitude: -33.4263,
       longitude: -70.6105,
       radiusKm: 9,
-      rate: 27000,
+      rate: 15000,
       rating: 4.8,
       count: 129,
       serviceSlugs: [
         "limpieza-hogar",
+        "limpieza-oficina",
         "paseo-cuidado-mascotas",
         "chef-a-domicilio-sesion",
         "maquillaje-a-domicilio-sesion",
         "planchado-por-hora"
-      ]
+      ],
+      serviceRates: {
+        "limpieza-hogar": 15000,
+        "limpieza-oficina": 16000,
+        "paseo-cuidado-mascotas": 15000,
+        "chef-a-domicilio-sesion": 15000,
+        "maquillaje-a-domicilio-sesion": 15000,
+        "planchado-por-hora": 15000
+      }
     },
     {
       email: "pro.javier@wetask.cl",
@@ -743,10 +754,16 @@ export async function ensureMarketplaceDemoData() {
       latitude: -33.4569,
       longitude: -70.5975,
       radiusKm: 8,
-      rate: 24000,
+      rate: 13500,
       rating: 4.9,
       count: 210,
-      serviceSlugs: ["limpieza-hogar", "babysitter-por-horas-standard", "planchado-por-hora"]
+      serviceSlugs: ["limpieza-hogar", "limpieza-por-horas", "babysitter-por-horas-standard", "planchado-por-hora"],
+      serviceRates: {
+        "limpieza-hogar": 13500,
+        "limpieza-por-horas": 12500,
+        "babysitter-por-horas-standard": 13500,
+        "planchado-por-hora": 13500
+      }
     },
     {
       email: "pro.mario@wetask.cl",
@@ -876,7 +893,7 @@ export async function ensureMarketplaceDemoData() {
         },
         update: {
           categoryId: service.categoryId,
-          priceClp: pro.rate,
+          priceClp: pro.serviceRates?.[serviceSlug] ?? pro.rate,
           minBooking: 1,
           isActive: true
         },
@@ -884,7 +901,7 @@ export async function ensureMarketplaceDemoData() {
           professionalProfileId: profile.id,
           categoryId: service.categoryId,
           serviceId: service.id,
-          priceClp: pro.rate,
+          priceClp: pro.serviceRates?.[serviceSlug] ?? pro.rate,
           minBooking: 1,
           isActive: true
         }

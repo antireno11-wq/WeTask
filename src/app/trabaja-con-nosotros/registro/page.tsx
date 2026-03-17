@@ -4,6 +4,12 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { AuthHeroNav } from "@/components/auth-hero-nav";
+import {
+  CLEANING_SERVICE_DEFINITIONS,
+  type CleaningServiceDefinition,
+  type CleaningServiceSlug,
+  isCleaningServiceSlug
+} from "@/lib/cleaning-service-types";
 import { ACTIVE_MVP_COMMUNES, inferCommuneFromAddress, normalizeCommune, type ActiveMvpCommune } from "@/lib/communes";
 
 type SessionPayload = {
@@ -60,6 +66,11 @@ type OnboardingPayload = {
   adminReviewNotes: string | null;
 };
 
+type OnboardingServiceRate = {
+  serviceSlug: string;
+  hourlyRateClp: number;
+};
+
 type AddressValidationResponse = {
   valid?: boolean;
   skipped?: boolean;
@@ -106,7 +117,8 @@ type DraftState = {
   category: CategorySlug;
   yearsExperience: string;
   workMode: "SOLO" | "EQUIPO";
-  cleaningType: "hogar" | "profunda" | "post_mudanza";
+  cleaningServices: CleaningServiceSlug[];
+  cleaningServiceRates: Partial<Record<CleaningServiceSlug, string>>;
   cleaningBringsProducts: boolean | null;
   cleaningBringsEquipment: boolean | null;
   petServiceType: Array<"paseo_perros" | "cuidado_casa_cliente" | "cuidado_en_tu_casa">;
@@ -284,16 +296,11 @@ function getPricingGuide(draft: DraftState) {
   const extras: string[] = [];
 
   if (draft.category === "limpieza") {
-    if (draft.cleaningBringsProducts) {
-      min += 2000;
-      max += 2000;
-      extras.push("Si incluyes productos de limpieza, puedes subir aprox. $2.000 por hora.");
-    }
-    if (draft.cleaningBringsEquipment) {
-      min += 2000;
-      max += 3000;
-      extras.push("Si llevas aspiradora o equipo propio, puedes sumar entre $2.000 y $3.000 por hora.");
-    }
+    min = Math.min(...CLEANING_SERVICE_DEFINITIONS.map((service) => service.recommendedMinClp));
+    max = Math.max(...CLEANING_SERVICE_DEFINITIONS.map((service) => service.recommendedMaxClp));
+    extras.push("En limpieza puedes definir una tarifa distinta por hora para cada tipo de servicio que ofrezcas.");
+    if (draft.cleaningBringsProducts) extras.push("Si incluyes productos, normalmente puedes cobrar un poco más en todos tus tipos de limpieza.");
+    if (draft.cleaningBringsEquipment) extras.push("Si llevas aspiradora o equipo propio, también puedes posicionarte en el tramo alto.");
   }
 
   if (draft.category === "maquillaje" && draft.makeupKit) {
@@ -321,6 +328,21 @@ function getPricingGuide(draft: DraftState) {
     note: base.note,
     extras
   };
+}
+
+function normalizeCleaningServiceSlugs(value: unknown): CleaningServiceSlug[] {
+  if (Array.isArray(value)) {
+    const items = value.filter((item): item is CleaningServiceSlug => typeof item === "string" && isCleaningServiceSlug(item));
+    return items.length > 0 ? Array.from(new Set(items)) : ["limpieza-hogar"];
+  }
+  if (typeof value === "string" && isCleaningServiceSlug(value)) {
+    return [value];
+  }
+  return ["limpieza-hogar"];
+}
+
+function selectedCleaningServiceDefinitions(draft: DraftState): CleaningServiceDefinition[] {
+  return CLEANING_SERVICE_DEFINITIONS.filter((service) => draft.cleaningServices.includes(service.slug));
 }
 
 function normalizeMakeupTypes(value: unknown): Array<"social" | "eventos" | "novias"> {
@@ -376,7 +398,8 @@ function createInitialDraft(): DraftState {
     category: "limpieza",
     yearsExperience: "1",
     workMode: "SOLO",
-    cleaningType: "hogar",
+    cleaningServices: ["limpieza-hogar"],
+    cleaningServiceRates: { "limpieza-hogar": "" },
     cleaningBringsProducts: null,
     cleaningBringsEquipment: null,
     petServiceType: ["paseo_perros"],
@@ -485,14 +508,8 @@ function buildStep7Payload(draft: DraftState) {
   switch (draft.category) {
     case "limpieza":
       return {
-        offeredServices: [
-          draft.cleaningType === "hogar"
-            ? "limpieza_general"
-            : draft.cleaningType === "profunda"
-              ? "limpieza_profunda"
-              : "post_evento"
-        ],
-        experienceTypes: [draft.cleaningType],
+        offeredServices: draft.cleaningServices,
+        experienceTypes: draft.cleaningServices,
         worksWithClientProducts: false,
         bringsOwnProducts: draft.cleaningBringsProducts,
         bringsOwnTools: draft.cleaningBringsEquipment
@@ -611,6 +628,11 @@ function CleaningOnboardingPageContent() {
         phone: normalizeChileanMobileInput(parsed.phone ?? current.phone),
         rut: formatRutInput(parsed.rut ?? current.rut),
         bankOwnerRut: formatRutInput(parsed.bankOwnerRut ?? current.bankOwnerRut),
+        cleaningServices: normalizeCleaningServiceSlugs(parsed.cleaningServices),
+        cleaningServiceRates:
+          parsed.cleaningServiceRates && typeof parsed.cleaningServiceRates === "object"
+            ? (parsed.cleaningServiceRates as Partial<Record<CleaningServiceSlug, string>>)
+            : current.cleaningServiceRates,
         petServiceType: normalizePetServiceTypes(parsed.petServiceType),
         chefServiceType: normalizeChefServiceTypes(parsed.chefServiceType),
         makeupType: normalizeMakeupTypes(parsed.makeupType)
@@ -736,6 +758,23 @@ function CleaningOnboardingPageContent() {
     }));
   }, [draft.petAnimals, draft.petServiceType]);
 
+  useEffect(() => {
+    if (draft.category !== "limpieza") return;
+    const normalizedServices = normalizeCleaningServiceSlugs(draft.cleaningServices);
+    const nextRates = normalizedServices.reduce<Partial<Record<CleaningServiceSlug, string>>>((acc, slug) => {
+      acc[slug] = draft.cleaningServiceRates[slug] ?? "";
+      return acc;
+    }, {});
+    const servicesChanged = normalizedServices.join("|") !== draft.cleaningServices.join("|");
+    const ratesChanged = JSON.stringify(nextRates) !== JSON.stringify(draft.cleaningServiceRates);
+    if (!servicesChanged && !ratesChanged) return;
+    setDraft((current) => ({
+      ...current,
+      cleaningServices: normalizedServices,
+      cleaningServiceRates: nextRates
+    }));
+  }, [draft.category, draft.cleaningServiceRates, draft.cleaningServices]);
+
   const hydrateFromServer = (nextOnboarding: OnboardingPayload, user?: { fullName?: string | null; email?: string | null; phone?: string | null }) => {
     const { firstName, lastName } = splitFullName(user?.fullName ?? session?.fullName ?? "");
     setOnboarding(nextOnboarding);
@@ -757,6 +796,8 @@ function CleaningOnboardingPageContent() {
       category: (CATEGORY_OPTIONS.some((option) => option.slug === nextOnboarding.categorySlug)
         ? nextOnboarding.categorySlug
         : current.category) as CategorySlug,
+      cleaningServices:
+        nextOnboarding.categorySlug === "limpieza" ? normalizeCleaningServiceSlugs(nextOnboarding.offeredServices) : current.cleaningServices,
       yearsExperience: nextOnboarding.yearsExperience ? String(Math.min(nextOnboarding.yearsExperience, 10)) : current.yearsExperience,
       workMode: nextOnboarding.workMode ?? current.workMode,
       availabilityMode: nextOnboarding.availabilityMode ?? current.availabilityMode,
@@ -802,6 +843,7 @@ function CleaningOnboardingPageContent() {
           const onboardingResponse = await fetch("/api/onboarding/cleaning/me");
           const onboardingData = (await onboardingResponse.json()) as {
             onboarding?: OnboardingPayload;
+            serviceRates?: OnboardingServiceRate[];
             user?: { fullName?: string | null; email?: string | null; phone?: string | null };
             error?: string;
             detail?: string;
@@ -810,6 +852,21 @@ function CleaningOnboardingPageContent() {
             throw new Error(onboardingData.detail || onboardingData.error || "No se pudo cargar el registro");
           }
           hydrateFromServer(onboardingData.onboarding, onboardingData.user);
+          if (Array.isArray(onboardingData.serviceRates) && onboardingData.serviceRates.length > 0) {
+            const serviceRates = onboardingData.serviceRates;
+            setDraft((current) => ({
+              ...current,
+              cleaningServiceRates: serviceRates.reduce<Partial<Record<CleaningServiceSlug, string>>>((acc, item) => {
+                if (isCleaningServiceSlug(item.serviceSlug)) {
+                  acc[item.serviceSlug] = String(item.hourlyRateClp);
+                }
+                return acc;
+              }, { ...current.cleaningServiceRates }),
+              hourlyRate: serviceRates.find((item) => isCleaningServiceSlug(item.serviceSlug) && item.serviceSlug === "limpieza-hogar")?.hourlyRateClp?.toString() ??
+                serviceRates[0]?.hourlyRateClp?.toString() ??
+                current.hourlyRate
+            }));
+          }
         }
       } catch (eventualError) {
         setError(eventualError instanceof Error ? eventualError.message : "Error inesperado");
@@ -1186,15 +1243,34 @@ function CleaningOnboardingPageContent() {
   };
 
   const continueStep9 = async () => {
-    if (!draft.hourlyRate.trim() || !draft.minimumHours.trim()) {
+    const cleaningRates =
+      draft.category === "limpieza"
+        ? selectedCleaningServiceDefinitions(draft).map((service) => ({
+            serviceSlug: service.slug,
+            hourlyRateClp: Number(draft.cleaningServiceRates[service.slug] || 0)
+          }))
+        : [];
+
+    if (
+      (draft.category === "limpieza" && cleaningRates.some((item) => !item.hourlyRateClp)) ||
+      (draft.category !== "limpieza" && !draft.hourlyRate.trim()) ||
+      !draft.minimumHours.trim()
+    ) {
       setError("Completa tu tarifa y mínimo de horas.");
       return;
     }
     setSaving(true);
     setError("");
     try {
+      const fallbackRate =
+        draft.category === "limpieza"
+          ? cleaningRates.find((item) => item.serviceSlug === "limpieza-hogar")?.hourlyRateClp ??
+            cleaningRates[0]?.hourlyRateClp ??
+            Number(draft.hourlyRate || 0)
+          : Number(draft.hourlyRate);
       await persistServerStep(9, {
-        hourlyRateClp: Number(draft.hourlyRate),
+        hourlyRateClp: fallbackRate,
+        serviceRates: cleaningRates,
         minBookingHours: Number(draft.minimumHours),
         weekendSurchargePct: draft.hasWeekendSurcharge ? Number(draft.weekendSurchargePct || 0) : 0,
         holidaySurchargePct: draft.hasHolidaySurcharge ? Number(draft.holidaySurchargePct || 0) : 0,
@@ -1647,14 +1723,33 @@ function CleaningOnboardingPageContent() {
 
                 {draft.category === "limpieza" ? (
                   <div className="grid-form auth-flow-form">
-                    <label>
-                      Tipo de limpieza
-                      <select value={draft.cleaningType} onChange={(event) => updateDraft("cleaningType", event.target.value as DraftState["cleaningType"])}>
-                        <option value="hogar">Hogar</option>
-                        <option value="profunda">Profunda</option>
-                        <option value="post_mudanza">Post mudanza</option>
-                      </select>
-                    </label>
+                    <div className="full">
+                      <p className="field-label">Tipos de limpieza que quieres ofrecer</p>
+                      <div className="auth-service-grid auth-service-grid-cleaning">
+                        {CLEANING_SERVICE_DEFINITIONS.map((service) => (
+                          <label key={service.slug} className={`auth-service-card ${draft.cleaningServices.includes(service.slug) ? "active" : ""}`}>
+                            <input
+                              type="checkbox"
+                              checked={draft.cleaningServices.includes(service.slug)}
+                              onChange={(event) =>
+                                setDraft((current) => ({
+                                  ...current,
+                                  cleaningServices: event.target.checked
+                                    ? Array.from(new Set([...current.cleaningServices, service.slug]))
+                                    : current.cleaningServices.filter((item) => item !== service.slug)
+                                }))
+                              }
+                            />
+                            <strong>{service.name}</strong>
+                            <span>{service.description}</span>
+                            <span>{service.forClients}</span>
+                            <span>
+                              Incluye: <strong>{service.includes.slice(0, 3).join(", ")}</strong>
+                            </span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
                     <label>
                       ¿Llevas productos de limpieza?
                       <select
@@ -2160,10 +2255,40 @@ function CleaningOnboardingPageContent() {
                   ) : null}
                 </div>
                 <div className="grid-form auth-flow-form">
-                  <label>
-                    Tarifa por hora
-                    <input value={draft.hourlyRate} onChange={(event) => updateDraft("hourlyRate", event.target.value.replace(/\D/g, ""))} placeholder="15000" />
-                  </label>
+                  {draft.category === "limpieza" ? (
+                    <div className="full cleaning-rate-grid">
+                      {selectedCleaningServiceDefinitions(draft).map((service) => (
+                        <label key={service.slug} className="auth-flow-note-card cleaning-rate-card">
+                          <strong>{service.name}</strong>
+                          <span>{service.description}</span>
+                          <span>
+                            Rango sugerido: <strong>${formatClp(service.recommendedMinClp)}</strong> a{" "}
+                            <strong>${formatClp(service.recommendedMaxClp)}</strong> por hora.
+                          </span>
+                          <input
+                            value={draft.cleaningServiceRates[service.slug] ?? ""}
+                            onChange={(event) => {
+                              const value = event.target.value.replace(/\D/g, "");
+                              setDraft((current) => ({
+                                ...current,
+                                cleaningServiceRates: {
+                                  ...current.cleaningServiceRates,
+                                  [service.slug]: value
+                                },
+                                hourlyRate: service.slug === "limpieza-hogar" ? value : current.hourlyRate
+                              }));
+                            }}
+                            placeholder={String(service.recommendedMinClp)}
+                          />
+                        </label>
+                      ))}
+                    </div>
+                  ) : (
+                    <label>
+                      Tarifa por hora
+                      <input value={draft.hourlyRate} onChange={(event) => updateDraft("hourlyRate", event.target.value.replace(/\D/g, ""))} placeholder="15000" />
+                    </label>
+                  )}
                   <label>
                     Mínimo de horas por servicio
                     <input value={draft.minimumHours} onChange={(event) => updateDraft("minimumHours", event.target.value.replace(/\D/g, ""))} placeholder="2" />
