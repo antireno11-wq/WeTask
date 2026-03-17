@@ -621,6 +621,7 @@ function CleaningOnboardingPageContent() {
   const [addressValidationMessage, setAddressValidationMessage] = useState("");
   const [addressValidationError, setAddressValidationError] = useState("");
   const addressValidationRequestRef = useRef(0);
+  const availabilityTaskPanelRef = useRef<HTMLDivElement | null>(null);
 
   const chicureoSelected = draft.homeCommune === "Chicureo" || draft.coverageCommunes.includes("Chicureo");
   const selectedCategoryLabel = CATEGORY_OPTIONS.find((option) => option.slug === draft.category)?.label ?? "Limpieza";
@@ -1420,6 +1421,23 @@ function CleaningOnboardingPageContent() {
     }));
   };
 
+  const revealAvailabilityDetail = (focusFirstInput = false) => {
+    window.setTimeout(() => {
+      const panel = availabilityTaskPanelRef.current;
+      if (!panel) return;
+      panel.scrollIntoView({ behavior: "smooth", block: "start" });
+      if (focusFirstInput) {
+        const firstInput = panel.querySelector<HTMLInputElement>('input[type="time"]');
+        firstInput?.focus();
+      }
+    }, 80);
+  };
+
+  const selectAvailabilityDay = (day: DayKey) => {
+    setSelectedAvailabilityDay(day);
+    revealAvailabilityDetail(false);
+  };
+
   const updateAvailabilityBlock = (index: number, patch: Partial<AvailabilityBlock>) => {
     setDraft((current) => ({
       ...current,
@@ -1428,10 +1446,12 @@ function CleaningOnboardingPageContent() {
   };
 
   const addAvailabilityBlock = (day: DayKey) => {
+    setSelectedAvailabilityDay(day);
     setDraft((current) => ({
       ...current,
       availabilityBlocks: [...current.availabilityBlocks, { day, start: "14:00", end: "18:00" }]
     }));
+    revealAvailabilityDetail(true);
   };
 
   const removeAvailabilityBlock = (index: number) => {
@@ -2219,7 +2239,7 @@ function CleaningOnboardingPageContent() {
                             key={day.key}
                             type="button"
                             className={`availability-day-card onboarding-week-card ${isSelected ? "selected" : ""}`}
-                            onClick={() => setSelectedAvailabilityDay(day.key)}
+                            onClick={() => selectAvailabilityDay(day.key)}
                           >
                             <span className="availability-day-number">{day.label}</span>
                             <span className="availability-day-meta">
@@ -2233,7 +2253,7 @@ function CleaningOnboardingPageContent() {
                       })}
                     </div>
 
-                    <div className="availability-task-panel">
+                    <div className="availability-task-panel" ref={availabilityTaskPanelRef} tabIndex={-1}>
                       <div className="availability-task-head">
                         <div>
                           <p className="availability-eyebrow">Detalle del día</p>

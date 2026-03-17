@@ -5658,6 +5658,7 @@ textarea {
 
 .onboarding-availability-shell .availability-task-panel {
   padding: 20px;
+  scroll-margin-top: 110px;
 }
 
 .onboarding-availability-shell .availability-task-item {
