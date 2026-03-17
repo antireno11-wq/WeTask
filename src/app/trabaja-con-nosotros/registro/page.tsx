@@ -613,6 +613,9 @@ function CleaningOnboardingPageContent() {
   const [submitMissingFields, setSubmitMissingFields] = useState<string[]>([]);
   const [smsPreview, setSmsPreview] = useState("");
   const [selectedAvailabilityDay, setSelectedAvailabilityDay] = useState<DayKey>(currentWeekDayKey);
+  const [bulkAvailabilityDays, setBulkAvailabilityDays] = useState<DayKey[]>([currentWeekDayKey()]);
+  const [newAvailabilityStart, setNewAvailabilityStart] = useState("14:00");
+  const [newAvailabilityEnd, setNewAvailabilityEnd] = useState("18:00");
   const [addressSuggestions, setAddressSuggestions] = useState<string[]>([]);
   const [autocompleteLoading, setAutocompleteLoading] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -1435,7 +1438,18 @@ function CleaningOnboardingPageContent() {
 
   const selectAvailabilityDay = (day: DayKey) => {
     setSelectedAvailabilityDay(day);
+    setBulkAvailabilityDays((current) => (current.includes(day) ? current : Array.from(new Set([...current, day]))));
     revealAvailabilityDetail(false);
+  };
+
+  const toggleBulkAvailabilityDay = (day: DayKey) => {
+    setBulkAvailabilityDays((current) => {
+      if (current.includes(day)) {
+        const next = current.filter((item) => item !== day);
+        return next.length > 0 ? next : [day];
+      }
+      return [...current, day];
+    });
   };
 
   const updateAvailabilityBlock = (index: number, patch: Partial<AvailabilityBlock>) => {
@@ -1445,11 +1459,30 @@ function CleaningOnboardingPageContent() {
     }));
   };
 
-  const addAvailabilityBlock = (day: DayKey) => {
-    setSelectedAvailabilityDay(day);
+  const addAvailabilityBlock = (days: DayKey[]) => {
+    const uniqueDays = Array.from(new Set(days));
+    const start = newAvailabilityStart;
+    const end = newAvailabilityEnd;
+    if (uniqueDays.length === 0) {
+      setError("Selecciona al menos un día para crear el bloque.");
+      return;
+    }
+    if (!start || !end || end <= start) {
+      setError("Define un rango horario válido para crear el bloque.");
+      return;
+    }
+    setError("");
+    setSelectedAvailabilityDay(uniqueDays[0]);
     setDraft((current) => ({
       ...current,
-      availabilityBlocks: [...current.availabilityBlocks, { day, start: "14:00", end: "18:00" }]
+      availabilityBlocks: [
+        ...current.availabilityBlocks,
+        ...uniqueDays
+          .filter(
+            (day) => !current.availabilityBlocks.some((block) => block.day === day && block.start === start && block.end === end)
+          )
+          .map((day) => ({ day, start, end }))
+      ]
     }));
     revealAvailabilityDetail(true);
   };
@@ -2180,7 +2213,7 @@ function CleaningOnboardingPageContent() {
                       <div className="availability-composer-head">
                         <div>
                           <p className="availability-eyebrow">Nuevo bloque</p>
-                          <h3>{selectedDayConfig?.label ?? "Selecciona un día"}</h3>
+                          <h3>{bulkAvailabilityDays.length > 1 ? `${bulkAvailabilityDays.length} días seleccionados` : selectedDayConfig?.label ?? "Selecciona un día"}</h3>
                         </div>
                         <span className="availability-selected-pill">
                           {draft.availabilityMode === "VARIABLE" ? "Disponibilidad mensual" : "Disponibilidad recurrente"}
@@ -2209,12 +2242,31 @@ function CleaningOnboardingPageContent() {
                       <p className="input-hint">
                         {draft.availabilityMode === "VARIABLE"
                           ? "Elige un día del planner y arma una pauta flexible que puedas ajustar cada mes según tu agenda."
-                          : "Elige un día del planner y agrega uno o varios bloques para mostrar cuándo quieres recibir reservas."}
+                          : "Puedes marcar varios días y crear el mismo bloque horario para todos de una sola vez."}
                       </p>
 
+                      <div className="onboarding-checkbox-grid onboarding-checkbox-grid-compact">
+                        {DAY_OPTIONS.map((day) => (
+                          <label key={day.key} className="onboarding-check-card">
+                            <input
+                              type="checkbox"
+                              checked={bulkAvailabilityDays.includes(day.key)}
+                              onChange={() => toggleBulkAvailabilityDay(day.key)}
+                            />
+                            <span>{day.label}</span>
+                          </label>
+                        ))}
+                      </div>
+
+                      <div className="onboarding-time-row">
+                        <input type="time" value={newAvailabilityStart} onChange={(event) => setNewAvailabilityStart(event.target.value)} />
+                        <span>–</span>
+                        <input type="time" value={newAvailabilityEnd} onChange={(event) => setNewAvailabilityEnd(event.target.value)} />
+                      </div>
+
                       <div className="cta-row availability-form-actions">
-                        <button type="button" className="cta" onClick={() => addAvailabilityBlock(selectedDayConfig?.key ?? "lunes")}>
-                          Agregar bloque a {selectedDayConfig?.label ?? "este día"}
+                        <button type="button" className="cta" onClick={() => addAvailabilityBlock(bulkAvailabilityDays)}>
+                          Agregar bloque a {bulkAvailabilityDays.length > 1 ? `${bulkAvailabilityDays.length} días` : selectedDayConfig?.label ?? "este día"}
                         </button>
                       </div>
                     </div>
