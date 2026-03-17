@@ -40,9 +40,17 @@ export default function ServicioCategoriaPage() {
   const [apartment, setApartment] = useState(query.get("apartment") ?? "");
   const [reference, setReference] = useState(query.get("reference") ?? "");
   const city = query.get("city") ?? "Santiago";
-  const isCleaningCategory = category?.slug === "limpieza";
-  const isPetCategory = category?.slug === "mascotas";
-  const autoAdvanceOnServiceSelect = isCleaningCategory || isPetCategory;
+  const autoAdvanceCategorySlugs = new Set([
+    "limpieza",
+    "mascotas",
+    "babysitter",
+    "profesor-particular",
+    "personal-trainer",
+    "chef",
+    "maquillaje",
+    "planchado"
+  ]);
+  const autoAdvanceOnServiceSelect = category ? autoAdvanceCategorySlugs.has(category.slug) : false;
 
   useEffect(() => {
     const load = async () => {
