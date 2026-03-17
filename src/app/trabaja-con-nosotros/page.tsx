@@ -1,12 +1,19 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { AuthHeroNav } from "@/components/auth-hero-nav";
 import { CORE_SERVICES, type CoreTaskerServiceSlug } from "@/lib/core-services";
 
 export default function TrabajaConNosotrosPage() {
+  const router = useRouter();
   const [selectedService, setSelectedService] = useState<CoreTaskerServiceSlug>(CORE_SERVICES[0]?.slug ?? "limpieza");
+
+  const goToOnboarding = (serviceSlug: CoreTaskerServiceSlug) => {
+    setSelectedService(serviceSlug);
+    router.push(`/trabaja-con-nosotros/registro?service=${encodeURIComponent(serviceSlug)}`);
+  };
 
   return (
     <main className="auth-flow-screen">
@@ -44,25 +51,24 @@ export default function TrabajaConNosotrosPage() {
               <p>Usaremos esta selección para personalizar tu onboarding profesional.</p>
             </div>
 
-          <form action="/trabaja-con-nosotros/registro" method="GET" className="auth-service-form">
+          <div className="auth-service-form">
             <div className="auth-service-grid" role="radiogroup" aria-label="Servicios disponibles">
               {CORE_SERVICES.map((service) => {
                 const isActive = selectedService === service.slug;
                 return (
-                  <label key={service.slug} className={`auth-service-card ${isActive ? "active" : ""}`}>
-                    <input
-                      type="radio"
-                      name="service"
-                      value={service.slug}
-                      checked={isActive}
-                      onChange={() => setSelectedService(service.slug)}
-                    />
+                  <button
+                    key={service.slug}
+                    type="button"
+                    className={`auth-service-card ${isActive ? "active" : ""}`}
+                    aria-pressed={isActive}
+                    onClick={() => goToOnboarding(service.slug)}
+                  >
                     <span className="auth-service-icon" aria-hidden>
                       {service.icon}
                     </span>
                     <strong>{service.label}</strong>
                     <span>{service.taskerDescription}</span>
-                  </label>
+                  </button>
                 );
               })}
             </div>
@@ -73,14 +79,11 @@ export default function TrabajaConNosotrosPage() {
             </div>
 
             <div className="auth-flow-actions">
-              <button type="submit" className="cta">
-                Continuar onboarding
-              </button>
               <Link href="/ingresar/tasker" className="cta ghost">
                 Iniciar sesión
               </Link>
             </div>
-            </form>
+            </div>
           </section>
         </section>
       </div>
