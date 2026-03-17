@@ -9,6 +9,8 @@ type DemoPro = {
   fullName: string;
   city: string;
   postal: string;
+  baseCommune: string;
+  serviceCommunes: string[];
   latitude: number;
   longitude: number;
   radiusKm: number;
@@ -690,6 +692,8 @@ export async function ensureMarketplaceDemoData() {
       fullName: "Ana Gonzalez",
       city: "Santiago",
       postal: "8320000",
+      baseCommune: "Las Condes",
+      serviceCommunes: ["Las Condes", "Vitacura", "Providencia"],
       latitude: -33.4477,
       longitude: -70.6506,
       radiusKm: 7,
@@ -710,6 +714,8 @@ export async function ensureMarketplaceDemoData() {
       fullName: "Carlos Muñoz",
       city: "Santiago",
       postal: "7510000",
+      baseCommune: "Vitacura",
+      serviceCommunes: ["Vitacura", "Las Condes", "Lo Barnechea", "Providencia"],
       latitude: -33.4263,
       longitude: -70.6105,
       radiusKm: 9,
@@ -738,6 +744,8 @@ export async function ensureMarketplaceDemoData() {
       fullName: "Javier Rojas",
       city: "Santiago",
       postal: "7750000",
+      baseCommune: "Lo Barnechea",
+      serviceCommunes: ["Lo Barnechea", "Las Condes", "Vitacura"],
       latitude: -33.4188,
       longitude: -70.5672,
       radiusKm: 10,
@@ -751,6 +759,8 @@ export async function ensureMarketplaceDemoData() {
       fullName: "Paula Contreras",
       city: "Santiago",
       postal: "7500000",
+      baseCommune: "Providencia",
+      serviceCommunes: ["Providencia", "Ñuñoa", "La Reina", "Las Condes"],
       latitude: -33.4569,
       longitude: -70.5975,
       radiusKm: 8,
@@ -770,6 +780,8 @@ export async function ensureMarketplaceDemoData() {
       fullName: "Mario Paredes",
       city: "Santiago",
       postal: "8330000",
+      baseCommune: "Providencia",
+      serviceCommunes: ["Providencia", "Las Condes"],
       latitude: -33.4534,
       longitude: -70.6662,
       radiusKm: 6,
@@ -783,6 +795,8 @@ export async function ensureMarketplaceDemoData() {
       fullName: "Camila Vera",
       city: "Santiago",
       postal: "7510010",
+      baseCommune: "Providencia",
+      serviceCommunes: ["Providencia", "Las Condes", "Vitacura"],
       latitude: -33.4202,
       longitude: -70.6079,
       radiusKm: 6,
@@ -828,6 +842,7 @@ export async function ensureMarketplaceDemoData() {
       where: { userId: user.id },
       update: {
         isVerified: true,
+        coverageComuna: pro.baseCommune,
         coverageCity: pro.city,
         coveragePostal: pro.postal,
         coverageLatitude: pro.latitude,
@@ -841,6 +856,7 @@ export async function ensureMarketplaceDemoData() {
       create: {
         userId: user.id,
         isVerified: true,
+        coverageComuna: pro.baseCommune,
         coverageCity: pro.city,
         coveragePostal: pro.postal,
         coverageLatitude: pro.latitude,
@@ -850,6 +866,22 @@ export async function ensureMarketplaceDemoData() {
         ratingAvg: pro.rating,
         ratingsCount: pro.count,
         bio: `${pro.fullName} presta servicios en Santiago y comunas cercanas.`
+      }
+    });
+
+    await prisma.cleaningOnboarding.upsert({
+      where: { userId: user.id },
+      update: {
+        categorySlug: pro.serviceSlugs.some((slug) => slug.startsWith("limpieza-")) ? "limpieza" : undefined,
+        baseCommune: pro.baseCommune,
+        serviceCommunes: pro.serviceCommunes
+      },
+      create: {
+        userId: user.id,
+        categorySlug: pro.serviceSlugs.some((slug) => slug.startsWith("limpieza-")) ? "limpieza" : "mascotas",
+        currentStep: 12,
+        baseCommune: pro.baseCommune,
+        serviceCommunes: pro.serviceCommunes
       }
     });
 

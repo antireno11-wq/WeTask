@@ -88,7 +88,7 @@ export default function ServiciosPage() {
 
             <div className="services-showcase-grid">
               {categories.map((category) => (
-                <Link key={category.id} href={`/services/${category.slug}`} className="services-showcase-card">
+                <Link key={category.id} href={`/servicios/${category.slug}`} className="services-showcase-card">
                   <div
                     className="services-showcase-media"
                     style={{ backgroundImage: `url("${serviceByCategorySlug.get(category.slug)?.image ?? ""}")` }}

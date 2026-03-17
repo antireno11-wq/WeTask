@@ -177,7 +177,7 @@ export default function ServicioCategoriaPage() {
     });
     if (selectedServiceId) qs.set("serviceId", selectedServiceId);
 
-    router.push(`/services/${category.slug}/pros?${qs.toString()}`);
+    router.push(`/servicios/${category.slug}/pros?${qs.toString()}`);
   };
 
   return (

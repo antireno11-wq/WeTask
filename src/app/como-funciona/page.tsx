@@ -86,7 +86,7 @@ export default function ComoFuncionaPage() {
           </div>
           <div className="services-showcase-grid">
             {CORE_SERVICES.map((service) => (
-              <Link key={service.slug} href={`/services/${service.categorySlug}`} className="services-showcase-card">
+              <Link key={service.slug} href={`/servicios/${service.categorySlug}`} className="services-showcase-card">
                 <div className="services-showcase-media" style={{ backgroundImage: `url(${service.image})` }} aria-hidden />
                 <div className="services-showcase-copy">
                   <strong>
