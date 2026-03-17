@@ -41,6 +41,8 @@ export default function ServicioCategoriaPage() {
   const [reference, setReference] = useState(query.get("reference") ?? "");
   const city = query.get("city") ?? "Santiago";
   const isCleaningCategory = category?.slug === "limpieza";
+  const isPetCategory = category?.slug === "mascotas";
+  const autoAdvanceOnServiceSelect = isCleaningCategory || isPetCategory;
 
   useEffect(() => {
     const load = async () => {
@@ -280,7 +282,7 @@ export default function ServicioCategoriaPage() {
                   </div>
                   <label className="full">
                     Tipo de servicio
-                    <div className={`auth-service-grid ${isCleaningCategory ? "auth-service-grid-compact" : "auth-service-grid-cleaning"}`}>
+                    <div className={`auth-service-grid ${autoAdvanceOnServiceSelect ? "auth-service-grid-compact" : "auth-service-grid-cleaning"}`}>
                       {category.services.map((service) => {
                         const cleaningDefinition = category.slug === "limpieza" ? getCleaningServiceDefinition(service.slug) : null;
                         const chefDefinition = category.slug === "chef-a-domicilio" ? getChefServiceDefinition(service.slug) : null;
@@ -288,7 +290,7 @@ export default function ServicioCategoriaPage() {
                         return (
                           <label
                             key={service.id}
-                            className={`auth-service-card ${isActive ? "active" : ""} ${isCleaningCategory ? "auth-service-card-collapsible" : ""}`}
+                            className={`auth-service-card ${isActive ? "active" : ""} ${autoAdvanceOnServiceSelect ? "auth-service-card-collapsible" : ""}`}
                           >
                             <input
                               type="radio"
@@ -297,7 +299,7 @@ export default function ServicioCategoriaPage() {
                               checked={isActive}
                               onChange={() => {
                                 setSelectedServiceId(service.id);
-                                if (isCleaningCategory) {
+                                if (autoAdvanceOnServiceSelect) {
                                   goToPros(service.id);
                                 }
                               }}
@@ -323,7 +325,7 @@ export default function ServicioCategoriaPage() {
                       })}
                     </div>
                   </label>
-                  {!isCleaningCategory ? (
+                  {!autoAdvanceOnServiceSelect ? (
                     <div className="auth-flow-actions full">
                       <button type="submit" className="cta">
                         Ver profesionales disponibles
