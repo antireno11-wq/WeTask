@@ -385,35 +385,8 @@ function selectedCleaningServiceDefinitions(draft: DraftState): CleaningServiceD
 }
 
 function deriveCleaningServicesFromScope(scope: CleaningScopeData): CleaningServiceSlug[] {
-  const derived = new Set<CleaningServiceSlug>();
-
-  for (const item of scope.services_offered) {
-    if (
-      item === "aseo_general" ||
-      item === "limpieza_bano" ||
-      item === "limpieza_cocina" ||
-      item === "organizacion_espacios" ||
-      item === "limpieza_vidrios_interiores"
-    ) {
-      derived.add("limpieza-hogar");
-    }
-
-    if (
-      item === "aseo_profundo" ||
-      item === "limpieza_refrigerador" ||
-      item === "limpieza_horno" ||
-      item === "limpieza_post_remodelacion"
-    ) {
-      derived.add("limpieza-profunda");
-    }
-
-    if (item === "limpieza_post_mudanza") {
-      derived.add("limpieza-post-mudanza");
-    }
-
-  }
-
-  return derived.size > 0 ? Array.from(derived) : ["limpieza-hogar"];
+  const derived = scope.services_offered.filter(isCleaningServiceSlug);
+  return derived.length > 0 ? Array.from(new Set(derived)) : ["limpieza-hogar"];
 }
 
 function selectedChefServiceDefinitions(draft: DraftState): ChefServiceDefinition[] {
@@ -1945,8 +1918,10 @@ function CleaningOnboardingPageContent() {
 
                     {cleaningScopeScreen === 1 ? (
                       <div className="full">
-                        <p className="field-label">¿Qué servicios de limpieza ofreces?</p>
-                        <p className="input-hint">Selecciona todo lo que sí ofreces para que los clientes entiendan mejor tu alcance.</p>
+                        <p className="field-label">¿Qué tipos de limpieza aceptas?</p>
+                        <p className="input-hint">
+                          Esto define en qué búsquedas vas a aparecer. El alcance real de tareas lo completas en los pasos siguientes.
+                        </p>
                         <div className="auth-service-grid auth-service-grid-cleaning">
                           {CLEANING_SCOPE_SERVICE_OPTIONS.map((service) => (
                             <label
@@ -2065,7 +2040,7 @@ function CleaningOnboardingPageContent() {
                         </div>
                         <div className="full onboarding-scope-review-grid">
                           <article className="auth-flow-note-card">
-                            <strong>Servicios ofrecidos</strong>
+                            <strong>Tipos de limpieza que aceptas</strong>
                             <span>{cleaningScopeServicesPreview.length > 0 ? cleaningScopeServicesPreview.join(", ") : "Sin información aún."}</span>
                           </article>
                           <article className="auth-flow-note-card">

@@ -824,7 +824,7 @@ export default function ProDetailPage() {
                       <h2>Alcance del servicio</h2>
                       <div className="we-info-grid">
                         <div>
-                          <h3>Servicios que ofrece</h3>
+                          <h3>Tipos de limpieza que acepta</h3>
                           <p>{cleaningScopeServices.length > 0 ? cleaningScopeServices.join(", ") : "Aún no informado."}</p>
                         </div>
                         <div>

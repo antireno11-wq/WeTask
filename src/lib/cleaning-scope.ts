@@ -1,14 +1,31 @@
+import { type CleaningServiceSlug, isCleaningServiceSlug } from "@/lib/cleaning-service-types";
+
 export const CLEANING_SCOPE_SERVICE_OPTIONS = [
-  { value: "aseo_general", label: "Aseo general", description: "Mantención general del hogar y aseo normal." },
-  { value: "aseo_profundo", label: "Aseo profundo", description: "Más detalle, más tiempo y limpieza más exigente." },
-  { value: "limpieza_bano", label: "Limpieza de baño", description: "Baños con foco específico en sanitarios, grifería y superficies." },
-  { value: "limpieza_cocina", label: "Limpieza de cocina", description: "Cocina por fuera, superficies y orden del área." },
-  { value: "limpieza_post_mudanza", label: "Limpieza post mudanza", description: "Para entrar a vivir o entregar una propiedad." },
-  { value: "limpieza_post_remodelacion", label: "Limpieza post remodelación", description: "Polvo fino y suciedad posterior a trabajos livianos." },
-  { value: "organizacion_espacios", label: "Organización de espacios", description: "Orden de superficies, clósets o sectores visibles." },
-  { value: "limpieza_vidrios_interiores", label: "Limpieza de vidrios interiores", description: "Limpieza de vidrios y ventanas por dentro." },
-  { value: "limpieza_refrigerador", label: "Limpieza de refrigerador", description: "Limpieza interior del refrigerador." },
-  { value: "limpieza_horno", label: "Limpieza de horno", description: "Limpieza interior del horno." }
+  {
+    value: "limpieza-hogar",
+    label: "Limpieza estándar",
+    description: "La opción más común para mantención general y aseo normal del hogar."
+  },
+  {
+    value: "limpieza-profunda",
+    label: "Limpieza profunda",
+    description: "Para cuando el cliente pide más detalle, más tiempo y una limpieza más exigente."
+  },
+  {
+    value: "limpieza-por-horas",
+    label: "Limpieza por horas",
+    description: "Flexible para tareas puntuales, apoyo doméstico y mantención rápida."
+  },
+  {
+    value: "limpieza-post-mudanza",
+    label: "Limpieza post mudanza",
+    description: "Para casas o departamentos vacíos, recién ocupados o entregas de propiedad."
+  },
+  {
+    value: "limpieza-oficina",
+    label: "Limpieza de oficina",
+    description: "Para oficinas pequeñas, consultas y espacios de trabajo."
+  }
 ] as const;
 
 export const CLEANING_TASK_INCLUDED_OPTIONS = [
@@ -41,7 +58,7 @@ export const CLEANING_TASK_EXCLUDED_OPTIONS = [
   { value: "limpieza_vidrios_en_altura", label: "Limpieza de vidrios en altura" }
 ] as const;
 
-export type CleaningScopeServiceSlug = (typeof CLEANING_SCOPE_SERVICE_OPTIONS)[number]["value"];
+export type CleaningScopeServiceSlug = CleaningServiceSlug;
 export type CleaningTaskIncludedSlug = (typeof CLEANING_TASK_INCLUDED_OPTIONS)[number]["value"];
 export type CleaningTaskExcludedSlug = (typeof CLEANING_TASK_EXCLUDED_OPTIONS)[number]["value"];
 
@@ -83,9 +100,32 @@ export function normalizeCleaningScope(value: unknown): CleaningScopeData {
   }
 
   const candidate = value as Partial<CleaningScopeData>;
+  const legacyServiceMap: Record<string, CleaningScopeServiceSlug> = {
+    aseo_general: "limpieza-hogar",
+    limpieza_bano: "limpieza-hogar",
+    limpieza_cocina: "limpieza-hogar",
+    organizacion_espacios: "limpieza-hogar",
+    limpieza_vidrios_interiores: "limpieza-hogar",
+    aseo_profundo: "limpieza-profunda",
+    limpieza_post_remodelacion: "limpieza-profunda",
+    limpieza_refrigerador: "limpieza-profunda",
+    limpieza_horno: "limpieza-profunda",
+    limpieza_post_mudanza: "limpieza-post-mudanza"
+  };
+
   return {
     services_offered: Array.isArray(candidate.services_offered)
-      ? candidate.services_offered.filter((item): item is CleaningScopeServiceSlug => typeof item === "string" && isCleaningScopeServiceSlug(item))
+      ? Array.from(
+          new Set(
+            candidate.services_offered
+              .map((item) => {
+                if (typeof item !== "string") return null;
+                if (isCleaningScopeServiceSlug(item)) return item;
+                return legacyServiceMap[item] ?? null;
+              })
+              .filter((item): item is CleaningScopeServiceSlug => Boolean(item))
+          )
+        )
       : [],
     tasks_included: Array.isArray(candidate.tasks_included)
       ? candidate.tasks_included.filter((item): item is CleaningTaskIncludedSlug => typeof item === "string" && isCleaningTaskIncludedSlug(item))
