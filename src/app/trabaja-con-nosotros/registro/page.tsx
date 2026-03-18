@@ -181,6 +181,11 @@ type DraftState = {
 };
 
 type CleaningScopeScreen = 1 | 2 | 3 | 4 | 5;
+type MissingFieldItem = {
+  field: string;
+  label: string;
+  step: WizardStep;
+};
 
 const TOTAL_STEPS = 12;
 const STORAGE_KEY = "wetask_tasker_wizard_v2";
@@ -231,37 +236,50 @@ const AVAILABILITY_TIME_OPTIONS = Array.from({ length: 31 }, (_, index) => {
   const minutes = index % 2 === 0 ? "00" : "30";
   return `${String(hour).padStart(2, "0")}:${minutes}`;
 });
-const SUBMIT_REQUIRED_FIELD_LABELS: Record<string, string> = {
-  categorySlug: "Categoría de servicio (Paso 5)",
-  phoneValidatedAt: "Teléfono verificado (Paso 2)",
-  profilePhotoUrl: "Foto de perfil (Paso 3)",
-  baseCommune: "Comuna donde vive (Paso 3)",
-  referenceAddress: "Dirección validada (Paso 3)",
-  documentId: "RUT (Paso 3)",
-  yearsExperience: "Años de experiencia (Paso 6)",
-  workMode: "Cómo trabajas (Paso 6)",
-  offeredServices: "Preguntas específicas de tu categoría (Paso 7)",
-  cleaningScope: "Alcance del servicio de limpieza (Paso 7)",
-  serviceCommunes: "Comunas de cobertura (Paso 4)",
-  coverageLatitude: "Ubicación validada desde la dirección (Paso 3)",
-  coverageLongitude: "Ubicación validada desde la dirección (Paso 3)",
-  availabilityBlocks: "Disponibilidad semanal (Paso 8)",
-  hourlyRateClp: "Tarifa por hora (Paso 9)",
-  minBookingHours: "Mínimo de horas por servicio (Paso 9)",
-  weekendSurchargePct: "Recargo fin de semana configurado (Paso 9)",
-  holidaySurchargePct: "Recargo festivos configurado (Paso 9)",
-  identityDocumentFrontFile: "Foto frontal del carnet (Paso 10)",
-  identityDocumentBackFile: "Foto trasera del carnet (Paso 10)",
-  criminalRecordFile: "Certificado de antecedentes (Paso 10)",
-  bankAccountHolder: "Nombre del titular de la cuenta (Paso 10)",
-  bankAccountHolderRut: "RUT del titular de la cuenta (Paso 10)",
-  bankName: "Banco (Paso 10)",
-  bankAccountType: "Tipo de cuenta (Paso 10)",
-  bankAccountNumber: "Número de cuenta (Paso 10)",
-  acceptsCancellationPolicy: "Aceptación de términos y condiciones (Paso 11)",
-  acceptsServiceProtocol: "Aceptación de términos y condiciones (Paso 11)",
-  acceptsDataProcessing: "Aceptación de términos y condiciones (Paso 11)",
-  confirmsCleaningScope: "Aceptación de términos y condiciones (Paso 11)"
+const ONBOARDING_STEP_ITEMS: Array<{ step: WizardStep; label: string }> = [
+  { step: 1, label: "Inicio" },
+  { step: 2, label: "Teléfono" },
+  { step: 3, label: "Perfil" },
+  { step: 4, label: "Cobertura" },
+  { step: 5, label: "Categoría" },
+  { step: 6, label: "Experiencia" },
+  { step: 7, label: "Servicio" },
+  { step: 8, label: "Disponibilidad" },
+  { step: 9, label: "Tarifas" },
+  { step: 10, label: "Banco" },
+  { step: 11, label: "Términos" }
+];
+const SUBMIT_REQUIRED_FIELDS: Record<string, { label: string; step: WizardStep }> = {
+  categorySlug: { label: "Categoría de servicio", step: 5 },
+  phoneValidatedAt: { label: "Teléfono verificado", step: 2 },
+  profilePhotoUrl: { label: "Foto de perfil", step: 3 },
+  baseCommune: { label: "Comuna donde vive", step: 3 },
+  referenceAddress: { label: "Dirección validada", step: 3 },
+  documentId: { label: "RUT", step: 3 },
+  yearsExperience: { label: "Años de experiencia", step: 6 },
+  workMode: { label: "Cómo trabajas", step: 6 },
+  offeredServices: { label: "Preguntas específicas de tu categoría", step: 7 },
+  cleaningScope: { label: "Alcance del servicio de limpieza", step: 7 },
+  serviceCommunes: { label: "Comunas de cobertura", step: 4 },
+  coverageLatitude: { label: "Ubicación validada desde la dirección", step: 3 },
+  coverageLongitude: { label: "Ubicación validada desde la dirección", step: 3 },
+  availabilityBlocks: { label: "Disponibilidad semanal", step: 8 },
+  hourlyRateClp: { label: "Tarifa por hora", step: 9 },
+  minBookingHours: { label: "Mínimo de horas por servicio", step: 9 },
+  weekendSurchargePct: { label: "Recargo fin de semana configurado", step: 9 },
+  holidaySurchargePct: { label: "Recargo festivos configurado", step: 9 },
+  identityDocumentFrontFile: { label: "Foto frontal del carnet", step: 10 },
+  identityDocumentBackFile: { label: "Foto trasera del carnet", step: 10 },
+  criminalRecordFile: { label: "Certificado de antecedentes", step: 10 },
+  bankAccountHolder: { label: "Nombre del titular de la cuenta", step: 10 },
+  bankAccountHolderRut: { label: "RUT del titular de la cuenta", step: 10 },
+  bankName: { label: "Banco", step: 10 },
+  bankAccountType: { label: "Tipo de cuenta", step: 10 },
+  bankAccountNumber: { label: "Número de cuenta", step: 10 },
+  acceptsCancellationPolicy: { label: "Aceptación de términos y condiciones", step: 11 },
+  acceptsServiceProtocol: { label: "Aceptación de términos y condiciones", step: 11 },
+  acceptsDataProcessing: { label: "Aceptación de términos y condiciones", step: 11 },
+  confirmsCleaningScope: { label: "Aceptación de términos y condiciones", step: 11 }
 };
 
 function currentWeekDayKey(): DayKey {
@@ -641,7 +659,7 @@ function CleaningOnboardingPageContent() {
   const [resetting, setResetting] = useState(false);
   const [error, setError] = useState("");
   const [feedback, setFeedback] = useState("");
-  const [submitMissingFields, setSubmitMissingFields] = useState<string[]>([]);
+  const [submitMissingFields, setSubmitMissingFields] = useState<MissingFieldItem[]>([]);
   const [smsPreview, setSmsPreview] = useState("");
   const [cleaningScopeScreen, setCleaningScopeScreen] = useState<CleaningScopeScreen>(1);
   const [selectedAvailabilityDay, setSelectedAvailabilityDay] = useState<DayKey>(currentWeekDayKey);
@@ -1469,7 +1487,13 @@ function CleaningOnboardingPageContent() {
       const data = (await response.json()) as { ok?: boolean; onboarding?: OnboardingPayload; error?: string; detail?: string; missingFields?: string[] };
       if (!response.ok || !data.ok || !data.onboarding) {
         if (Array.isArray(data.missingFields) && data.missingFields.length > 0) {
-          setSubmitMissingFields(data.missingFields.map((field) => SUBMIT_REQUIRED_FIELD_LABELS[field] ?? `${field} (pendiente)`));
+          setSubmitMissingFields(
+            data.missingFields.map((field) => ({
+              field,
+              label: SUBMIT_REQUIRED_FIELDS[field]?.label ?? field,
+              step: SUBMIT_REQUIRED_FIELDS[field]?.step ?? 11
+            }))
+          );
           throw new Error("Aún faltan campos obligatorios antes de enviar tu perfil a revisión.");
         }
         throw new Error(data.detail || data.error || "No se pudo finalizar el registro");
@@ -1588,6 +1612,21 @@ function CleaningOnboardingPageContent() {
   );
   const activeAvailabilityDays = useMemo(() => groupedBlocks.filter((day) => day.blocks.length > 0).length, [groupedBlocks]);
   const totalAvailabilityBlocks = draft.availabilityBlocks.length;
+  const maxAccessibleStep = useMemo(() => {
+    const persistedStep = Math.max(1, Math.min(11, onboarding?.currentStep ?? 1));
+    if (activeStep === 12) {
+      return 11 as WizardStep;
+    }
+    return Math.max(persistedStep, Math.min(activeStep, 11)) as WizardStep;
+  }, [activeStep, onboarding?.currentStep]);
+
+  const jumpToStep = (step: WizardStep) => {
+    if (step > maxAccessibleStep || saving || resetting) return;
+    setError("");
+    setFeedback("");
+    setSubmitMissingFields([]);
+    setActiveStep(step);
+  };
 
   const previousStep = () => {
     if (activeStep <= 1) return;
@@ -1651,17 +1690,45 @@ function CleaningOnboardingPageContent() {
             <div className="onboarding-progress-track" aria-hidden>
               <div className="onboarding-progress-fill" style={{ width: `${progressPercent}%` }} />
             </div>
+            <div className="onboarding-step-nav" aria-label="Navegación por pasos del onboarding">
+              {ONBOARDING_STEP_ITEMS.map((item) => {
+                const isActive = activeStep === item.step;
+                const isDone = item.step < activeStep || item.step <= (onboarding?.currentStep ?? 1);
+                const isLocked = item.step > maxAccessibleStep;
+
+                return (
+                  <button
+                    key={item.step}
+                    type="button"
+                    className={`onboarding-step-nav-item${isActive ? " active" : ""}${isDone ? " done" : ""}`}
+                    onClick={() => jumpToStep(item.step)}
+                    disabled={isLocked || saving || resetting}
+                    aria-current={isActive ? "step" : undefined}
+                  >
+                    <span>Paso {item.step}</span>
+                    <strong>{item.label}</strong>
+                  </button>
+                );
+              })}
+            </div>
 
             {feedback ? <p className="feedback ok">{feedback}</p> : null}
             {error ? <p className="feedback error">{error}</p> : null}
             {submitMissingFields.length > 0 ? (
               <div className="onboarding-missing-card">
                 <strong>Faltan estos datos antes de enviar tu perfil:</strong>
-                <ul>
-                  {submitMissingFields.map((field) => (
-                    <li key={field}>{field}</li>
+                <div className="onboarding-missing-actions">
+                  {submitMissingFields.map((item) => (
+                    <button
+                      key={item.field}
+                      type="button"
+                      className="onboarding-missing-link"
+                      onClick={() => jumpToStep(item.step)}
+                    >
+                      {item.label} (Paso {item.step})
+                    </button>
                   ))}
-                </ul>
+                </div>
               </div>
             ) : null}
 

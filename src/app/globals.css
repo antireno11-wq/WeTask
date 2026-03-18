@@ -5763,6 +5763,58 @@ textarea {
   box-shadow: 0 6px 18px rgba(24, 96, 181, 0.28);
 }
 
+.onboarding-step-nav {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 8px;
+}
+
+.onboarding-step-nav-item {
+  display: grid;
+  gap: 4px;
+  padding: 10px 12px;
+  border-radius: 16px;
+  border: 1px solid #d6e7f5;
+  background: #f8fbff;
+  color: #56708a;
+  text-align: left;
+  transition: border-color 0.16s ease, background 0.16s ease, box-shadow 0.16s ease, transform 0.16s ease;
+}
+
+.onboarding-step-nav-item span {
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.onboarding-step-nav-item strong {
+  font-size: 0.92rem;
+  color: #173b5f;
+}
+
+.onboarding-step-nav-item:hover:not(:disabled) {
+  transform: translateY(-1px);
+  border-color: #9bc8e7;
+  background: #ffffff;
+}
+
+.onboarding-step-nav-item.active {
+  border-color: #1656b0;
+  background: linear-gradient(180deg, #f6fbff 0%, #e6f2ff 100%);
+  box-shadow: 0 10px 18px rgba(22, 86, 176, 0.12);
+}
+
+.onboarding-step-nav-item.done {
+  border-color: #b9d9c5;
+  background: #f5fcf7;
+}
+
+.onboarding-step-nav-item:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
 .onboarding-screen {
   display: grid;
   gap: 18px;
@@ -5816,13 +5868,27 @@ textarea {
   color: #7a4510;
 }
 
-.onboarding-missing-card ul {
-  margin: 0;
-  padding-left: 18px;
+.onboarding-missing-actions {
+  display: grid;
+  gap: 8px;
 }
 
-.onboarding-missing-card li + li {
-  margin-top: 6px;
+.onboarding-missing-link {
+  display: inline-flex;
+  justify-content: flex-start;
+  align-items: center;
+  padding: 10px 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 106, 0, 0.16);
+  background: rgba(255, 255, 255, 0.7);
+  color: #7a4510;
+  font-weight: 700;
+  text-align: left;
+}
+
+.onboarding-missing-link:hover {
+  background: #ffffff;
+  border-color: rgba(255, 106, 0, 0.28);
 }
 
 .onboarding-checkbox-grid {
@@ -6370,6 +6436,10 @@ textarea {
     grid-template-columns: 1fr;
   }
 
+  .onboarding-step-nav {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .onboarding-availability-shell .pro-availability-overview {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -6489,6 +6559,10 @@ textarea {
 
   .onboarding-time-row span {
     display: none;
+  }
+
+  .onboarding-step-nav {
+    grid-template-columns: 1fr;
   }
 
   .admin-page-head,
