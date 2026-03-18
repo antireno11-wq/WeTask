@@ -810,6 +810,12 @@ function CleaningOnboardingPageContent() {
   }, [draft.category, draft.ironingPricing]);
 
   useEffect(() => {
+    const nextRut = formatRutInput(draft.rut);
+    if (nextRut === draft.bankOwnerRut) return;
+    setDraft((current) => ({ ...current, bankOwnerRut: nextRut }));
+  }, [draft.bankOwnerRut, draft.rut]);
+
+  useEffect(() => {
     if (draft.bankAccountType !== "cuenta_rut") return;
     const rutBody = extractRutBody(draft.bankOwnerRut);
     setDraft((current) => {
@@ -1439,12 +1445,9 @@ function CleaningOnboardingPageContent() {
   };
 
   const continueStep10 = async () => {
-    if (!isValidRut(draft.bankOwnerRut)) {
-      setError("Ingresa un RUT titular válido.");
-      return;
-    }
-    if (normalizeRut(draft.bankOwnerRut) !== normalizeRut(draft.rut)) {
-      setError("El RUT del titular debe ser el mismo que ingresaste al inicio del registro.");
+    const ownerRut = formatRutInput(draft.rut);
+    if (!isValidRut(ownerRut)) {
+      setError("Ingresa un RUT válido al inicio del registro.");
       return;
     }
     if (!draft.identityDocumentFrontFile || !draft.identityDocumentBackFile || !draft.criminalRecordFile) {
@@ -1456,7 +1459,7 @@ function CleaningOnboardingPageContent() {
     try {
       await persistServerStep(10, {
         bankAccountHolder: `${draft.firstName.trim()} ${draft.lastName.trim()}`.trim(),
-        bankAccountHolderRut: draft.bankOwnerRut.trim(),
+        bankAccountHolderRut: ownerRut,
         bankName: draft.bankName,
         bankAccountType: draft.bankAccountType,
         bankAccountNumber: draft.bankAccountNumber.trim(),
@@ -2901,13 +2904,9 @@ function CleaningOnboardingPageContent() {
                     {draft.criminalRecordFile ? <p className="input-hint">Archivo cargado correctamente.</p> : null}
                   </label>
                   <label>
-                    RUT titular
-                    <input
-                      value={draft.bankOwnerRut}
-                      onChange={(event) => updateDraft("bankOwnerRut", formatRutInput(event.target.value))}
-                      placeholder="12.345.678-5"
-                    />
-                    <p className="input-hint">Debe coincidir con el RUT que ingresaste al inicio del registro.</p>
+                    RUT del titular
+                    <input value={formatRutInput(draft.rut)} readOnly />
+                    <p className="input-hint">Usamos automáticamente el mismo RUT que ingresaste al inicio del registro.</p>
                   </label>
                 </div>
                 <div className="auth-flow-actions">
