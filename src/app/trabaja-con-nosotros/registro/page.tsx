@@ -1096,7 +1096,7 @@ function CleaningOnboardingPageContent() {
     setFeedback("");
     setSmsPreview("");
     try {
-      const response = await fetch("/api/onboarding/public/phone/send", {
+      const response = await fetch("/api/onboarding/cleaning/phone/send", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ phone: draft.phone.trim() })
@@ -1117,13 +1117,16 @@ function CleaningOnboardingPageContent() {
     setError("");
     setFeedback("");
     try {
-      const response = await fetch("/api/onboarding/public/phone/verify", {
+      const response = await fetch("/api/onboarding/cleaning/phone/verify", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ code: draft.smsCode.trim() })
       });
-      const data = (await response.json()) as { ok?: boolean; error?: string; detail?: string };
+      const data = (await response.json()) as { ok?: boolean; onboarding?: OnboardingPayload; error?: string; detail?: string };
       if (!response.ok || !data.ok) throw new Error(data.detail || data.error || "No se pudo verificar el teléfono");
+      if (data.onboarding) {
+        setOnboarding(data.onboarding);
+      }
       setDraft((current) => ({ ...current, phoneVerified: true }));
       setFeedback("Teléfono verificado correctamente.");
       setActiveStep(3);
