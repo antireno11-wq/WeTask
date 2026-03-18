@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { AuthHeroNav } from "@/components/auth-hero-nav";
@@ -39,10 +38,6 @@ export default function TrabajaConNosotrosPage() {
               </div>
             </div>
 
-            <div className="auth-flow-inline-links">
-              <Link href="/ingresar/tasker">Ya soy tasker</Link>
-              <Link href="/legal">Condiciones de uso</Link>
-            </div>
           </div>
 
           <section className="auth-flow-panel auth-flow-panel-wide">
@@ -52,36 +47,27 @@ export default function TrabajaConNosotrosPage() {
             </div>
 
           <div className="auth-service-form">
-            <div className="auth-service-grid" role="radiogroup" aria-label="Servicios disponibles">
+            <div className="auth-service-grid auth-service-grid-compact" role="radiogroup" aria-label="Servicios disponibles">
               {CORE_SERVICES.map((service) => {
                 const isActive = selectedService === service.slug;
                 return (
                   <button
                     key={service.slug}
                     type="button"
-                    className={`auth-service-card ${isActive ? "active" : ""}`}
+                    className={`auth-service-card auth-service-card-inline ${isActive ? "active" : ""}`}
                     aria-pressed={isActive}
                     onClick={() => goToOnboarding(service.slug)}
                   >
                     <span className="auth-service-icon" aria-hidden>
                       {service.icon}
                     </span>
-                    <strong>{service.label}</strong>
-                    <span>{service.taskerDescription}</span>
+                    <span className="auth-service-card-copy">
+                      <strong>{service.label}</strong>
+                      <span>{service.taskerDescription}</span>
+                    </span>
                   </button>
                 );
               })}
-            </div>
-
-            <div className="auth-flow-note-card">
-              <strong>Servicio seleccionado</strong>
-              <span>{CORE_SERVICES.find((service) => service.slug === selectedService)?.label ?? "Limpieza"}</span>
-            </div>
-
-            <div className="auth-flow-actions">
-              <Link href="/ingresar/tasker" className="cta ghost">
-                Iniciar sesión
-              </Link>
             </div>
             </div>
           </section>
