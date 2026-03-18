@@ -2415,108 +2415,32 @@ function CleaningOnboardingPageContent() {
               <div className="onboarding-screen">
                 <h3>Disponibilidad</h3>
                 <div className="pro-availability-shell onboarding-availability-shell">
-                  <aside className="pro-availability-sidebar">
-                    <div className="pro-availability-overview">
-                      <article className="availability-stat-card tone-indigo">
-                        <span>Bloques</span>
-                        <strong>{totalAvailabilityBlocks}</strong>
-                        <p>horarios configurados en la semana</p>
-                      </article>
-                      <article className="availability-stat-card tone-peach">
-                        <span>Días activos</span>
-                        <strong>{activeAvailabilityDays}</strong>
-                        <p>con disponibilidad cargada</p>
-                      </article>
-                      <article className="availability-stat-card tone-sky">
-                        <span>Día elegido</span>
-                        <strong>{selectedDayConfig?.blocks.length ?? 0}</strong>
-                        <p>bloque(s) en {selectedDayConfig?.label.toLowerCase() ?? "tu día"}</p>
-                      </article>
-                      <article className="availability-stat-card tone-mint">
-                        <span>Modo</span>
-                        <strong>{draft.availabilityMode === "VARIABLE" ? "Mensual" : "Semanal"}</strong>
-                        <p>
-                          {draft.availabilityMode === "VARIABLE"
-                            ? "puedes ajustar estos horarios mes a mes"
-                            : "estos horarios se repiten cada semana"}
-                        </p>
-                      </article>
-                    </div>
-
-                    <div className="availability-composer-card">
-                      <div className="availability-composer-head">
-                        <div>
-                          <p className="availability-eyebrow">Nuevo bloque</p>
-                          <h3>{bulkAvailabilityDays.length > 1 ? `${bulkAvailabilityDays.length} días seleccionados` : selectedDayConfig?.label ?? "Selecciona un día"}</h3>
-                        </div>
-                        <span className="availability-selected-pill">
-                          {draft.availabilityMode === "VARIABLE" ? "Disponibilidad mensual" : "Disponibilidad recurrente"}
-                        </span>
-                      </div>
-
-                      <div className="availability-mode-tabs" role="tablist" aria-label="Modo de disponibilidad">
-                        <button
-                          type="button"
-                          className={`availability-mode-tab ${draft.availabilityMode === "FIJA" ? "active" : ""}`}
-                          aria-pressed={draft.availabilityMode === "FIJA"}
-                          onClick={() => updateDraft("availabilityMode", "FIJA")}
-                        >
-                          Semanal
-                        </button>
-                        <button
-                          type="button"
-                          className={`availability-mode-tab ${draft.availabilityMode === "VARIABLE" ? "active" : ""}`}
-                          aria-pressed={draft.availabilityMode === "VARIABLE"}
-                          onClick={() => updateDraft("availabilityMode", "VARIABLE")}
-                        >
-                          Mensual
-                        </button>
-                      </div>
-
-                      <p className="input-hint">
+                  <div className="pro-availability-overview">
+                    <article className="availability-stat-card tone-indigo">
+                      <span>Bloques</span>
+                      <strong>{totalAvailabilityBlocks}</strong>
+                      <p>horarios configurados en la semana</p>
+                    </article>
+                    <article className="availability-stat-card tone-peach">
+                      <span>Días activos</span>
+                      <strong>{activeAvailabilityDays}</strong>
+                      <p>con disponibilidad cargada</p>
+                    </article>
+                    <article className="availability-stat-card tone-sky">
+                      <span>Día elegido</span>
+                      <strong>{selectedDayConfig?.blocks.length ?? 0}</strong>
+                      <p>bloque(s) en {selectedDayConfig?.label.toLowerCase() ?? "tu día"}</p>
+                    </article>
+                    <article className="availability-stat-card tone-mint">
+                      <span>Modo</span>
+                      <strong>{draft.availabilityMode === "VARIABLE" ? "Mensual" : "Semanal"}</strong>
+                      <p>
                         {draft.availabilityMode === "VARIABLE"
-                          ? "Elige un día del planner y arma una pauta flexible que puedas ajustar cada mes según tu agenda."
-                          : "Puedes marcar varios días y crear el mismo bloque horario para todos de una sola vez."}
+                          ? "puedes ajustar estos horarios mes a mes"
+                          : "estos horarios se repiten cada semana"}
                       </p>
-
-                      <div className="onboarding-checkbox-grid onboarding-checkbox-grid-compact">
-                        {DAY_OPTIONS.map((day) => (
-                          <label key={day.key} className="onboarding-check-card">
-                            <input
-                              type="checkbox"
-                              checked={bulkAvailabilityDays.includes(day.key)}
-                              onChange={() => toggleBulkAvailabilityDay(day.key)}
-                            />
-                            <span>{day.label}</span>
-                          </label>
-                        ))}
-                      </div>
-
-                      <div className="onboarding-time-row">
-                        <select value={newAvailabilityStart} onChange={(event) => setNewAvailabilityStart(event.target.value)}>
-                          {AVAILABILITY_TIME_OPTIONS.map((time) => (
-                            <option key={time} value={time}>
-                              {time}
-                            </option>
-                          ))}
-                        </select>
-                        <span>–</span>
-                        <select value={newAvailabilityEnd} onChange={(event) => setNewAvailabilityEnd(event.target.value)}>
-                          {AVAILABILITY_TIME_OPTIONS.map((time) => (
-                            <option key={time} value={time}>
-                              {time}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-
-                      <div className="cta-row availability-form-actions">
-                        <button type="button" className="cta" onClick={() => addAvailabilityBlock(bulkAvailabilityDays)}>
-                          Agregar bloque a {bulkAvailabilityDays.length > 1 ? `${bulkAvailabilityDays.length} días` : selectedDayConfig?.label ?? "este día"}
-                        </button>
-                      </div>
-                    </div>
-                  </aside>
+                    </article>
+                  </div>
 
                   <div className="availability-board-card onboarding-board-card">
                     <div className="availability-board-head">
@@ -2601,6 +2525,82 @@ function CleaningOnboardingPageContent() {
                       )}
                     </div>
                   </div>
+
+                  <aside className="pro-availability-sidebar">
+                    <div className="availability-composer-card">
+                      <div className="availability-composer-head">
+                        <div>
+                          <p className="availability-eyebrow">Nuevo bloque</p>
+                          <h3>{bulkAvailabilityDays.length > 1 ? `${bulkAvailabilityDays.length} días seleccionados` : selectedDayConfig?.label ?? "Selecciona un día"}</h3>
+                        </div>
+                        <span className="availability-selected-pill">
+                          {draft.availabilityMode === "VARIABLE" ? "Disponibilidad mensual" : "Disponibilidad recurrente"}
+                        </span>
+                      </div>
+
+                      <div className="availability-mode-tabs" role="tablist" aria-label="Modo de disponibilidad">
+                        <button
+                          type="button"
+                          className={`availability-mode-tab ${draft.availabilityMode === "FIJA" ? "active" : ""}`}
+                          aria-pressed={draft.availabilityMode === "FIJA"}
+                          onClick={() => updateDraft("availabilityMode", "FIJA")}
+                        >
+                          Semanal
+                        </button>
+                        <button
+                          type="button"
+                          className={`availability-mode-tab ${draft.availabilityMode === "VARIABLE" ? "active" : ""}`}
+                          aria-pressed={draft.availabilityMode === "VARIABLE"}
+                          onClick={() => updateDraft("availabilityMode", "VARIABLE")}
+                        >
+                          Mensual
+                        </button>
+                      </div>
+
+                      <p className="input-hint">
+                        {draft.availabilityMode === "VARIABLE"
+                          ? "Elige un día del planner y arma una pauta flexible que puedas ajustar cada mes según tu agenda."
+                          : "Puedes marcar varios días y crear el mismo bloque horario para todos de una sola vez."}
+                      </p>
+
+                      <div className="onboarding-checkbox-grid onboarding-checkbox-grid-compact">
+                        {DAY_OPTIONS.map((day) => (
+                          <label key={day.key} className="onboarding-check-card onboarding-check-card-compact">
+                            <input
+                              type="checkbox"
+                              checked={bulkAvailabilityDays.includes(day.key)}
+                              onChange={() => toggleBulkAvailabilityDay(day.key)}
+                            />
+                            <span>{day.label}</span>
+                          </label>
+                        ))}
+                      </div>
+
+                      <div className="onboarding-time-row">
+                        <select value={newAvailabilityStart} onChange={(event) => setNewAvailabilityStart(event.target.value)}>
+                          {AVAILABILITY_TIME_OPTIONS.map((time) => (
+                            <option key={time} value={time}>
+                              {time}
+                            </option>
+                          ))}
+                        </select>
+                        <span>–</span>
+                        <select value={newAvailabilityEnd} onChange={(event) => setNewAvailabilityEnd(event.target.value)}>
+                          {AVAILABILITY_TIME_OPTIONS.map((time) => (
+                            <option key={time} value={time}>
+                              {time}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="cta-row availability-form-actions">
+                        <button type="button" className="cta" onClick={() => addAvailabilityBlock(bulkAvailabilityDays)}>
+                          Agregar bloque a {bulkAvailabilityDays.length > 1 ? `${bulkAvailabilityDays.length} días` : selectedDayConfig?.label ?? "este día"}
+                        </button>
+                      </div>
+                    </div>
+                  </aside>
                 </div>
                 <div className="auth-flow-actions">
                   <button type="button" className="cta ghost" onClick={previousStep}>

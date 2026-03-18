@@ -5968,29 +5968,30 @@ textarea {
 .onboarding-availability-shell {
   margin-top: 10px;
   grid-template-columns: 1fr;
-  gap: 18px;
+  gap: 14px;
 }
 
 .onboarding-week-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 14px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
 }
 
 .onboarding-week-card {
-  min-height: 152px;
-  padding: 18px 16px;
+  min-height: 108px;
+  padding: 14px 12px;
   align-content: space-between;
 }
 
 .onboarding-week-card .availability-day-number {
-  font-size: 1.02rem;
-  line-height: 1.35;
+  font-size: 0.95rem;
+  line-height: 1.25;
   white-space: normal;
 }
 
 .onboarding-week-card .availability-day-meta {
-  line-height: 1.45;
+  font-size: 0.84rem;
+  line-height: 1.35;
 }
 
 .onboarding-task-item {
@@ -6012,7 +6013,7 @@ textarea {
 }
 
 .onboarding-board-card {
-  gap: 20px;
+  gap: 14px;
 }
 
 .onboarding-availability-shell .pro-availability-sidebar {
@@ -6020,15 +6021,35 @@ textarea {
 }
 
 .onboarding-availability-shell .pro-availability-overview {
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
 .onboarding-availability-shell .availability-composer-card {
   grid-template-columns: minmax(0, 1fr);
+  padding: 18px;
 }
 
 .onboarding-availability-shell .availability-composer-card .onboarding-checkbox-grid {
-  margin-top: 12px;
+  margin-top: 8px;
+}
+
+.onboarding-availability-shell .availability-stat-card {
+  min-height: 100px;
+  padding: 14px;
+  gap: 6px;
+  box-shadow: 0 14px 24px rgba(22, 45, 79, 0.07);
+}
+
+.onboarding-availability-shell .availability-stat-card strong {
+  font-size: 1.55rem;
+}
+
+.onboarding-availability-shell .availability-stat-card p {
+  font-size: 0.8rem;
+}
+
+.onboarding-availability-shell .availability-board-card {
+  padding: 18px;
 }
 
 .availability-mode-tabs {
