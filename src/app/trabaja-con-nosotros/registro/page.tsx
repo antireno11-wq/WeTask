@@ -1086,6 +1086,9 @@ function CleaningOnboardingPageContent() {
     setOnboarding(data.onboarding);
   };
 
+  const phoneVerificationBasePath =
+    session?.role === "PRO" || session?.role === "ADMIN" ? "/api/onboarding/cleaning/phone" : "/api/onboarding/public/phone";
+
   const sendPhoneCode = async () => {
     if (!isValidChileanMobilePhone(draft.phone)) {
       setError("Ingresa tu teléfono con formato +569 y 8 números.");
@@ -1096,7 +1099,7 @@ function CleaningOnboardingPageContent() {
     setFeedback("");
     setSmsPreview("");
     try {
-      const response = await fetch("/api/onboarding/cleaning/phone/send", {
+      const response = await fetch(`${phoneVerificationBasePath}/send`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ phone: draft.phone.trim() })
@@ -1117,7 +1120,7 @@ function CleaningOnboardingPageContent() {
     setError("");
     setFeedback("");
     try {
-      const response = await fetch("/api/onboarding/cleaning/phone/verify", {
+      const response = await fetch(`${phoneVerificationBasePath}/verify`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ code: draft.smsCode.trim() })
@@ -1260,7 +1263,17 @@ function CleaningOnboardingPageContent() {
           throw new Error(data.detail || data.error || "No se pudo iniciar el registro");
         }
         setSession(data.session);
-        setOnboarding(data.onboarding);
+        if (draft.phoneVerified && !data.onboarding.phoneValidatedAt) {
+          const claimResponse = await fetch("/api/onboarding/cleaning/phone/claim", { method: "POST" });
+          const claimData = (await claimResponse.json()) as { ok?: boolean; onboarding?: OnboardingPayload; error?: string; detail?: string };
+          if (claimResponse.ok && claimData.ok && claimData.onboarding) {
+            setOnboarding(claimData.onboarding);
+          } else {
+            setOnboarding(data.onboarding);
+          }
+        } else {
+          setOnboarding(data.onboarding);
+        }
       }
       setActiveStep(4);
     } catch (eventualError) {

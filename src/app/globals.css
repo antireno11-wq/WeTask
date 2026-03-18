@@ -5765,31 +5765,35 @@ textarea {
 
 .onboarding-step-nav {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
-  gap: 8px;
+  grid-template-columns: repeat(auto-fit, minmax(82px, 1fr));
+  gap: 6px;
 }
 
 .onboarding-step-nav-item {
   display: grid;
-  gap: 4px;
-  padding: 10px 12px;
-  border-radius: 16px;
+  gap: 3px;
+  min-height: 74px;
+  padding: 8px;
+  border-radius: 14px;
   border: 1px solid #d6e7f5;
   background: #f8fbff;
   color: #56708a;
-  text-align: left;
+  text-align: center;
+  align-content: center;
+  justify-items: center;
   transition: border-color 0.16s ease, background 0.16s ease, box-shadow 0.16s ease, transform 0.16s ease;
 }
 
 .onboarding-step-nav-item span {
-  font-size: 0.75rem;
+  font-size: 0.68rem;
   font-weight: 800;
   letter-spacing: 0.05em;
   text-transform: uppercase;
 }
 
 .onboarding-step-nav-item strong {
-  font-size: 0.92rem;
+  font-size: 0.8rem;
+  line-height: 1.15;
   color: #173b5f;
 }
 

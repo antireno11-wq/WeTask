@@ -79,7 +79,8 @@ export async function POST(req: NextRequest) {
           select: {
             id: true,
             status: true,
-            currentStep: true
+            currentStep: true,
+            phoneValidatedAt: true
           }
         }
       }
