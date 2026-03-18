@@ -5555,6 +5555,20 @@ textarea {
   box-shadow: 0 14px 28px rgba(19, 42, 87, 0.08);
 }
 
+.auth-service-card-scope {
+  border-width: 2px;
+}
+
+.auth-service-card-scope.active {
+  border-color: #1656b0;
+  background: linear-gradient(180deg, #f7fbff 0%, #dfeeff 100%);
+  box-shadow: 0 0 0 3px rgba(22, 86, 176, 0.14), 0 18px 32px rgba(19, 42, 87, 0.1);
+}
+
+.auth-service-card-scope.active strong {
+  color: #113f80;
+}
+
 .auth-service-card-inline {
   grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
@@ -5821,6 +5835,10 @@ textarea {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.onboarding-checkbox-grid-compact-list {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
 .service-task-filter-card {
   display: grid;
   gap: 14px;
@@ -5915,6 +5933,30 @@ textarea {
 
 .onboarding-check-card span {
   font-weight: 700;
+}
+
+.onboarding-check-card-compact {
+  min-height: 0;
+  padding: 12px 14px;
+  gap: 10px;
+  border-radius: 16px;
+}
+
+.onboarding-check-card-compact span {
+  font-size: 0.92rem;
+  line-height: 1.35;
+}
+
+@media (max-width: 900px) {
+  .onboarding-checkbox-grid-compact-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .onboarding-checkbox-grid-compact-list {
+    grid-template-columns: 1fr;
+  }
 }
 
 .onboarding-availability-grid {

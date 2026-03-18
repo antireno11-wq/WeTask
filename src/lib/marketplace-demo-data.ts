@@ -38,10 +38,6 @@ function buildDemoCleaningScope(serviceSlugs: string[]): CleaningScopeData {
   if (serviceSlugs.includes("limpieza-oficina")) {
     servicesOffered.push("limpieza_vidrios_interiores");
   }
-  if (serviceSlugs.includes("planchado-por-hora")) {
-    servicesOffered.push("planchado");
-  }
-
   return {
     services_offered: Array.from(new Set(servicesOffered)),
     tasks_included: [

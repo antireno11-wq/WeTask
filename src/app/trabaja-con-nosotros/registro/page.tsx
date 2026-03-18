@@ -411,9 +411,6 @@ function deriveCleaningServicesFromScope(scope: CleaningScopeData): CleaningServ
       derived.add("limpieza-post-mudanza");
     }
 
-    if (item === "planchado" || item === "lavado_ropa") {
-      derived.add("limpieza-por-horas");
-    }
   }
 
   return derived.size > 0 ? Array.from(derived) : ["limpieza-hogar"];
@@ -1954,7 +1951,7 @@ function CleaningOnboardingPageContent() {
                           {CLEANING_SCOPE_SERVICE_OPTIONS.map((service) => (
                             <label
                               key={service.value}
-                              className={`auth-service-card ${draft.cleaningScope.services_offered.includes(service.value) ? "active" : ""}`}
+                              className={`auth-service-card auth-service-card-scope ${draft.cleaningScope.services_offered.includes(service.value) ? "active" : ""}`}
                             >
                               <input
                                 type="checkbox"
@@ -1983,9 +1980,9 @@ function CleaningOnboardingPageContent() {
                       <div className="full">
                         <p className="field-label">¿Qué tareas sí realizas?</p>
                         <p className="input-hint">Esto se mostrará en tu perfil y se usará para filtrar reservas con tareas específicas.</p>
-                        <div className="onboarding-checkbox-grid">
+                        <div className="onboarding-checkbox-grid onboarding-checkbox-grid-compact-list">
                           {CLEANING_TASK_INCLUDED_OPTIONS.map((task) => (
-                            <label key={task.value} className="onboarding-check-card">
+                            <label key={task.value} className="onboarding-check-card onboarding-check-card-compact">
                               <input
                                 type="checkbox"
                                 checked={draft.cleaningScope.tasks_included.includes(task.value)}
@@ -2012,9 +2009,9 @@ function CleaningOnboardingPageContent() {
                       <div className="full">
                         <p className="field-label">¿Qué tareas no realizas?</p>
                         <p className="input-hint">Así evitamos malos entendidos y ayudamos a prevenir disputas antes de la reserva.</p>
-                        <div className="onboarding-checkbox-grid">
+                        <div className="onboarding-checkbox-grid onboarding-checkbox-grid-compact-list">
                           {CLEANING_TASK_EXCLUDED_OPTIONS.map((task) => (
-                            <label key={task.value} className="onboarding-check-card">
+                            <label key={task.value} className="onboarding-check-card onboarding-check-card-compact">
                               <input
                                 type="checkbox"
                                 checked={draft.cleaningScope.tasks_excluded.includes(task.value)}
@@ -2052,7 +2049,7 @@ function CleaningOnboardingPageContent() {
                                 }
                               }))
                             }
-                            placeholder="Ejemplo: Solo realizo aseo general, no profundo. No trabajo en altura. Sí hago planchado, pero no lavado."
+                            placeholder="Ejemplo: Solo realizo aseo general, no profundo. No trabajo en altura. No muevo muebles pesados."
                             rows={5}
                           />
                           <span className="input-hint">Escribe cualquier condición importante que el cliente deba saber antes de reservar.</span>
