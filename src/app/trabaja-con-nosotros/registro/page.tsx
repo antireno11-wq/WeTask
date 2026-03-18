@@ -1955,9 +1955,19 @@ function CleaningOnboardingPageContent() {
                       <div className="full">
                         <p className="field-label">¿Qué tareas sí realizas?</p>
                         <p className="input-hint">Esto se mostrará en tu perfil y se usará para filtrar reservas con tareas específicas.</p>
-                        <div className="onboarding-checkbox-grid onboarding-checkbox-grid-compact-list">
+                        <div className="onboarding-task-checklist">
+                          <div className="onboarding-task-checklist-head">
+                            <span>Lista de tareas</span>
+                            <span>Sí realizo</span>
+                          </div>
                           {CLEANING_TASK_INCLUDED_OPTIONS.map((task) => (
-                            <label key={task.value} className="onboarding-check-card onboarding-check-card-compact">
+                            <label
+                              key={task.value}
+                              className={`onboarding-task-checklist-row ${draft.cleaningScope.tasks_included.includes(task.value) ? "checked" : ""}`}
+                            >
+                              <span className="onboarding-task-checklist-label">{task.label}</span>
+                              <span className="onboarding-task-checklist-control">
+                                <span className="onboarding-task-checklist-box" aria-hidden />
                               <input
                                 type="checkbox"
                                 checked={draft.cleaningScope.tasks_included.includes(task.value)}
@@ -1973,7 +1983,7 @@ function CleaningOnboardingPageContent() {
                                   }))
                                 }
                               />
-                              <span>{task.label}</span>
+                              </span>
                             </label>
                           ))}
                         </div>
@@ -1984,9 +1994,19 @@ function CleaningOnboardingPageContent() {
                       <div className="full">
                         <p className="field-label">¿Qué tareas no realizas?</p>
                         <p className="input-hint">Así evitamos malos entendidos y ayudamos a prevenir disputas antes de la reserva.</p>
-                        <div className="onboarding-checkbox-grid onboarding-checkbox-grid-compact-list">
+                        <div className="onboarding-task-checklist">
+                          <div className="onboarding-task-checklist-head onboarding-task-checklist-head-warning">
+                            <span>Lista de tareas</span>
+                            <span>No realizo</span>
+                          </div>
                           {CLEANING_TASK_EXCLUDED_OPTIONS.map((task) => (
-                            <label key={task.value} className="onboarding-check-card onboarding-check-card-compact">
+                            <label
+                              key={task.value}
+                              className={`onboarding-task-checklist-row onboarding-task-checklist-row-warning ${draft.cleaningScope.tasks_excluded.includes(task.value) ? "checked" : ""}`}
+                            >
+                              <span className="onboarding-task-checklist-label">{task.label}</span>
+                              <span className="onboarding-task-checklist-control">
+                                <span className="onboarding-task-checklist-box" aria-hidden />
                               <input
                                 type="checkbox"
                                 checked={draft.cleaningScope.tasks_excluded.includes(task.value)}
@@ -2002,7 +2022,7 @@ function CleaningOnboardingPageContent() {
                                   }))
                                 }
                               />
-                              <span>{task.label}</span>
+                              </span>
                             </label>
                           ))}
                         </div>
