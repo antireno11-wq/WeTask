@@ -1678,29 +1678,29 @@ function CleaningOnboardingPageContent() {
                 <h3>Verificación de teléfono</h3>
                 <label>
                   Teléfono
-                  <input
-                    value={draft.phone}
-                    onChange={(event) => {
-                      const nextPhone = normalizeChileanMobileInput(event.target.value);
-                      setDraft((current) => ({
-                        ...current,
-                        phone: nextPhone,
-                        phoneVerified: false,
-                        smsCode: ""
-                      }));
-                      setSmsPreview("");
-                    }}
-                    inputMode="numeric"
-                    maxLength={13}
-                    placeholder="+56912345678"
-                  />
+                  <div className="onboarding-inline-action-row">
+                    <input
+                      value={draft.phone}
+                      onChange={(event) => {
+                        const nextPhone = normalizeChileanMobileInput(event.target.value);
+                        setDraft((current) => ({
+                          ...current,
+                          phone: nextPhone,
+                          phoneVerified: false,
+                          smsCode: ""
+                        }));
+                        setSmsPreview("");
+                      }}
+                      inputMode="numeric"
+                      maxLength={13}
+                      placeholder="+56912345678"
+                    />
+                    <button type="button" className="cta ghost small" onClick={sendPhoneCode} disabled={saving}>
+                      {saving ? "Enviando..." : "Enviar código"}
+                    </button>
+                  </div>
                   <p className="input-hint">El prefijo `+569` queda fijo. Solo debes ingresar los 8 números restantes.</p>
                 </label>
-                <div className="auth-flow-actions">
-                  <button type="button" className="cta ghost" onClick={sendPhoneCode} disabled={saving}>
-                    {saving ? "Enviando..." : "Enviar código"}
-                  </button>
-                </div>
                 <label>
                   Código SMS
                   <input value={draft.smsCode} onChange={(event) => updateDraft("smsCode", event.target.value)} placeholder="123456" maxLength={6} />

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { ZodError } from "zod";
 import {
   decodePendingPhoneVerification,
   encodeVerifiedPhone,
@@ -53,6 +54,14 @@ export async function POST(req: NextRequest) {
     });
     return response;
   } catch (error) {
+    if (error instanceof ZodError) {
+      return NextResponse.json(
+        {
+          error: "Código incorrecto"
+        },
+        { status: 400 }
+      );
+    }
     return NextResponse.json(
       {
         error: "No se pudo validar teléfono",

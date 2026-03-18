@@ -5916,6 +5916,17 @@ textarea {
   pointer-events: none;
 }
 
+.onboarding-inline-action-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+}
+
+.onboarding-inline-action-row .cta {
+  min-height: 48px;
+}
+
 .onboarding-check-card:hover {
   transform: translateY(-1px);
   border-color: #9bc8e7;
@@ -6337,7 +6348,8 @@ textarea {
 
   .onboarding-progress-head,
   .onboarding-day-head,
-  .onboarding-time-row {
+  .onboarding-time-row,
+  .onboarding-inline-action-row {
     grid-template-columns: 1fr;
   }
 
@@ -6347,7 +6359,8 @@ textarea {
   }
 
   .onboarding-progress-head,
-  .onboarding-day-head {
+  .onboarding-day-head,
+  .onboarding-inline-action-row {
     display: grid;
   }
 

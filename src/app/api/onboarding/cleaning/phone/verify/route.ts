@@ -1,5 +1,6 @@
 import { UserRole } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
+import { ZodError } from "zod";
 import { getRequestIdentity, hasRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { sha256 } from "@/lib/security";
@@ -42,6 +43,14 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ ok: true, onboarding: updated }, { status: 200 });
   } catch (error) {
+    if (error instanceof ZodError) {
+      return NextResponse.json(
+        {
+          error: "Código incorrecto"
+        },
+        { status: 400 }
+      );
+    }
     return NextResponse.json(
       {
         error: "No se pudo validar teléfono",
