@@ -45,6 +45,10 @@ function normalizeOnboardingCommunes(baseCommune: string, serviceCommunes: strin
   };
 }
 
+function normalizeRutValue(value: string) {
+  return value.replace(/\./g, "").replace(/-/g, "").trim().toUpperCase();
+}
+
 async function ensureOnboardingForUser(userId: string) {
   const user = await prisma.user.findUnique({
     where: { id: userId },
@@ -404,6 +408,14 @@ export async function PATCH(req: NextRequest) {
 
     if (input.step === 10) {
       const parsed = taskerOnboardingStep10Schema.parse(input.payload);
+      if (normalizeRutValue(parsed.bankAccountHolderRut) !== normalizeRutValue(onboarding.documentId ?? "")) {
+        return NextResponse.json(
+          {
+            error: "El RUT del titular debe ser el mismo que ingresaste al inicio del registro."
+          },
+          { status: 400 }
+        );
+      }
       data = {
         bankAccountHolder: parsed.bankAccountHolder.trim(),
         bankAccountHolderRut: parsed.bankAccountHolderRut.trim(),

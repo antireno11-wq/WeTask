@@ -1425,6 +1425,10 @@ function CleaningOnboardingPageContent() {
       setError("Ingresa un RUT titular válido.");
       return;
     }
+    if (normalizeRut(draft.bankOwnerRut) !== normalizeRut(draft.rut)) {
+      setError("El RUT del titular debe ser el mismo que ingresaste al inicio del registro.");
+      return;
+    }
     if (!draft.identityDocumentFrontFile || !draft.identityDocumentBackFile || !draft.criminalRecordFile) {
       setError("Debes subir carnet por delante, carnet por atrás y certificado de antecedentes.");
       return;
@@ -2836,6 +2840,7 @@ function CleaningOnboardingPageContent() {
                       onChange={(event) => updateDraft("bankOwnerRut", formatRutInput(event.target.value))}
                       placeholder="12.345.678-5"
                     />
+                    <p className="input-hint">Debe coincidir con el RUT que ingresaste al inicio del registro.</p>
                   </label>
                 </div>
                 <div className="auth-flow-actions">
