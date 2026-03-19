@@ -101,26 +101,26 @@ export default async function AdminPage() {
       </div>
 
       <div className="module-grid admin-metrics-grid">
-        <article className="module-card admin-metric-card">
+        <Link href="/admin/onboarding-limpieza?status=PENDIENTE_REVISION" className="module-card module-link admin-metric-card">
           <span className="metric-label">Pendientes de revisión</span>
           <strong>{pendingReview}</strong>
           <p>Perfiles listos para que tu equipo revise documentación y apruebe.</p>
-        </article>
-        <article className="module-card admin-metric-card">
+        </Link>
+        <Link href="/admin/onboarding-limpieza?status=REQUIERE_CORRECCION" className="module-card module-link admin-metric-card">
           <span className="metric-label">Correcciones solicitadas</span>
           <strong>{needsCorrection}</strong>
           <p>Taskers que deben completar o corregir su información.</p>
-        </article>
-        <article className="module-card admin-metric-card">
+        </Link>
+        <Link href="/admin/onboarding-limpieza?status=APROBADO" className="module-card module-link admin-metric-card">
           <span className="metric-label">Listos para activar</span>
           <strong>{approved}</strong>
           <p>Profesionales aprobados que ya pueden pasar a activos.</p>
-        </article>
-        <article className="module-card admin-metric-card">
+        </Link>
+        <Link href="/admin/onboarding-limpieza?status=ACTIVO" className="module-card module-link admin-metric-card">
           <span className="metric-label">Taskers activos</span>
           <strong>{activePros}</strong>
           <p>Perfiles verificados y operativos dentro de WeTask.</p>
-        </article>
+        </Link>
         <article className="module-card admin-metric-card">
           <span className="metric-label">Disputas abiertas</span>
           <strong>{openDisputes}</strong>

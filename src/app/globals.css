@@ -4652,6 +4652,10 @@ textarea {
   line-height: 1.35;
 }
 
+.admin-metric-card.module-link {
+  text-decoration: none;
+}
+
 .metric-label {
   color: rgba(31, 60, 101, 0.72);
   font-size: 0.82rem;

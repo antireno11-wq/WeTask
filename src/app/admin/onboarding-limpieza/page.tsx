@@ -86,6 +86,11 @@ export default function AdminCleaningOnboardingPage() {
     void load();
   }, [statusFilter]);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    setStatusFilter(new URLSearchParams(window.location.search).get("status") ?? "");
+  }, []);
+
   const runAction = async (onboardingId: string, action: ActionType) => {
     if (action === "clear_all") {
       const confirmed = window.confirm(
