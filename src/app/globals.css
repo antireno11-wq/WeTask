@@ -2430,6 +2430,42 @@ textarea {
   text-align: center;
 }
 
+.availability-board-controls {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.availability-month-nav {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.availability-month-nav-btn {
+  width: 42px;
+  height: 42px;
+  border: 1px solid #d6e7f5;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.92);
+  color: #173b5f;
+  font-size: 1.3rem;
+  font-weight: 700;
+  line-height: 1;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: transform 0.16s ease, border-color 0.16s ease, background 0.16s ease;
+}
+
+.availability-month-nav-btn:hover {
+  transform: translateY(-1px);
+  border-color: #9fc6e6;
+  background: #ffffff;
+}
+
 .availability-form-grid {
   gap: 12px;
 }

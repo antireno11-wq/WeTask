@@ -151,6 +151,17 @@ function formatDayKey(date: Date) {
   return `${year}-${month}-${day}`;
 }
 
+function shiftMonthKey(dayKey: string, delta: number) {
+  const base = new Date(`${dayKey}T12:00:00`);
+  const desiredDay = base.getDate();
+  const target = new Date(base);
+  target.setDate(1);
+  target.setMonth(target.getMonth() + delta);
+  const lastDay = new Date(target.getFullYear(), target.getMonth() + 1, 0).getDate();
+  target.setDate(Math.min(desiredDay, lastDay));
+  return formatDayKey(target);
+}
+
 function weekdayToDayKey(date: Date): DayKey {
   return ["domingo", "lunes", "martes", "miercoles", "jueves", "viernes", "sabado"][date.getDay()] as DayKey;
 }
@@ -1190,9 +1201,29 @@ export default function ProPage() {
                     </p>
                     <h3>{selectedMonthLabel}</h3>
                   </div>
-                  <span className="availability-board-chip">
-                    {selectedDaySlots.length} bloque(s) en {selectedDate.getDate()}
-                  </span>
+                  <div className="availability-board-controls">
+                    <div className="availability-month-nav" aria-label="Cambiar mes">
+                      <button
+                        type="button"
+                        className="availability-month-nav-btn"
+                        onClick={() => setSlotDate((current) => shiftMonthKey(current, -1))}
+                        aria-label="Ver mes anterior"
+                      >
+                        ‹
+                      </button>
+                      <button
+                        type="button"
+                        className="availability-month-nav-btn"
+                        onClick={() => setSlotDate((current) => shiftMonthKey(current, 1))}
+                        aria-label="Ver mes siguiente"
+                      >
+                        ›
+                      </button>
+                    </div>
+                    <span className="availability-board-chip">
+                      {selectedDaySlots.length} bloque(s) en {selectedDate.getDate()}
+                    </span>
+                  </div>
                 </div>
 
                 <div className="availability-weekdays">
