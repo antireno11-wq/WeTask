@@ -1,12 +1,57 @@
 import { NextRequest, NextResponse } from "next/server";
+import { supportsBabysitterRequestedTasks } from "@/lib/babysitter-scope";
+import { supportsChefRequestedTasks } from "@/lib/chef-scope";
 import { supportsCleaningRequestedTasks } from "@/lib/cleaning-scope";
 import { distanceKm, geocodeAddress } from "@/lib/geo";
+import { supportsIroningRequestedTasks } from "@/lib/ironing-scope";
+import { supportsMakeupRequestedTasks } from "@/lib/makeup-scope";
 import { COVERAGE_UNAVAILABLE_MESSAGE, inferCommuneFromAddress, normalizeCommune, taskerServesCommune } from "@/lib/communes";
 import { ensureMarketplaceDemoData } from "@/lib/marketplace-demo-data";
+import { supportsPetRequestedTasks } from "@/lib/pet-scope";
 import { prisma } from "@/lib/prisma";
+import { supportsTeacherRequestedTasks } from "@/lib/teacher-scope";
+import { supportsTrainerRequestedTasks } from "@/lib/trainer-scope";
 import { marketplaceSearchProsSchema } from "@/lib/validators";
 
 export const dynamic = "force-dynamic";
+
+function supportsRequestedTasksByCategory(
+  categorySlug: string | null | undefined,
+  scopes: {
+    cleaningScope?: unknown;
+    petScope?: unknown;
+    babysitterScope?: unknown;
+    trainerScope?: unknown;
+    teacherScope?: unknown;
+    chefScope?: unknown;
+    makeupScope?: unknown;
+    ironingScope?: unknown;
+  },
+  requestedTasks: string[]
+) {
+  if (requestedTasks.length === 0) return true;
+
+  switch (categorySlug) {
+    case "limpieza":
+      return supportsCleaningRequestedTasks(scopes.cleaningScope, requestedTasks);
+    case "mascotas":
+      return supportsPetRequestedTasks(scopes.petScope, requestedTasks);
+    case "babysitter":
+      return supportsBabysitterRequestedTasks(scopes.babysitterScope, requestedTasks);
+    case "personal-trainer":
+      return supportsTrainerRequestedTasks(scopes.trainerScope, requestedTasks);
+    case "profesor-particular":
+      return supportsTeacherRequestedTasks(scopes.teacherScope, requestedTasks);
+    case "chef":
+      return supportsChefRequestedTasks(scopes.chefScope, requestedTasks);
+    case "maquillaje":
+      return supportsMakeupRequestedTasks(scopes.makeupScope, requestedTasks);
+    case "planchado":
+      return supportsIroningRequestedTasks(scopes.ironingScope, requestedTasks);
+    default:
+      return true;
+  }
+}
 
 export async function GET(req: NextRequest) {
   try {
@@ -78,6 +123,12 @@ export async function GET(req: NextRequest) {
                 categorySlug: true,
                 cleaningScope: true,
                 petScope: true,
+                babysitterScope: true,
+                trainerScope: true,
+                teacherScope: true,
+                chefScope: true,
+                makeupScope: true,
+                ironingScope: true,
                 serviceCommunes: true,
                 baseCommune: true
               }
@@ -122,8 +173,7 @@ export async function GET(req: NextRequest) {
 
         if (
           input.tasks.length > 0 &&
-          profile.user.cleaningOnboarding?.categorySlug === "limpieza" &&
-          !supportsCleaningRequestedTasks(profile.user.cleaningOnboarding.cleaningScope, input.tasks)
+          !supportsRequestedTasksByCategory(profile.user.cleaningOnboarding?.categorySlug, profile.user.cleaningOnboarding ?? {}, input.tasks)
         ) {
           return null;
         }

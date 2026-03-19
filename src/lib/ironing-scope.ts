@@ -99,3 +99,14 @@ export function getIroningIncludedTaskLabel(value: string) {
 export function getIroningExcludedTaskLabel(value: string) {
   return excludedTaskMap.get(value as IroningTaskExcludedSlug)?.label ?? value;
 }
+
+export function supportsIroningRequestedTasks(scope: unknown, requestedTasks: string[]) {
+  const normalizedScope = normalizeIroningScope(scope);
+  const normalizedRequestedTasks = requestedTasks.filter(isIroningTaskIncludedSlug);
+  if (normalizedRequestedTasks.length === 0) return true;
+
+  const included = new Set<string>(normalizedScope.tasks_included);
+  const excluded = new Set<string>(normalizedScope.tasks_excluded);
+
+  return normalizedRequestedTasks.every((task) => included.has(task) && !excluded.has(task));
+}

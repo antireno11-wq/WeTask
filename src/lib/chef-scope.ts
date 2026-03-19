@@ -96,3 +96,14 @@ export function getChefIncludedTaskLabel(value: string) {
 export function getChefExcludedTaskLabel(value: string) {
   return excludedTaskMap.get(value as ChefTaskExcludedSlug)?.label ?? value;
 }
+
+export function supportsChefRequestedTasks(scope: unknown, requestedTasks: string[]) {
+  const normalizedScope = normalizeChefScope(scope);
+  const normalizedRequestedTasks = requestedTasks.filter(isChefTaskIncludedSlug);
+  if (normalizedRequestedTasks.length === 0) return true;
+
+  const included = new Set<string>(normalizedScope.tasks_included);
+  const excluded = new Set<string>(normalizedScope.tasks_excluded);
+
+  return normalizedRequestedTasks.every((task) => included.has(task) && !excluded.has(task));
+}

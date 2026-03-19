@@ -105,3 +105,14 @@ export function getMakeupIncludedTaskLabel(value: string) {
 export function getMakeupExcludedTaskLabel(value: string) {
   return excludedTaskMap.get(value as MakeupTaskExcludedSlug)?.label ?? value;
 }
+
+export function supportsMakeupRequestedTasks(scope: unknown, requestedTasks: string[]) {
+  const normalizedScope = normalizeMakeupScope(scope);
+  const normalizedRequestedTasks = requestedTasks.filter(isMakeupTaskIncludedSlug);
+  if (normalizedRequestedTasks.length === 0) return true;
+
+  const included = new Set<string>(normalizedScope.tasks_included);
+  const excluded = new Set<string>(normalizedScope.tasks_excluded);
+
+  return normalizedRequestedTasks.every((task) => included.has(task) && !excluded.has(task));
+}

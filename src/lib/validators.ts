@@ -222,7 +222,7 @@ export const marketplaceSearchProsSchema = z.object({
         .map((item) => item.trim())
         .filter(Boolean);
     },
-    z.array(cleaningIncludedTaskEnum).optional().default([])
+    z.array(z.string().min(1)).optional().default([])
   ),
   date: z.coerce.date().optional(),
   limit: z.coerce.number().int().min(1).max(50).default(20)

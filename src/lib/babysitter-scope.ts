@@ -147,3 +147,14 @@ export function getBabysitterIncludedTaskLabel(value: string) {
 export function getBabysitterExcludedTaskLabel(value: string) {
   return excludedTaskMap.get(value as BabysitterTaskExcludedSlug)?.label ?? value;
 }
+
+export function supportsBabysitterRequestedTasks(scope: unknown, requestedTasks: string[]) {
+  const normalizedScope = normalizeBabysitterScope(scope);
+  const normalizedRequestedTasks = requestedTasks.filter(isBabysitterTaskIncludedSlug);
+  if (normalizedRequestedTasks.length === 0) return true;
+
+  const included = new Set<string>(normalizedScope.tasks_included);
+  const excluded = new Set<string>(normalizedScope.tasks_excluded);
+
+  return normalizedRequestedTasks.every((task) => included.has(task) && !excluded.has(task));
+}

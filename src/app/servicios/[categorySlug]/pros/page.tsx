@@ -4,7 +4,14 @@ import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { MarketNav } from "@/components/market-nav";
-import { CLEANING_TASK_INCLUDED_OPTIONS, type CleaningTaskIncludedSlug } from "@/lib/cleaning-scope";
+import { BABYSITTER_TASK_INCLUDED_OPTIONS } from "@/lib/babysitter-scope";
+import { CHEF_TASK_INCLUDED_OPTIONS } from "@/lib/chef-scope";
+import { CLEANING_TASK_INCLUDED_OPTIONS } from "@/lib/cleaning-scope";
+import { IRONING_TASK_INCLUDED_OPTIONS } from "@/lib/ironing-scope";
+import { MAKEUP_TASK_INCLUDED_OPTIONS } from "@/lib/makeup-scope";
+import { PET_TASK_INCLUDED_OPTIONS } from "@/lib/pet-scope";
+import { TEACHER_TASK_INCLUDED_OPTIONS } from "@/lib/teacher-scope";
+import { TRAINER_TASK_INCLUDED_OPTIONS } from "@/lib/trainer-scope";
 
 type Category = {
   id: string;
@@ -30,6 +37,18 @@ type Professional = {
 
 type SortBy = "best" | "near" | "cheap";
 type AvailabilityFilter = "all" | "today" | "week";
+type TaskFilterOption = { value: string; label: string };
+
+const TASK_FILTER_OPTIONS_BY_CATEGORY: Record<string, TaskFilterOption[]> = {
+  limpieza: [...CLEANING_TASK_INCLUDED_OPTIONS],
+  mascotas: [...PET_TASK_INCLUDED_OPTIONS],
+  babysitter: [...BABYSITTER_TASK_INCLUDED_OPTIONS],
+  "personal-trainer": [...TRAINER_TASK_INCLUDED_OPTIONS],
+  "profesor-particular": [...TEACHER_TASK_INCLUDED_OPTIONS],
+  chef: [...CHEF_TASK_INCLUDED_OPTIONS],
+  maquillaje: [...MAKEUP_TASK_INCLUDED_OPTIONS],
+  planchado: [...IRONING_TASK_INCLUDED_OPTIONS]
+};
 
 function clp(value: number) {
   return new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP", maximumFractionDigits: 0 }).format(value);
@@ -82,12 +101,13 @@ export default function ServiceProsPage() {
   const city = search.get("city") ?? "Santiago";
   const requestedDate = search.get("requestedDate") ?? "";
   const requestedTime = search.get("requestedTime") ?? "";
+  const availableTaskOptions = TASK_FILTER_OPTIONS_BY_CATEGORY[categorySlug] ?? [];
   const initialRequestedTasks = (search.get("tasks") ?? "")
     .split(",")
     .map((item) => item.trim())
     .filter(Boolean)
-    .filter((item): item is CleaningTaskIncludedSlug => CLEANING_TASK_INCLUDED_OPTIONS.some((option) => option.value === item));
-  const [selectedTasks, setSelectedTasks] = useState<CleaningTaskIncludedSlug[]>(initialRequestedTasks);
+    .filter((item) => availableTaskOptions.some((option) => option.value === item));
+  const [selectedTasks, setSelectedTasks] = useState<string[]>(initialRequestedTasks);
   const selectedServiceId = search.get("serviceId") ?? "";
   const requestedMinutes = requestedTime ? timeToMinutes(requestedTime) : null;
   const requestedIso = useMemo(() => {
@@ -154,12 +174,12 @@ export default function ServiceProsPage() {
 
         let nextProfessionals = await fetchProfessionals(true);
 
-        if (nextProfessionals.length === 0 && match.slug === "limpieza" && selectedServiceId) {
+        if (nextProfessionals.length === 0 && selectedServiceId) {
           nextProfessionals = await fetchProfessionals(false);
           if (nextProfessionals.length > 0) {
             setUsedCategoryFallback(true);
             setNotifyMessage(
-              "No encontramos taskers publicados para ese tipo exacto todavía, así que te mostramos profesionales disponibles de limpieza en tu comuna."
+              `No encontramos taskers publicados para ese tipo exacto todavía, así que te mostramos profesionales disponibles de ${match.name.toLowerCase()} en tu comuna.`
             );
           }
         }
@@ -225,7 +245,7 @@ export default function ServiceProsPage() {
     return filtered;
   }, [allPros, availability, requestedDate, requestedMinutes, sortBy]);
 
-  const toggleTask = (task: CleaningTaskIncludedSlug) => {
+  const toggleTask = (task: string) => {
     setSelectedTasks((current) => (current.includes(task) ? current.filter((item) => item !== task) : [...current, task]));
   };
 
@@ -291,14 +311,14 @@ export default function ServiceProsPage() {
               </label>
             </div>
 
-            {category?.slug === "limpieza" ? (
+            {availableTaskOptions.length > 0 ? (
               <div className="service-task-filter-card">
                 <div className="panel-head">
                   <h3>Tareas que necesitas</h3>
-                  <p>Filtra profesionales según lo que sí realizan dentro del servicio base.</p>
+                  <p>Filtra taskers según lo que sí incluyen dentro del alcance base de este servicio.</p>
                 </div>
                 <div className="onboarding-checkbox-grid onboarding-checkbox-grid-compact">
-                  {CLEANING_TASK_INCLUDED_OPTIONS.map((task) => (
+                  {availableTaskOptions.map((task) => (
                     <label key={task.value} className="onboarding-check-card">
                       <input type="checkbox" checked={selectedTasks.includes(task.value)} onChange={() => toggleTask(task.value)} />
                       <span>{task.label}</span>

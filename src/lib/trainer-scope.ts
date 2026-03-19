@@ -133,3 +133,14 @@ export function getTrainerIncludedTaskLabel(value: string) {
 export function getTrainerExcludedTaskLabel(value: string) {
   return excludedTaskMap.get(value as TrainerTaskExcludedSlug)?.label ?? value;
 }
+
+export function supportsTrainerRequestedTasks(scope: unknown, requestedTasks: string[]) {
+  const normalizedScope = normalizeTrainerScope(scope);
+  const normalizedRequestedTasks = requestedTasks.filter(isTrainerTaskIncludedSlug);
+  if (normalizedRequestedTasks.length === 0) return true;
+
+  const included = new Set<string>(normalizedScope.tasks_included);
+  const excluded = new Set<string>(normalizedScope.tasks_excluded);
+
+  return normalizedRequestedTasks.every((task) => included.has(task) && !excluded.has(task));
+}
