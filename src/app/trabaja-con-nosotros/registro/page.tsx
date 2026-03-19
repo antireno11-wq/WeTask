@@ -31,6 +31,21 @@ import {
   type CleaningTaskIncludedSlug
 } from "@/lib/cleaning-scope";
 import {
+  BABYSITTER_AGE_RANGE_OPTIONS,
+  BABYSITTER_SCOPE_SERVICE_OPTIONS,
+  BABYSITTER_TASK_EXCLUDED_OPTIONS,
+  BABYSITTER_TASK_INCLUDED_OPTIONS,
+  emptyBabysitterScope,
+  getBabysitterAgeRangeLabel,
+  getBabysitterExcludedTaskLabel,
+  getBabysitterIncludedTaskLabel,
+  getBabysitterServiceLabel,
+  normalizeBabysitterScope,
+  type BabysitterAgeRangeSlug,
+  type BabysitterScopeData,
+  type BabysitterScopeServiceSlug
+} from "@/lib/babysitter-scope";
+import {
   PET_SCOPE_SERVICE_OPTIONS,
   PET_TASK_EXCLUDED_OPTIONS,
   PET_TASK_INCLUDED_OPTIONS,
@@ -71,6 +86,7 @@ type OnboardingPayload = {
   experienceTypes: unknown;
   cleaningScope: unknown;
   petScope: unknown;
+  babysitterScope: unknown;
   acceptsHomesWithPets: boolean | null;
   acceptsHomesWithChildren: boolean | null;
   acceptsHomesWithElderly: boolean | null;
@@ -167,6 +183,7 @@ type DraftState = {
   babysitterAgeRange: "0_2" | "3_6" | "7_plus";
   babysitterFirstAid: boolean | null;
   babysitterMultiChild: boolean | null;
+  babysitterScope: BabysitterScopeData;
   teacherSubject: "matematicas" | "ingles" | "lenguaje" | "ciencias" | "otra";
   teacherLevel: "basica" | "media" | "universitario";
   teacherMode: "presencial" | "online" | "ambas";
@@ -198,6 +215,7 @@ type DraftState = {
 
 type CleaningScopeScreen = 1 | 2 | 3 | 4 | 5;
 type PetScopeScreen = 1 | 2 | 3 | 4 | 5 | 6;
+type BabysitterScopeScreen = 1 | 2 | 3 | 4 | 5 | 6;
 type MissingFieldItem = {
   field: string;
   label: string;
@@ -278,6 +296,7 @@ const SUBMIT_REQUIRED_FIELDS: Record<string, { label: string; step: WizardStep }
   offeredServices: { label: "Preguntas específicas de tu categoría", step: 7 },
   cleaningScope: { label: "Alcance del servicio de limpieza", step: 7 },
   petScope: { label: "Alcance del servicio de mascotas", step: 7 },
+  babysitterScope: { label: "Alcance del servicio de babysitter", step: 7 },
   serviceCommunes: { label: "Comunas de cobertura", step: 4 },
   coverageLatitude: { label: "Ubicación validada desde la dirección", step: 3 },
   coverageLongitude: { label: "Ubicación validada desde la dirección", step: 3 },
@@ -491,6 +510,7 @@ function createInitialDraft(): DraftState {
     babysitterAgeRange: "0_2",
     babysitterFirstAid: null,
     babysitterMultiChild: null,
+    babysitterScope: emptyBabysitterScope(),
     teacherSubject: "matematicas",
     teacherLevel: "basica",
     teacherMode: "presencial",
@@ -610,8 +630,14 @@ function buildStep7Payload(draft: DraftState) {
       };
     case "babysitter":
       return {
-        offeredServices: ["babysitter_horas"],
-        experienceTypes: [draft.babysitterAgeRange],
+        offeredServices: draft.babysitterScope.services_offered,
+        experienceTypes: draft.babysitterScope.age_ranges,
+        babysitterScope: {
+          ...draft.babysitterScope,
+          age_ranges: draft.babysitterScope.age_ranges,
+          first_aid: draft.babysitterFirstAid,
+          multi_child: draft.babysitterMultiChild
+        },
         bringsOwnTools: draft.babysitterFirstAid,
         acceptsHomesWithChildren: draft.babysitterMultiChild
       };
@@ -685,6 +711,7 @@ function CleaningOnboardingPageContent() {
   const [smsPreview, setSmsPreview] = useState("");
   const [cleaningScopeScreen, setCleaningScopeScreen] = useState<CleaningScopeScreen>(1);
   const [petScopeScreen, setPetScopeScreen] = useState<PetScopeScreen>(1);
+  const [babysitterScopeScreen, setBabysitterScopeScreen] = useState<BabysitterScopeScreen>(1);
   const [selectedAvailabilityDay, setSelectedAvailabilityDay] = useState<DayKey>(currentWeekDayKey);
   const [bulkAvailabilityDays, setBulkAvailabilityDays] = useState<DayKey[]>([currentWeekDayKey()]);
   const [newAvailabilityStart, setNewAvailabilityStart] = useState("14:00");
@@ -708,6 +735,10 @@ function CleaningOnboardingPageContent() {
   const petScopeAnimalsPreview = draft.petAnimals.map(getPetScopeAnimalLabel);
   const petScopeIncludedPreview = draft.petScope.tasks_included.map(getPetIncludedTaskLabel);
   const petScopeExcludedPreview = draft.petScope.tasks_excluded.map(getPetExcludedTaskLabel);
+  const babysitterScopeServicesPreview = draft.babysitterScope.services_offered.map(getBabysitterServiceLabel);
+  const babysitterScopeAgePreview = draft.babysitterScope.age_ranges.map(getBabysitterAgeRangeLabel);
+  const babysitterScopeIncludedPreview = draft.babysitterScope.tasks_included.map(getBabysitterIncludedTaskLabel);
+  const babysitterScopeExcludedPreview = draft.babysitterScope.tasks_excluded.map(getBabysitterExcludedTaskLabel);
   const pricingGuide = useMemo(() => getPricingGuide(draft), [draft]);
   const progressPercent = Math.round((activeStep / TOTAL_STEPS) * 100);
   const addressQuery = useMemo(() => [draft.address.trim(), "Santiago", "Chile"].filter(Boolean).join(", "), [draft.address]);
@@ -742,6 +773,7 @@ function CleaningOnboardingPageContent() {
             : current.chefServiceRates,
         petServiceType: normalizePetServiceTypes(parsed.petServiceType),
         petScope: normalizePetScope(parsed.petScope ?? current.petScope),
+        babysitterScope: normalizeBabysitterScope(parsed.babysitterScope ?? current.babysitterScope),
         makeupType: normalizeMakeupTypes(parsed.makeupType)
       }));
       if (parsed.activeStep && parsed.activeStep >= 1 && parsed.activeStep <= 12) {
@@ -882,6 +914,27 @@ function CleaningOnboardingPageContent() {
   }, [draft.petAnimals, draft.petLargePets, draft.petScope.animals_accepted, draft.petScope.services_offered, draft.petScope.accepts_large_pets, draft.petServiceType]);
 
   useEffect(() => {
+    if (draft.category !== "babysitter") return;
+    const scope = draft.babysitterScope;
+    const nextAgeRange = scope.age_ranges[0] ?? draft.babysitterAgeRange;
+    const nextFirstAid = scope.first_aid;
+    const nextMultiChild = scope.multi_child;
+    const fieldsChanged =
+      nextAgeRange !== draft.babysitterAgeRange ||
+      nextFirstAid !== draft.babysitterFirstAid ||
+      nextMultiChild !== draft.babysitterMultiChild;
+
+    if (!fieldsChanged) return;
+
+    setDraft((current) => ({
+      ...current,
+      babysitterAgeRange: current.babysitterScope.age_ranges[0] ?? current.babysitterAgeRange,
+      babysitterFirstAid: current.babysitterScope.first_aid,
+      babysitterMultiChild: current.babysitterScope.multi_child
+    }));
+  }, [draft.babysitterAgeRange, draft.babysitterFirstAid, draft.babysitterMultiChild, draft.babysitterScope, draft.category]);
+
+  useEffect(() => {
     if (draft.category !== "limpieza") return;
     const derivedServices = deriveCleaningServicesFromScope(draft.cleaningScope);
     const scopeServicesChanged = derivedServices.join("|") !== draft.cleaningServices.join("|");
@@ -930,6 +983,12 @@ function CleaningOnboardingPageContent() {
     }
   }, [activeStep, draft.category]);
 
+  useEffect(() => {
+    if (activeStep !== 7 || draft.category !== "babysitter") {
+      setBabysitterScopeScreen(1);
+    }
+  }, [activeStep, draft.category]);
+
   const hydrateFromServer = (nextOnboarding: OnboardingPayload, user?: { fullName?: string | null; email?: string | null; phone?: string | null }) => {
     const { firstName, lastName } = splitFullName(user?.fullName ?? session?.fullName ?? "");
     setOnboarding(nextOnboarding);
@@ -974,7 +1033,53 @@ function CleaningOnboardingPageContent() {
           ? normalizePetScope(nextOnboarding.petScope).accepts_large_pets ?? nextOnboarding.acceptsHomesWithPets ?? current.petLargePets
           : current.petLargePets,
       petScope: nextOnboarding.categorySlug === "mascotas" ? normalizePetScope(nextOnboarding.petScope) : current.petScope,
+      babysitterScope:
+        nextOnboarding.categorySlug === "babysitter"
+          ? (() => {
+              const normalizedScope = normalizeBabysitterScope(nextOnboarding.babysitterScope);
+              if (
+                normalizedScope.services_offered.length > 0 ||
+                normalizedScope.age_ranges.length > 0 ||
+                normalizedScope.tasks_included.length > 0
+              ) {
+                return normalizedScope;
+              }
+              return {
+                ...normalizedScope,
+                services_offered: Array.isArray(nextOnboarding.offeredServices)
+                  ? nextOnboarding.offeredServices.filter(
+                      (item): item is BabysitterScopeServiceSlug =>
+                        typeof item === "string" &&
+                        BABYSITTER_SCOPE_SERVICE_OPTIONS.some((option) => option.value === item)
+                    )
+                  : [],
+                age_ranges: Array.isArray(nextOnboarding.experienceTypes)
+                  ? nextOnboarding.experienceTypes.filter(
+                      (item): item is BabysitterAgeRangeSlug =>
+                        typeof item === "string" &&
+                        BABYSITTER_AGE_RANGE_OPTIONS.some((option) => option.value === item)
+                    )
+                  : [],
+                first_aid: nextOnboarding.bringsOwnTools ?? current.babysitterFirstAid,
+                multi_child: nextOnboarding.acceptsHomesWithChildren ?? current.babysitterMultiChild
+              };
+            })()
+          : current.babysitterScope,
       chefServiceType: nextOnboarding.categorySlug === "chef" ? normalizeChefServiceTypes(nextOnboarding.offeredServices) : current.chefServiceType,
+      babysitterAgeRange:
+        nextOnboarding.categorySlug === "babysitter"
+          ? normalizeBabysitterScope(nextOnboarding.babysitterScope).age_ranges[0] ?? current.babysitterAgeRange
+          : current.babysitterAgeRange,
+      babysitterFirstAid:
+        nextOnboarding.categorySlug === "babysitter"
+          ? normalizeBabysitterScope(nextOnboarding.babysitterScope).first_aid ?? nextOnboarding.bringsOwnTools ?? current.babysitterFirstAid
+          : current.babysitterFirstAid,
+      babysitterMultiChild:
+        nextOnboarding.categorySlug === "babysitter"
+          ? normalizeBabysitterScope(nextOnboarding.babysitterScope).multi_child ??
+            nextOnboarding.acceptsHomesWithChildren ??
+            current.babysitterMultiChild
+          : current.babysitterMultiChild,
       yearsExperience: nextOnboarding.yearsExperience ? String(Math.min(nextOnboarding.yearsExperience, 10)) : current.yearsExperience,
       workMode: nextOnboarding.workMode ?? current.workMode,
       availabilityMode: nextOnboarding.availabilityMode ?? current.availabilityMode,
@@ -1442,6 +1547,28 @@ function CleaningOnboardingPageContent() {
     setPetScopeScreen((current) => (Math.max(1, current - 1) as PetScopeScreen));
   };
 
+  const continueBabysitterScopeScreen = () => {
+    if (babysitterScopeScreen === 1 && draft.babysitterScope.services_offered.length === 0) {
+      setError("Selecciona al menos un servicio de babysitter que sí ofreces.");
+      return;
+    }
+    if (babysitterScopeScreen === 2 && draft.babysitterScope.age_ranges.length === 0) {
+      setError("Selecciona al menos un rango de edad con el que sí trabajas.");
+      return;
+    }
+    if (babysitterScopeScreen === 3 && draft.babysitterScope.tasks_included.length === 0) {
+      setError("Selecciona al menos una tarea que sí realizas.");
+      return;
+    }
+    setError("");
+    setBabysitterScopeScreen((current) => (Math.min(6, current + 1) as BabysitterScopeScreen));
+  };
+
+  const previousBabysitterScopeScreen = () => {
+    setError("");
+    setBabysitterScopeScreen((current) => (Math.max(1, current - 1) as BabysitterScopeScreen));
+  };
+
   const continueStep7 = async () => {
     const payload = buildStep7Payload(draft);
     if (!payload.offeredServices || payload.offeredServices.length === 0) {
@@ -1467,6 +1594,18 @@ function CleaningOnboardingPageContent() {
       return;
     }
     if (draft.category === "mascotas" && draft.petScope.tasks_included.length === 0) {
+      setError("Selecciona al menos una tarea que sí realizas.");
+      return;
+    }
+    if (draft.category === "babysitter" && draft.babysitterScope.services_offered.length === 0) {
+      setError("Selecciona al menos un servicio de babysitter que ofreces.");
+      return;
+    }
+    if (draft.category === "babysitter" && draft.babysitterScope.age_ranges.length === 0) {
+      setError("Selecciona al menos un rango de edad con el que trabajas.");
+      return;
+    }
+    if (draft.category === "babysitter" && draft.babysitterScope.tasks_included.length === 0) {
       setError("Selecciona al menos una tarea que sí realizas.");
       return;
     }
@@ -2486,36 +2625,238 @@ function CleaningOnboardingPageContent() {
 
                 {draft.category === "babysitter" ? (
                   <div className="grid-form auth-flow-form">
-                    <label>
-                      Edad mínima de niños
-                      <select value={draft.babysitterAgeRange} onChange={(event) => updateDraft("babysitterAgeRange", event.target.value as DraftState["babysitterAgeRange"])}>
-                        <option value="0_2">0-2 años</option>
-                        <option value="3_6">3-6 años</option>
-                        <option value="7_plus">7+</option>
-                      </select>
-                    </label>
-                    <label>
-                      ¿Sabes primeros auxilios?
-                      <select
-                        value={draft.babysitterFirstAid == null ? "" : draft.babysitterFirstAid ? "si" : "no"}
-                        onChange={(event) => updateDraft("babysitterFirstAid", event.target.value === "si")}
-                      >
-                        <option value="">Selecciona</option>
-                        <option value="si">Sí</option>
-                        <option value="no">No</option>
-                      </select>
-                    </label>
-                    <label>
-                      ¿Puedes cuidar más de un niño?
-                      <select
-                        value={draft.babysitterMultiChild == null ? "" : draft.babysitterMultiChild ? "si" : "no"}
-                        onChange={(event) => updateDraft("babysitterMultiChild", event.target.value === "si")}
-                      >
-                        <option value="">Selecciona</option>
-                        <option value="si">Sí</option>
-                        <option value="no">No</option>
-                      </select>
-                    </label>
+                    <div className="full onboarding-scope-progress">
+                      <span className={babysitterScopeScreen >= 1 ? "active" : ""}>Servicios</span>
+                      <span className={babysitterScopeScreen >= 2 ? "active" : ""}>Edades</span>
+                      <span className={babysitterScopeScreen >= 3 ? "active" : ""}>Sí realiza</span>
+                      <span className={babysitterScopeScreen >= 4 ? "active" : ""}>No realiza</span>
+                      <span className={babysitterScopeScreen >= 5 ? "active" : ""}>Condiciones</span>
+                      <span className={babysitterScopeScreen >= 6 ? "active" : ""}>Revisión</span>
+                    </div>
+
+                    {babysitterScopeScreen === 1 ? (
+                      <div className="full">
+                        <p className="field-label">¿Qué servicios de babysitter ofreces?</p>
+                        <div className="auth-service-grid auth-service-grid-cleaning">
+                          {BABYSITTER_SCOPE_SERVICE_OPTIONS.map((service) => (
+                            <label
+                              key={service.value}
+                              className={`auth-service-card auth-service-card-scope ${draft.babysitterScope.services_offered.includes(service.value) ? "active" : ""}`}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={draft.babysitterScope.services_offered.includes(service.value)}
+                                onChange={(event) => {
+                                  setDraft((current) => ({
+                                    ...current,
+                                    babysitterScope: {
+                                      ...current.babysitterScope,
+                                      services_offered: event.target.checked
+                                        ? Array.from(new Set([...current.babysitterScope.services_offered, service.value]))
+                                        : current.babysitterScope.services_offered.filter((item) => item !== service.value)
+                                    }
+                                  }));
+                                }}
+                              />
+                              <strong>{service.label}</strong>
+                              <span>{service.description}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    ) : null}
+
+                    {babysitterScopeScreen === 2 ? (
+                      <>
+                        <div className="full">
+                          <p className="field-label">¿Con qué edades trabajas?</p>
+                          <div className="onboarding-checkbox-grid onboarding-checkbox-grid-compact">
+                            {BABYSITTER_AGE_RANGE_OPTIONS.map((option) => (
+                              <label key={option.value} className="onboarding-check-card">
+                                <input
+                                  type="checkbox"
+                                  checked={draft.babysitterScope.age_ranges.includes(option.value)}
+                                  onChange={() =>
+                                    setDraft((current) => ({
+                                      ...current,
+                                      babysitterScope: {
+                                        ...current.babysitterScope,
+                                        age_ranges: current.babysitterScope.age_ranges.includes(option.value)
+                                          ? current.babysitterScope.age_ranges.filter((item) => item !== option.value)
+                                          : [...current.babysitterScope.age_ranges, option.value]
+                                      }
+                                    }))
+                                  }
+                                />
+                                <span>{option.label}</span>
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+                        <label>
+                          ¿Sabes primeros auxilios?
+                          <select
+                            value={draft.babysitterScope.first_aid == null ? "" : draft.babysitterScope.first_aid ? "si" : "no"}
+                            onChange={(event) =>
+                              setDraft((current) => ({
+                                ...current,
+                                babysitterScope: {
+                                  ...current.babysitterScope,
+                                  first_aid: event.target.value === "" ? null : event.target.value === "si"
+                                }
+                              }))
+                            }
+                          >
+                            <option value="">Selecciona</option>
+                            <option value="si">Sí</option>
+                            <option value="no">No</option>
+                          </select>
+                        </label>
+                        <label>
+                          ¿Puedes cuidar más de un niño?
+                          <select
+                            value={draft.babysitterScope.multi_child == null ? "" : draft.babysitterScope.multi_child ? "si" : "no"}
+                            onChange={(event) =>
+                              setDraft((current) => ({
+                                ...current,
+                                babysitterScope: {
+                                  ...current.babysitterScope,
+                                  multi_child: event.target.value === "" ? null : event.target.value === "si"
+                                }
+                              }))
+                            }
+                          >
+                            <option value="">Selecciona</option>
+                            <option value="si">Sí</option>
+                            <option value="no">No</option>
+                          </select>
+                        </label>
+                      </>
+                    ) : null}
+
+                    {babysitterScopeScreen === 3 ? (
+                      <div className="full">
+                        <p className="field-label">¿Qué tareas sí realizas?</p>
+                        <div className="onboarding-task-checklist">
+                          {BABYSITTER_TASK_INCLUDED_OPTIONS.map((task) => (
+                            <label key={task.value} className={`onboarding-task-checklist-row ${draft.babysitterScope.tasks_included.includes(task.value) ? "checked" : ""}`}>
+                              <div>
+                                <strong>{task.label}</strong>
+                              </div>
+                              <span className="onboarding-task-checklist-control">
+                                <input
+                                  type="checkbox"
+                                  checked={draft.babysitterScope.tasks_included.includes(task.value)}
+                                  onChange={(event) => {
+                                    setDraft((current) => ({
+                                      ...current,
+                                      babysitterScope: {
+                                        ...current.babysitterScope,
+                                        tasks_included: event.target.checked
+                                          ? Array.from(new Set([...current.babysitterScope.tasks_included, task.value]))
+                                          : current.babysitterScope.tasks_included.filter((item) => item !== task.value)
+                                      }
+                                    }));
+                                  }}
+                                />
+                                <span className="onboarding-task-checklist-box" aria-hidden />
+                              </span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    ) : null}
+
+                    {babysitterScopeScreen === 4 ? (
+                      <div className="full">
+                        <p className="field-label">¿Qué tareas no realizas?</p>
+                        <div className="onboarding-task-checklist">
+                          {BABYSITTER_TASK_EXCLUDED_OPTIONS.map((task) => (
+                            <label
+                              key={task.value}
+                              className={`onboarding-task-checklist-row onboarding-task-checklist-row-warning ${draft.babysitterScope.tasks_excluded.includes(task.value) ? "checked" : ""}`}
+                            >
+                              <div>
+                                <strong>{task.label}</strong>
+                              </div>
+                              <span className="onboarding-task-checklist-control">
+                                <input
+                                  type="checkbox"
+                                  checked={draft.babysitterScope.tasks_excluded.includes(task.value)}
+                                  onChange={(event) => {
+                                    setDraft((current) => ({
+                                      ...current,
+                                      babysitterScope: {
+                                        ...current.babysitterScope,
+                                        tasks_excluded: event.target.checked
+                                          ? Array.from(new Set([...current.babysitterScope.tasks_excluded, task.value]))
+                                          : current.babysitterScope.tasks_excluded.filter((item) => item !== task.value)
+                                      }
+                                    }));
+                                  }}
+                                />
+                                <span className="onboarding-task-checklist-box" aria-hidden />
+                              </span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    ) : null}
+
+                    {babysitterScopeScreen === 5 ? (
+                      <div className="full">
+                        <label>
+                          Condiciones especiales de tu servicio
+                          <textarea
+                            value={draft.babysitterScope.special_conditions}
+                            rows={4}
+                            placeholder="Ejemplo: no trabajo después de las 22:00, no hago traslados en auto y prefiero máximo dos niños por reserva."
+                            onChange={(event) =>
+                              setDraft((current) => ({
+                                ...current,
+                                babysitterScope: {
+                                  ...current.babysitterScope,
+                                  special_conditions: event.target.value
+                                }
+                              }))
+                            }
+                          />
+                        </label>
+                      </div>
+                    ) : null}
+
+                    {babysitterScopeScreen === 6 ? (
+                      <div className="full onboarding-scope-review-grid">
+                        <div className="auth-flow-note-card">
+                          <strong>Servicios ofrecidos</strong>
+                          <span>{babysitterScopeServicesPreview.length > 0 ? babysitterScopeServicesPreview.join(", ") : "Sin información aún."}</span>
+                        </div>
+                        <div className="auth-flow-note-card">
+                          <strong>Edades con las que trabaja</strong>
+                          <span>{babysitterScopeAgePreview.length > 0 ? babysitterScopeAgePreview.join(", ") : "Sin información aún."}</span>
+                        </div>
+                        <div className="auth-flow-note-card">
+                          <strong>Tareas que sí realiza</strong>
+                          <span>{babysitterScopeIncludedPreview.length > 0 ? babysitterScopeIncludedPreview.join(", ") : "Sin información aún."}</span>
+                        </div>
+                        <div className="auth-flow-note-card">
+                          <strong>Tareas que no realiza</strong>
+                          <span>{babysitterScopeExcludedPreview.length > 0 ? babysitterScopeExcludedPreview.join(", ") : "No marcaste exclusiones."}</span>
+                        </div>
+                        <div className="auth-flow-note-card">
+                          <strong>Primeros auxilios</strong>
+                          <span>{draft.babysitterScope.first_aid == null ? "No informado." : draft.babysitterScope.first_aid ? "Sí" : "No"}</span>
+                        </div>
+                        <div className="auth-flow-note-card">
+                          <strong>Más de un niño</strong>
+                          <span>{draft.babysitterScope.multi_child == null ? "No informado." : draft.babysitterScope.multi_child ? "Sí" : "No"}</span>
+                        </div>
+                        <div className="auth-flow-note-card">
+                          <strong>Condiciones especiales</strong>
+                          <span>{draft.babysitterScope.special_conditions.trim() || "No agregaste condiciones especiales."}</span>
+                        </div>
+                      </div>
+                    ) : null}
                   </div>
                 ) : null}
 
@@ -2704,6 +3045,10 @@ function CleaningOnboardingPageContent() {
                     <button type="button" className="cta ghost" onClick={previousPetScopeScreen}>
                       Volver
                     </button>
+                  ) : draft.category === "babysitter" && babysitterScopeScreen > 1 ? (
+                    <button type="button" className="cta ghost" onClick={previousBabysitterScopeScreen}>
+                      Volver
+                    </button>
                   ) : (
                     <button type="button" className="cta ghost" onClick={previousStep}>
                       Volver
@@ -2715,6 +3060,10 @@ function CleaningOnboardingPageContent() {
                     </button>
                   ) : draft.category === "mascotas" && petScopeScreen < 6 ? (
                     <button type="button" className="cta" onClick={continuePetScopeScreen}>
+                      Siguiente
+                    </button>
+                  ) : draft.category === "babysitter" && babysitterScopeScreen < 6 ? (
+                    <button type="button" className="cta" onClick={continueBabysitterScopeScreen}>
                       Siguiente
                     </button>
                   ) : (

@@ -31,7 +31,10 @@ export async function GET(_: Request, context: { params: { proId: string } }) {
                 experienceTypes: true,
                 cleaningScope: true,
                 petScope: true,
+                babysitterScope: true,
                 acceptsHomesWithPets: true,
+                acceptsHomesWithChildren: true,
+                bringsOwnTools: true,
                 languages: true,
                 baseCommune: true,
                 maxTravelKm: true

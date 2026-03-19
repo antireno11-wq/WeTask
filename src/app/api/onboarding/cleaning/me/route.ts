@@ -366,11 +366,15 @@ export async function PATCH(req: NextRequest) {
       if (onboarding.categorySlug === "mascotas" && !parsed.petScope) {
         return NextResponse.json({ error: "Debes definir el alcance de tu servicio de mascotas." }, { status: 400 });
       }
+      if (onboarding.categorySlug === "babysitter" && !parsed.babysitterScope) {
+        return NextResponse.json({ error: "Debes definir el alcance de tu servicio de babysitter." }, { status: 400 });
+      }
       data = {
         offeredServices: parsed.offeredServices,
         experienceTypes: parsed.experienceTypes,
         cleaningScope: parsed.cleaningScope ?? undefined,
         petScope: parsed.petScope ?? undefined,
+        babysitterScope: parsed.babysitterScope ?? undefined,
         acceptsHomesWithPets: parsed.acceptsHomesWithPets ?? null,
         acceptsHomesWithChildren: parsed.acceptsHomesWithChildren ?? null,
         acceptsHomesWithElderly: parsed.acceptsHomesWithElderly ?? null,

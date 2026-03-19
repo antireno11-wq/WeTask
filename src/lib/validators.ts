@@ -13,6 +13,12 @@ import {
   CLEANING_TASK_INCLUDED_OPTIONS
 } from "@/lib/cleaning-scope";
 import {
+  BABYSITTER_AGE_RANGE_OPTIONS,
+  BABYSITTER_SCOPE_SERVICE_OPTIONS,
+  BABYSITTER_TASK_EXCLUDED_OPTIONS,
+  BABYSITTER_TASK_INCLUDED_OPTIONS
+} from "@/lib/babysitter-scope";
+import {
   PET_SCOPE_ANIMAL_OPTIONS,
   PET_SCOPE_SERVICE_OPTIONS,
   PET_TASK_EXCLUDED_OPTIONS,
@@ -29,6 +35,10 @@ const activeCommuneInputSchema = z
 const cleaningScopeServiceEnum = z.enum(CLEANING_SCOPE_SERVICE_OPTIONS.map((option) => option.value) as [string, ...string[]]);
 const cleaningIncludedTaskEnum = z.enum(CLEANING_TASK_INCLUDED_OPTIONS.map((option) => option.value) as [string, ...string[]]);
 const cleaningExcludedTaskEnum = z.enum(CLEANING_TASK_EXCLUDED_OPTIONS.map((option) => option.value) as [string, ...string[]]);
+const babysitterScopeServiceEnum = z.enum(BABYSITTER_SCOPE_SERVICE_OPTIONS.map((option) => option.value) as [string, ...string[]]);
+const babysitterAgeRangeEnum = z.enum(BABYSITTER_AGE_RANGE_OPTIONS.map((option) => option.value) as [string, ...string[]]);
+const babysitterIncludedTaskEnum = z.enum(BABYSITTER_TASK_INCLUDED_OPTIONS.map((option) => option.value) as [string, ...string[]]);
+const babysitterExcludedTaskEnum = z.enum(BABYSITTER_TASK_EXCLUDED_OPTIONS.map((option) => option.value) as [string, ...string[]]);
 const petScopeServiceEnum = z.enum(PET_SCOPE_SERVICE_OPTIONS.map((option) => option.value) as [string, ...string[]]);
 const petScopeAnimalEnum = z.enum(PET_SCOPE_ANIMAL_OPTIONS.map((option) => option.value) as [string, ...string[]]);
 const petIncludedTaskEnum = z.enum(PET_TASK_INCLUDED_OPTIONS.map((option) => option.value) as [string, ...string[]]);
@@ -446,6 +456,18 @@ export const taskerOnboardingStep7Schema = z.object({
       accepts_large_pets: z.boolean().optional().nullable(),
       tasks_included: z.array(petIncludedTaskEnum).min(1),
       tasks_excluded: z.array(petExcludedTaskEnum).optional().default([]),
+      special_conditions: z.string().max(600).optional().default("")
+    })
+    .optional()
+    .nullable(),
+  babysitterScope: z
+    .object({
+      services_offered: z.array(babysitterScopeServiceEnum).min(1),
+      age_ranges: z.array(babysitterAgeRangeEnum).min(1),
+      first_aid: z.boolean().optional().nullable(),
+      multi_child: z.boolean().optional().nullable(),
+      tasks_included: z.array(babysitterIncludedTaskEnum).min(1),
+      tasks_excluded: z.array(babysitterExcludedTaskEnum).optional().default([]),
       special_conditions: z.string().max(600).optional().default("")
     })
     .optional()

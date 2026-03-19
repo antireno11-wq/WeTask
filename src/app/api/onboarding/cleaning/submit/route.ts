@@ -1,6 +1,7 @@
 import { CleaningOnboardingStatus, UserRole } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { getRequestIdentity, hasRole } from "@/lib/auth";
+import { normalizeBabysitterScope } from "@/lib/babysitter-scope";
 import { normalizeCleaningScope } from "@/lib/cleaning-scope";
 import { normalizePetScope } from "@/lib/pet-scope";
 import { prisma } from "@/lib/prisma";
@@ -62,6 +63,16 @@ function listMissingFields(onboarding: Awaited<ReturnType<typeof prisma.cleaning
     required.splice(8, 0, [
       "petScope",
       petScope.services_offered.length > 0 && petScope.animals_accepted.length > 0 && petScope.tasks_included.length > 0 ? petScope : null
+    ]);
+  }
+
+  if (onboarding.categorySlug === "babysitter") {
+    const babysitterScope = normalizeBabysitterScope(onboarding.babysitterScope);
+    required.splice(8, 0, [
+      "babysitterScope",
+      babysitterScope.services_offered.length > 0 && babysitterScope.age_ranges.length > 0 && babysitterScope.tasks_included.length > 0
+        ? babysitterScope
+        : null
     ]);
   }
 

@@ -4,6 +4,13 @@ import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { MarketNav } from "@/components/market-nav";
+import {
+  getBabysitterAgeRangeLabel,
+  getBabysitterExcludedTaskLabel,
+  getBabysitterIncludedTaskLabel,
+  getBabysitterServiceLabel,
+  normalizeBabysitterScope
+} from "@/lib/babysitter-scope";
 import { getChefServiceDefinition } from "@/lib/chef-service-types";
 import { getCleaningServiceDefinition } from "@/lib/cleaning-service-types";
 import {
@@ -30,7 +37,10 @@ type CleaningOnboardingSummary = {
   experienceTypes: unknown;
   cleaningScope: unknown;
   petScope: unknown;
+  babysitterScope: unknown;
   acceptsHomesWithPets: boolean | null;
+  acceptsHomesWithChildren: boolean | null;
+  bringsOwnTools: boolean | null;
   languages: unknown;
   baseCommune: string | null;
   maxTravelKm: number | null;
@@ -442,7 +452,10 @@ function buildDemoProfessional(proId: string): ProfessionalDetail {
           special_conditions: "No mueve muebles pesados ni trabaja en altura."
         },
         petScope: null,
+        babysitterScope: null,
         acceptsHomesWithPets: null,
+        acceptsHomesWithChildren: null,
+        bringsOwnTools: null,
         languages: demoLanguages,
         baseCommune: "Santiago",
         maxTravelKm: 12
@@ -621,6 +634,26 @@ export default function ProDetailPage() {
       accepts_large_pets: onboarding?.acceptsHomesWithPets ?? null
     };
   }, [onboarding?.petScope, onboarding?.offeredServices, onboarding?.experienceTypes, onboarding?.acceptsHomesWithPets]);
+  const babysitterScope = useMemo(() => {
+    const normalized = normalizeBabysitterScope(onboarding?.babysitterScope);
+    if (normalized.services_offered.length > 0 || normalized.age_ranges.length > 0 || normalized.tasks_included.length > 0) {
+      return normalized;
+    }
+
+    return {
+      ...normalized,
+      services_offered: Array.isArray(onboarding?.offeredServices)
+        ? onboarding.offeredServices.filter((item): item is "cuidado_por_horas" => item === "cuidado_por_horas")
+        : [],
+      age_ranges: Array.isArray(onboarding?.experienceTypes)
+        ? onboarding.experienceTypes.filter(
+            (item): item is "0_2" | "3_6" | "7_plus" => item === "0_2" || item === "3_6" || item === "7_plus"
+          )
+        : [],
+      first_aid: onboarding?.bringsOwnTools ?? null,
+      multi_child: onboarding?.acceptsHomesWithChildren ?? null
+    };
+  }, [onboarding?.babysitterScope, onboarding?.offeredServices, onboarding?.experienceTypes, onboarding?.bringsOwnTools, onboarding?.acceptsHomesWithChildren]);
   const serviceCategories = useMemo(() => {
     const bySlug = new Map<string, { slug: string; name: string }>();
     for (const item of data?.taskerServices ?? []) {
@@ -661,6 +694,10 @@ export default function ProDetailPage() {
   const petScopeAnimals = petScope.animals_accepted.map(getPetScopeAnimalLabel);
   const petScopeIncludedTasks = petScope.tasks_included.map(getPetIncludedTaskLabel);
   const petScopeExcludedTasks = petScope.tasks_excluded.map(getPetExcludedTaskLabel);
+  const babysitterScopeServices = babysitterScope.services_offered.map(getBabysitterServiceLabel);
+  const babysitterScopeAges = babysitterScope.age_ranges.map(getBabysitterAgeRangeLabel);
+  const babysitterScopeIncludedTasks = babysitterScope.tasks_included.map(getBabysitterIncludedTaskLabel);
+  const babysitterScopeExcludedTasks = babysitterScope.tasks_excluded.map(getBabysitterExcludedTaskLabel);
   const buildReserveHref = (options?: { startsAt?: string; serviceId?: string | null }) => {
     const qs = new URLSearchParams();
     qs.set("proId", data?.userId ?? params.proId);
@@ -909,6 +946,43 @@ export default function ProDetailPage() {
                         </div>
                       </div>
                       <p className="minimal-note">Si necesitas algo fuera de este alcance base, revísalo antes de reservar para evitar malos entendidos.</p>
+                    </article>
+                  ) : null}
+
+                  {normalizedPrimaryCategorySlug === "babysitter" ? (
+                    <article className="auth-flow-panel client-dashboard-section">
+                      <h2>Alcance del servicio</h2>
+                      <div className="we-info-grid">
+                        <div>
+                          <h3>Servicios de babysitter que ofrece</h3>
+                          <p>{babysitterScopeServices.length > 0 ? babysitterScopeServices.join(", ") : "Aún no informado."}</p>
+                        </div>
+                        <div>
+                          <h3>Edades con las que trabaja</h3>
+                          <p>{babysitterScopeAges.length > 0 ? babysitterScopeAges.join(", ") : "Aún no informado."}</p>
+                        </div>
+                        <div>
+                          <h3>Tareas que sí realiza</h3>
+                          <p>{babysitterScopeIncludedTasks.length > 0 ? babysitterScopeIncludedTasks.join(", ") : "Aún no informado."}</p>
+                        </div>
+                        <div>
+                          <h3>Tareas que no realiza</h3>
+                          <p>{babysitterScopeExcludedTasks.length > 0 ? babysitterScopeExcludedTasks.join(", ") : "No reporta exclusiones."}</p>
+                        </div>
+                        <div>
+                          <h3>Primeros auxilios</h3>
+                          <p>{babysitterScope.first_aid == null ? "No informado." : babysitterScope.first_aid ? "Sí" : "No"}</p>
+                        </div>
+                        <div>
+                          <h3>Más de un niño</h3>
+                          <p>{babysitterScope.multi_child == null ? "No informado." : babysitterScope.multi_child ? "Sí" : "No"}</p>
+                        </div>
+                        <div>
+                          <h3>Condiciones especiales</h3>
+                          <p>{babysitterScope.special_conditions || "Sin condiciones especiales reportadas."}</p>
+                        </div>
+                      </div>
+                      <p className="minimal-note">Si necesitas apoyo fuera de este alcance base, revísalo antes de reservar para evitar malos entendidos.</p>
                     </article>
                   ) : null}
 
