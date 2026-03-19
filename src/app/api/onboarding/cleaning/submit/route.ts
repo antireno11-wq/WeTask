@@ -4,6 +4,7 @@ import { getRequestIdentity, hasRole } from "@/lib/auth";
 import { normalizeBabysitterScope } from "@/lib/babysitter-scope";
 import { normalizeCleaningScope } from "@/lib/cleaning-scope";
 import { normalizePetScope } from "@/lib/pet-scope";
+import { normalizeTrainerScope } from "@/lib/trainer-scope";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -73,6 +74,14 @@ function listMissingFields(onboarding: Awaited<ReturnType<typeof prisma.cleaning
       babysitterScope.services_offered.length > 0 && babysitterScope.age_ranges.length > 0 && babysitterScope.tasks_included.length > 0
         ? babysitterScope
         : null
+    ]);
+  }
+
+  if (onboarding.categorySlug === "personal-trainer") {
+    const trainerScope = normalizeTrainerScope(onboarding.trainerScope);
+    required.splice(8, 0, [
+      "trainerScope",
+      trainerScope.services_offered.length > 0 && trainerScope.modes.length > 0 && trainerScope.tasks_included.length > 0 ? trainerScope : null
     ]);
   }
 

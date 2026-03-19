@@ -26,6 +26,13 @@ import {
   getPetScopeServiceLabel,
   normalizePetScope
 } from "@/lib/pet-scope";
+import {
+  getTrainerExcludedTaskLabel,
+  getTrainerIncludedTaskLabel,
+  getTrainerModeLabel,
+  getTrainerServiceLabel,
+  normalizeTrainerScope
+} from "@/lib/trainer-scope";
 
 type CleaningOnboardingSummary = {
   profilePhotoUrl: string | null;
@@ -38,6 +45,7 @@ type CleaningOnboardingSummary = {
   cleaningScope: unknown;
   petScope: unknown;
   babysitterScope: unknown;
+  trainerScope: unknown;
   acceptsHomesWithPets: boolean | null;
   acceptsHomesWithChildren: boolean | null;
   bringsOwnTools: boolean | null;
@@ -453,6 +461,7 @@ function buildDemoProfessional(proId: string): ProfessionalDetail {
         },
         petScope: null,
         babysitterScope: null,
+        trainerScope: null,
         acceptsHomesWithPets: null,
         acceptsHomesWithChildren: null,
         bringsOwnTools: null,
@@ -654,6 +663,28 @@ export default function ProDetailPage() {
       multi_child: onboarding?.acceptsHomesWithChildren ?? null
     };
   }, [onboarding?.babysitterScope, onboarding?.offeredServices, onboarding?.experienceTypes, onboarding?.bringsOwnTools, onboarding?.acceptsHomesWithChildren]);
+  const trainerScope = useMemo(() => {
+    const normalized = normalizeTrainerScope(onboarding?.trainerScope);
+    if (normalized.services_offered.length > 0 || normalized.modes.length > 0 || normalized.tasks_included.length > 0) {
+      return normalized;
+    }
+
+    return {
+      ...normalized,
+      services_offered: Array.isArray(onboarding?.offeredServices)
+        ? onboarding.offeredServices.filter(
+            (item): item is "funcional" | "fuerza" | "perdida_peso" | "movilidad" =>
+              item === "funcional" || item === "fuerza" || item === "perdida_peso" || item === "movilidad"
+          )
+        : [],
+      modes: Array.isArray(onboarding?.experienceTypes)
+        ? onboarding.experienceTypes.filter(
+            (item): item is "presencial" | "online" | "ambas" => item === "presencial" || item === "online" || item === "ambas"
+          )
+        : [],
+      brings_equipment: onboarding?.bringsOwnTools ?? null
+    };
+  }, [onboarding?.trainerScope, onboarding?.offeredServices, onboarding?.experienceTypes, onboarding?.bringsOwnTools]);
   const serviceCategories = useMemo(() => {
     const bySlug = new Map<string, { slug: string; name: string }>();
     for (const item of data?.taskerServices ?? []) {
@@ -698,6 +729,10 @@ export default function ProDetailPage() {
   const babysitterScopeAges = babysitterScope.age_ranges.map(getBabysitterAgeRangeLabel);
   const babysitterScopeIncludedTasks = babysitterScope.tasks_included.map(getBabysitterIncludedTaskLabel);
   const babysitterScopeExcludedTasks = babysitterScope.tasks_excluded.map(getBabysitterExcludedTaskLabel);
+  const trainerScopeServices = trainerScope.services_offered.map(getTrainerServiceLabel);
+  const trainerScopeModes = trainerScope.modes.map(getTrainerModeLabel);
+  const trainerScopeIncludedTasks = trainerScope.tasks_included.map(getTrainerIncludedTaskLabel);
+  const trainerScopeExcludedTasks = trainerScope.tasks_excluded.map(getTrainerExcludedTaskLabel);
   const buildReserveHref = (options?: { startsAt?: string; serviceId?: string | null }) => {
     const qs = new URLSearchParams();
     qs.set("proId", data?.userId ?? params.proId);
@@ -983,6 +1018,39 @@ export default function ProDetailPage() {
                         </div>
                       </div>
                       <p className="minimal-note">Si necesitas apoyo fuera de este alcance base, revísalo antes de reservar para evitar malos entendidos.</p>
+                    </article>
+                  ) : null}
+
+                  {normalizedPrimaryCategorySlug === "personal-trainer" ? (
+                    <article className="auth-flow-panel client-dashboard-section">
+                      <h2>Alcance del servicio</h2>
+                      <div className="we-info-grid">
+                        <div>
+                          <h3>Tipos de entrenamiento</h3>
+                          <p>{trainerScopeServices.length > 0 ? trainerScopeServices.join(", ") : "Aún no informado."}</p>
+                        </div>
+                        <div>
+                          <h3>Modalidades</h3>
+                          <p>{trainerScopeModes.length > 0 ? trainerScopeModes.join(", ") : "Aún no informado."}</p>
+                        </div>
+                        <div>
+                          <h3>Tareas que sí realiza</h3>
+                          <p>{trainerScopeIncludedTasks.length > 0 ? trainerScopeIncludedTasks.join(", ") : "Aún no informado."}</p>
+                        </div>
+                        <div>
+                          <h3>Tareas que no realiza</h3>
+                          <p>{trainerScopeExcludedTasks.length > 0 ? trainerScopeExcludedTasks.join(", ") : "No reporta exclusiones."}</p>
+                        </div>
+                        <div>
+                          <h3>Lleva equipamiento</h3>
+                          <p>{trainerScope.brings_equipment == null ? "No informado." : trainerScope.brings_equipment ? "Sí" : "No"}</p>
+                        </div>
+                        <div>
+                          <h3>Condiciones especiales</h3>
+                          <p>{trainerScope.special_conditions || "Sin condiciones especiales reportadas."}</p>
+                        </div>
+                      </div>
+                      <p className="minimal-note">Si necesitas algo fuera de este alcance base, revísalo antes de reservar para evitar malos entendidos.</p>
                     </article>
                   ) : null}
 

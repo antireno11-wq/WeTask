@@ -46,6 +46,21 @@ import {
   type BabysitterScopeServiceSlug
 } from "@/lib/babysitter-scope";
 import {
+  TRAINER_MODE_OPTIONS,
+  TRAINER_SCOPE_SERVICE_OPTIONS,
+  TRAINER_TASK_EXCLUDED_OPTIONS,
+  TRAINER_TASK_INCLUDED_OPTIONS,
+  emptyTrainerScope,
+  getTrainerExcludedTaskLabel,
+  getTrainerIncludedTaskLabel,
+  getTrainerModeLabel,
+  getTrainerServiceLabel,
+  normalizeTrainerScope,
+  type TrainerModeSlug,
+  type TrainerScopeData,
+  type TrainerScopeServiceSlug
+} from "@/lib/trainer-scope";
+import {
   PET_SCOPE_SERVICE_OPTIONS,
   PET_TASK_EXCLUDED_OPTIONS,
   PET_TASK_INCLUDED_OPTIONS,
@@ -87,6 +102,7 @@ type OnboardingPayload = {
   cleaningScope: unknown;
   petScope: unknown;
   babysitterScope: unknown;
+  trainerScope: unknown;
   acceptsHomesWithPets: boolean | null;
   acceptsHomesWithChildren: boolean | null;
   acceptsHomesWithElderly: boolean | null;
@@ -190,6 +206,7 @@ type DraftState = {
   trainerServiceType: "funcional" | "fuerza" | "perdida_peso" | "movilidad";
   trainerMode: "presencial" | "online" | "ambas";
   trainerBringsEquipment: boolean | null;
+  trainerScope: TrainerScopeData;
   makeupType: Array<"social" | "eventos" | "novias">;
   makeupKit: boolean | null;
   ironingType: "casa_cliente" | "retiro_entrega";
@@ -216,6 +233,7 @@ type DraftState = {
 type CleaningScopeScreen = 1 | 2 | 3 | 4 | 5;
 type PetScopeScreen = 1 | 2 | 3 | 4 | 5 | 6;
 type BabysitterScopeScreen = 1 | 2 | 3 | 4 | 5 | 6;
+type TrainerScopeScreen = 1 | 2 | 3 | 4 | 5 | 6;
 type MissingFieldItem = {
   field: string;
   label: string;
@@ -297,6 +315,7 @@ const SUBMIT_REQUIRED_FIELDS: Record<string, { label: string; step: WizardStep }
   cleaningScope: { label: "Alcance del servicio de limpieza", step: 7 },
   petScope: { label: "Alcance del servicio de mascotas", step: 7 },
   babysitterScope: { label: "Alcance del servicio de babysitter", step: 7 },
+  trainerScope: { label: "Alcance del servicio de personal trainer", step: 7 },
   serviceCommunes: { label: "Comunas de cobertura", step: 4 },
   coverageLatitude: { label: "Ubicación validada desde la dirección", step: 3 },
   coverageLongitude: { label: "Ubicación validada desde la dirección", step: 3 },
@@ -517,6 +536,7 @@ function createInitialDraft(): DraftState {
     trainerServiceType: "funcional",
     trainerMode: "presencial",
     trainerBringsEquipment: null,
+    trainerScope: emptyTrainerScope(),
     makeupType: [],
     makeupKit: null,
     ironingType: "casa_cliente",
@@ -648,8 +668,12 @@ function buildStep7Payload(draft: DraftState) {
       };
     case "personal-trainer":
       return {
-        offeredServices: [draft.trainerServiceType],
-        experienceTypes: [draft.trainerMode],
+        offeredServices: draft.trainerScope.services_offered,
+        experienceTypes: draft.trainerScope.modes,
+        trainerScope: {
+          ...draft.trainerScope,
+          brings_equipment: draft.trainerBringsEquipment
+        },
         bringsOwnTools: draft.trainerBringsEquipment
       };
     case "chef":
@@ -712,6 +736,7 @@ function CleaningOnboardingPageContent() {
   const [cleaningScopeScreen, setCleaningScopeScreen] = useState<CleaningScopeScreen>(1);
   const [petScopeScreen, setPetScopeScreen] = useState<PetScopeScreen>(1);
   const [babysitterScopeScreen, setBabysitterScopeScreen] = useState<BabysitterScopeScreen>(1);
+  const [trainerScopeScreen, setTrainerScopeScreen] = useState<TrainerScopeScreen>(1);
   const [selectedAvailabilityDay, setSelectedAvailabilityDay] = useState<DayKey>(currentWeekDayKey);
   const [bulkAvailabilityDays, setBulkAvailabilityDays] = useState<DayKey[]>([currentWeekDayKey()]);
   const [newAvailabilityStart, setNewAvailabilityStart] = useState("14:00");
@@ -739,6 +764,10 @@ function CleaningOnboardingPageContent() {
   const babysitterScopeAgePreview = draft.babysitterScope.age_ranges.map(getBabysitterAgeRangeLabel);
   const babysitterScopeIncludedPreview = draft.babysitterScope.tasks_included.map(getBabysitterIncludedTaskLabel);
   const babysitterScopeExcludedPreview = draft.babysitterScope.tasks_excluded.map(getBabysitterExcludedTaskLabel);
+  const trainerScopeServicesPreview = draft.trainerScope.services_offered.map(getTrainerServiceLabel);
+  const trainerScopeModesPreview = draft.trainerScope.modes.map(getTrainerModeLabel);
+  const trainerScopeIncludedPreview = draft.trainerScope.tasks_included.map(getTrainerIncludedTaskLabel);
+  const trainerScopeExcludedPreview = draft.trainerScope.tasks_excluded.map(getTrainerExcludedTaskLabel);
   const pricingGuide = useMemo(() => getPricingGuide(draft), [draft]);
   const progressPercent = Math.round((activeStep / TOTAL_STEPS) * 100);
   const addressQuery = useMemo(() => [draft.address.trim(), "Santiago", "Chile"].filter(Boolean).join(", "), [draft.address]);
@@ -774,6 +803,7 @@ function CleaningOnboardingPageContent() {
         petServiceType: normalizePetServiceTypes(parsed.petServiceType),
         petScope: normalizePetScope(parsed.petScope ?? current.petScope),
         babysitterScope: normalizeBabysitterScope(parsed.babysitterScope ?? current.babysitterScope),
+        trainerScope: normalizeTrainerScope(parsed.trainerScope ?? current.trainerScope),
         makeupType: normalizeMakeupTypes(parsed.makeupType)
       }));
       if (parsed.activeStep && parsed.activeStep >= 1 && parsed.activeStep <= 12) {
@@ -935,6 +965,27 @@ function CleaningOnboardingPageContent() {
   }, [draft.babysitterAgeRange, draft.babysitterFirstAid, draft.babysitterMultiChild, draft.babysitterScope, draft.category]);
 
   useEffect(() => {
+    if (draft.category !== "personal-trainer") return;
+    const scope = draft.trainerScope;
+    const nextService = scope.services_offered[0] ?? draft.trainerServiceType;
+    const nextMode = scope.modes[0] ?? draft.trainerMode;
+    const nextEquipment = scope.brings_equipment;
+    const fieldsChanged =
+      nextService !== draft.trainerServiceType ||
+      nextMode !== draft.trainerMode ||
+      nextEquipment !== draft.trainerBringsEquipment;
+
+    if (!fieldsChanged) return;
+
+    setDraft((current) => ({
+      ...current,
+      trainerServiceType: current.trainerScope.services_offered[0] ?? current.trainerServiceType,
+      trainerMode: current.trainerScope.modes[0] ?? current.trainerMode,
+      trainerBringsEquipment: current.trainerScope.brings_equipment
+    }));
+  }, [draft.category, draft.trainerBringsEquipment, draft.trainerMode, draft.trainerScope, draft.trainerServiceType]);
+
+  useEffect(() => {
     if (draft.category !== "limpieza") return;
     const derivedServices = deriveCleaningServicesFromScope(draft.cleaningScope);
     const scopeServicesChanged = derivedServices.join("|") !== draft.cleaningServices.join("|");
@@ -986,6 +1037,12 @@ function CleaningOnboardingPageContent() {
   useEffect(() => {
     if (activeStep !== 7 || draft.category !== "babysitter") {
       setBabysitterScopeScreen(1);
+    }
+  }, [activeStep, draft.category]);
+
+  useEffect(() => {
+    if (activeStep !== 7 || draft.category !== "personal-trainer") {
+      setTrainerScopeScreen(1);
     }
   }, [activeStep, draft.category]);
 
@@ -1065,6 +1122,37 @@ function CleaningOnboardingPageContent() {
               };
             })()
           : current.babysitterScope,
+      trainerScope:
+        nextOnboarding.categorySlug === "personal-trainer"
+          ? (() => {
+              const normalizedScope = normalizeTrainerScope(nextOnboarding.trainerScope);
+              if (
+                normalizedScope.services_offered.length > 0 ||
+                normalizedScope.modes.length > 0 ||
+                normalizedScope.tasks_included.length > 0
+              ) {
+                return normalizedScope;
+              }
+              return {
+                ...normalizedScope,
+                services_offered: Array.isArray(nextOnboarding.offeredServices)
+                  ? nextOnboarding.offeredServices.filter(
+                      (item): item is TrainerScopeServiceSlug =>
+                        typeof item === "string" &&
+                        TRAINER_SCOPE_SERVICE_OPTIONS.some((option) => option.value === item)
+                    )
+                  : [],
+                modes: Array.isArray(nextOnboarding.experienceTypes)
+                  ? nextOnboarding.experienceTypes.filter(
+                      (item): item is TrainerModeSlug =>
+                        typeof item === "string" &&
+                        TRAINER_MODE_OPTIONS.some((option) => option.value === item)
+                    )
+                  : [],
+                brings_equipment: nextOnboarding.bringsOwnTools ?? current.trainerBringsEquipment
+              };
+            })()
+          : current.trainerScope,
       chefServiceType: nextOnboarding.categorySlug === "chef" ? normalizeChefServiceTypes(nextOnboarding.offeredServices) : current.chefServiceType,
       babysitterAgeRange:
         nextOnboarding.categorySlug === "babysitter"
@@ -1080,6 +1168,18 @@ function CleaningOnboardingPageContent() {
             nextOnboarding.acceptsHomesWithChildren ??
             current.babysitterMultiChild
           : current.babysitterMultiChild,
+      trainerServiceType:
+        nextOnboarding.categorySlug === "personal-trainer"
+          ? normalizeTrainerScope(nextOnboarding.trainerScope).services_offered[0] ?? current.trainerServiceType
+          : current.trainerServiceType,
+      trainerMode:
+        nextOnboarding.categorySlug === "personal-trainer"
+          ? normalizeTrainerScope(nextOnboarding.trainerScope).modes[0] ?? current.trainerMode
+          : current.trainerMode,
+      trainerBringsEquipment:
+        nextOnboarding.categorySlug === "personal-trainer"
+          ? normalizeTrainerScope(nextOnboarding.trainerScope).brings_equipment ?? nextOnboarding.bringsOwnTools ?? current.trainerBringsEquipment
+          : current.trainerBringsEquipment,
       yearsExperience: nextOnboarding.yearsExperience ? String(Math.min(nextOnboarding.yearsExperience, 10)) : current.yearsExperience,
       workMode: nextOnboarding.workMode ?? current.workMode,
       availabilityMode: nextOnboarding.availabilityMode ?? current.availabilityMode,
@@ -1569,6 +1669,28 @@ function CleaningOnboardingPageContent() {
     setBabysitterScopeScreen((current) => (Math.max(1, current - 1) as BabysitterScopeScreen));
   };
 
+  const continueTrainerScopeScreen = () => {
+    if (trainerScopeScreen === 1 && draft.trainerScope.services_offered.length === 0) {
+      setError("Selecciona al menos un tipo de entrenamiento que ofreces.");
+      return;
+    }
+    if (trainerScopeScreen === 2 && draft.trainerScope.modes.length === 0) {
+      setError("Selecciona al menos una modalidad en la que trabajas.");
+      return;
+    }
+    if (trainerScopeScreen === 3 && draft.trainerScope.tasks_included.length === 0) {
+      setError("Selecciona al menos una tarea que sí realizas.");
+      return;
+    }
+    setError("");
+    setTrainerScopeScreen((current) => (Math.min(6, current + 1) as TrainerScopeScreen));
+  };
+
+  const previousTrainerScopeScreen = () => {
+    setError("");
+    setTrainerScopeScreen((current) => (Math.max(1, current - 1) as TrainerScopeScreen));
+  };
+
   const continueStep7 = async () => {
     const payload = buildStep7Payload(draft);
     if (!payload.offeredServices || payload.offeredServices.length === 0) {
@@ -1606,6 +1728,18 @@ function CleaningOnboardingPageContent() {
       return;
     }
     if (draft.category === "babysitter" && draft.babysitterScope.tasks_included.length === 0) {
+      setError("Selecciona al menos una tarea que sí realizas.");
+      return;
+    }
+    if (draft.category === "personal-trainer" && draft.trainerScope.services_offered.length === 0) {
+      setError("Selecciona al menos un tipo de entrenamiento que ofreces.");
+      return;
+    }
+    if (draft.category === "personal-trainer" && draft.trainerScope.modes.length === 0) {
+      setError("Selecciona al menos una modalidad en la que trabajas.");
+      return;
+    }
+    if (draft.category === "personal-trainer" && draft.trainerScope.tasks_included.length === 0) {
       setError("Selecciona al menos una tarea que sí realizas.");
       return;
     }
@@ -2893,37 +3027,215 @@ function CleaningOnboardingPageContent() {
 
                 {draft.category === "personal-trainer" ? (
                   <div className="grid-form auth-flow-form">
-                    <label>
-                      Tipo de entrenamiento
-                      <select
-                        value={draft.trainerServiceType}
-                        onChange={(event) => updateDraft("trainerServiceType", event.target.value as DraftState["trainerServiceType"])}
-                      >
-                        <option value="funcional">Funcional</option>
-                        <option value="fuerza">Fuerza</option>
-                        <option value="perdida_peso">Pérdida de peso</option>
-                        <option value="movilidad">Movilidad</option>
-                      </select>
-                    </label>
-                    <label>
-                      Modalidad
-                      <select value={draft.trainerMode} onChange={(event) => updateDraft("trainerMode", event.target.value as DraftState["trainerMode"])}>
-                        <option value="presencial">Presencial</option>
-                        <option value="online">Online</option>
-                        <option value="ambas">Ambas</option>
-                      </select>
-                    </label>
-                    <label>
-                      ¿Llevas implementos o equipamiento?
-                      <select
-                        value={draft.trainerBringsEquipment == null ? "" : draft.trainerBringsEquipment ? "si" : "no"}
-                        onChange={(event) => updateDraft("trainerBringsEquipment", event.target.value === "si")}
-                      >
-                        <option value="">Selecciona</option>
-                        <option value="si">Sí</option>
-                        <option value="no">No</option>
-                      </select>
-                    </label>
+                    <div className="full onboarding-scope-progress">
+                      <span className={trainerScopeScreen >= 1 ? "active" : ""}>Servicios</span>
+                      <span className={trainerScopeScreen >= 2 ? "active" : ""}>Modalidad</span>
+                      <span className={trainerScopeScreen >= 3 ? "active" : ""}>Sí realiza</span>
+                      <span className={trainerScopeScreen >= 4 ? "active" : ""}>No realiza</span>
+                      <span className={trainerScopeScreen >= 5 ? "active" : ""}>Condiciones</span>
+                      <span className={trainerScopeScreen >= 6 ? "active" : ""}>Revisión</span>
+                    </div>
+
+                    {trainerScopeScreen === 1 ? (
+                      <div className="full">
+                        <p className="field-label">¿Qué tipos de entrenamiento ofreces?</p>
+                        <div className="auth-service-grid auth-service-grid-cleaning">
+                          {TRAINER_SCOPE_SERVICE_OPTIONS.map((service) => (
+                            <label
+                              key={service.value}
+                              className={`auth-service-card auth-service-card-scope ${draft.trainerScope.services_offered.includes(service.value) ? "active" : ""}`}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={draft.trainerScope.services_offered.includes(service.value)}
+                                onChange={(event) => {
+                                  setDraft((current) => ({
+                                    ...current,
+                                    trainerScope: {
+                                      ...current.trainerScope,
+                                      services_offered: event.target.checked
+                                        ? Array.from(new Set([...current.trainerScope.services_offered, service.value]))
+                                        : current.trainerScope.services_offered.filter((item) => item !== service.value)
+                                    }
+                                  }));
+                                }}
+                              />
+                              <strong>{service.label}</strong>
+                              <span>{service.description}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    ) : null}
+
+                    {trainerScopeScreen === 2 ? (
+                      <>
+                        <div className="full">
+                          <p className="field-label">¿En qué modalidad trabajas?</p>
+                          <div className="onboarding-checkbox-grid onboarding-checkbox-grid-compact">
+                            {TRAINER_MODE_OPTIONS.map((option) => (
+                              <label key={option.value} className="onboarding-check-card">
+                                <input
+                                  type="checkbox"
+                                  checked={draft.trainerScope.modes.includes(option.value)}
+                                  onChange={() =>
+                                    setDraft((current) => ({
+                                      ...current,
+                                      trainerScope: {
+                                        ...current.trainerScope,
+                                        modes: current.trainerScope.modes.includes(option.value)
+                                          ? current.trainerScope.modes.filter((item) => item !== option.value)
+                                          : [...current.trainerScope.modes, option.value]
+                                      }
+                                    }))
+                                  }
+                                />
+                                <span>{option.label}</span>
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+                        <label>
+                          ¿Llevas implementos o equipamiento?
+                          <select
+                            value={draft.trainerScope.brings_equipment == null ? "" : draft.trainerScope.brings_equipment ? "si" : "no"}
+                            onChange={(event) =>
+                              setDraft((current) => ({
+                                ...current,
+                                trainerScope: {
+                                  ...current.trainerScope,
+                                  brings_equipment: event.target.value === "" ? null : event.target.value === "si"
+                                }
+                              }))
+                            }
+                          >
+                            <option value="">Selecciona</option>
+                            <option value="si">Sí</option>
+                            <option value="no">No</option>
+                          </select>
+                        </label>
+                      </>
+                    ) : null}
+
+                    {trainerScopeScreen === 3 ? (
+                      <div className="full">
+                        <p className="field-label">¿Qué tareas sí realizas?</p>
+                        <div className="onboarding-task-checklist">
+                          {TRAINER_TASK_INCLUDED_OPTIONS.map((task) => (
+                            <label key={task.value} className={`onboarding-task-checklist-row ${draft.trainerScope.tasks_included.includes(task.value) ? "checked" : ""}`}>
+                              <div>
+                                <strong>{task.label}</strong>
+                              </div>
+                              <span className="onboarding-task-checklist-control">
+                                <input
+                                  type="checkbox"
+                                  checked={draft.trainerScope.tasks_included.includes(task.value)}
+                                  onChange={(event) => {
+                                    setDraft((current) => ({
+                                      ...current,
+                                      trainerScope: {
+                                        ...current.trainerScope,
+                                        tasks_included: event.target.checked
+                                          ? Array.from(new Set([...current.trainerScope.tasks_included, task.value]))
+                                          : current.trainerScope.tasks_included.filter((item) => item !== task.value)
+                                      }
+                                    }));
+                                  }}
+                                />
+                                <span className="onboarding-task-checklist-box" aria-hidden />
+                              </span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    ) : null}
+
+                    {trainerScopeScreen === 4 ? (
+                      <div className="full">
+                        <p className="field-label">¿Qué tareas no realizas?</p>
+                        <div className="onboarding-task-checklist">
+                          {TRAINER_TASK_EXCLUDED_OPTIONS.map((task) => (
+                            <label
+                              key={task.value}
+                              className={`onboarding-task-checklist-row onboarding-task-checklist-row-warning ${draft.trainerScope.tasks_excluded.includes(task.value) ? "checked" : ""}`}
+                            >
+                              <div>
+                                <strong>{task.label}</strong>
+                              </div>
+                              <span className="onboarding-task-checklist-control">
+                                <input
+                                  type="checkbox"
+                                  checked={draft.trainerScope.tasks_excluded.includes(task.value)}
+                                  onChange={(event) => {
+                                    setDraft((current) => ({
+                                      ...current,
+                                      trainerScope: {
+                                        ...current.trainerScope,
+                                        tasks_excluded: event.target.checked
+                                          ? Array.from(new Set([...current.trainerScope.tasks_excluded, task.value]))
+                                          : current.trainerScope.tasks_excluded.filter((item) => item !== task.value)
+                                      }
+                                    }));
+                                  }}
+                                />
+                                <span className="onboarding-task-checklist-box" aria-hidden />
+                              </span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    ) : null}
+
+                    {trainerScopeScreen === 5 ? (
+                      <div className="full">
+                        <label>
+                          Condiciones especiales de tu servicio
+                          <textarea
+                            value={draft.trainerScope.special_conditions}
+                            rows={4}
+                            placeholder="Ejemplo: trabajo solo con adultos, necesito espacio mínimo para entrenar y no hago rehabilitación de lesiones."
+                            onChange={(event) =>
+                              setDraft((current) => ({
+                                ...current,
+                                trainerScope: {
+                                  ...current.trainerScope,
+                                  special_conditions: event.target.value
+                                }
+                              }))
+                            }
+                          />
+                        </label>
+                      </div>
+                    ) : null}
+
+                    {trainerScopeScreen === 6 ? (
+                      <div className="full onboarding-scope-review-grid">
+                        <div className="auth-flow-note-card">
+                          <strong>Tipos de entrenamiento</strong>
+                          <span>{trainerScopeServicesPreview.length > 0 ? trainerScopeServicesPreview.join(", ") : "Sin información aún."}</span>
+                        </div>
+                        <div className="auth-flow-note-card">
+                          <strong>Modalidades</strong>
+                          <span>{trainerScopeModesPreview.length > 0 ? trainerScopeModesPreview.join(", ") : "Sin información aún."}</span>
+                        </div>
+                        <div className="auth-flow-note-card">
+                          <strong>Tareas que sí realiza</strong>
+                          <span>{trainerScopeIncludedPreview.length > 0 ? trainerScopeIncludedPreview.join(", ") : "Sin información aún."}</span>
+                        </div>
+                        <div className="auth-flow-note-card">
+                          <strong>Tareas que no realiza</strong>
+                          <span>{trainerScopeExcludedPreview.length > 0 ? trainerScopeExcludedPreview.join(", ") : "No marcaste exclusiones."}</span>
+                        </div>
+                        <div className="auth-flow-note-card">
+                          <strong>Lleva equipamiento</strong>
+                          <span>{draft.trainerScope.brings_equipment == null ? "No informado." : draft.trainerScope.brings_equipment ? "Sí" : "No"}</span>
+                        </div>
+                        <div className="auth-flow-note-card">
+                          <strong>Condiciones especiales</strong>
+                          <span>{draft.trainerScope.special_conditions.trim() || "No agregaste condiciones especiales."}</span>
+                        </div>
+                      </div>
+                    ) : null}
                   </div>
                 ) : null}
 
@@ -3049,6 +3361,10 @@ function CleaningOnboardingPageContent() {
                     <button type="button" className="cta ghost" onClick={previousBabysitterScopeScreen}>
                       Volver
                     </button>
+                  ) : draft.category === "personal-trainer" && trainerScopeScreen > 1 ? (
+                    <button type="button" className="cta ghost" onClick={previousTrainerScopeScreen}>
+                      Volver
+                    </button>
                   ) : (
                     <button type="button" className="cta ghost" onClick={previousStep}>
                       Volver
@@ -3064,6 +3380,10 @@ function CleaningOnboardingPageContent() {
                     </button>
                   ) : draft.category === "babysitter" && babysitterScopeScreen < 6 ? (
                     <button type="button" className="cta" onClick={continueBabysitterScopeScreen}>
+                      Siguiente
+                    </button>
+                  ) : draft.category === "personal-trainer" && trainerScopeScreen < 6 ? (
+                    <button type="button" className="cta" onClick={continueTrainerScopeScreen}>
                       Siguiente
                     </button>
                   ) : (

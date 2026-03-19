@@ -19,6 +19,12 @@ import {
   BABYSITTER_TASK_INCLUDED_OPTIONS
 } from "@/lib/babysitter-scope";
 import {
+  TRAINER_MODE_OPTIONS,
+  TRAINER_SCOPE_SERVICE_OPTIONS,
+  TRAINER_TASK_EXCLUDED_OPTIONS,
+  TRAINER_TASK_INCLUDED_OPTIONS
+} from "@/lib/trainer-scope";
+import {
   PET_SCOPE_ANIMAL_OPTIONS,
   PET_SCOPE_SERVICE_OPTIONS,
   PET_TASK_EXCLUDED_OPTIONS,
@@ -39,6 +45,10 @@ const babysitterScopeServiceEnum = z.enum(BABYSITTER_SCOPE_SERVICE_OPTIONS.map((
 const babysitterAgeRangeEnum = z.enum(BABYSITTER_AGE_RANGE_OPTIONS.map((option) => option.value) as [string, ...string[]]);
 const babysitterIncludedTaskEnum = z.enum(BABYSITTER_TASK_INCLUDED_OPTIONS.map((option) => option.value) as [string, ...string[]]);
 const babysitterExcludedTaskEnum = z.enum(BABYSITTER_TASK_EXCLUDED_OPTIONS.map((option) => option.value) as [string, ...string[]]);
+const trainerScopeServiceEnum = z.enum(TRAINER_SCOPE_SERVICE_OPTIONS.map((option) => option.value) as [string, ...string[]]);
+const trainerModeEnum = z.enum(TRAINER_MODE_OPTIONS.map((option) => option.value) as [string, ...string[]]);
+const trainerIncludedTaskEnum = z.enum(TRAINER_TASK_INCLUDED_OPTIONS.map((option) => option.value) as [string, ...string[]]);
+const trainerExcludedTaskEnum = z.enum(TRAINER_TASK_EXCLUDED_OPTIONS.map((option) => option.value) as [string, ...string[]]);
 const petScopeServiceEnum = z.enum(PET_SCOPE_SERVICE_OPTIONS.map((option) => option.value) as [string, ...string[]]);
 const petScopeAnimalEnum = z.enum(PET_SCOPE_ANIMAL_OPTIONS.map((option) => option.value) as [string, ...string[]]);
 const petIncludedTaskEnum = z.enum(PET_TASK_INCLUDED_OPTIONS.map((option) => option.value) as [string, ...string[]]);
@@ -468,6 +478,17 @@ export const taskerOnboardingStep7Schema = z.object({
       multi_child: z.boolean().optional().nullable(),
       tasks_included: z.array(babysitterIncludedTaskEnum).min(1),
       tasks_excluded: z.array(babysitterExcludedTaskEnum).optional().default([]),
+      special_conditions: z.string().max(600).optional().default("")
+    })
+    .optional()
+    .nullable(),
+  trainerScope: z
+    .object({
+      services_offered: z.array(trainerScopeServiceEnum).min(1),
+      modes: z.array(trainerModeEnum).min(1),
+      brings_equipment: z.boolean().optional().nullable(),
+      tasks_included: z.array(trainerIncludedTaskEnum).min(1),
+      tasks_excluded: z.array(trainerExcludedTaskEnum).optional().default([]),
       special_conditions: z.string().max(600).optional().default("")
     })
     .optional()

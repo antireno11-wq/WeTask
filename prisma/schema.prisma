@@ -535,6 +535,7 @@ model CleaningOnboarding {
   cleaningScope              Json?
   petScope                   Json?
   babysitterScope            Json?
+  trainerScope               Json?
   acceptsHomesWithPets       Boolean?
   acceptsHomesWithChildren   Boolean?
   acceptsHomesWithElderly    Boolean?
