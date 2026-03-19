@@ -5765,16 +5765,16 @@ textarea {
 
 .onboarding-step-nav {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(82px, 1fr));
-  gap: 6px;
+  grid-template-columns: repeat(auto-fit, minmax(72px, 1fr));
+  gap: 5px;
 }
 
 .onboarding-step-nav-item {
   display: grid;
-  gap: 3px;
-  min-height: 74px;
-  padding: 8px;
-  border-radius: 14px;
+  gap: 2px;
+  min-height: 60px;
+  padding: 6px 5px;
+  border-radius: 12px;
   border: 1px solid #d6e7f5;
   background: #f8fbff;
   color: #56708a;
@@ -5785,15 +5785,15 @@ textarea {
 }
 
 .onboarding-step-nav-item span {
-  font-size: 0.68rem;
+  font-size: 0.62rem;
   font-weight: 800;
   letter-spacing: 0.05em;
   text-transform: uppercase;
 }
 
 .onboarding-step-nav-item strong {
-  font-size: 0.8rem;
-  line-height: 1.15;
+  font-size: 0.72rem;
+  line-height: 1.08;
   color: #173b5f;
 }
 
