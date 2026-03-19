@@ -61,6 +61,24 @@ import {
   type TrainerScopeServiceSlug
 } from "@/lib/trainer-scope";
 import {
+  TEACHER_LEVEL_OPTIONS,
+  TEACHER_MODE_OPTIONS,
+  TEACHER_SCOPE_SERVICE_OPTIONS,
+  TEACHER_TASK_EXCLUDED_OPTIONS,
+  TEACHER_TASK_INCLUDED_OPTIONS,
+  emptyTeacherScope,
+  getTeacherExcludedTaskLabel,
+  getTeacherIncludedTaskLabel,
+  getTeacherLevelLabel,
+  getTeacherModeLabel,
+  getTeacherServiceLabel,
+  normalizeTeacherScope,
+  type TeacherLevelSlug,
+  type TeacherModeSlug,
+  type TeacherScopeData,
+  type TeacherScopeServiceSlug
+} from "@/lib/teacher-scope";
+import {
   PET_SCOPE_SERVICE_OPTIONS,
   PET_TASK_EXCLUDED_OPTIONS,
   PET_TASK_INCLUDED_OPTIONS,
@@ -103,6 +121,7 @@ type OnboardingPayload = {
   petScope: unknown;
   babysitterScope: unknown;
   trainerScope: unknown;
+  teacherScope: unknown;
   acceptsHomesWithPets: boolean | null;
   acceptsHomesWithChildren: boolean | null;
   acceptsHomesWithElderly: boolean | null;
@@ -203,6 +222,7 @@ type DraftState = {
   teacherSubject: "matematicas" | "ingles" | "lenguaje" | "ciencias" | "otra";
   teacherLevel: "basica" | "media" | "universitario";
   teacherMode: "presencial" | "online" | "ambas";
+  teacherScope: TeacherScopeData;
   trainerServiceType: "funcional" | "fuerza" | "perdida_peso" | "movilidad";
   trainerMode: "presencial" | "online" | "ambas";
   trainerBringsEquipment: boolean | null;
@@ -233,6 +253,7 @@ type DraftState = {
 type CleaningScopeScreen = 1 | 2 | 3 | 4 | 5;
 type PetScopeScreen = 1 | 2 | 3 | 4 | 5 | 6;
 type BabysitterScopeScreen = 1 | 2 | 3 | 4 | 5 | 6;
+type TeacherScopeScreen = 1 | 2 | 3 | 4 | 5 | 6;
 type TrainerScopeScreen = 1 | 2 | 3 | 4 | 5 | 6;
 type MissingFieldItem = {
   field: string;
@@ -315,6 +336,7 @@ const SUBMIT_REQUIRED_FIELDS: Record<string, { label: string; step: WizardStep }
   cleaningScope: { label: "Alcance del servicio de limpieza", step: 7 },
   petScope: { label: "Alcance del servicio de mascotas", step: 7 },
   babysitterScope: { label: "Alcance del servicio de babysitter", step: 7 },
+  teacherScope: { label: "Alcance del servicio de profesor particular", step: 7 },
   trainerScope: { label: "Alcance del servicio de personal trainer", step: 7 },
   serviceCommunes: { label: "Comunas de cobertura", step: 4 },
   coverageLatitude: { label: "Ubicación validada desde la dirección", step: 3 },
@@ -533,6 +555,7 @@ function createInitialDraft(): DraftState {
     teacherSubject: "matematicas",
     teacherLevel: "basica",
     teacherMode: "presencial",
+    teacherScope: emptyTeacherScope(),
     trainerServiceType: "funcional",
     trainerMode: "presencial",
     trainerBringsEquipment: null,
@@ -663,8 +686,11 @@ function buildStep7Payload(draft: DraftState) {
       };
     case "profesor-particular":
       return {
-        offeredServices: [draft.teacherSubject],
-        experienceTypes: [draft.teacherLevel, draft.teacherMode]
+        offeredServices: draft.teacherScope.services_offered,
+        experienceTypes: [...draft.teacherScope.levels, ...draft.teacherScope.modes],
+        teacherScope: {
+          ...draft.teacherScope
+        }
       };
     case "personal-trainer":
       return {
@@ -736,6 +762,7 @@ function CleaningOnboardingPageContent() {
   const [cleaningScopeScreen, setCleaningScopeScreen] = useState<CleaningScopeScreen>(1);
   const [petScopeScreen, setPetScopeScreen] = useState<PetScopeScreen>(1);
   const [babysitterScopeScreen, setBabysitterScopeScreen] = useState<BabysitterScopeScreen>(1);
+  const [teacherScopeScreen, setTeacherScopeScreen] = useState<TeacherScopeScreen>(1);
   const [trainerScopeScreen, setTrainerScopeScreen] = useState<TrainerScopeScreen>(1);
   const [selectedAvailabilityDay, setSelectedAvailabilityDay] = useState<DayKey>(currentWeekDayKey);
   const [bulkAvailabilityDays, setBulkAvailabilityDays] = useState<DayKey[]>([currentWeekDayKey()]);
@@ -764,6 +791,11 @@ function CleaningOnboardingPageContent() {
   const babysitterScopeAgePreview = draft.babysitterScope.age_ranges.map(getBabysitterAgeRangeLabel);
   const babysitterScopeIncludedPreview = draft.babysitterScope.tasks_included.map(getBabysitterIncludedTaskLabel);
   const babysitterScopeExcludedPreview = draft.babysitterScope.tasks_excluded.map(getBabysitterExcludedTaskLabel);
+  const teacherScopeServicesPreview = draft.teacherScope.services_offered.map(getTeacherServiceLabel);
+  const teacherScopeLevelsPreview = draft.teacherScope.levels.map(getTeacherLevelLabel);
+  const teacherScopeModesPreview = draft.teacherScope.modes.map(getTeacherModeLabel);
+  const teacherScopeIncludedPreview = draft.teacherScope.tasks_included.map(getTeacherIncludedTaskLabel);
+  const teacherScopeExcludedPreview = draft.teacherScope.tasks_excluded.map(getTeacherExcludedTaskLabel);
   const trainerScopeServicesPreview = draft.trainerScope.services_offered.map(getTrainerServiceLabel);
   const trainerScopeModesPreview = draft.trainerScope.modes.map(getTrainerModeLabel);
   const trainerScopeIncludedPreview = draft.trainerScope.tasks_included.map(getTrainerIncludedTaskLabel);
@@ -803,6 +835,7 @@ function CleaningOnboardingPageContent() {
         petServiceType: normalizePetServiceTypes(parsed.petServiceType),
         petScope: normalizePetScope(parsed.petScope ?? current.petScope),
         babysitterScope: normalizeBabysitterScope(parsed.babysitterScope ?? current.babysitterScope),
+        teacherScope: normalizeTeacherScope(parsed.teacherScope ?? current.teacherScope),
         trainerScope: normalizeTrainerScope(parsed.trainerScope ?? current.trainerScope),
         makeupType: normalizeMakeupTypes(parsed.makeupType)
       }));
@@ -965,6 +998,30 @@ function CleaningOnboardingPageContent() {
   }, [draft.babysitterAgeRange, draft.babysitterFirstAid, draft.babysitterMultiChild, draft.babysitterScope, draft.category]);
 
   useEffect(() => {
+    if (draft.category !== "profesor-particular") return;
+    const scope = draft.teacherScope;
+    const nextSubject = scope.services_offered[0] ?? draft.teacherSubject;
+    const nextLevel = scope.levels[0] ?? draft.teacherLevel;
+    const nextMode = scope.modes.length > 1 ? "ambas" : scope.modes[0] ?? draft.teacherMode;
+    const fieldsChanged =
+      nextSubject !== draft.teacherSubject ||
+      nextLevel !== draft.teacherLevel ||
+      nextMode !== draft.teacherMode;
+
+    if (!fieldsChanged) return;
+
+    setDraft((current) => ({
+      ...current,
+      teacherSubject: current.teacherScope.services_offered[0] ?? current.teacherSubject,
+      teacherLevel: current.teacherScope.levels[0] ?? current.teacherLevel,
+      teacherMode:
+        current.teacherScope.modes.length > 1
+          ? "ambas"
+          : current.teacherScope.modes[0] ?? current.teacherMode
+    }));
+  }, [draft.category, draft.teacherLevel, draft.teacherMode, draft.teacherScope, draft.teacherSubject]);
+
+  useEffect(() => {
     if (draft.category !== "personal-trainer") return;
     const scope = draft.trainerScope;
     const nextService = scope.services_offered[0] ?? draft.trainerServiceType;
@@ -1037,6 +1094,12 @@ function CleaningOnboardingPageContent() {
   useEffect(() => {
     if (activeStep !== 7 || draft.category !== "babysitter") {
       setBabysitterScopeScreen(1);
+    }
+  }, [activeStep, draft.category]);
+
+  useEffect(() => {
+    if (activeStep !== 7 || draft.category !== "profesor-particular") {
+      setTeacherScopeScreen(1);
     }
   }, [activeStep, draft.category]);
 
@@ -1122,6 +1185,44 @@ function CleaningOnboardingPageContent() {
               };
             })()
           : current.babysitterScope,
+      teacherScope:
+        nextOnboarding.categorySlug === "profesor-particular"
+          ? (() => {
+              const normalizedScope = normalizeTeacherScope(nextOnboarding.teacherScope);
+              if (
+                normalizedScope.services_offered.length > 0 ||
+                normalizedScope.levels.length > 0 ||
+                normalizedScope.modes.length > 0 ||
+                normalizedScope.tasks_included.length > 0
+              ) {
+                return normalizedScope;
+              }
+              return {
+                ...normalizedScope,
+                services_offered: Array.isArray(nextOnboarding.offeredServices)
+                  ? nextOnboarding.offeredServices.filter(
+                      (item): item is TeacherScopeServiceSlug =>
+                        typeof item === "string" &&
+                        TEACHER_SCOPE_SERVICE_OPTIONS.some((option) => option.value === item)
+                    )
+                  : [],
+                levels: Array.isArray(nextOnboarding.experienceTypes)
+                  ? nextOnboarding.experienceTypes.filter(
+                      (item): item is TeacherLevelSlug =>
+                        typeof item === "string" &&
+                        TEACHER_LEVEL_OPTIONS.some((option) => option.value === item)
+                    )
+                  : [],
+                modes: Array.isArray(nextOnboarding.experienceTypes)
+                  ? nextOnboarding.experienceTypes.filter(
+                      (item): item is TeacherModeSlug =>
+                        typeof item === "string" &&
+                        TEACHER_MODE_OPTIONS.some((option) => option.value === item)
+                    )
+                  : []
+              };
+            })()
+          : current.teacherScope,
       trainerScope:
         nextOnboarding.categorySlug === "personal-trainer"
           ? (() => {
@@ -1168,6 +1269,22 @@ function CleaningOnboardingPageContent() {
             nextOnboarding.acceptsHomesWithChildren ??
             current.babysitterMultiChild
           : current.babysitterMultiChild,
+      teacherSubject:
+        nextOnboarding.categorySlug === "profesor-particular"
+          ? normalizeTeacherScope(nextOnboarding.teacherScope).services_offered[0] ?? current.teacherSubject
+          : current.teacherSubject,
+      teacherLevel:
+        nextOnboarding.categorySlug === "profesor-particular"
+          ? normalizeTeacherScope(nextOnboarding.teacherScope).levels[0] ?? current.teacherLevel
+          : current.teacherLevel,
+      teacherMode:
+        nextOnboarding.categorySlug === "profesor-particular"
+          ? (() => {
+              const modes = normalizeTeacherScope(nextOnboarding.teacherScope).modes;
+              if (modes.length > 1) return "ambas";
+              return modes[0] ?? current.teacherMode;
+            })()
+          : current.teacherMode,
       trainerServiceType:
         nextOnboarding.categorySlug === "personal-trainer"
           ? normalizeTrainerScope(nextOnboarding.trainerScope).services_offered[0] ?? current.trainerServiceType
@@ -1669,6 +1786,32 @@ function CleaningOnboardingPageContent() {
     setBabysitterScopeScreen((current) => (Math.max(1, current - 1) as BabysitterScopeScreen));
   };
 
+  const continueTeacherScopeScreen = () => {
+    if (teacherScopeScreen === 1 && draft.teacherScope.services_offered.length === 0) {
+      setError("Selecciona al menos una asignatura que ofreces.");
+      return;
+    }
+    if (teacherScopeScreen === 2 && draft.teacherScope.levels.length === 0) {
+      setError("Selecciona al menos un nivel con el que trabajas.");
+      return;
+    }
+    if (teacherScopeScreen === 2 && draft.teacherScope.modes.length === 0) {
+      setError("Selecciona al menos una modalidad de clases.");
+      return;
+    }
+    if (teacherScopeScreen === 3 && draft.teacherScope.tasks_included.length === 0) {
+      setError("Selecciona al menos una tarea que sí realizas.");
+      return;
+    }
+    setError("");
+    setTeacherScopeScreen((current) => (Math.min(6, current + 1) as TeacherScopeScreen));
+  };
+
+  const previousTeacherScopeScreen = () => {
+    setError("");
+    setTeacherScopeScreen((current) => (Math.max(1, current - 1) as TeacherScopeScreen));
+  };
+
   const continueTrainerScopeScreen = () => {
     if (trainerScopeScreen === 1 && draft.trainerScope.services_offered.length === 0) {
       setError("Selecciona al menos un tipo de entrenamiento que ofreces.");
@@ -1728,6 +1871,22 @@ function CleaningOnboardingPageContent() {
       return;
     }
     if (draft.category === "babysitter" && draft.babysitterScope.tasks_included.length === 0) {
+      setError("Selecciona al menos una tarea que sí realizas.");
+      return;
+    }
+    if (draft.category === "profesor-particular" && draft.teacherScope.services_offered.length === 0) {
+      setError("Selecciona al menos una asignatura que ofreces.");
+      return;
+    }
+    if (draft.category === "profesor-particular" && draft.teacherScope.levels.length === 0) {
+      setError("Selecciona al menos un nivel con el que trabajas.");
+      return;
+    }
+    if (draft.category === "profesor-particular" && draft.teacherScope.modes.length === 0) {
+      setError("Selecciona al menos una modalidad de clases.");
+      return;
+    }
+    if (draft.category === "profesor-particular" && draft.teacherScope.tasks_included.length === 0) {
       setError("Selecciona al menos una tarea que sí realizas.");
       return;
     }
@@ -2996,32 +3155,221 @@ function CleaningOnboardingPageContent() {
 
                 {draft.category === "profesor-particular" ? (
                   <div className="grid-form auth-flow-form">
-                    <label>
-                      Asignatura
-                      <select value={draft.teacherSubject} onChange={(event) => updateDraft("teacherSubject", event.target.value as DraftState["teacherSubject"])}>
-                        <option value="matematicas">Matemáticas</option>
-                        <option value="ingles">Inglés</option>
-                        <option value="lenguaje">Lenguaje</option>
-                        <option value="ciencias">Ciencias</option>
-                        <option value="otra">Otra</option>
-                      </select>
-                    </label>
-                    <label>
-                      Nivel
-                      <select value={draft.teacherLevel} onChange={(event) => updateDraft("teacherLevel", event.target.value as DraftState["teacherLevel"])}>
-                        <option value="basica">Básica</option>
-                        <option value="media">Media</option>
-                        <option value="universitario">Universitario</option>
-                      </select>
-                    </label>
-                    <label>
-                      Modalidad
-                      <select value={draft.teacherMode} onChange={(event) => updateDraft("teacherMode", event.target.value as DraftState["teacherMode"])}>
-                        <option value="presencial">Presencial</option>
-                        <option value="online">Online</option>
-                        <option value="ambas">Ambas</option>
-                      </select>
-                    </label>
+                    <div className="full onboarding-scope-progress">
+                      <span className={teacherScopeScreen >= 1 ? "active" : ""}>Asignaturas</span>
+                      <span className={teacherScopeScreen >= 2 ? "active" : ""}>Nivel y modalidad</span>
+                      <span className={teacherScopeScreen >= 3 ? "active" : ""}>Sí realiza</span>
+                      <span className={teacherScopeScreen >= 4 ? "active" : ""}>No realiza</span>
+                      <span className={teacherScopeScreen >= 5 ? "active" : ""}>Condiciones</span>
+                      <span className={teacherScopeScreen >= 6 ? "active" : ""}>Revisión</span>
+                    </div>
+
+                    {teacherScopeScreen === 1 ? (
+                      <div className="full">
+                        <p className="field-label">¿Qué asignaturas ofreces?</p>
+                        <div className="auth-service-grid auth-service-grid-cleaning">
+                          {TEACHER_SCOPE_SERVICE_OPTIONS.map((service) => (
+                            <label
+                              key={service.value}
+                              className={`auth-service-card auth-service-card-scope ${draft.teacherScope.services_offered.includes(service.value) ? "active" : ""}`}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={draft.teacherScope.services_offered.includes(service.value)}
+                                onChange={(event) => {
+                                  setDraft((current) => ({
+                                    ...current,
+                                    teacherScope: {
+                                      ...current.teacherScope,
+                                      services_offered: event.target.checked
+                                        ? Array.from(new Set([...current.teacherScope.services_offered, service.value]))
+                                        : current.teacherScope.services_offered.filter((item) => item !== service.value)
+                                    }
+                                  }));
+                                }}
+                              />
+                              <strong>{service.label}</strong>
+                              <span>{service.description}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    ) : null}
+
+                    {teacherScopeScreen === 2 ? (
+                      <>
+                        <div className="full">
+                          <p className="field-label">¿Con qué niveles trabajas?</p>
+                          <div className="onboarding-checkbox-grid onboarding-checkbox-grid-compact">
+                            {TEACHER_LEVEL_OPTIONS.map((option) => (
+                              <label key={option.value} className="onboarding-check-card">
+                                <input
+                                  type="checkbox"
+                                  checked={draft.teacherScope.levels.includes(option.value)}
+                                  onChange={() =>
+                                    setDraft((current) => ({
+                                      ...current,
+                                      teacherScope: {
+                                        ...current.teacherScope,
+                                        levels: current.teacherScope.levels.includes(option.value)
+                                          ? current.teacherScope.levels.filter((item) => item !== option.value)
+                                          : [...current.teacherScope.levels, option.value]
+                                      }
+                                    }))
+                                  }
+                                />
+                                <span>{option.label}</span>
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+                        <div className="full">
+                          <p className="field-label">¿En qué modalidad haces clases?</p>
+                          <div className="onboarding-checkbox-grid onboarding-checkbox-grid-compact">
+                            {TEACHER_MODE_OPTIONS.map((option) => (
+                              <label key={option.value} className="onboarding-check-card">
+                                <input
+                                  type="checkbox"
+                                  checked={draft.teacherScope.modes.includes(option.value)}
+                                  onChange={() =>
+                                    setDraft((current) => ({
+                                      ...current,
+                                      teacherScope: {
+                                        ...current.teacherScope,
+                                        modes: current.teacherScope.modes.includes(option.value)
+                                          ? current.teacherScope.modes.filter((item) => item !== option.value)
+                                          : [...current.teacherScope.modes, option.value]
+                                      }
+                                    }))
+                                  }
+                                />
+                                <span>{option.label}</span>
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+                      </>
+                    ) : null}
+
+                    {teacherScopeScreen === 3 ? (
+                      <div className="full">
+                        <p className="field-label">¿Qué tareas sí realizas?</p>
+                        <div className="onboarding-task-checklist">
+                          {TEACHER_TASK_INCLUDED_OPTIONS.map((task) => (
+                            <label key={task.value} className={`onboarding-task-checklist-row ${draft.teacherScope.tasks_included.includes(task.value) ? "checked" : ""}`}>
+                              <div>
+                                <strong>{task.label}</strong>
+                              </div>
+                              <span className="onboarding-task-checklist-control">
+                                <input
+                                  type="checkbox"
+                                  checked={draft.teacherScope.tasks_included.includes(task.value)}
+                                  onChange={(event) => {
+                                    setDraft((current) => ({
+                                      ...current,
+                                      teacherScope: {
+                                        ...current.teacherScope,
+                                        tasks_included: event.target.checked
+                                          ? Array.from(new Set([...current.teacherScope.tasks_included, task.value]))
+                                          : current.teacherScope.tasks_included.filter((item) => item !== task.value)
+                                      }
+                                    }));
+                                  }}
+                                />
+                                <span className="onboarding-task-checklist-box" aria-hidden />
+                              </span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    ) : null}
+
+                    {teacherScopeScreen === 4 ? (
+                      <div className="full">
+                        <p className="field-label">¿Qué tareas no realizas?</p>
+                        <div className="onboarding-task-checklist">
+                          {TEACHER_TASK_EXCLUDED_OPTIONS.map((task) => (
+                            <label
+                              key={task.value}
+                              className={`onboarding-task-checklist-row onboarding-task-checklist-row-warning ${draft.teacherScope.tasks_excluded.includes(task.value) ? "checked" : ""}`}
+                            >
+                              <div>
+                                <strong>{task.label}</strong>
+                              </div>
+                              <span className="onboarding-task-checklist-control">
+                                <input
+                                  type="checkbox"
+                                  checked={draft.teacherScope.tasks_excluded.includes(task.value)}
+                                  onChange={(event) => {
+                                    setDraft((current) => ({
+                                      ...current,
+                                      teacherScope: {
+                                        ...current.teacherScope,
+                                        tasks_excluded: event.target.checked
+                                          ? Array.from(new Set([...current.teacherScope.tasks_excluded, task.value]))
+                                          : current.teacherScope.tasks_excluded.filter((item) => item !== task.value)
+                                      }
+                                    }));
+                                  }}
+                                />
+                                <span className="onboarding-task-checklist-box" aria-hidden />
+                              </span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    ) : null}
+
+                    {teacherScopeScreen === 5 ? (
+                      <div className="full">
+                        <label>
+                          Condiciones especiales de tu servicio
+                          <textarea
+                            value={draft.teacherScope.special_conditions}
+                            rows={4}
+                            placeholder="Ejemplo: solo hago clases individuales, no preparo PAES y no hago clases grupales."
+                            onChange={(event) =>
+                              setDraft((current) => ({
+                                ...current,
+                                teacherScope: {
+                                  ...current.teacherScope,
+                                  special_conditions: event.target.value
+                                }
+                              }))
+                            }
+                          />
+                        </label>
+                      </div>
+                    ) : null}
+
+                    {teacherScopeScreen === 6 ? (
+                      <div className="full onboarding-scope-review-grid">
+                        <div className="auth-flow-note-card">
+                          <strong>Asignaturas</strong>
+                          <span>{teacherScopeServicesPreview.length > 0 ? teacherScopeServicesPreview.join(", ") : "Sin información aún."}</span>
+                        </div>
+                        <div className="auth-flow-note-card">
+                          <strong>Niveles</strong>
+                          <span>{teacherScopeLevelsPreview.length > 0 ? teacherScopeLevelsPreview.join(", ") : "Sin información aún."}</span>
+                        </div>
+                        <div className="auth-flow-note-card">
+                          <strong>Modalidades</strong>
+                          <span>{teacherScopeModesPreview.length > 0 ? teacherScopeModesPreview.join(", ") : "Sin información aún."}</span>
+                        </div>
+                        <div className="auth-flow-note-card">
+                          <strong>Tareas que sí realiza</strong>
+                          <span>{teacherScopeIncludedPreview.length > 0 ? teacherScopeIncludedPreview.join(", ") : "Sin información aún."}</span>
+                        </div>
+                        <div className="auth-flow-note-card">
+                          <strong>Tareas que no realiza</strong>
+                          <span>{teacherScopeExcludedPreview.length > 0 ? teacherScopeExcludedPreview.join(", ") : "No marcaste exclusiones."}</span>
+                        </div>
+                        <div className="auth-flow-note-card">
+                          <strong>Condiciones especiales</strong>
+                          <span>{draft.teacherScope.special_conditions.trim() || "No agregaste condiciones especiales."}</span>
+                        </div>
+                      </div>
+                    ) : null}
                   </div>
                 ) : null}
 
@@ -3361,6 +3709,10 @@ function CleaningOnboardingPageContent() {
                     <button type="button" className="cta ghost" onClick={previousBabysitterScopeScreen}>
                       Volver
                     </button>
+                  ) : draft.category === "profesor-particular" && teacherScopeScreen > 1 ? (
+                    <button type="button" className="cta ghost" onClick={previousTeacherScopeScreen}>
+                      Volver
+                    </button>
                   ) : draft.category === "personal-trainer" && trainerScopeScreen > 1 ? (
                     <button type="button" className="cta ghost" onClick={previousTrainerScopeScreen}>
                       Volver
@@ -3380,6 +3732,10 @@ function CleaningOnboardingPageContent() {
                     </button>
                   ) : draft.category === "babysitter" && babysitterScopeScreen < 6 ? (
                     <button type="button" className="cta" onClick={continueBabysitterScopeScreen}>
+                      Siguiente
+                    </button>
+                  ) : draft.category === "profesor-particular" && teacherScopeScreen < 6 ? (
+                    <button type="button" className="cta" onClick={continueTeacherScopeScreen}>
                       Siguiente
                     </button>
                   ) : draft.category === "personal-trainer" && trainerScopeScreen < 6 ? (

@@ -372,6 +372,9 @@ export async function PATCH(req: NextRequest) {
       if (onboarding.categorySlug === "personal-trainer" && !parsed.trainerScope) {
         return NextResponse.json({ error: "Debes definir el alcance de tu servicio de personal trainer." }, { status: 400 });
       }
+      if (onboarding.categorySlug === "profesor-particular" && !parsed.teacherScope) {
+        return NextResponse.json({ error: "Debes definir el alcance de tu servicio de profesor particular." }, { status: 400 });
+      }
       data = {
         offeredServices: parsed.offeredServices,
         experienceTypes: parsed.experienceTypes,
@@ -379,6 +382,7 @@ export async function PATCH(req: NextRequest) {
         petScope: parsed.petScope ?? undefined,
         babysitterScope: parsed.babysitterScope ?? undefined,
         trainerScope: parsed.trainerScope ?? undefined,
+        teacherScope: parsed.teacherScope ?? undefined,
         acceptsHomesWithPets: parsed.acceptsHomesWithPets ?? null,
         acceptsHomesWithChildren: parsed.acceptsHomesWithChildren ?? null,
         acceptsHomesWithElderly: parsed.acceptsHomesWithElderly ?? null,

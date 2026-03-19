@@ -33,6 +33,14 @@ import {
   getTrainerServiceLabel,
   normalizeTrainerScope
 } from "@/lib/trainer-scope";
+import {
+  getTeacherExcludedTaskLabel,
+  getTeacherIncludedTaskLabel,
+  getTeacherLevelLabel,
+  getTeacherModeLabel,
+  getTeacherServiceLabel,
+  normalizeTeacherScope
+} from "@/lib/teacher-scope";
 
 type CleaningOnboardingSummary = {
   profilePhotoUrl: string | null;
@@ -46,6 +54,7 @@ type CleaningOnboardingSummary = {
   petScope: unknown;
   babysitterScope: unknown;
   trainerScope: unknown;
+  teacherScope: unknown;
   acceptsHomesWithPets: boolean | null;
   acceptsHomesWithChildren: boolean | null;
   bringsOwnTools: boolean | null;
@@ -462,6 +471,7 @@ function buildDemoProfessional(proId: string): ProfessionalDetail {
         petScope: null,
         babysitterScope: null,
         trainerScope: null,
+        teacherScope: null,
         acceptsHomesWithPets: null,
         acceptsHomesWithChildren: null,
         bringsOwnTools: null,
@@ -685,6 +695,33 @@ export default function ProDetailPage() {
       brings_equipment: onboarding?.bringsOwnTools ?? null
     };
   }, [onboarding?.trainerScope, onboarding?.offeredServices, onboarding?.experienceTypes, onboarding?.bringsOwnTools]);
+  const teacherScope = useMemo(() => {
+    const normalized = normalizeTeacherScope(onboarding?.teacherScope);
+    if (normalized.services_offered.length > 0 || normalized.levels.length > 0 || normalized.modes.length > 0 || normalized.tasks_included.length > 0) {
+      return normalized;
+    }
+
+    return {
+      ...normalized,
+      services_offered: Array.isArray(onboarding?.offeredServices)
+        ? onboarding.offeredServices.filter(
+            (item): item is "matematicas" | "ingles" | "lenguaje" | "ciencias" | "otra" =>
+              item === "matematicas" || item === "ingles" || item === "lenguaje" || item === "ciencias" || item === "otra"
+          )
+        : [],
+      levels: Array.isArray(onboarding?.experienceTypes)
+        ? onboarding.experienceTypes.filter(
+            (item): item is "basica" | "media" | "universitario" =>
+              item === "basica" || item === "media" || item === "universitario"
+          )
+        : [],
+      modes: Array.isArray(onboarding?.experienceTypes)
+        ? onboarding.experienceTypes.filter(
+            (item): item is "presencial" | "online" => item === "presencial" || item === "online"
+          )
+        : []
+    };
+  }, [onboarding?.teacherScope, onboarding?.offeredServices, onboarding?.experienceTypes]);
   const serviceCategories = useMemo(() => {
     const bySlug = new Map<string, { slug: string; name: string }>();
     for (const item of data?.taskerServices ?? []) {
@@ -733,6 +770,11 @@ export default function ProDetailPage() {
   const trainerScopeModes = trainerScope.modes.map(getTrainerModeLabel);
   const trainerScopeIncludedTasks = trainerScope.tasks_included.map(getTrainerIncludedTaskLabel);
   const trainerScopeExcludedTasks = trainerScope.tasks_excluded.map(getTrainerExcludedTaskLabel);
+  const teacherScopeServices = teacherScope.services_offered.map(getTeacherServiceLabel);
+  const teacherScopeLevels = teacherScope.levels.map(getTeacherLevelLabel);
+  const teacherScopeModes = teacherScope.modes.map(getTeacherModeLabel);
+  const teacherScopeIncludedTasks = teacherScope.tasks_included.map(getTeacherIncludedTaskLabel);
+  const teacherScopeExcludedTasks = teacherScope.tasks_excluded.map(getTeacherExcludedTaskLabel);
   const buildReserveHref = (options?: { startsAt?: string; serviceId?: string | null }) => {
     const qs = new URLSearchParams();
     qs.set("proId", data?.userId ?? params.proId);
@@ -1048,6 +1090,39 @@ export default function ProDetailPage() {
                         <div>
                           <h3>Condiciones especiales</h3>
                           <p>{trainerScope.special_conditions || "Sin condiciones especiales reportadas."}</p>
+                        </div>
+                      </div>
+                      <p className="minimal-note">Si necesitas algo fuera de este alcance base, revísalo antes de reservar para evitar malos entendidos.</p>
+                    </article>
+                  ) : null}
+
+                  {normalizedPrimaryCategorySlug === "profesor-particular" ? (
+                    <article className="auth-flow-panel client-dashboard-section">
+                      <h2>Alcance del servicio</h2>
+                      <div className="we-info-grid">
+                        <div>
+                          <h3>Asignaturas que ofrece</h3>
+                          <p>{teacherScopeServices.length > 0 ? teacherScopeServices.join(", ") : "Aún no informado."}</p>
+                        </div>
+                        <div>
+                          <h3>Niveles</h3>
+                          <p>{teacherScopeLevels.length > 0 ? teacherScopeLevels.join(", ") : "Aún no informado."}</p>
+                        </div>
+                        <div>
+                          <h3>Modalidades</h3>
+                          <p>{teacherScopeModes.length > 0 ? teacherScopeModes.join(", ") : "Aún no informado."}</p>
+                        </div>
+                        <div>
+                          <h3>Tareas que sí realiza</h3>
+                          <p>{teacherScopeIncludedTasks.length > 0 ? teacherScopeIncludedTasks.join(", ") : "Aún no informado."}</p>
+                        </div>
+                        <div>
+                          <h3>Tareas que no realiza</h3>
+                          <p>{teacherScopeExcludedTasks.length > 0 ? teacherScopeExcludedTasks.join(", ") : "No reporta exclusiones."}</p>
+                        </div>
+                        <div>
+                          <h3>Condiciones especiales</h3>
+                          <p>{teacherScope.special_conditions || "Sin condiciones especiales reportadas."}</p>
                         </div>
                       </div>
                       <p className="minimal-note">Si necesitas algo fuera de este alcance base, revísalo antes de reservar para evitar malos entendidos.</p>

@@ -4,6 +4,7 @@ import { getRequestIdentity, hasRole } from "@/lib/auth";
 import { normalizeBabysitterScope } from "@/lib/babysitter-scope";
 import { normalizeCleaningScope } from "@/lib/cleaning-scope";
 import { normalizePetScope } from "@/lib/pet-scope";
+import { normalizeTeacherScope } from "@/lib/teacher-scope";
 import { normalizeTrainerScope } from "@/lib/trainer-scope";
 import { prisma } from "@/lib/prisma";
 
@@ -82,6 +83,19 @@ function listMissingFields(onboarding: Awaited<ReturnType<typeof prisma.cleaning
     required.splice(8, 0, [
       "trainerScope",
       trainerScope.services_offered.length > 0 && trainerScope.modes.length > 0 && trainerScope.tasks_included.length > 0 ? trainerScope : null
+    ]);
+  }
+
+  if (onboarding.categorySlug === "profesor-particular") {
+    const teacherScope = normalizeTeacherScope(onboarding.teacherScope);
+    required.splice(8, 0, [
+      "teacherScope",
+      teacherScope.services_offered.length > 0 &&
+      teacherScope.levels.length > 0 &&
+      teacherScope.modes.length > 0 &&
+      teacherScope.tasks_included.length > 0
+        ? teacherScope
+        : null
     ]);
   }
 

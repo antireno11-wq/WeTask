@@ -25,6 +25,13 @@ import {
   TRAINER_TASK_INCLUDED_OPTIONS
 } from "@/lib/trainer-scope";
 import {
+  TEACHER_LEVEL_OPTIONS,
+  TEACHER_MODE_OPTIONS,
+  TEACHER_SCOPE_SERVICE_OPTIONS,
+  TEACHER_TASK_EXCLUDED_OPTIONS,
+  TEACHER_TASK_INCLUDED_OPTIONS
+} from "@/lib/teacher-scope";
+import {
   PET_SCOPE_ANIMAL_OPTIONS,
   PET_SCOPE_SERVICE_OPTIONS,
   PET_TASK_EXCLUDED_OPTIONS,
@@ -49,6 +56,11 @@ const trainerScopeServiceEnum = z.enum(TRAINER_SCOPE_SERVICE_OPTIONS.map((option
 const trainerModeEnum = z.enum(TRAINER_MODE_OPTIONS.map((option) => option.value) as [string, ...string[]]);
 const trainerIncludedTaskEnum = z.enum(TRAINER_TASK_INCLUDED_OPTIONS.map((option) => option.value) as [string, ...string[]]);
 const trainerExcludedTaskEnum = z.enum(TRAINER_TASK_EXCLUDED_OPTIONS.map((option) => option.value) as [string, ...string[]]);
+const teacherScopeServiceEnum = z.enum(TEACHER_SCOPE_SERVICE_OPTIONS.map((option) => option.value) as [string, ...string[]]);
+const teacherLevelEnum = z.enum(TEACHER_LEVEL_OPTIONS.map((option) => option.value) as [string, ...string[]]);
+const teacherModeEnum = z.enum(TEACHER_MODE_OPTIONS.map((option) => option.value) as [string, ...string[]]);
+const teacherIncludedTaskEnum = z.enum(TEACHER_TASK_INCLUDED_OPTIONS.map((option) => option.value) as [string, ...string[]]);
+const teacherExcludedTaskEnum = z.enum(TEACHER_TASK_EXCLUDED_OPTIONS.map((option) => option.value) as [string, ...string[]]);
 const petScopeServiceEnum = z.enum(PET_SCOPE_SERVICE_OPTIONS.map((option) => option.value) as [string, ...string[]]);
 const petScopeAnimalEnum = z.enum(PET_SCOPE_ANIMAL_OPTIONS.map((option) => option.value) as [string, ...string[]]);
 const petIncludedTaskEnum = z.enum(PET_TASK_INCLUDED_OPTIONS.map((option) => option.value) as [string, ...string[]]);
@@ -489,6 +501,17 @@ export const taskerOnboardingStep7Schema = z.object({
       brings_equipment: z.boolean().optional().nullable(),
       tasks_included: z.array(trainerIncludedTaskEnum).min(1),
       tasks_excluded: z.array(trainerExcludedTaskEnum).optional().default([]),
+      special_conditions: z.string().max(600).optional().default("")
+    })
+    .optional()
+    .nullable(),
+  teacherScope: z
+    .object({
+      services_offered: z.array(teacherScopeServiceEnum).min(1),
+      levels: z.array(teacherLevelEnum).min(1),
+      modes: z.array(teacherModeEnum).min(1),
+      tasks_included: z.array(teacherIncludedTaskEnum).min(1),
+      tasks_excluded: z.array(teacherExcludedTaskEnum).optional().default([]),
       special_conditions: z.string().max(600).optional().default("")
     })
     .optional()
