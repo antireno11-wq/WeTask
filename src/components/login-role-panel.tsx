@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
 import type { UserRole } from "@prisma/client";
 import { BrandLogo } from "@/components/brand-logo";
 
@@ -36,7 +35,6 @@ export function LoginRolePanel({
   onRoleChange,
   allowCreateAccount = true
 }: LoginRolePanelProps) {
-  const router = useRouter();
   const isTasker = role === "PRO";
   const isAdmin = role === "ADMIN";
 
@@ -70,6 +68,10 @@ export function LoginRolePanel({
   }, []);
 
   useEffect(() => {
+    if (isAdmin) {
+      setDemoPayload(null);
+      return;
+    }
     const load = async () => {
       try {
         const response = await fetch("/api/marketplace/demo");
@@ -103,8 +105,7 @@ export function LoginRolePanel({
       setFeedback(`Sesión iniciada como ${data.session.fullName}`);
       const profileRoute = data.session.role === "PRO" ? "/pro" : data.session.role === "ADMIN" ? "/admin" : "/cliente";
       const safeNext = nextPath && nextPath.startsWith("/") && !nextPath.startsWith("//") ? nextPath : null;
-      router.push(safeNext ?? profileRoute);
-      router.refresh();
+      window.location.assign(safeNext ?? profileRoute);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error inesperado");
     } finally {
@@ -171,7 +172,7 @@ export function LoginRolePanel({
         ) : null}
       </div>
 
-      {demoUser ? (
+      {demoUser && !isAdmin ? (
         <div className="login-demo-card">
           <div>
             <strong>Modo demo</strong>

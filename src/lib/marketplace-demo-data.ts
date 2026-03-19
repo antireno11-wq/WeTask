@@ -1060,27 +1060,9 @@ export async function ensureMarketplaceDemoData() {
     where: { email: "cliente2-demo@wetask.cl" }
   });
 
-  const admin = await prisma.user.upsert({
-    where: { email: "admin-demo@wetask.cl" },
-    update: {
-      fullName: "Admin Demo",
-      role: UserRole.ADMIN,
-      authProvider: "EMAIL",
-      passwordHash: DEMO_PASSWORD_HASH,
-      emailVerifiedAt: new Date(),
-      termsAcceptedAt: new Date()
-    },
-    create: {
-      email: "admin-demo@wetask.cl",
-      fullName: "Admin Demo",
-      role: UserRole.ADMIN,
-      authProvider: "EMAIL",
-      passwordHash: DEMO_PASSWORD_HASH,
-      emailVerifiedAt: new Date(),
-      termsAcceptedAt: new Date()
-    }
+  await prisma.user.deleteMany({
+    where: { email: "admin-demo@wetask.cl" }
   });
-  await ensureRoleAssignment(admin.id, UserRole.ADMIN, "Admin");
 
   const customerAddress = await prisma.address.upsert({
     where: { id: "demo-customer-address" },
