@@ -109,7 +109,7 @@ export default function AdminTeamPage() {
           <h2>Equipo interno</h2>
           <p>Da acceso solo a tu equipo y revócalo cuando sea necesario. Los cambios toman efecto en el próximo inicio de sesión.</p>
         </div>
-        <Link href="/admin" className="cta ghost small">
+        <Link href="/admin" className="cta ghost small admin-head-action">
           Volver al panel
         </Link>
       </div>
@@ -218,9 +218,10 @@ export default function AdminTeamPage() {
         <section className="admin-section-card">
           <div className="admin-section-head">
             <div>
-              <h3>Usuarios recientes</h3>
-              <p>Listado reciente con la última actividad de cada cuenta dentro de la plataforma.</p>
+              <h3>Usuarios de la plataforma</h3>
+              <p>Listado amplio de cuentas creadas en WeTask con su última actividad y acceso rápido para limpieza interna.</p>
             </div>
+            <span className="status status-approved">{data?.recentUsers.length ?? 0} visibles</span>
           </div>
 
           <div className="admin-team-list">
@@ -238,6 +239,19 @@ export default function AdminTeamPage() {
                   <p>
                     Última actividad: {user.latestActivityLabel} · {dateLabel(user.latestActivityAt)}
                   </p>
+                </div>
+                <div className="cta-row admin-team-row-actions">
+                  {user.role === "ADMIN" ? <span className="status status-approved">Admin</span> : null}
+                  {user.role !== "ADMIN" ? (
+                    <button
+                      type="button"
+                      className="cta ghost small"
+                      disabled={busyId === user.id}
+                      onClick={() => void runAction("delete_user", { userId: user.id })}
+                    >
+                      Eliminar usuario
+                    </button>
+                  ) : null}
                 </div>
               </article>
             ))}

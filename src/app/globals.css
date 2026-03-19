@@ -4609,6 +4609,14 @@ textarea {
   gap: 1rem;
 }
 
+.admin-head-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
 .eyebrow {
   display: inline-flex;
   margin-bottom: 0.55rem;
@@ -4623,14 +4631,25 @@ textarea {
 }
 
 .admin-metrics-grid {
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.admin-metric-card {
+  padding: 0.95rem 0.9rem;
 }
 
 .admin-metric-card strong {
   display: block;
-  margin-top: 0.25rem;
-  font-size: clamp(2rem, 3vw, 2.6rem);
+  margin-top: 0.15rem;
+  font-size: clamp(1.45rem, 1.8vw, 1.9rem);
   color: #173762;
+}
+
+.admin-metric-card p {
+  margin: 0.4rem 0 0;
+  font-size: 0.83rem;
+  line-height: 1.35;
 }
 
 .metric-label {
@@ -4726,6 +4745,11 @@ textarea {
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 0.9rem;
   align-items: end;
+}
+
+.admin-team-row-actions {
+  flex-shrink: 0;
+  justify-content: flex-end;
 }
 
 .admin-filter-bar {
@@ -6482,6 +6506,12 @@ textarea {
   }
 }
 
+@media (max-width: 1280px) {
+  .admin-metrics-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
 @media (max-width: 640px) {
   :root {
     --site-footer-space: 320px;
@@ -6588,6 +6618,10 @@ textarea {
 
   .onboarding-step-nav {
     grid-template-columns: 1fr;
+  }
+
+  .admin-metrics-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .admin-page-head,

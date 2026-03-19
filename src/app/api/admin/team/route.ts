@@ -57,7 +57,7 @@ export async function GET(req: NextRequest) {
     }),
     prisma.user.findMany({
       orderBy: [{ updatedAt: "desc" }],
-      take: 18,
+      take: 120,
       select: {
         id: true,
         fullName: true,

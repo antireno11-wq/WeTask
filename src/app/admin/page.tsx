@@ -95,7 +95,7 @@ export default async function AdminPage() {
           <h2>Centro de operación interna</h2>
           <p>Valida profesionales, controla accesos del equipo y mantén pulso diario sobre reservas, payouts y casos abiertos.</p>
         </div>
-        <Link href="/admin/team" className="cta">
+        <Link href="/admin/team" className="cta admin-head-action">
           Gestionar equipo
         </Link>
       </div>
