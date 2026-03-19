@@ -5887,6 +5887,11 @@ textarea {
 .onboarding-screen {
   display: grid;
   gap: 18px;
+  min-width: 0;
+}
+
+.onboarding-screen > * {
+  min-width: 0;
 }
 
 .onboarding-screen h3 {
@@ -6213,6 +6218,15 @@ textarea {
     grid-template-columns: 1fr;
   }
 
+  .onboarding-availability-shell .pro-availability-overview,
+  .onboarding-week-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .availability-mode-tabs {
+    width: 100%;
+  }
+
   .onboarding-task-checklist-head,
   .onboarding-task-checklist-row {
     grid-template-columns: minmax(0, 1fr) 92px;
@@ -6234,11 +6248,23 @@ textarea {
   margin-top: 10px;
   grid-template-columns: 1fr;
   gap: 14px;
+  min-width: 0;
+}
+
+.onboarding-availability-shell > *,
+.onboarding-availability-shell .availability-board-card,
+.onboarding-availability-shell .availability-task-panel,
+.onboarding-availability-shell .availability-composer-card,
+.onboarding-availability-shell .pro-availability-overview,
+.onboarding-availability-shell .pro-availability-sidebar {
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .onboarding-week-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
   gap: 10px;
 }
 
@@ -6286,7 +6312,7 @@ textarea {
 }
 
 .onboarding-availability-shell .pro-availability-overview {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .onboarding-availability-shell .availability-composer-card {
@@ -6324,6 +6350,8 @@ textarea {
   padding: 6px;
   border-radius: 999px;
   background: #edf4fb;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .availability-mode-tab {
@@ -6357,6 +6385,12 @@ textarea {
   justify-content: flex-start;
 }
 
+.availability-board-head,
+.availability-task-head,
+.availability-composer-head {
+  flex-wrap: wrap;
+}
+
 .onboarding-day-head {
   display: flex;
   align-items: center;
@@ -6383,6 +6417,8 @@ textarea {
 
 .onboarding-time-row input,
 .onboarding-time-row select {
+  width: 100%;
+  min-width: 0;
   min-height: 46px;
   border-radius: 14px;
 }
