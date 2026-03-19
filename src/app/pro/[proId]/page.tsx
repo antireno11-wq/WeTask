@@ -39,6 +39,12 @@ import {
   normalizeMakeupScope
 } from "@/lib/makeup-scope";
 import {
+  getIroningExcludedTaskLabel,
+  getIroningIncludedTaskLabel,
+  getIroningServiceLabel,
+  normalizeIroningScope
+} from "@/lib/ironing-scope";
+import {
   getTrainerExcludedTaskLabel,
   getTrainerIncludedTaskLabel,
   getTrainerModeLabel,
@@ -65,6 +71,7 @@ type CleaningOnboardingSummary = {
   cleaningScope: unknown;
   petScope: unknown;
   makeupScope: unknown;
+  ironingScope: unknown;
   babysitterScope: unknown;
   chefScope: unknown;
   trainerScope: unknown;
@@ -485,6 +492,7 @@ function buildDemoProfessional(proId: string): ProfessionalDetail {
         },
         petScope: null,
         makeupScope: null,
+        ironingScope: null,
         babysitterScope: null,
         chefScope: null,
         trainerScope: null,
@@ -687,6 +695,22 @@ export default function ProDetailPage() {
       includes_kit: onboarding?.bringsOwnProducts ?? null
     };
   }, [onboarding?.makeupScope, onboarding?.offeredServices, onboarding?.bringsOwnProducts]);
+  const ironingScope = useMemo(() => {
+    const normalized = normalizeIroningScope(onboarding?.ironingScope);
+    if (normalized.services_offered.length > 0 || normalized.tasks_included.length > 0) {
+      return normalized;
+    }
+
+    return {
+      ...normalized,
+      services_offered: Array.isArray(onboarding?.offeredServices)
+        ? onboarding.offeredServices.filter(
+            (item): item is "casa_cliente" | "retiro_entrega" => item === "casa_cliente" || item === "retiro_entrega"
+          )
+        : [],
+      delicate_clothes: onboarding?.bringsOwnTools ?? null
+    };
+  }, [onboarding?.ironingScope, onboarding?.offeredServices, onboarding?.bringsOwnTools]);
   const babysitterScope = useMemo(() => {
     const normalized = normalizeBabysitterScope(onboarding?.babysitterScope);
     if (normalized.services_offered.length > 0 || normalized.age_ranges.length > 0 || normalized.tasks_included.length > 0) {
@@ -819,6 +843,9 @@ export default function ProDetailPage() {
   const makeupScopeServices = makeupScope.services_offered.map(getMakeupServiceLabel);
   const makeupScopeIncludedTasks = makeupScope.tasks_included.map(getMakeupIncludedTaskLabel);
   const makeupScopeExcludedTasks = makeupScope.tasks_excluded.map(getMakeupExcludedTaskLabel);
+  const ironingScopeServices = ironingScope.services_offered.map(getIroningServiceLabel);
+  const ironingScopeIncludedTasks = ironingScope.tasks_included.map(getIroningIncludedTaskLabel);
+  const ironingScopeExcludedTasks = ironingScope.tasks_excluded.map(getIroningExcludedTaskLabel);
   const babysitterScopeServices = babysitterScope.services_offered.map(getBabysitterServiceLabel);
   const babysitterScopeAges = babysitterScope.age_ranges.map(getBabysitterAgeRangeLabel);
   const babysitterScopeIncludedTasks = babysitterScope.tasks_included.map(getBabysitterIncludedTaskLabel);
@@ -1109,6 +1136,35 @@ export default function ProDetailPage() {
                         <div>
                           <h3>Condiciones especiales</h3>
                           <p>{makeupScope.special_conditions || "Sin condiciones especiales reportadas."}</p>
+                        </div>
+                      </div>
+                      <p className="minimal-note">Si necesitas algo fuera de este alcance base, revísalo antes de reservar para evitar malos entendidos.</p>
+                    </article>
+                  ) : null}
+
+                  {normalizedPrimaryCategorySlug === "planchado" ? (
+                    <article className="auth-flow-panel client-dashboard-section">
+                      <h2>Alcance del servicio</h2>
+                      <div className="we-info-grid">
+                        <div>
+                          <h3>Modalidades de planchado</h3>
+                          <p>{ironingScopeServices.length > 0 ? ironingScopeServices.join(", ") : "Aún no informado."}</p>
+                        </div>
+                        <div>
+                          <h3>Tareas que sí realiza</h3>
+                          <p>{ironingScopeIncludedTasks.length > 0 ? ironingScopeIncludedTasks.join(", ") : "Aún no informado."}</p>
+                        </div>
+                        <div>
+                          <h3>Tareas que no realiza</h3>
+                          <p>{ironingScopeExcludedTasks.length > 0 ? ironingScopeExcludedTasks.join(", ") : "No reporta exclusiones."}</p>
+                        </div>
+                        <div>
+                          <h3>Ropa delicada</h3>
+                          <p>{ironingScope.delicate_clothes == null ? "No informado." : ironingScope.delicate_clothes ? "Sí" : "No"}</p>
+                        </div>
+                        <div>
+                          <h3>Condiciones especiales</h3>
+                          <p>{ironingScope.special_conditions || "Sin condiciones especiales reportadas."}</p>
                         </div>
                       </div>
                       <p className="minimal-note">Si necesitas algo fuera de este alcance base, revísalo antes de reservar para evitar malos entendidos.</p>

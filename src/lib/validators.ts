@@ -47,6 +47,11 @@ import {
   MAKEUP_TASK_EXCLUDED_OPTIONS,
   MAKEUP_TASK_INCLUDED_OPTIONS
 } from "@/lib/makeup-scope";
+import {
+  IRONING_SCOPE_SERVICE_OPTIONS,
+  IRONING_TASK_EXCLUDED_OPTIONS,
+  IRONING_TASK_INCLUDED_OPTIONS
+} from "@/lib/ironing-scope";
 import { isActiveMvpCommune, normalizeCommune } from "@/lib/communes";
 
 const activeCommuneInputSchema = z
@@ -81,6 +86,9 @@ const petExcludedTaskEnum = z.enum(PET_TASK_EXCLUDED_OPTIONS.map((option) => opt
 const makeupScopeServiceEnum = z.enum(MAKEUP_SCOPE_SERVICE_OPTIONS.map((option) => option.value) as [string, ...string[]]);
 const makeupIncludedTaskEnum = z.enum(MAKEUP_TASK_INCLUDED_OPTIONS.map((option) => option.value) as [string, ...string[]]);
 const makeupExcludedTaskEnum = z.enum(MAKEUP_TASK_EXCLUDED_OPTIONS.map((option) => option.value) as [string, ...string[]]);
+const ironingScopeServiceEnum = z.enum(IRONING_SCOPE_SERVICE_OPTIONS.map((option) => option.value) as [string, ...string[]]);
+const ironingIncludedTaskEnum = z.enum(IRONING_TASK_INCLUDED_OPTIONS.map((option) => option.value) as [string, ...string[]]);
+const ironingExcludedTaskEnum = z.enum(IRONING_TASK_EXCLUDED_OPTIONS.map((option) => option.value) as [string, ...string[]]);
 
 export const createBookingSchema = z.object({
   customerId: z.string().min(1),
@@ -504,6 +512,16 @@ export const taskerOnboardingStep7Schema = z.object({
       includes_kit: z.boolean().optional().nullable(),
       tasks_included: z.array(makeupIncludedTaskEnum).min(1),
       tasks_excluded: z.array(makeupExcludedTaskEnum).optional().default([]),
+      special_conditions: z.string().max(600).optional().default("")
+    })
+    .optional()
+    .nullable(),
+  ironingScope: z
+    .object({
+      services_offered: z.array(ironingScopeServiceEnum).min(1),
+      delicate_clothes: z.boolean().optional().nullable(),
+      tasks_included: z.array(ironingIncludedTaskEnum).min(1),
+      tasks_excluded: z.array(ironingExcludedTaskEnum).optional().default([]),
       special_conditions: z.string().max(600).optional().default("")
     })
     .optional()

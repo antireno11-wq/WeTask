@@ -114,6 +114,17 @@ import {
   normalizeMakeupScope,
   type MakeupScopeData
 } from "@/lib/makeup-scope";
+import {
+  IRONING_SCOPE_SERVICE_OPTIONS,
+  IRONING_TASK_EXCLUDED_OPTIONS,
+  IRONING_TASK_INCLUDED_OPTIONS,
+  emptyIroningScope,
+  getIroningExcludedTaskLabel,
+  getIroningIncludedTaskLabel,
+  getIroningServiceLabel,
+  normalizeIroningScope,
+  type IroningScopeData
+} from "@/lib/ironing-scope";
 import { ACTIVE_MVP_COMMUNES, inferCommuneFromAddress, normalizeCommune, type ActiveMvpCommune } from "@/lib/communes";
 
 type SessionPayload = {
@@ -142,6 +153,7 @@ type OnboardingPayload = {
   cleaningScope: unknown;
   petScope: unknown;
   makeupScope: unknown;
+  ironingScope: unknown;
   babysitterScope: unknown;
   chefScope: unknown;
   trainerScope: unknown;
@@ -241,6 +253,7 @@ type DraftState = {
   petLargePets: boolean | null;
   petScope: PetScopeData;
   makeupScope: MakeupScopeData;
+  ironingScope: IroningScopeData;
   babysitterAgeRange: "0_2" | "3_6" | "7_plus";
   babysitterFirstAid: boolean | null;
   babysitterMultiChild: boolean | null;
@@ -279,6 +292,7 @@ type DraftState = {
 type CleaningScopeScreen = 1 | 2 | 3 | 4 | 5;
 type PetScopeScreen = 1 | 2 | 3 | 4 | 5 | 6;
 type MakeupScopeScreen = 1 | 2 | 3 | 4 | 5;
+type IroningScopeScreen = 1 | 2 | 3 | 4 | 5;
 type BabysitterScopeScreen = 1 | 2 | 3 | 4 | 5 | 6;
 type ChefScopeScreen = 1 | 2 | 3 | 4 | 5;
 type TeacherScopeScreen = 1 | 2 | 3 | 4 | 5 | 6;
@@ -364,6 +378,7 @@ const SUBMIT_REQUIRED_FIELDS: Record<string, { label: string; step: WizardStep }
   cleaningScope: { label: "Alcance del servicio de limpieza", step: 7 },
   petScope: { label: "Alcance del servicio de mascotas", step: 7 },
   makeupScope: { label: "Alcance del servicio de maquillaje", step: 7 },
+  ironingScope: { label: "Alcance del servicio de planchado", step: 7 },
   babysitterScope: { label: "Alcance del servicio de babysitter", step: 7 },
   chefScope: { label: "Alcance del servicio de chef", step: 7 },
   teacherScope: { label: "Alcance del servicio de profesor particular", step: 7 },
@@ -580,6 +595,7 @@ function createInitialDraft(): DraftState {
     petLargePets: null,
     petScope: emptyPetScope(),
     makeupScope: emptyMakeupScope(),
+    ironingScope: emptyIroningScope(),
     babysitterAgeRange: "0_2",
     babysitterFirstAid: null,
     babysitterMultiChild: null,
@@ -755,8 +771,12 @@ function buildStep7Payload(draft: DraftState) {
       };
     case "planchado":
       return {
-        offeredServices: [draft.ironingType],
+        offeredServices: draft.ironingScope.services_offered,
         experienceTypes: ["por_hora"],
+        ironingScope: {
+          ...draft.ironingScope,
+          delicate_clothes: draft.ironingDelicate
+        },
         bringsOwnTools: draft.ironingDelicate
       };
     default:
@@ -801,6 +821,7 @@ function CleaningOnboardingPageContent() {
   const [cleaningScopeScreen, setCleaningScopeScreen] = useState<CleaningScopeScreen>(1);
   const [petScopeScreen, setPetScopeScreen] = useState<PetScopeScreen>(1);
   const [makeupScopeScreen, setMakeupScopeScreen] = useState<MakeupScopeScreen>(1);
+  const [ironingScopeScreen, setIroningScopeScreen] = useState<IroningScopeScreen>(1);
   const [babysitterScopeScreen, setBabysitterScopeScreen] = useState<BabysitterScopeScreen>(1);
   const [chefScopeScreen, setChefScopeScreen] = useState<ChefScopeScreen>(1);
   const [teacherScopeScreen, setTeacherScopeScreen] = useState<TeacherScopeScreen>(1);
@@ -831,6 +852,9 @@ function CleaningOnboardingPageContent() {
   const makeupScopeServicesPreview = draft.makeupScope.services_offered.map(getMakeupServiceLabel);
   const makeupScopeIncludedPreview = draft.makeupScope.tasks_included.map(getMakeupIncludedTaskLabel);
   const makeupScopeExcludedPreview = draft.makeupScope.tasks_excluded.map(getMakeupExcludedTaskLabel);
+  const ironingScopeServicesPreview = draft.ironingScope.services_offered.map(getIroningServiceLabel);
+  const ironingScopeIncludedPreview = draft.ironingScope.tasks_included.map(getIroningIncludedTaskLabel);
+  const ironingScopeExcludedPreview = draft.ironingScope.tasks_excluded.map(getIroningExcludedTaskLabel);
   const babysitterScopeServicesPreview = draft.babysitterScope.services_offered.map(getBabysitterServiceLabel);
   const babysitterScopeAgePreview = draft.babysitterScope.age_ranges.map(getBabysitterAgeRangeLabel);
   const babysitterScopeIncludedPreview = draft.babysitterScope.tasks_included.map(getBabysitterIncludedTaskLabel);
@@ -883,6 +907,7 @@ function CleaningOnboardingPageContent() {
         petServiceType: normalizePetServiceTypes(parsed.petServiceType),
         petScope: normalizePetScope(parsed.petScope ?? current.petScope),
         makeupScope: normalizeMakeupScope(parsed.makeupScope ?? current.makeupScope),
+        ironingScope: normalizeIroningScope(parsed.ironingScope ?? current.ironingScope),
         babysitterScope: normalizeBabysitterScope(parsed.babysitterScope ?? current.babysitterScope),
         teacherScope: normalizeTeacherScope(parsed.teacherScope ?? current.teacherScope),
         trainerScope: normalizeTrainerScope(parsed.trainerScope ?? current.trainerScope),
@@ -1042,6 +1067,22 @@ function CleaningOnboardingPageContent() {
   }, [draft.category, draft.makeupKit, draft.makeupScope, draft.makeupType]);
 
   useEffect(() => {
+    if (draft.category !== "planchado") return;
+    const scope = draft.ironingScope;
+    const nextType = scope.services_offered[0] ?? draft.ironingType;
+    const nextDelicate = scope.delicate_clothes;
+    const fieldsChanged = nextType !== draft.ironingType || nextDelicate !== draft.ironingDelicate;
+
+    if (!fieldsChanged) return;
+
+    setDraft((current) => ({
+      ...current,
+      ironingType: current.ironingScope.services_offered[0] ?? current.ironingType,
+      ironingDelicate: current.ironingScope.delicate_clothes
+    }));
+  }, [draft.category, draft.ironingDelicate, draft.ironingScope, draft.ironingType]);
+
+  useEffect(() => {
     if (draft.category !== "babysitter") return;
     const scope = draft.babysitterScope;
     const nextAgeRange = scope.age_ranges[0] ?? draft.babysitterAgeRange;
@@ -1187,6 +1228,12 @@ function CleaningOnboardingPageContent() {
   }, [activeStep, draft.category]);
 
   useEffect(() => {
+    if (activeStep !== 7 || draft.category !== "planchado") {
+      setIroningScopeScreen(1);
+    }
+  }, [activeStep, draft.category]);
+
+  useEffect(() => {
     if (activeStep !== 7 || draft.category !== "babysitter") {
       setBabysitterScopeScreen(1);
     }
@@ -1268,6 +1315,24 @@ function CleaningOnboardingPageContent() {
               };
             })()
           : current.makeupScope,
+      ironingScope:
+        nextOnboarding.categorySlug === "planchado"
+          ? (() => {
+              const normalizedScope = normalizeIroningScope(nextOnboarding.ironingScope);
+              if (normalizedScope.services_offered.length > 0 || normalizedScope.tasks_included.length > 0) {
+                return normalizedScope;
+              }
+              return {
+                ...normalizedScope,
+                services_offered: Array.isArray(nextOnboarding.offeredServices)
+                  ? nextOnboarding.offeredServices.filter(
+                      (item): item is "casa_cliente" | "retiro_entrega" => item === "casa_cliente" || item === "retiro_entrega"
+                    )
+                  : [],
+                delicate_clothes: nextOnboarding.bringsOwnTools ?? current.ironingDelicate
+              };
+            })()
+          : current.ironingScope,
       babysitterScope:
         nextOnboarding.categorySlug === "babysitter"
           ? (() => {
@@ -1388,6 +1453,14 @@ function CleaningOnboardingPageContent() {
         nextOnboarding.categorySlug === "maquillaje"
           ? normalizeMakeupScope(nextOnboarding.makeupScope).includes_kit ?? nextOnboarding.bringsOwnProducts ?? current.makeupKit
           : current.makeupKit,
+      ironingType:
+        nextOnboarding.categorySlug === "planchado"
+          ? normalizeIroningScope(nextOnboarding.ironingScope).services_offered[0] ?? current.ironingType
+          : current.ironingType,
+      ironingDelicate:
+        nextOnboarding.categorySlug === "planchado"
+          ? normalizeIroningScope(nextOnboarding.ironingScope).delicate_clothes ?? nextOnboarding.bringsOwnTools ?? current.ironingDelicate
+          : current.ironingDelicate,
       babysitterAgeRange:
         nextOnboarding.categorySlug === "babysitter"
           ? normalizeBabysitterScope(nextOnboarding.babysitterScope).age_ranges[0] ?? current.babysitterAgeRange
@@ -1915,6 +1988,24 @@ function CleaningOnboardingPageContent() {
     setMakeupScopeScreen((current) => (Math.max(1, current - 1) as MakeupScopeScreen));
   };
 
+  const continueIroningScopeScreen = () => {
+    if (ironingScopeScreen === 1 && draft.ironingScope.services_offered.length === 0) {
+      setError("Selecciona al menos una modalidad de planchado que ofreces.");
+      return;
+    }
+    if (ironingScopeScreen === 2 && draft.ironingScope.tasks_included.length === 0) {
+      setError("Selecciona al menos una tarea que sí realizas.");
+      return;
+    }
+    setError("");
+    setIroningScopeScreen((current) => (Math.min(5, current + 1) as IroningScopeScreen));
+  };
+
+  const previousIroningScopeScreen = () => {
+    setError("");
+    setIroningScopeScreen((current) => (Math.max(1, current - 1) as IroningScopeScreen));
+  };
+
   const continueBabysitterScopeScreen = () => {
     if (babysitterScopeScreen === 1 && draft.babysitterScope.services_offered.length === 0) {
       setError("Selecciona al menos un servicio de babysitter que sí ofreces.");
@@ -2036,6 +2127,14 @@ function CleaningOnboardingPageContent() {
       return;
     }
     if (draft.category === "maquillaje" && draft.makeupScope.tasks_included.length === 0) {
+      setError("Selecciona al menos una tarea que sí realizas.");
+      return;
+    }
+    if (draft.category === "planchado" && draft.ironingScope.services_offered.length === 0) {
+      setError("Selecciona al menos una modalidad de planchado que ofreces.");
+      return;
+    }
+    if (draft.category === "planchado" && draft.ironingScope.tasks_included.length === 0) {
       setError("Selecciona al menos una tarea que sí realizas.");
       return;
     }
@@ -4122,28 +4221,186 @@ function CleaningOnboardingPageContent() {
 
                 {draft.category === "planchado" ? (
                   <div className="grid-form auth-flow-form">
-                    <label>
-                      Tipo de servicio
-                      <select value={draft.ironingType} onChange={(event) => updateDraft("ironingType", event.target.value as DraftState["ironingType"])}>
-                        <option value="casa_cliente">En casa del cliente</option>
-                        <option value="retiro_entrega">Retiro y entrega</option>
-                      </select>
-                    </label>
-                    <label>
-                      ¿Planchas ropa delicada?
-                      <select
-                        value={draft.ironingDelicate == null ? "" : draft.ironingDelicate ? "si" : "no"}
-                        onChange={(event) => updateDraft("ironingDelicate", event.target.value === "si")}
-                      >
-                        <option value="">Selecciona</option>
-                        <option value="si">Sí</option>
-                        <option value="no">No</option>
-                      </select>
-                    </label>
-                    <label>
-                      Cobro
-                      <input value="Por hora" readOnly />
-                    </label>
+                    <div className="full onboarding-scope-progress">
+                      <span className={ironingScopeScreen >= 1 ? "active" : ""}>Servicio</span>
+                      <span className={ironingScopeScreen >= 2 ? "active" : ""}>Sí realiza</span>
+                      <span className={ironingScopeScreen >= 3 ? "active" : ""}>No realiza</span>
+                      <span className={ironingScopeScreen >= 4 ? "active" : ""}>Condiciones</span>
+                      <span className={ironingScopeScreen >= 5 ? "active" : ""}>Revisión</span>
+                    </div>
+
+                    {ironingScopeScreen === 1 ? (
+                      <>
+                        <div className="full">
+                          <p className="field-label">¿Qué modalidad de planchado ofreces?</p>
+                          <div className="auth-service-grid auth-service-grid-cleaning">
+                            {IRONING_SCOPE_SERVICE_OPTIONS.map((option) => (
+                              <label
+                                key={option.value}
+                                className={`auth-service-card auth-service-card-scope ${draft.ironingScope.services_offered.includes(option.value) ? "active" : ""}`}
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={draft.ironingScope.services_offered.includes(option.value)}
+                                  onChange={(event) => {
+                                    setDraft((current) => ({
+                                      ...current,
+                                      ironingScope: {
+                                        ...current.ironingScope,
+                                        services_offered: event.target.checked
+                                          ? Array.from(new Set([...current.ironingScope.services_offered, option.value]))
+                                          : current.ironingScope.services_offered.filter((item) => item !== option.value)
+                                      }
+                                    }));
+                                  }}
+                                />
+                                <strong>{option.label}</strong>
+                                <span>{option.description}</span>
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+                        <label>
+                          ¿Planchas ropa delicada?
+                          <select
+                            value={draft.ironingScope.delicate_clothes == null ? "" : draft.ironingScope.delicate_clothes ? "si" : "no"}
+                            onChange={(event) =>
+                              setDraft((current) => ({
+                                ...current,
+                                ironingScope: {
+                                  ...current.ironingScope,
+                                  delicate_clothes: event.target.value === "" ? null : event.target.value === "si"
+                                }
+                              }))
+                            }
+                          >
+                            <option value="">Selecciona</option>
+                            <option value="si">Sí</option>
+                            <option value="no">No</option>
+                          </select>
+                        </label>
+                        <label>
+                          Cobro
+                          <input value="Por hora" readOnly />
+                        </label>
+                      </>
+                    ) : null}
+
+                    {ironingScopeScreen === 2 ? (
+                      <div className="full">
+                        <p className="field-label">¿Qué tareas sí realizas?</p>
+                        <div className="onboarding-task-checklist">
+                          {IRONING_TASK_INCLUDED_OPTIONS.map((task) => (
+                            <label key={task.value} className={`onboarding-task-checklist-row ${draft.ironingScope.tasks_included.includes(task.value) ? "checked" : ""}`}>
+                              <div>
+                                <strong>{task.label}</strong>
+                              </div>
+                              <span className="onboarding-task-checklist-control">
+                                <input
+                                  type="checkbox"
+                                  checked={draft.ironingScope.tasks_included.includes(task.value)}
+                                  onChange={(event) => {
+                                    setDraft((current) => ({
+                                      ...current,
+                                      ironingScope: {
+                                        ...current.ironingScope,
+                                        tasks_included: event.target.checked
+                                          ? Array.from(new Set([...current.ironingScope.tasks_included, task.value]))
+                                          : current.ironingScope.tasks_included.filter((item) => item !== task.value)
+                                      }
+                                    }));
+                                  }}
+                                />
+                                <span className="onboarding-task-checklist-box" aria-hidden />
+                              </span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    ) : null}
+
+                    {ironingScopeScreen === 3 ? (
+                      <div className="full">
+                        <p className="field-label">¿Qué tareas no realizas?</p>
+                        <div className="onboarding-task-checklist">
+                          {IRONING_TASK_EXCLUDED_OPTIONS.map((task) => (
+                            <label
+                              key={task.value}
+                              className={`onboarding-task-checklist-row onboarding-task-checklist-row-warning ${draft.ironingScope.tasks_excluded.includes(task.value) ? "checked" : ""}`}
+                            >
+                              <div>
+                                <strong>{task.label}</strong>
+                              </div>
+                              <span className="onboarding-task-checklist-control">
+                                <input
+                                  type="checkbox"
+                                  checked={draft.ironingScope.tasks_excluded.includes(task.value)}
+                                  onChange={(event) => {
+                                    setDraft((current) => ({
+                                      ...current,
+                                      ironingScope: {
+                                        ...current.ironingScope,
+                                        tasks_excluded: event.target.checked
+                                          ? Array.from(new Set([...current.ironingScope.tasks_excluded, task.value]))
+                                          : current.ironingScope.tasks_excluded.filter((item) => item !== task.value)
+                                      }
+                                    }));
+                                  }}
+                                />
+                                <span className="onboarding-task-checklist-box" aria-hidden />
+                              </span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    ) : null}
+
+                    {ironingScopeScreen === 4 ? (
+                      <div className="full">
+                        <label>
+                          Condiciones especiales de tu servicio
+                          <textarea
+                            value={draft.ironingScope.special_conditions}
+                            rows={4}
+                            placeholder="Ejemplo: no recibo textiles grandes, el retiro y entrega se coordina por comuna y las prendas delicadas se revisan antes."
+                            onChange={(event) =>
+                              setDraft((current) => ({
+                                ...current,
+                                ironingScope: {
+                                  ...current.ironingScope,
+                                  special_conditions: event.target.value
+                                }
+                              }))
+                            }
+                          />
+                        </label>
+                      </div>
+                    ) : null}
+
+                    {ironingScopeScreen === 5 ? (
+                      <div className="full onboarding-scope-review-grid">
+                        <div className="auth-flow-note-card">
+                          <strong>Modalidades de planchado</strong>
+                          <span>{ironingScopeServicesPreview.length > 0 ? ironingScopeServicesPreview.join(", ") : "Sin información aún."}</span>
+                        </div>
+                        <div className="auth-flow-note-card">
+                          <strong>Tareas que sí realiza</strong>
+                          <span>{ironingScopeIncludedPreview.length > 0 ? ironingScopeIncludedPreview.join(", ") : "Sin información aún."}</span>
+                        </div>
+                        <div className="auth-flow-note-card">
+                          <strong>Tareas que no realiza</strong>
+                          <span>{ironingScopeExcludedPreview.length > 0 ? ironingScopeExcludedPreview.join(", ") : "No marcaste exclusiones."}</span>
+                        </div>
+                        <div className="auth-flow-note-card">
+                          <strong>Ropa delicada</strong>
+                          <span>{draft.ironingScope.delicate_clothes == null ? "No informado." : draft.ironingScope.delicate_clothes ? "Sí" : "No"}</span>
+                        </div>
+                        <div className="auth-flow-note-card">
+                          <strong>Condiciones especiales</strong>
+                          <span>{draft.ironingScope.special_conditions.trim() || "No agregaste condiciones especiales."}</span>
+                        </div>
+                      </div>
+                    ) : null}
                   </div>
                 ) : null}
 
@@ -4158,6 +4415,10 @@ function CleaningOnboardingPageContent() {
                     </button>
                   ) : draft.category === "maquillaje" && makeupScopeScreen > 1 ? (
                     <button type="button" className="cta ghost" onClick={previousMakeupScopeScreen}>
+                      Volver
+                    </button>
+                  ) : draft.category === "planchado" && ironingScopeScreen > 1 ? (
+                    <button type="button" className="cta ghost" onClick={previousIroningScopeScreen}>
                       Volver
                     </button>
                   ) : draft.category === "babysitter" && babysitterScopeScreen > 1 ? (
@@ -4191,6 +4452,10 @@ function CleaningOnboardingPageContent() {
                     </button>
                   ) : draft.category === "maquillaje" && makeupScopeScreen < 5 ? (
                     <button type="button" className="cta" onClick={continueMakeupScopeScreen}>
+                      Siguiente
+                    </button>
+                  ) : draft.category === "planchado" && ironingScopeScreen < 5 ? (
+                    <button type="button" className="cta" onClick={continueIroningScopeScreen}>
                       Siguiente
                     </button>
                   ) : draft.category === "babysitter" && babysitterScopeScreen < 6 ? (

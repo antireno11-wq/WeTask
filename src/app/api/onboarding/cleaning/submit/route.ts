@@ -4,6 +4,7 @@ import { getRequestIdentity, hasRole } from "@/lib/auth";
 import { normalizeBabysitterScope } from "@/lib/babysitter-scope";
 import { normalizeChefScope } from "@/lib/chef-scope";
 import { normalizeCleaningScope } from "@/lib/cleaning-scope";
+import { normalizeIroningScope } from "@/lib/ironing-scope";
 import { normalizeMakeupScope } from "@/lib/makeup-scope";
 import { normalizePetScope } from "@/lib/pet-scope";
 import { normalizeTeacherScope } from "@/lib/teacher-scope";
@@ -75,6 +76,14 @@ function listMissingFields(onboarding: Awaited<ReturnType<typeof prisma.cleaning
     required.splice(8, 0, [
       "makeupScope",
       makeupScope.services_offered.length > 0 && makeupScope.tasks_included.length > 0 ? makeupScope : null
+    ]);
+  }
+
+  if (onboarding.categorySlug === "planchado") {
+    const ironingScope = normalizeIroningScope(onboarding.ironingScope);
+    required.splice(8, 0, [
+      "ironingScope",
+      ironingScope.services_offered.length > 0 && ironingScope.tasks_included.length > 0 ? ironingScope : null
     ]);
   }
 
