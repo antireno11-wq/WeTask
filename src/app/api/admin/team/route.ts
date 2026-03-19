@@ -7,7 +7,7 @@ import { prisma } from "@/lib/prisma";
 export const dynamic = "force-dynamic";
 
 const teamActionSchema = z.object({
-  action: z.enum(["grant", "revoke"]),
+  action: z.enum(["grant", "revoke", "delete_user"]),
   userId: z.string().trim().min(1).optional(),
   email: z.string().trim().email().optional()
 });
@@ -206,6 +206,15 @@ export async function PATCH(req: NextRequest) {
               }
             }
           }
+        },
+        _count: {
+          select: {
+            bookings: true,
+            proBookings: true,
+            sentMessages: true,
+            reviewsGiven: true,
+            payouts: true
+          }
         }
       }
     });
@@ -229,6 +238,51 @@ export async function PATCH(req: NextRequest) {
       update: { label: "Tasker" },
       create: { code: UserRole.PRO, label: "Tasker" }
     });
+
+    if (input.action === "delete_user") {
+      const primaryAdminEmail = process.env.PRIMARY_ADMIN_EMAIL?.trim().toLowerCase() ?? null;
+
+      if (target.id === admin.identity.userId) {
+        return NextResponse.json({ error: "No puedes borrar la cuenta con la que estás dentro del backoffice." }, { status: 409 });
+      }
+
+      if (target.email.toLowerCase() === primaryAdminEmail) {
+        return NextResponse.json({ error: "No se puede borrar el administrador principal configurado en WeTask." }, { status: 409 });
+      }
+
+      if (target.role === UserRole.ADMIN) {
+        return NextResponse.json({ error: "Primero quítale el acceso admin. Este borrado rápido no elimina cuentas admin." }, { status: 409 });
+      }
+
+      const hasLinkedActivity =
+        target._count.bookings > 0 ||
+        target._count.proBookings > 0 ||
+        target._count.sentMessages > 0 ||
+        target._count.reviewsGiven > 0 ||
+        target._count.payouts > 0;
+
+      if (hasLinkedActivity) {
+        return NextResponse.json(
+          {
+            error:
+              "No se puede borrar esta cuenta desde el backoffice rápido porque ya tiene reservas o actividad asociada. Si quieres, hacemos una limpieza más controlada."
+          },
+          { status: 409 }
+        );
+      }
+
+      await prisma.user.delete({
+        where: { id: target.id }
+      });
+
+      return NextResponse.json(
+        {
+          ok: true,
+          message: `${target.fullName} fue eliminado de WeTask.`
+        },
+        { status: 200 }
+      );
+    }
 
     if (input.action === "grant") {
       const updated = await prisma.$transaction(async (tx) => {

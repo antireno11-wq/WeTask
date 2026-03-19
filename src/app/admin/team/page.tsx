@@ -56,6 +56,7 @@ export default function AdminTeamPage() {
   const [error, setError] = useState("");
   const [feedback, setFeedback] = useState("");
   const [email, setEmail] = useState("");
+  const [deleteEmail, setDeleteEmail] = useState("");
   const [busyId, setBusyId] = useState("");
 
   const load = async () => {
@@ -77,7 +78,7 @@ export default function AdminTeamPage() {
     void load();
   }, []);
 
-  const runAction = async (action: "grant" | "revoke", target: { userId?: string; email?: string }) => {
+  const runAction = async (action: "grant" | "revoke" | "delete_user", target: { userId?: string; email?: string }) => {
     setBusyId(target.userId || target.email || action);
     setError("");
     setFeedback("");
@@ -91,6 +92,7 @@ export default function AdminTeamPage() {
       if (!response.ok || !payload.ok) throw new Error(payload.detail || payload.error || "No se pudo actualizar acceso");
       setFeedback(payload.message || "Acceso actualizado correctamente.");
       if (action === "grant") setEmail("");
+      if (action === "delete_user") setDeleteEmail("");
       await load();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error inesperado");
@@ -139,6 +141,39 @@ export default function AdminTeamPage() {
             Crear administrador
           </button>
         </div>
+      </section>
+
+      <section className="admin-section-card">
+        <div className="admin-section-head">
+          <div>
+            <h3>Eliminar usuario por correo</h3>
+            <p>Borra cuentas de prueba cliente o tasker que no tengan reservas ni actividad asociada.</p>
+          </div>
+        </div>
+
+        <div className="admin-team-form">
+          <label>
+            Correo a eliminar
+            <input
+              type="email"
+              value={deleteEmail}
+              onChange={(event) => setDeleteEmail(event.target.value)}
+              placeholder="antireno11@gmail.com"
+            />
+          </label>
+          <button
+            type="button"
+            className="cta ghost"
+            disabled={!deleteEmail.trim() || busyId === deleteEmail.trim().toLowerCase()}
+            onClick={() => void runAction("delete_user", { email: deleteEmail.trim().toLowerCase() })}
+          >
+            Eliminar usuario
+          </button>
+        </div>
+
+        <p className="feedback warn">
+          Este borrado rápido no elimina admins ni cuentas con reservas, mensajes, pagos o actividad real asociada.
+        </p>
       </section>
 
       {loading ? <p className="empty">Cargando equipo...</p> : null}
