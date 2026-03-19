@@ -35,6 +35,10 @@ type TeamUserRow = {
 
 type TeamPayload = {
   currentAdminId: string;
+  page: number;
+  pageSize: number;
+  totalRecentUsers: number;
+  totalPages: number;
   admins: TeamAdminRow[];
   recentUsers: TeamUserRow[];
 };
@@ -58,15 +62,17 @@ export default function AdminTeamPage() {
   const [email, setEmail] = useState("");
   const [deleteEmail, setDeleteEmail] = useState("");
   const [busyId, setBusyId] = useState("");
+  const [page, setPage] = useState(1);
 
-  const load = async () => {
+  const load = async (nextPage = page) => {
     setLoading(true);
     setError("");
     try {
-      const response = await fetch("/api/admin/team");
+      const response = await fetch(`/api/admin/team?page=${nextPage}&pageSize=5`);
       const payload = (await response.json()) as TeamPayload & { error?: string; detail?: string };
       if (!response.ok) throw new Error(payload.detail || payload.error || "No se pudo cargar el equipo");
       setData(payload);
+      setPage(payload.page);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error inesperado");
     } finally {
@@ -93,7 +99,7 @@ export default function AdminTeamPage() {
       setFeedback(payload.message || "Acceso actualizado correctamente.");
       if (action === "grant") setEmail("");
       if (action === "delete_user") setDeleteEmail("");
-      await load();
+      await load(page);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error inesperado");
     } finally {
@@ -219,9 +225,9 @@ export default function AdminTeamPage() {
           <div className="admin-section-head">
             <div>
               <h3>Usuarios de la plataforma</h3>
-              <p>Listado amplio de cuentas creadas en WeTask con su última actividad y acceso rápido para limpieza interna.</p>
+              <p>Mostrando 5 por página para revisar actividad y limpiar cuentas internas sin llenar la pantalla.</p>
             </div>
-            <span className="status status-approved">{data?.recentUsers.length ?? 0} visibles</span>
+            <span className="status status-approved">{data?.totalRecentUsers ?? 0} usuarios</span>
           </div>
 
           <div className="admin-team-list">
@@ -255,6 +261,23 @@ export default function AdminTeamPage() {
                 </div>
               </article>
             ))}
+          </div>
+
+          <div className="admin-pagination">
+            <button type="button" className="cta ghost small" disabled={loading || page <= 1} onClick={() => void load(page - 1)}>
+              Anterior
+            </button>
+            <span className="admin-pagination-copy">
+              Página {data?.page ?? page} de {data?.totalPages ?? 1}
+            </span>
+            <button
+              type="button"
+              className="cta ghost small"
+              disabled={loading || page >= (data?.totalPages ?? 1)}
+              onClick={() => void load(page + 1)}
+            >
+              Siguiente
+            </button>
           </div>
         </section>
       </div>

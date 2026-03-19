@@ -12,6 +12,11 @@ const teamActionSchema = z.object({
   email: z.string().trim().email().optional()
 });
 
+const teamListQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).default(1),
+  pageSize: z.coerce.number().int().min(1).max(20).default(5)
+});
+
 function formatRoleLabel(role: UserRole) {
   if (role === UserRole.ADMIN) return "Admin";
   if (role === UserRole.PRO) return "Tasker";
@@ -33,7 +38,13 @@ export async function GET(req: NextRequest) {
   const admin = await requireAdminRequest(req);
   if (!admin.ok) return admin.response;
 
-  const [admins, recentUsers] = await Promise.all([
+  const query = teamListQuerySchema.parse({
+    page: req.nextUrl.searchParams.get("page") ?? undefined,
+    pageSize: req.nextUrl.searchParams.get("pageSize") ?? undefined
+  });
+  const skip = (query.page - 1) * query.pageSize;
+
+  const [admins, totalRecentUsers, recentUsers] = await Promise.all([
     prisma.user.findMany({
       where: { role: UserRole.ADMIN },
       orderBy: [{ fullName: "asc" }],
@@ -55,9 +66,11 @@ export async function GET(req: NextRequest) {
         }
       }
     }),
+    prisma.user.count(),
     prisma.user.findMany({
       orderBy: [{ updatedAt: "desc" }],
-      take: 120,
+      skip,
+      take: query.pageSize,
       select: {
         id: true,
         fullName: true,
@@ -118,6 +131,10 @@ export async function GET(req: NextRequest) {
   return NextResponse.json(
     {
       currentAdminId: admin.identity.userId,
+      page: query.page,
+      pageSize: query.pageSize,
+      totalRecentUsers,
+      totalPages: Math.max(1, Math.ceil(totalRecentUsers / query.pageSize)),
       admins: admins.map((user) => ({
         ...user,
         roleAssignments: user.roleAssignments.map((assignment) => ({

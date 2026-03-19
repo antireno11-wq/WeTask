@@ -4752,6 +4752,22 @@ textarea {
   justify-content: flex-end;
 }
 
+.admin-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.9rem;
+  margin-top: 1rem;
+  padding-top: 0.9rem;
+  border-top: 1px solid rgba(139, 177, 235, 0.2);
+}
+
+.admin-pagination-copy {
+  color: rgba(36, 60, 95, 0.8);
+  font-weight: 700;
+  text-align: center;
+}
+
 .admin-filter-bar {
   padding: 0.9rem 1rem;
   border: 1px solid rgba(139, 177, 235, 0.24);
