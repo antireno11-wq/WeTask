@@ -35,6 +35,7 @@ export async function GET(req: NextRequest) {
         professionalProfile: true,
         cleaningOnboarding: {
           select: {
+            profilePhotoUrl: true,
             serviceCommunes: true,
             baseCommune: true
           }
@@ -50,6 +51,7 @@ export async function GET(req: NextRequest) {
       {
         user: { id: user.id, fullName: user.fullName, email: user.email },
         profile: user.professionalProfile,
+        profilePhotoUrl: user.cleaningOnboarding?.profilePhotoUrl ?? null,
         serviceCommunes: normalizeCommuneList(user.cleaningOnboarding?.serviceCommunes),
         baseCommune: user.cleaningOnboarding?.baseCommune ?? user.professionalProfile?.coverageComuna ?? null
       },

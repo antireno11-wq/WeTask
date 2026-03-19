@@ -76,7 +76,13 @@ type ProProfile = {
 };
 
 type ProProfileResponse = {
+  user?: {
+    id: string;
+    fullName: string;
+    email: string;
+  };
   profile?: ProProfile | null;
+  profilePhotoUrl?: string | null;
   serviceCommunes?: string[];
   error?: string;
   detail?: string;
@@ -132,8 +138,20 @@ function formatDayKey(date: Date) {
   return `${year}-${month}-${day}`;
 }
 
+function initialsFromName(value: string) {
+  const words = value
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2);
+
+  if (words.length === 0) return "WT";
+  return words.map((word) => word[0]?.toUpperCase() ?? "").join("");
+}
+
 export default function ProPage() {
   const [proId, setProId] = useState("");
+  const [proName, setProName] = useState("");
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [services, setServices] = useState<Service[]>([]);
@@ -142,6 +160,7 @@ export default function ProPage() {
   const [proReviewByBooking, setProReviewByBooking] = useState<Record<string, { rating: number; comment: string }>>({});
 
   const [profile, setProfile] = useState<ProProfile | null>(null);
+  const [profilePhotoUrl, setProfilePhotoUrl] = useState("");
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [bio, setBio] = useState("");
   const [coverageStreet, setCoverageStreet] = useState("");
@@ -360,6 +379,8 @@ export default function ProPage() {
     setStatusByBooking(nextStatuses);
 
     setNotifications(notificationsData.notifications);
+    setProName(profileData.user?.fullName ?? "");
+    setProfilePhotoUrl(profileData.profilePhotoUrl?.trim() ?? "");
     applyProfile(profileData.profile ?? null, profileData.serviceCommunes ?? []);
     setSlots(slotsData.slots);
     const list = catalogData.categories.flatMap((category) => category.services);
@@ -712,7 +733,11 @@ export default function ProPage() {
 
             <div className="client-profile-box client-profile-box-auth pro-dashboard-profile-box">
               <div className="client-photo-frame pro-dashboard-badge" aria-hidden>
-                <span>{profile?.isVerified ? "PRO" : "TASKER"}</span>
+                {profilePhotoUrl ? (
+                  <img src={profilePhotoUrl} alt="" className="client-photo-img" />
+                ) : (
+                  <span>{initialsFromName(proName)}</span>
+                )}
               </div>
               <div className="client-profile-copy">
                 <h3>{coverageComuna || "Tu perfil profesional"}</h3>
