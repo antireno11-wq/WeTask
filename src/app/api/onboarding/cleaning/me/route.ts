@@ -366,6 +366,9 @@ export async function PATCH(req: NextRequest) {
       if (onboarding.categorySlug === "mascotas" && !parsed.petScope) {
         return NextResponse.json({ error: "Debes definir el alcance de tu servicio de mascotas." }, { status: 400 });
       }
+      if (onboarding.categorySlug === "maquillaje" && !parsed.makeupScope) {
+        return NextResponse.json({ error: "Debes definir el alcance de tu servicio de maquillaje." }, { status: 400 });
+      }
       if (onboarding.categorySlug === "babysitter" && !parsed.babysitterScope) {
         return NextResponse.json({ error: "Debes definir el alcance de tu servicio de babysitter." }, { status: 400 });
       }
@@ -383,6 +386,7 @@ export async function PATCH(req: NextRequest) {
         experienceTypes: parsed.experienceTypes,
         cleaningScope: parsed.cleaningScope ?? undefined,
         petScope: parsed.petScope ?? undefined,
+        makeupScope: parsed.makeupScope ?? undefined,
         babysitterScope: parsed.babysitterScope ?? undefined,
         chefScope: parsed.chefScope ?? undefined,
         trainerScope: parsed.trainerScope ?? undefined,

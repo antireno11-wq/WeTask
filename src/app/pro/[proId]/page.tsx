@@ -33,6 +33,12 @@ import {
   normalizePetScope
 } from "@/lib/pet-scope";
 import {
+  getMakeupExcludedTaskLabel,
+  getMakeupIncludedTaskLabel,
+  getMakeupServiceLabel,
+  normalizeMakeupScope
+} from "@/lib/makeup-scope";
+import {
   getTrainerExcludedTaskLabel,
   getTrainerIncludedTaskLabel,
   getTrainerModeLabel,
@@ -58,12 +64,14 @@ type CleaningOnboardingSummary = {
   experienceTypes: unknown;
   cleaningScope: unknown;
   petScope: unknown;
+  makeupScope: unknown;
   babysitterScope: unknown;
   chefScope: unknown;
   trainerScope: unknown;
   teacherScope: unknown;
   acceptsHomesWithPets: boolean | null;
   acceptsHomesWithChildren: boolean | null;
+  bringsOwnProducts: boolean | null;
   bringsOwnTools: boolean | null;
   languages: unknown;
   baseCommune: string | null;
@@ -476,12 +484,14 @@ function buildDemoProfessional(proId: string): ProfessionalDetail {
           special_conditions: "No mueve muebles pesados ni trabaja en altura."
         },
         petScope: null,
+        makeupScope: null,
         babysitterScope: null,
         chefScope: null,
         trainerScope: null,
         teacherScope: null,
         acceptsHomesWithPets: null,
         acceptsHomesWithChildren: null,
+        bringsOwnProducts: null,
         bringsOwnTools: null,
         languages: demoLanguages,
         baseCommune: "Santiago",
@@ -661,6 +671,22 @@ export default function ProDetailPage() {
       accepts_large_pets: onboarding?.acceptsHomesWithPets ?? null
     };
   }, [onboarding?.petScope, onboarding?.offeredServices, onboarding?.experienceTypes, onboarding?.acceptsHomesWithPets]);
+  const makeupScope = useMemo(() => {
+    const normalized = normalizeMakeupScope(onboarding?.makeupScope);
+    if (normalized.services_offered.length > 0 || normalized.tasks_included.length > 0) {
+      return normalized;
+    }
+
+    return {
+      ...normalized,
+      services_offered: Array.isArray(onboarding?.offeredServices)
+        ? onboarding.offeredServices.filter(
+            (item): item is "social" | "eventos" | "novias" => item === "social" || item === "eventos" || item === "novias"
+          )
+        : [],
+      includes_kit: onboarding?.bringsOwnProducts ?? null
+    };
+  }, [onboarding?.makeupScope, onboarding?.offeredServices, onboarding?.bringsOwnProducts]);
   const babysitterScope = useMemo(() => {
     const normalized = normalizeBabysitterScope(onboarding?.babysitterScope);
     if (normalized.services_offered.length > 0 || normalized.age_ranges.length > 0 || normalized.tasks_included.length > 0) {
@@ -790,6 +816,9 @@ export default function ProDetailPage() {
   const petScopeAnimals = petScope.animals_accepted.map(getPetScopeAnimalLabel);
   const petScopeIncludedTasks = petScope.tasks_included.map(getPetIncludedTaskLabel);
   const petScopeExcludedTasks = petScope.tasks_excluded.map(getPetExcludedTaskLabel);
+  const makeupScopeServices = makeupScope.services_offered.map(getMakeupServiceLabel);
+  const makeupScopeIncludedTasks = makeupScope.tasks_included.map(getMakeupIncludedTaskLabel);
+  const makeupScopeExcludedTasks = makeupScope.tasks_excluded.map(getMakeupExcludedTaskLabel);
   const babysitterScopeServices = babysitterScope.services_offered.map(getBabysitterServiceLabel);
   const babysitterScopeAges = babysitterScope.age_ranges.map(getBabysitterAgeRangeLabel);
   const babysitterScopeIncludedTasks = babysitterScope.tasks_included.map(getBabysitterIncludedTaskLabel);
@@ -1051,6 +1080,35 @@ export default function ProDetailPage() {
                         <div>
                           <h3>Condiciones especiales</h3>
                           <p>{petScope.special_conditions || "Sin condiciones especiales reportadas."}</p>
+                        </div>
+                      </div>
+                      <p className="minimal-note">Si necesitas algo fuera de este alcance base, revísalo antes de reservar para evitar malos entendidos.</p>
+                    </article>
+                  ) : null}
+
+                  {normalizedPrimaryCategorySlug === "maquillaje" ? (
+                    <article className="auth-flow-panel client-dashboard-section">
+                      <h2>Alcance del servicio</h2>
+                      <div className="we-info-grid">
+                        <div>
+                          <h3>Tipos de maquillaje</h3>
+                          <p>{makeupScopeServices.length > 0 ? makeupScopeServices.join(", ") : "Aún no informado."}</p>
+                        </div>
+                        <div>
+                          <h3>Tareas que sí realiza</h3>
+                          <p>{makeupScopeIncludedTasks.length > 0 ? makeupScopeIncludedTasks.join(", ") : "Aún no informado."}</p>
+                        </div>
+                        <div>
+                          <h3>Tareas que no realiza</h3>
+                          <p>{makeupScopeExcludedTasks.length > 0 ? makeupScopeExcludedTasks.join(", ") : "No reporta exclusiones."}</p>
+                        </div>
+                        <div>
+                          <h3>Incluye kit</h3>
+                          <p>{makeupScope.includes_kit == null ? "No informado." : makeupScope.includes_kit ? "Sí" : "No"}</p>
+                        </div>
+                        <div>
+                          <h3>Condiciones especiales</h3>
+                          <p>{makeupScope.special_conditions || "Sin condiciones especiales reportadas."}</p>
                         </div>
                       </div>
                       <p className="minimal-note">Si necesitas algo fuera de este alcance base, revísalo antes de reservar para evitar malos entendidos.</p>

@@ -4,6 +4,7 @@ import { getRequestIdentity, hasRole } from "@/lib/auth";
 import { normalizeBabysitterScope } from "@/lib/babysitter-scope";
 import { normalizeChefScope } from "@/lib/chef-scope";
 import { normalizeCleaningScope } from "@/lib/cleaning-scope";
+import { normalizeMakeupScope } from "@/lib/makeup-scope";
 import { normalizePetScope } from "@/lib/pet-scope";
 import { normalizeTeacherScope } from "@/lib/teacher-scope";
 import { normalizeTrainerScope } from "@/lib/trainer-scope";
@@ -66,6 +67,14 @@ function listMissingFields(onboarding: Awaited<ReturnType<typeof prisma.cleaning
     required.splice(8, 0, [
       "petScope",
       petScope.services_offered.length > 0 && petScope.animals_accepted.length > 0 && petScope.tasks_included.length > 0 ? petScope : null
+    ]);
+  }
+
+  if (onboarding.categorySlug === "maquillaje") {
+    const makeupScope = normalizeMakeupScope(onboarding.makeupScope);
+    required.splice(8, 0, [
+      "makeupScope",
+      makeupScope.services_offered.length > 0 && makeupScope.tasks_included.length > 0 ? makeupScope : null
     ]);
   }
 
