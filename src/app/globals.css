@@ -2876,6 +2876,10 @@ textarea {
     grid-template-columns: 1fr;
   }
 
+  .pro-profile-summary-grid {
+    grid-template-columns: 1fr;
+  }
+
   .availability-task-item {
     grid-template-columns: 1fr;
   }
@@ -5140,6 +5144,23 @@ textarea {
 
 .pro-dashboard-profile-box .client-profile-copy {
   gap: 10px;
+}
+
+.pro-profile-summary {
+  display: grid;
+  gap: 18px;
+}
+
+.pro-profile-summary-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.pro-profile-map-preview {
+  margin-top: 0;
+}
+
+.pro-profile-map-preview .coverage-map-wrap {
+  cursor: default;
 }
 
 .pro-dashboard-badge {

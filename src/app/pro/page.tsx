@@ -142,6 +142,7 @@ export default function ProPage() {
   const [proReviewByBooking, setProReviewByBooking] = useState<Record<string, { rating: number; comment: string }>>({});
 
   const [profile, setProfile] = useState<ProProfile | null>(null);
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [bio, setBio] = useState("");
   const [coverageStreet, setCoverageStreet] = useState("");
   const [coverageComuna, setCoverageComuna] = useState("");
@@ -248,6 +249,7 @@ export default function ProPage() {
 
   const applyProfile = (nextProfile: ProProfile | null, nextServiceCommunes: string[] = []) => {
     setProfile(nextProfile);
+    setIsEditingProfile(false);
     if (!nextProfile) return;
     setBio(nextProfile.bio ?? "");
     setCoverageStreet(nextProfile.coverageStreet ?? "");
@@ -509,6 +511,7 @@ export default function ProPage() {
       const data = (await response.json()) as { profile?: ProProfile; serviceCommunes?: string[]; error?: string; detail?: string };
       if (!response.ok || !data.profile) throw new Error(data.detail || data.error || "No se pudo guardar perfil");
       applyProfile(data.profile, data.serviceCommunes ?? serviceCommunes);
+      setIsEditingProfile(false);
       setFeedback("Perfil actualizado.");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error inesperado");
@@ -755,11 +758,82 @@ export default function ProPage() {
 
           <section className="auth-flow-panel client-dashboard-section">
             <div className="panel-head client-dashboard-panel-head">
-              <h2>Perfil profesional</h2>
-              <p>Configura bio, cobertura, tarifa y mapa base.</p>
+              <div>
+                <h2>Perfil profesional</h2>
+                <p>Revisa tu información y edítala solo cuando realmente lo necesites.</p>
+              </div>
+              {isEditingProfile ? (
+                <button className="cta ghost small" type="button" onClick={() => setIsEditingProfile(false)}>
+                  Cerrar edición
+                </button>
+              ) : (
+                <button className="cta ghost small" type="button" onClick={() => setIsEditingProfile(true)}>
+                  Editar perfil
+                </button>
+              )}
             </div>
 
-            <div className="grid-form">
+            {!isEditingProfile ? (
+              <div className="pro-profile-summary">
+                <div className="module-grid pro-profile-summary-grid">
+                  <article className="module-card client-dashboard-card">
+                    <h3>Bio</h3>
+                    <p>{bio.trim() ? bio : "Todavía no agregas una descripción profesional."}</p>
+                  </article>
+                  <article className="module-card client-dashboard-card">
+                    <h3>Dirección base</h3>
+                    <p>{[coverageStreet || "Sin dirección", coverageComuna || "Sin comuna", coverageCity || "Sin ciudad"].join(", ")}</p>
+                  </article>
+                  <article className="module-card client-dashboard-card">
+                    <h3>Tarifa desde</h3>
+                    <p>{clp(hourlyRateFromClp)}/hora</p>
+                  </article>
+                  <article className="module-card client-dashboard-card">
+                    <h3>Comunas activas</h3>
+                    <p>{selectedCommunes.length > 0 ? selectedCommunes.join(", ") : "Aún no defines comunas de trabajo."}</p>
+                  </article>
+                </div>
+
+                <div className="full coverage-map-card pro-profile-map-preview">
+                  <div className="coverage-map-head">
+                    <h3>Mapa de cobertura</h3>
+                    <p>Así se está mostrando hoy tu punto base y las comunas donde trabajas.</p>
+                  </div>
+                  <div className="coverage-map-wrap">
+                    <iframe
+                      title="Mapa de cobertura profesional"
+                      src={mapEmbedUrl}
+                      className="coverage-map-frame"
+                      loading="lazy"
+                      referrerPolicy="no-referrer-when-downgrade"
+                    />
+                    <div className="coverage-map-labels">
+                      {ACTIVE_MVP_COMMUNES.map((commune) => {
+                        const position = COMMUNE_MAP_POSITIONS[commune];
+                        const isSelected = selectedCommunes.includes(commune);
+                        return (
+                          <span
+                            key={commune}
+                            className={`coverage-commune-pill ${isSelected ? "active" : ""}`}
+                            style={{ top: position.top, left: position.left }}
+                          >
+                            {commune}
+                          </span>
+                        );
+                      })}
+                    </div>
+                    <span className="coverage-pin" style={{ left: `${markerLeftPct}%`, top: `${markerTopPct}%` }} aria-hidden>
+                      <span className="coverage-pin-dot" />
+                    </span>
+                  </div>
+                  <p className="coverage-meta">
+                    Dirección base: {coverageStreet || "Sin dirección"}, {coverageComuna || "Sin comuna"}, {coverageCity}
+                  </p>
+                </div>
+              </div>
+            ) : null}
+
+            {isEditingProfile ? <div className="grid-form">
               <label className="full">
                 Bio
                 <textarea value={bio} onChange={(e) => setBio(e.target.value)} placeholder="Experiencia, especialidad, herramientas." />
@@ -927,13 +1001,18 @@ export default function ProPage() {
                   Comunas activas: {selectedCommunes.length > 0 ? selectedCommunes.join(", ") : "Selecciona al menos una comuna."}
                 </p>
               </div>
-            </div>
+            </div> : null}
 
-            <div className="cta-row">
-              <button className="cta" type="button" onClick={saveProfile}>
-                Guardar perfil
-              </button>
-            </div>
+            {isEditingProfile ? (
+              <div className="cta-row">
+                <button className="cta ghost" type="button" onClick={() => setIsEditingProfile(false)}>
+                  Cancelar
+                </button>
+                <button className="cta" type="button" onClick={saveProfile}>
+                  Guardar perfil
+                </button>
+              </div>
+            ) : null}
           </section>
 
           <section className="auth-flow-panel client-dashboard-section">
