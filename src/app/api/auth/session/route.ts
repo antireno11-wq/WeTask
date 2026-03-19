@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getRequestIdentity } from "@/lib/auth";
+import { ensurePrimaryAdminUser } from "@/lib/primary-admin";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
+  await ensurePrimaryAdminUser();
   const identity = getRequestIdentity(req);
   if (!identity.userId || !identity.role) {
     return NextResponse.json({ session: null }, { status: 200 });

@@ -2,6 +2,7 @@ import { UserRole } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { ensureMarketplaceDemoData } from "@/lib/marketplace-demo-data";
 import { encodeSessionCookie, SESSION_COOKIE_NAME } from "@/lib/auth";
+import { ensurePrimaryAdminUser } from "@/lib/primary-admin";
 import { prisma } from "@/lib/prisma";
 import { verifyPassword } from "@/lib/security";
 
@@ -10,6 +11,7 @@ export const dynamic = "force-dynamic";
 export async function POST(req: NextRequest) {
   try {
     await ensureMarketplaceDemoData();
+    await ensurePrimaryAdminUser();
 
     const body = (await req.json()) as { userId?: string; email?: string; password?: string; role?: UserRole };
 

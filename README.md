@@ -82,6 +82,9 @@ Compatibilidad temporal:
 3. Variables:
 - `DATABASE_URL`
 - `NEXT_PUBLIC_APP_URL`
+- `PRIMARY_ADMIN_EMAIL`
+- `PRIMARY_ADMIN_PASSWORD`
+- `PRIMARY_ADMIN_FULL_NAME`
 4. Railway ejecuta en start:
 - `prisma db push`
 - `next start`
