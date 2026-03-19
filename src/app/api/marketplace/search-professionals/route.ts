@@ -77,6 +77,7 @@ export async function GET(req: NextRequest) {
               select: {
                 categorySlug: true,
                 cleaningScope: true,
+                petScope: true,
                 serviceCommunes: true,
                 baseCommune: true
               }

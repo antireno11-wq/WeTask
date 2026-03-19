@@ -12,6 +12,12 @@ import {
   CLEANING_TASK_EXCLUDED_OPTIONS,
   CLEANING_TASK_INCLUDED_OPTIONS
 } from "@/lib/cleaning-scope";
+import {
+  PET_SCOPE_ANIMAL_OPTIONS,
+  PET_SCOPE_SERVICE_OPTIONS,
+  PET_TASK_EXCLUDED_OPTIONS,
+  PET_TASK_INCLUDED_OPTIONS
+} from "@/lib/pet-scope";
 import { isActiveMvpCommune, normalizeCommune } from "@/lib/communes";
 
 const activeCommuneInputSchema = z
@@ -23,6 +29,10 @@ const activeCommuneInputSchema = z
 const cleaningScopeServiceEnum = z.enum(CLEANING_SCOPE_SERVICE_OPTIONS.map((option) => option.value) as [string, ...string[]]);
 const cleaningIncludedTaskEnum = z.enum(CLEANING_TASK_INCLUDED_OPTIONS.map((option) => option.value) as [string, ...string[]]);
 const cleaningExcludedTaskEnum = z.enum(CLEANING_TASK_EXCLUDED_OPTIONS.map((option) => option.value) as [string, ...string[]]);
+const petScopeServiceEnum = z.enum(PET_SCOPE_SERVICE_OPTIONS.map((option) => option.value) as [string, ...string[]]);
+const petScopeAnimalEnum = z.enum(PET_SCOPE_ANIMAL_OPTIONS.map((option) => option.value) as [string, ...string[]]);
+const petIncludedTaskEnum = z.enum(PET_TASK_INCLUDED_OPTIONS.map((option) => option.value) as [string, ...string[]]);
+const petExcludedTaskEnum = z.enum(PET_TASK_EXCLUDED_OPTIONS.map((option) => option.value) as [string, ...string[]]);
 
 export const createBookingSchema = z.object({
   customerId: z.string().min(1),
@@ -425,6 +435,17 @@ export const taskerOnboardingStep7Schema = z.object({
       services_offered: z.array(cleaningScopeServiceEnum).min(1),
       tasks_included: z.array(cleaningIncludedTaskEnum).min(1),
       tasks_excluded: z.array(cleaningExcludedTaskEnum).optional().default([]),
+      special_conditions: z.string().max(600).optional().default("")
+    })
+    .optional()
+    .nullable(),
+  petScope: z
+    .object({
+      services_offered: z.array(petScopeServiceEnum).min(1),
+      animals_accepted: z.array(petScopeAnimalEnum).min(1),
+      accepts_large_pets: z.boolean().optional().nullable(),
+      tasks_included: z.array(petIncludedTaskEnum).min(1),
+      tasks_excluded: z.array(petExcludedTaskEnum).optional().default([]),
       special_conditions: z.string().max(600).optional().default("")
     })
     .optional()

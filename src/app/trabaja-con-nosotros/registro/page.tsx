@@ -30,6 +30,20 @@ import {
   type CleaningTaskExcludedSlug,
   type CleaningTaskIncludedSlug
 } from "@/lib/cleaning-scope";
+import {
+  PET_SCOPE_SERVICE_OPTIONS,
+  PET_TASK_EXCLUDED_OPTIONS,
+  PET_TASK_INCLUDED_OPTIONS,
+  emptyPetScope,
+  getPetExcludedTaskLabel,
+  getPetIncludedTaskLabel,
+  getPetScopeAnimalLabel,
+  getPetScopeServiceLabel,
+  isPetScopeServiceSlug,
+  normalizePetScope,
+  type PetScopeData,
+  type PetScopeServiceSlug
+} from "@/lib/pet-scope";
 import { ACTIVE_MVP_COMMUNES, inferCommuneFromAddress, normalizeCommune, type ActiveMvpCommune } from "@/lib/communes";
 
 type SessionPayload = {
@@ -56,6 +70,7 @@ type OnboardingPayload = {
   offeredServices: unknown;
   experienceTypes: unknown;
   cleaningScope: unknown;
+  petScope: unknown;
   acceptsHomesWithPets: boolean | null;
   acceptsHomesWithChildren: boolean | null;
   acceptsHomesWithElderly: boolean | null;
@@ -145,9 +160,10 @@ type DraftState = {
   chefServiceRates: Partial<Record<ChefServiceSlug, string>>;
   cleaningBringsProducts: boolean | null;
   cleaningBringsEquipment: boolean | null;
-  petServiceType: Array<"paseo_perros" | "cuidado_casa_cliente" | "cuidado_en_tu_casa">;
+  petServiceType: PetScopeServiceSlug[];
   petAnimals: Array<"perros" | "gatos">;
   petLargePets: boolean | null;
+  petScope: PetScopeData;
   babysitterAgeRange: "0_2" | "3_6" | "7_plus";
   babysitterFirstAid: boolean | null;
   babysitterMultiChild: boolean | null;
@@ -181,6 +197,7 @@ type DraftState = {
 };
 
 type CleaningScopeScreen = 1 | 2 | 3 | 4 | 5;
+type PetScopeScreen = 1 | 2 | 3 | 4 | 5 | 6;
 type MissingFieldItem = {
   field: string;
   label: string;
@@ -260,6 +277,7 @@ const SUBMIT_REQUIRED_FIELDS: Record<string, { label: string; step: WizardStep }
   workMode: { label: "Cómo trabajas", step: 6 },
   offeredServices: { label: "Preguntas específicas de tu categoría", step: 7 },
   cleaningScope: { label: "Alcance del servicio de limpieza", step: 7 },
+  petScope: { label: "Alcance del servicio de mascotas", step: 7 },
   serviceCommunes: { label: "Comunas de cobertura", step: 4 },
   coverageLatitude: { label: "Ubicación validada desde la dirección", step: 3 },
   coverageLongitude: { label: "Ubicación validada desde la dirección", step: 3 },
@@ -390,12 +408,12 @@ function getPricingGuide(draft: DraftState) {
 function normalizeCleaningServiceSlugs(value: unknown): CleaningServiceSlug[] {
   if (Array.isArray(value)) {
     const items = value.filter((item): item is CleaningServiceSlug => typeof item === "string" && isCleaningServiceSlug(item));
-    return items.length > 0 ? Array.from(new Set(items)) : ["limpieza-hogar"];
+    return items.length > 0 ? Array.from(new Set(items)) : [];
   }
   if (typeof value === "string" && isCleaningServiceSlug(value)) {
     return [value];
   }
-  return ["limpieza-hogar"];
+  return [];
 }
 
 function selectedCleaningServiceDefinitions(draft: DraftState): CleaningServiceDefinition[] {
@@ -404,7 +422,7 @@ function selectedCleaningServiceDefinitions(draft: DraftState): CleaningServiceD
 
 function deriveCleaningServicesFromScope(scope: CleaningScopeData): CleaningServiceSlug[] {
   const derived = scope.services_offered.filter(isCleaningServiceSlug);
-  return derived.length > 0 ? Array.from(new Set(derived)) : ["limpieza-hogar"];
+  return derived.length > 0 ? Array.from(new Set(derived)) : [];
 }
 
 function selectedChefServiceDefinitions(draft: DraftState): ChefServiceDefinition[] {
@@ -419,31 +437,28 @@ function normalizeMakeupTypes(value: unknown): Array<"social" | "eventos" | "nov
   if (typeof value === "string" && allowed.has(value)) {
     return [value as "social" | "eventos" | "novias"];
   }
-  return ["social"];
+  return [];
 }
 
 function normalizeChefServiceTypes(value: unknown): ChefServiceSlug[] {
   if (Array.isArray(value)) {
     const items = value.filter((item): item is ChefServiceSlug => typeof item === "string" && isChefServiceSlug(item));
-    return items.length > 0 ? Array.from(new Set(items)) : ["cocina-casera"];
+    return items.length > 0 ? Array.from(new Set(items)) : [];
   }
   if (typeof value === "string" && isChefServiceSlug(value)) {
     return [value];
   }
-  return ["cocina-casera"];
+  return [];
 }
 
-function normalizePetServiceTypes(value: unknown): Array<"paseo_perros" | "cuidado_casa_cliente" | "cuidado_en_tu_casa"> {
-  const allowed = new Set(["paseo_perros", "cuidado_casa_cliente", "cuidado_en_tu_casa"]);
+function normalizePetServiceTypes(value: unknown): PetScopeServiceSlug[] {
   if (Array.isArray(value)) {
-    return value.filter(
-      (item): item is "paseo_perros" | "cuidado_casa_cliente" | "cuidado_en_tu_casa" => typeof item === "string" && allowed.has(item)
-    );
+    return value.filter((item): item is PetScopeServiceSlug => typeof item === "string" && isPetScopeServiceSlug(item));
   }
-  if (typeof value === "string" && allowed.has(value)) {
-    return [value as "paseo_perros" | "cuidado_casa_cliente" | "cuidado_en_tu_casa"];
+  if (typeof value === "string" && isPetScopeServiceSlug(value)) {
+    return [value];
   }
-  return ["paseo_perros"];
+  return [];
 }
 
 function createInitialDraft(): DraftState {
@@ -462,16 +477,17 @@ function createInitialDraft(): DraftState {
     category: "limpieza",
     yearsExperience: "1",
     workMode: "SOLO",
-    cleaningServices: ["limpieza-hogar"],
-    cleaningServiceRates: { "limpieza-hogar": "" },
+    cleaningServices: [],
+    cleaningServiceRates: {},
     cleaningScope: emptyCleaningScope(),
-    chefServiceType: ["cocina-casera"],
-    chefServiceRates: { "cocina-casera": "" },
+    chefServiceType: [],
+    chefServiceRates: {},
     cleaningBringsProducts: null,
     cleaningBringsEquipment: null,
-    petServiceType: ["paseo_perros"],
-    petAnimals: ["perros"],
+    petServiceType: [],
+    petAnimals: [],
     petLargePets: null,
+    petScope: emptyPetScope(),
     babysitterAgeRange: "0_2",
     babysitterFirstAid: null,
     babysitterMultiChild: null,
@@ -481,7 +497,7 @@ function createInitialDraft(): DraftState {
     trainerServiceType: "funcional",
     trainerMode: "presencial",
     trainerBringsEquipment: null,
-    makeupType: ["social"],
+    makeupType: [],
     makeupKit: null,
     ironingType: "casa_cliente",
     ironingDelicate: null,
@@ -584,6 +600,12 @@ function buildStep7Payload(draft: DraftState) {
       return {
         offeredServices: draft.petServiceType,
         experienceTypes: draft.petAnimals,
+        petScope: {
+          ...draft.petScope,
+          services_offered: draft.petServiceType,
+          animals_accepted: draft.petAnimals,
+          accepts_large_pets: draft.petLargePets
+        },
         acceptsHomesWithPets: draft.petLargePets
       };
     case "babysitter":
@@ -662,6 +684,7 @@ function CleaningOnboardingPageContent() {
   const [submitMissingFields, setSubmitMissingFields] = useState<MissingFieldItem[]>([]);
   const [smsPreview, setSmsPreview] = useState("");
   const [cleaningScopeScreen, setCleaningScopeScreen] = useState<CleaningScopeScreen>(1);
+  const [petScopeScreen, setPetScopeScreen] = useState<PetScopeScreen>(1);
   const [selectedAvailabilityDay, setSelectedAvailabilityDay] = useState<DayKey>(currentWeekDayKey);
   const [bulkAvailabilityDays, setBulkAvailabilityDays] = useState<DayKey[]>([currentWeekDayKey()]);
   const [newAvailabilityStart, setNewAvailabilityStart] = useState("14:00");
@@ -681,6 +704,10 @@ function CleaningOnboardingPageContent() {
   const cleaningScopeServicesPreview = draft.cleaningScope.services_offered.map(getCleaningScopeServiceLabel);
   const cleaningScopeIncludedPreview = draft.cleaningScope.tasks_included.map(getCleaningIncludedTaskLabel);
   const cleaningScopeExcludedPreview = draft.cleaningScope.tasks_excluded.map(getCleaningExcludedTaskLabel);
+  const petScopeServicesPreview = draft.petServiceType.map(getPetScopeServiceLabel);
+  const petScopeAnimalsPreview = draft.petAnimals.map(getPetScopeAnimalLabel);
+  const petScopeIncludedPreview = draft.petScope.tasks_included.map(getPetIncludedTaskLabel);
+  const petScopeExcludedPreview = draft.petScope.tasks_excluded.map(getPetExcludedTaskLabel);
   const pricingGuide = useMemo(() => getPricingGuide(draft), [draft]);
   const progressPercent = Math.round((activeStep / TOTAL_STEPS) * 100);
   const addressQuery = useMemo(() => [draft.address.trim(), "Santiago", "Chile"].filter(Boolean).join(", "), [draft.address]);
@@ -714,6 +741,7 @@ function CleaningOnboardingPageContent() {
             ? (parsed.chefServiceRates as Partial<Record<ChefServiceSlug, string>>)
             : current.chefServiceRates,
         petServiceType: normalizePetServiceTypes(parsed.petServiceType),
+        petScope: normalizePetScope(parsed.petScope ?? current.petScope),
         makeupType: normalizeMakeupTypes(parsed.makeupType)
       }));
       if (parsed.activeStep && parsed.activeStep >= 1 && parsed.activeStep <= 12) {
@@ -832,16 +860,26 @@ function CleaningOnboardingPageContent() {
     const normalizedServices = normalizePetServiceTypes(draft.petServiceType);
     const supportsCats = normalizedServices.some((item) => item !== "paseo_perros");
     const filteredAnimals = draft.petAnimals.filter((animal): animal is "perros" | "gatos" => supportsCats || animal === "perros");
-    const nextAnimals: Array<"perros" | "gatos"> = filteredAnimals.length > 0 ? filteredAnimals : ["perros"];
+    const nextAnimals: Array<"perros" | "gatos"> = filteredAnimals;
     const servicesChanged = normalizedServices.join("|") !== draft.petServiceType.join("|");
     const animalsChanged = nextAnimals.join("|") !== draft.petAnimals.join("|");
-    if (!servicesChanged && !animalsChanged) return;
+    const petScopeChanged =
+      normalizedServices.join("|") !== draft.petScope.services_offered.join("|") ||
+      nextAnimals.join("|") !== draft.petScope.animals_accepted.join("|") ||
+      draft.petLargePets !== draft.petScope.accepts_large_pets;
+    if (!servicesChanged && !animalsChanged && !petScopeChanged) return;
     setDraft((current) => ({
       ...current,
       petServiceType: normalizedServices,
-      petAnimals: nextAnimals
+      petAnimals: nextAnimals,
+      petScope: {
+        ...current.petScope,
+        services_offered: normalizedServices,
+        animals_accepted: nextAnimals,
+        accepts_large_pets: current.petLargePets
+      }
     }));
-  }, [draft.petAnimals, draft.petServiceType]);
+  }, [draft.petAnimals, draft.petLargePets, draft.petScope.animals_accepted, draft.petScope.services_offered, draft.petScope.accepts_large_pets, draft.petServiceType]);
 
   useEffect(() => {
     if (draft.category !== "limpieza") return;
@@ -886,6 +924,12 @@ function CleaningOnboardingPageContent() {
     }
   }, [activeStep, draft.category]);
 
+  useEffect(() => {
+    if (activeStep !== 7 || draft.category !== "mascotas") {
+      setPetScopeScreen(1);
+    }
+  }, [activeStep, draft.category]);
+
   const hydrateFromServer = (nextOnboarding: OnboardingPayload, user?: { fullName?: string | null; email?: string | null; phone?: string | null }) => {
     const { firstName, lastName } = splitFullName(user?.fullName ?? session?.fullName ?? "");
     setOnboarding(nextOnboarding);
@@ -910,6 +954,26 @@ function CleaningOnboardingPageContent() {
       cleaningServices:
         nextOnboarding.categorySlug === "limpieza" ? normalizeCleaningServiceSlugs(nextOnboarding.offeredServices) : current.cleaningServices,
       cleaningScope: nextOnboarding.categorySlug === "limpieza" ? normalizeCleaningScope(nextOnboarding.cleaningScope) : current.cleaningScope,
+      petServiceType:
+        nextOnboarding.categorySlug === "mascotas"
+          ? normalizePetServiceTypes(normalizePetScope(nextOnboarding.petScope).services_offered.length > 0 ? normalizePetScope(nextOnboarding.petScope).services_offered : nextOnboarding.offeredServices)
+          : current.petServiceType,
+      petAnimals:
+        nextOnboarding.categorySlug === "mascotas"
+          ? (() => {
+              const normalizedPetScope = normalizePetScope(nextOnboarding.petScope);
+              if (normalizedPetScope.animals_accepted.length > 0) return normalizedPetScope.animals_accepted;
+              if (Array.isArray(nextOnboarding.experienceTypes)) {
+                return nextOnboarding.experienceTypes.filter((item): item is "perros" | "gatos" => item === "perros" || item === "gatos");
+              }
+              return current.petAnimals;
+            })()
+          : current.petAnimals,
+      petLargePets:
+        nextOnboarding.categorySlug === "mascotas"
+          ? normalizePetScope(nextOnboarding.petScope).accepts_large_pets ?? nextOnboarding.acceptsHomesWithPets ?? current.petLargePets
+          : current.petLargePets,
+      petScope: nextOnboarding.categorySlug === "mascotas" ? normalizePetScope(nextOnboarding.petScope) : current.petScope,
       chefServiceType: nextOnboarding.categorySlug === "chef" ? normalizeChefServiceTypes(nextOnboarding.offeredServices) : current.chefServiceType,
       yearsExperience: nextOnboarding.yearsExperience ? String(Math.min(nextOnboarding.yearsExperience, 10)) : current.yearsExperience,
       workMode: nextOnboarding.workMode ?? current.workMode,
@@ -1356,6 +1420,28 @@ function CleaningOnboardingPageContent() {
     setCleaningScopeScreen((current) => (Math.max(1, current - 1) as CleaningScopeScreen));
   };
 
+  const continuePetScopeScreen = () => {
+    if (petScopeScreen === 1 && draft.petServiceType.length === 0) {
+      setError("Selecciona al menos un servicio de mascotas que sí ofreces.");
+      return;
+    }
+    if (petScopeScreen === 2 && draft.petAnimals.length === 0) {
+      setError("Selecciona al menos un tipo de mascota con el que sí trabajas.");
+      return;
+    }
+    if (petScopeScreen === 3 && draft.petScope.tasks_included.length === 0) {
+      setError("Selecciona al menos una tarea que sí realizas.");
+      return;
+    }
+    setError("");
+    setPetScopeScreen((current) => (Math.min(6, current + 1) as PetScopeScreen));
+  };
+
+  const previousPetScopeScreen = () => {
+    setError("");
+    setPetScopeScreen((current) => (Math.max(1, current - 1) as PetScopeScreen));
+  };
+
   const continueStep7 = async () => {
     const payload = buildStep7Payload(draft);
     if (!payload.offeredServices || payload.offeredServices.length === 0) {
@@ -1374,6 +1460,14 @@ function CleaningOnboardingPageContent() {
     }
     if (draft.category === "mascotas" && draft.petAnimals.length === 0) {
       setError("Selecciona al menos un tipo de mascota para continuar.");
+      return;
+    }
+    if (draft.category === "mascotas" && draft.petServiceType.length === 0) {
+      setError("Selecciona al menos un servicio de mascotas que ofreces.");
+      return;
+    }
+    if (draft.category === "mascotas" && draft.petScope.tasks_included.length === 0) {
+      setError("Selecciona al menos una tarea que sí realizas.");
       return;
     }
     setSaving(true);
@@ -2195,70 +2289,198 @@ function CleaningOnboardingPageContent() {
 
                 {draft.category === "mascotas" ? (
                   <div className="grid-form auth-flow-form">
-                    <div className="full">
-                      <p className="field-label">Tipo de servicio</p>
-                      <div className="inline-checks">
-                        {[
-                          { value: "paseo_perros", label: "Paseo de perros" },
-                          { value: "cuidado_casa_cliente", label: "Cuidado en casa del cliente" },
-                          { value: "cuidado_en_tu_casa", label: "Cuidado en mi casa" }
-                        ].map((option) => (
-                          <label key={option.value}>
-                            <input
-                              type="checkbox"
-                              checked={draft.petServiceType.includes(
-                                option.value as "paseo_perros" | "cuidado_casa_cliente" | "cuidado_en_tu_casa"
-                              )}
-                              onChange={(event) => {
-                                updateDraft(
-                                  "petServiceType",
-                                  event.target.checked
-                                    ? Array.from(
-                                        new Set([
-                                          ...draft.petServiceType,
-                                          option.value as "paseo_perros" | "cuidado_casa_cliente" | "cuidado_en_tu_casa"
-                                        ])
-                                      )
-                                    : draft.petServiceType.filter((item) => item !== option.value)
-                                );
-                              }}
-                            />
-                            {option.label}
-                          </label>
-                        ))}
-                      </div>
+                    <div className="full onboarding-scope-progress">
+                      <span className={petScopeScreen >= 1 ? "active" : ""}>Servicios</span>
+                      <span className={petScopeScreen >= 2 ? "active" : ""}>Mascotas</span>
+                      <span className={petScopeScreen >= 3 ? "active" : ""}>Sí realiza</span>
+                      <span className={petScopeScreen >= 4 ? "active" : ""}>No realiza</span>
+                      <span className={petScopeScreen >= 5 ? "active" : ""}>Condiciones</span>
+                      <span className={petScopeScreen >= 6 ? "active" : ""}>Revisión</span>
                     </div>
-                    <div className="full">
-                      <p className="field-label">Animales</p>
-                      <div className="onboarding-checkbox-grid onboarding-checkbox-grid-compact">
-                        {petAnimalOptions.map((animal) => (
-                          <label key={animal} className="onboarding-check-card">
-                            <input
-                              type="checkbox"
-                              checked={draft.petAnimals.includes(animal)}
-                              onChange={() =>
-                                updateDraft(
-                                  "petAnimals",
-                                  draft.petAnimals.includes(animal) ? draft.petAnimals.filter((item) => item !== animal) : [...draft.petAnimals, animal]
-                                )
-                              }
-                            />
-                            <span>{animal === "perros" ? "Perros" : "Gatos"}</span>
-                          </label>
-                        ))}
+
+                    {petScopeScreen === 1 ? (
+                      <div className="full">
+                        <p className="field-label">¿Qué servicios de mascotas ofreces?</p>
+                        <div className="auth-service-grid auth-service-grid-cleaning">
+                          {PET_SCOPE_SERVICE_OPTIONS.map((service) => (
+                            <label key={service.value} className={`auth-service-card auth-service-card-scope ${draft.petServiceType.includes(service.value) ? "active" : ""}`}>
+                              <input
+                                type="checkbox"
+                                checked={draft.petServiceType.includes(service.value)}
+                                onChange={(event) => {
+                                  setDraft((current) => ({
+                                    ...current,
+                                    petServiceType: event.target.checked
+                                      ? Array.from(new Set([...current.petServiceType, service.value]))
+                                      : current.petServiceType.filter((item) => item !== service.value)
+                                  }));
+                                }}
+                              />
+                              <strong>{service.label}</strong>
+                              <span>{service.description}</span>
+                            </label>
+                          ))}
+                        </div>
                       </div>
-                    </div>
-                    <label>
-                      ¿Aceptas mascotas grandes?
-                      <select
-                        value={draft.petLargePets == null ? "" : draft.petLargePets ? "si" : "no"}
-                        onChange={(event) => updateDraft("petLargePets", event.target.value === "si")}
-                      >
-                        <option value="">Selecciona</option>
-                        <option value="si">Sí</option>
-                        <option value="no">No</option>
-                      </select>
-                    </label>
+                    ) : null}
+
+                    {petScopeScreen === 2 ? (
+                      <>
+                        <div className="full">
+                          <p className="field-label">¿Con qué mascotas trabajas?</p>
+                          <div className="onboarding-checkbox-grid onboarding-checkbox-grid-compact">
+                            {petAnimalOptions.map((animal) => (
+                              <label key={animal} className="onboarding-check-card">
+                                <input
+                                  type="checkbox"
+                                  checked={draft.petAnimals.includes(animal)}
+                                  onChange={() =>
+                                    updateDraft(
+                                      "petAnimals",
+                                      draft.petAnimals.includes(animal) ? draft.petAnimals.filter((item) => item !== animal) : [...draft.petAnimals, animal]
+                                    )
+                                  }
+                                />
+                                <span>{animal === "perros" ? "Perros" : "Gatos"}</span>
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+                        <label>
+                          ¿Aceptas mascotas grandes?
+                          <select
+                            value={draft.petLargePets == null ? "" : draft.petLargePets ? "si" : "no"}
+                            onChange={(event) =>
+                              updateDraft("petLargePets", event.target.value === "" ? null : event.target.value === "si")
+                            }
+                          >
+                            <option value="">Selecciona</option>
+                            <option value="si">Sí</option>
+                            <option value="no">No</option>
+                          </select>
+                        </label>
+                      </>
+                    ) : null}
+
+                    {petScopeScreen === 3 ? (
+                      <div className="full">
+                        <p className="field-label">¿Qué tareas sí realizas?</p>
+                        <div className="onboarding-task-checklist">
+                          {PET_TASK_INCLUDED_OPTIONS.map((task) => (
+                            <label key={task.value} className={`onboarding-task-checklist-row ${draft.petScope.tasks_included.includes(task.value) ? "checked" : ""}`}>
+                              <div>
+                                <strong>{task.label}</strong>
+                              </div>
+                              <span className="onboarding-task-checklist-control">
+                                <input
+                                  type="checkbox"
+                                  checked={draft.petScope.tasks_included.includes(task.value)}
+                                  onChange={(event) => {
+                                    setDraft((current) => ({
+                                      ...current,
+                                      petScope: {
+                                        ...current.petScope,
+                                        tasks_included: event.target.checked
+                                          ? Array.from(new Set([...current.petScope.tasks_included, task.value]))
+                                          : current.petScope.tasks_included.filter((item) => item !== task.value)
+                                      }
+                                    }));
+                                  }}
+                                />
+                                <span className="onboarding-task-checklist-box" aria-hidden />
+                              </span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    ) : null}
+
+                    {petScopeScreen === 4 ? (
+                      <div className="full">
+                        <p className="field-label">¿Qué tareas no realizas?</p>
+                        <div className="onboarding-task-checklist">
+                          {PET_TASK_EXCLUDED_OPTIONS.map((task) => (
+                            <label
+                              key={task.value}
+                              className={`onboarding-task-checklist-row onboarding-task-checklist-row-warning ${draft.petScope.tasks_excluded.includes(task.value) ? "checked" : ""}`}
+                            >
+                              <div>
+                                <strong>{task.label}</strong>
+                              </div>
+                              <span className="onboarding-task-checklist-control">
+                                <input
+                                  type="checkbox"
+                                  checked={draft.petScope.tasks_excluded.includes(task.value)}
+                                  onChange={(event) => {
+                                    setDraft((current) => ({
+                                      ...current,
+                                      petScope: {
+                                        ...current.petScope,
+                                        tasks_excluded: event.target.checked
+                                          ? Array.from(new Set([...current.petScope.tasks_excluded, task.value]))
+                                          : current.petScope.tasks_excluded.filter((item) => item !== task.value)
+                                      }
+                                    }));
+                                  }}
+                                />
+                                <span className="onboarding-task-checklist-box" aria-hidden />
+                              </span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    ) : null}
+
+                    {petScopeScreen === 5 ? (
+                      <div className="full">
+                        <label>
+                          Condiciones especiales de tu servicio
+                          <textarea
+                            value={draft.petScope.special_conditions}
+                            rows={4}
+                            placeholder="Ejemplo: no recibo más de dos mascotas a la vez, no hago traslados en auto y prefiero perros con correa."
+                            onChange={(event) =>
+                              setDraft((current) => ({
+                                ...current,
+                                petScope: {
+                                  ...current.petScope,
+                                  special_conditions: event.target.value
+                                }
+                              }))
+                            }
+                          />
+                        </label>
+                      </div>
+                    ) : null}
+
+                    {petScopeScreen === 6 ? (
+                      <div className="full onboarding-scope-review-grid">
+                        <div className="auth-flow-note-card">
+                          <strong>Servicios ofrecidos</strong>
+                          <span>{petScopeServicesPreview.length > 0 ? petScopeServicesPreview.join(", ") : "Sin información aún."}</span>
+                        </div>
+                        <div className="auth-flow-note-card">
+                          <strong>Mascotas aceptadas</strong>
+                          <span>{petScopeAnimalsPreview.length > 0 ? petScopeAnimalsPreview.join(", ") : "Sin información aún."}</span>
+                        </div>
+                        <div className="auth-flow-note-card">
+                          <strong>Tareas que sí realiza</strong>
+                          <span>{petScopeIncludedPreview.length > 0 ? petScopeIncludedPreview.join(", ") : "Sin información aún."}</span>
+                        </div>
+                        <div className="auth-flow-note-card">
+                          <strong>Tareas que no realiza</strong>
+                          <span>{petScopeExcludedPreview.length > 0 ? petScopeExcludedPreview.join(", ") : "No marcaste exclusiones."}</span>
+                        </div>
+                        <div className="auth-flow-note-card">
+                          <strong>Mascotas grandes</strong>
+                          <span>{draft.petLargePets == null ? "No informado." : draft.petLargePets ? "Sí acepta" : "No acepta"}</span>
+                        </div>
+                        <div className="auth-flow-note-card">
+                          <strong>Condiciones especiales</strong>
+                          <span>{draft.petScope.special_conditions.trim() || "No agregaste condiciones especiales."}</span>
+                        </div>
+                      </div>
+                    ) : null}
                   </div>
                 ) : null}
 
@@ -2478,6 +2700,10 @@ function CleaningOnboardingPageContent() {
                     <button type="button" className="cta ghost" onClick={previousCleaningScopeScreen}>
                       Volver
                     </button>
+                  ) : draft.category === "mascotas" && petScopeScreen > 1 ? (
+                    <button type="button" className="cta ghost" onClick={previousPetScopeScreen}>
+                      Volver
+                    </button>
                   ) : (
                     <button type="button" className="cta ghost" onClick={previousStep}>
                       Volver
@@ -2485,6 +2711,10 @@ function CleaningOnboardingPageContent() {
                   )}
                   {draft.category === "limpieza" && cleaningScopeScreen < 5 ? (
                     <button type="button" className="cta" onClick={continueCleaningScopeScreen}>
+                      Siguiente
+                    </button>
+                  ) : draft.category === "mascotas" && petScopeScreen < 6 ? (
+                    <button type="button" className="cta" onClick={continuePetScopeScreen}>
                       Siguiente
                     </button>
                   ) : (

@@ -533,6 +533,7 @@ model CleaningOnboarding {
   experienceTypes            Json?
   offeredServices            Json?
   cleaningScope              Json?
+  petScope                   Json?
   acceptsHomesWithPets       Boolean?
   acceptsHomesWithChildren   Boolean?
   acceptsHomesWithElderly    Boolean?

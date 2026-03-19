@@ -2,6 +2,7 @@ import { CleaningOnboardingStatus, UserRole } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { getRequestIdentity, hasRole } from "@/lib/auth";
 import { normalizeCleaningScope } from "@/lib/cleaning-scope";
+import { normalizePetScope } from "@/lib/pet-scope";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -53,6 +54,14 @@ function listMissingFields(onboarding: Awaited<ReturnType<typeof prisma.cleaning
     required.splice(8, 0, [
       "cleaningScope",
       cleaningScope.services_offered.length > 0 && cleaningScope.tasks_included.length > 0 ? cleaningScope : null
+    ]);
+  }
+
+  if (onboarding.categorySlug === "mascotas") {
+    const petScope = normalizePetScope(onboarding.petScope);
+    required.splice(8, 0, [
+      "petScope",
+      petScope.services_offered.length > 0 && petScope.animals_accepted.length > 0 && petScope.tasks_included.length > 0 ? petScope : null
     ]);
   }
 

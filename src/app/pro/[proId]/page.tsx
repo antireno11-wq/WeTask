@@ -12,6 +12,13 @@ import {
   getCleaningScopeServiceLabel,
   normalizeCleaningScope
 } from "@/lib/cleaning-scope";
+import {
+  getPetExcludedTaskLabel,
+  getPetIncludedTaskLabel,
+  getPetScopeAnimalLabel,
+  getPetScopeServiceLabel,
+  normalizePetScope
+} from "@/lib/pet-scope";
 
 type CleaningOnboardingSummary = {
   profilePhotoUrl: string | null;
@@ -22,6 +29,8 @@ type CleaningOnboardingSummary = {
   offeredServices: unknown;
   experienceTypes: unknown;
   cleaningScope: unknown;
+  petScope: unknown;
+  acceptsHomesWithPets: boolean | null;
   languages: unknown;
   baseCommune: string | null;
   maxTravelKm: number | null;
@@ -432,6 +441,8 @@ function buildDemoProfessional(proId: string): ProfessionalDetail {
           tasks_excluded: ["limpieza_en_altura", "mover_muebles_pesados"],
           special_conditions: "No mueve muebles pesados ni trabaja en altura."
         },
+        petScope: null,
+        acceptsHomesWithPets: null,
         languages: demoLanguages,
         baseCommune: "Santiago",
         maxTravelKm: 12
@@ -590,6 +601,26 @@ export default function ProDetailPage() {
   const punctualityScore = Math.min(5, Math.max(4, rating + 0.1));
   const onboarding = data?.user.cleaningOnboarding ?? null;
   const cleaningScope = useMemo(() => normalizeCleaningScope(onboarding?.cleaningScope), [onboarding?.cleaningScope]);
+  const petScope = useMemo(() => {
+    const normalized = normalizePetScope(onboarding?.petScope);
+    if (normalized.services_offered.length > 0 || normalized.animals_accepted.length > 0 || normalized.tasks_included.length > 0) {
+      return normalized;
+    }
+
+    return {
+      ...normalized,
+      services_offered: Array.isArray(onboarding?.offeredServices)
+        ? onboarding.offeredServices.filter(
+            (item): item is "paseo_perros" | "cuidado_casa_cliente" | "cuidado_en_tu_casa" =>
+              item === "paseo_perros" || item === "cuidado_casa_cliente" || item === "cuidado_en_tu_casa"
+          )
+        : [],
+      animals_accepted: Array.isArray(onboarding?.experienceTypes)
+        ? onboarding.experienceTypes.filter((item): item is "perros" | "gatos" => item === "perros" || item === "gatos")
+        : [],
+      accepts_large_pets: onboarding?.acceptsHomesWithPets ?? null
+    };
+  }, [onboarding?.petScope, onboarding?.offeredServices, onboarding?.experienceTypes, onboarding?.acceptsHomesWithPets]);
   const serviceCategories = useMemo(() => {
     const bySlug = new Map<string, { slug: string; name: string }>();
     for (const item of data?.taskerServices ?? []) {
@@ -626,6 +657,10 @@ export default function ProDetailPage() {
   const cleaningScopeServices = cleaningScope.services_offered.map(getCleaningScopeServiceLabel);
   const cleaningScopeIncludedTasks = cleaningScope.tasks_included.map(getCleaningIncludedTaskLabel);
   const cleaningScopeExcludedTasks = cleaningScope.tasks_excluded.map(getCleaningExcludedTaskLabel);
+  const petScopeServices = petScope.services_offered.map(getPetScopeServiceLabel);
+  const petScopeAnimals = petScope.animals_accepted.map(getPetScopeAnimalLabel);
+  const petScopeIncludedTasks = petScope.tasks_included.map(getPetIncludedTaskLabel);
+  const petScopeExcludedTasks = petScope.tasks_excluded.map(getPetExcludedTaskLabel);
   const buildReserveHref = (options?: { startsAt?: string; serviceId?: string | null }) => {
     const qs = new URLSearchParams();
     qs.set("proId", data?.userId ?? params.proId);
@@ -841,6 +876,39 @@ export default function ProDetailPage() {
                         </div>
                       </div>
                       <p className="minimal-note">Si necesitas tareas fuera de este alcance base, revísalo antes de reservar para evitar malos entendidos.</p>
+                    </article>
+                  ) : null}
+
+                  {normalizedPrimaryCategorySlug === "mascotas" ? (
+                    <article className="auth-flow-panel client-dashboard-section">
+                      <h2>Alcance del servicio</h2>
+                      <div className="we-info-grid">
+                        <div>
+                          <h3>Servicios de mascotas que ofrece</h3>
+                          <p>{petScopeServices.length > 0 ? petScopeServices.join(", ") : "Aún no informado."}</p>
+                        </div>
+                        <div>
+                          <h3>Mascotas con las que trabaja</h3>
+                          <p>{petScopeAnimals.length > 0 ? petScopeAnimals.join(", ") : "Aún no informado."}</p>
+                        </div>
+                        <div>
+                          <h3>Tareas que sí realiza</h3>
+                          <p>{petScopeIncludedTasks.length > 0 ? petScopeIncludedTasks.join(", ") : "Aún no informado."}</p>
+                        </div>
+                        <div>
+                          <h3>Tareas que no realiza</h3>
+                          <p>{petScopeExcludedTasks.length > 0 ? petScopeExcludedTasks.join(", ") : "No reporta exclusiones."}</p>
+                        </div>
+                        <div>
+                          <h3>Mascotas grandes</h3>
+                          <p>{petScope.accepts_large_pets == null ? "No informado." : petScope.accepts_large_pets ? "Sí acepta" : "No acepta"}</p>
+                        </div>
+                        <div>
+                          <h3>Condiciones especiales</h3>
+                          <p>{petScope.special_conditions || "Sin condiciones especiales reportadas."}</p>
+                        </div>
+                      </div>
+                      <p className="minimal-note">Si necesitas algo fuera de este alcance base, revísalo antes de reservar para evitar malos entendidos.</p>
                     </article>
                   ) : null}
 
