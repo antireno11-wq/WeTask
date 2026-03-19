@@ -890,7 +890,7 @@ export default function ProPage() {
                 <div className="full coverage-map-card pro-profile-map-preview">
                   <div className="coverage-map-head">
                     <h3>Mapa de cobertura</h3>
-                    <p>Así se está mostrando hoy tu punto base y las comunas donde trabajas.</p>
+                    <p>Revisa tu punto base, haz zoom en el mapa y confirma las comunas donde trabajas.</p>
                   </div>
                   <div className="coverage-map-wrap">
                     <iframe
@@ -900,25 +900,19 @@ export default function ProPage() {
                       loading="lazy"
                       referrerPolicy="no-referrer-when-downgrade"
                     />
-                    <div className="coverage-map-labels">
-                      {ACTIVE_MVP_COMMUNES.map((commune) => {
-                        const position = COMMUNE_MAP_POSITIONS[commune];
-                        const isSelected = selectedCommunes.includes(commune);
-                        return (
-                          <span
-                            key={commune}
-                            className={`coverage-commune-pill ${isSelected ? "active" : ""}`}
-                            style={{ top: position.top, left: position.left }}
-                          >
-                            {commune}
-                          </span>
-                        );
-                      })}
-                    </div>
                     <span className="coverage-pin" style={{ left: `${markerLeftPct}%`, top: `${markerTopPct}%` }} aria-hidden>
                       <span className="coverage-pin-dot" />
                     </span>
                   </div>
+                  {selectedCommunes.length > 0 ? (
+                    <div className="coverage-map-chip-list" aria-label="Comunas activas">
+                      {selectedCommunes.map((commune) => (
+                        <span key={commune} className="coverage-map-chip">
+                          {commune}
+                        </span>
+                      ))}
+                    </div>
+                  ) : null}
                   <p className="coverage-meta">
                     Dirección base: {coverageStreet || "Sin dirección"}, {coverageComuna || "Sin comuna"}, {coverageCity}
                   </p>

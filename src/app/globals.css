@@ -1613,6 +1613,9 @@ textarea {
   height: 320px;
   border: 0;
   filter: saturate(1.04) contrast(1.02);
+}
+
+.coverage-map-interactive .coverage-map-frame {
   pointer-events: none;
 }
 
@@ -1675,6 +1678,26 @@ textarea {
   margin: 0;
   color: var(--ink-soft);
   font-size: 0.8rem;
+}
+
+.coverage-map-chip-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.coverage-map-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 38px;
+  padding: 0 14px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #1656b0 0%, #18a6d5 100%);
+  color: #ffffff;
+  font-size: 0.85rem;
+  font-weight: 800;
+  box-shadow: 0 12px 22px rgba(22, 86, 176, 0.18);
 }
 
 .coverage-meta-ok {
