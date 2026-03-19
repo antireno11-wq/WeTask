@@ -1,7 +1,6 @@
-import { CleaningOnboardingStatus } from "@prisma/client";
+import { CleaningOnboardingStatus, Prisma } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdminRequest } from "@/lib/admin-access";
-import { ensureAdminCleaningDemoData } from "@/lib/admin-demo-data";
 import { isChefServiceSlug } from "@/lib/chef-service-types";
 import { isCleaningServiceSlug } from "@/lib/cleaning-service-types";
 import { normalizeCommuneList } from "@/lib/communes";
@@ -11,6 +10,36 @@ import { prisma } from "@/lib/prisma";
 import { cleaningOnboardingAdminActionSchema } from "@/lib/validators";
 
 export const dynamic = "force-dynamic";
+
+async function deleteOnboardingAndProfessionalData(tx: Prisma.TransactionClient, userId: string, onboardingId?: string) {
+  const profile = await tx.professionalProfile.findUnique({
+    where: { userId },
+    select: { id: true }
+  });
+
+  if (profile) {
+    await tx.taskerService.deleteMany({
+      where: { professionalProfileId: profile.id }
+    });
+    await tx.availabilitySlot.deleteMany({
+      where: { professionalProfileId: profile.id }
+    });
+    await tx.professionalProfile.delete({
+      where: { userId }
+    });
+  }
+
+  if (onboardingId) {
+    await tx.cleaningOnboarding.delete({
+      where: { id: onboardingId }
+    });
+    return;
+  }
+
+  await tx.cleaningOnboarding.deleteMany({
+    where: { userId }
+  });
+}
 
 async function ensureCleaningTaskerService(userId: string) {
   const onboarding = await prisma.cleaningOnboarding.findUnique({ where: { userId } });
@@ -130,8 +159,6 @@ export async function GET(req: NextRequest) {
   const admin = await requireAdminRequest(req);
   if (!admin.ok) return admin.response;
 
-  await ensureAdminCleaningDemoData();
-
   const status = req.nextUrl.searchParams.get("status") ?? undefined;
 
   const items = await prisma.cleaningOnboarding.findMany({
@@ -176,6 +203,30 @@ export async function PATCH(req: NextRequest) {
   try {
     const body = await req.json();
     const input = cleaningOnboardingAdminActionSchema.parse(body);
+
+    if (input.action === "clear_all") {
+      const allOnboardings = await prisma.cleaningOnboarding.findMany({
+        select: { id: true, userId: true }
+      });
+
+      await prisma.$transaction(async (tx) => {
+        for (const item of allOnboardings) {
+          await deleteOnboardingAndProfessionalData(tx, item.userId, item.id);
+        }
+      });
+
+      return NextResponse.json(
+        {
+          ok: true,
+          message: "Se eliminaron todas las inscripciones anteriores."
+        },
+        { status: 200 }
+      );
+    }
+
+    if (!input.onboardingId) {
+      return NextResponse.json({ error: "onboardingId requerido" }, { status: 400 });
+    }
 
     const onboarding = await prisma.cleaningOnboarding.findUnique({
       where: { id: input.onboardingId },
@@ -253,26 +304,7 @@ export async function PATCH(req: NextRequest) {
 
     if (input.action === "delete_record") {
       await prisma.$transaction(async (tx) => {
-        const profile = await tx.professionalProfile.findUnique({
-          where: { userId: onboarding.userId },
-          select: { id: true }
-        });
-
-        if (profile) {
-          await tx.taskerService.deleteMany({
-            where: { professionalProfileId: profile.id }
-          });
-          await tx.availabilitySlot.deleteMany({
-            where: { professionalProfileId: profile.id }
-          });
-          await tx.professionalProfile.delete({
-            where: { userId: onboarding.userId }
-          });
-        }
-
-        await tx.cleaningOnboarding.delete({
-          where: { id: input.onboardingId }
-        });
+        await deleteOnboardingAndProfessionalData(tx, onboarding.userId, input.onboardingId);
       });
 
       return NextResponse.json(

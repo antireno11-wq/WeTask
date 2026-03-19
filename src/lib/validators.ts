@@ -480,7 +480,7 @@ export const cleaningOnboardingPhoneVerifySchema = z.object({
 });
 
 export const cleaningOnboardingAdminActionSchema = z.object({
-  onboardingId: z.string().min(1),
-  action: z.enum(["request_correction", "approve", "activate", "set_pending", "delete_record"]),
+  onboardingId: z.string().min(1).optional(),
+  action: z.enum(["request_correction", "approve", "activate", "set_pending", "delete_record", "clear_all"]),
   notes: z.string().max(1200).optional()
 });

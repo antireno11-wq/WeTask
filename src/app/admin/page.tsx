@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { CleaningOnboardingStatus, PayoutStatus, TicketStatus, UserRole } from "@prisma/client";
 import { AdminHeroShell } from "@/components/admin-hero-shell";
-import { ensureAdminCleaningDemoData } from "@/lib/admin-demo-data";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -51,8 +50,6 @@ function money(value: number) {
 }
 
 export default async function AdminPage() {
-  await ensureAdminCleaningDemoData();
-
   const [pendingReview, needsCorrection, approved, activePros, openDisputes, pendingPayouts, admins, recentOnboarding, recentBookings] =
     await Promise.all([
       prisma.cleaningOnboarding.count({ where: { status: CleaningOnboardingStatus.PENDIENTE_REVISION } }),

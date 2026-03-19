@@ -32,7 +32,7 @@ type CleaningOnboardingItem = {
   };
 };
 
-type ActionType = "set_pending" | "request_correction" | "approve" | "activate" | "delete_record";
+type ActionType = "set_pending" | "request_correction" | "approve" | "activate" | "delete_record" | "clear_all";
 
 const statusLabels: Record<CleaningOnboardingItem["status"], string> = {
   BORRADOR: "borrador",
@@ -87,6 +87,12 @@ export default function AdminCleaningOnboardingPage() {
   }, [statusFilter]);
 
   const runAction = async (onboardingId: string, action: ActionType) => {
+    if (action === "clear_all") {
+      const confirmed = window.confirm(
+        "Esto eliminará todas las inscripciones anteriores del backoffice y los perfiles profesionales asociados. ¿Quieres continuar?"
+      );
+      if (!confirmed) return;
+    }
     if (action === "delete_record") {
       const confirmed = window.confirm("Esto eliminará el registro del onboarding y el perfil profesional asociado. ¿Quieres continuar?");
       if (!confirmed) return;
@@ -103,7 +109,7 @@ export default function AdminCleaningOnboardingPage() {
       const response = await fetch("/api/admin/onboarding/cleaning", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ onboardingId, action, notes: notes.trim() || undefined })
+        body: JSON.stringify(action === "clear_all" ? { action } : { onboardingId, action, notes: notes.trim() || undefined })
       });
       const data = (await response.json()) as { ok?: boolean; error?: string; detail?: string };
       if (!response.ok || !data.ok) throw new Error(data.detail || data.error || "No se pudo aplicar accion");
@@ -139,6 +145,9 @@ export default function AdminCleaningOnboardingPage() {
             <option value="ACTIVO">Activo</option>
           </select>
         </label>
+        <button type="button" className="cta ghost" onClick={() => void runAction("", "clear_all")}>
+          Borrar inscripciones anteriores
+        </button>
       </div>
 
       {loading ? <p className="empty">Cargando solicitudes...</p> : null}
