@@ -1591,10 +1591,12 @@ textarea {
 }
 
 .coverage-map-wrap {
+  position: relative;
   border: 1px solid #cfe2f3;
   border-radius: 12px;
   overflow: hidden;
   background: #eef3f8;
+  isolation: isolate;
 }
 
 .coverage-map-interactive {
@@ -1617,6 +1619,7 @@ textarea {
 .coverage-map-labels {
   position: absolute;
   inset: 0;
+  overflow: hidden;
 }
 
 .coverage-pin {
@@ -5205,6 +5208,10 @@ textarea {
 
 .pro-profile-map-preview .coverage-map-wrap {
   cursor: default;
+}
+
+.pro-profile-map-preview .coverage-map-labels {
+  pointer-events: none;
 }
 
 .pro-dashboard-badge {
