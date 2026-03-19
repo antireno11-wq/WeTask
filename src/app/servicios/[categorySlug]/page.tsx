@@ -4,9 +4,17 @@ import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { FormEvent, useEffect, useState } from "react";
 import { AuthHeroNav } from "@/components/auth-hero-nav";
+import { BABYSITTER_TASK_INCLUDED_OPTIONS } from "@/lib/babysitter-scope";
+import { CHEF_TASK_INCLUDED_OPTIONS } from "@/lib/chef-scope";
 import { getChefServiceDefinition } from "@/lib/chef-service-types";
+import { CLEANING_TASK_INCLUDED_OPTIONS } from "@/lib/cleaning-scope";
 import { getCleaningServiceDefinition } from "@/lib/cleaning-service-types";
 import { COVERAGE_UNAVAILABLE_MESSAGE, inferCommuneFromAddress, normalizeCommune } from "@/lib/communes";
+import { IRONING_TASK_INCLUDED_OPTIONS } from "@/lib/ironing-scope";
+import { MAKEUP_TASK_INCLUDED_OPTIONS } from "@/lib/makeup-scope";
+import { PET_TASK_INCLUDED_OPTIONS } from "@/lib/pet-scope";
+import { TEACHER_TASK_INCLUDED_OPTIONS } from "@/lib/teacher-scope";
+import { TRAINER_TASK_INCLUDED_OPTIONS } from "@/lib/trainer-scope";
 
 type Category = {
   id: string;
@@ -14,6 +22,19 @@ type Category = {
   name: string;
   description: string | null;
   services: Array<{ id: string; slug: string; name: string; description: string; basePriceClp: number }>;
+};
+
+type TaskFilterOption = { value: string; label: string };
+
+const TASK_FILTER_OPTIONS_BY_CATEGORY: Record<string, TaskFilterOption[]> = {
+  limpieza: [...CLEANING_TASK_INCLUDED_OPTIONS],
+  mascotas: [...PET_TASK_INCLUDED_OPTIONS],
+  babysitter: [...BABYSITTER_TASK_INCLUDED_OPTIONS],
+  "profesor-particular": [...TEACHER_TASK_INCLUDED_OPTIONS],
+  "personal-trainer": [...TRAINER_TASK_INCLUDED_OPTIONS],
+  chef: [...CHEF_TASK_INCLUDED_OPTIONS],
+  maquillaje: [...MAKEUP_TASK_INCLUDED_OPTIONS],
+  planchado: [...IRONING_TASK_INCLUDED_OPTIONS]
 };
 
 export default function ServicioCategoriaPage() {
@@ -40,6 +61,14 @@ export default function ServicioCategoriaPage() {
   const [apartment, setApartment] = useState(query.get("apartment") ?? "");
   const [reference, setReference] = useState(query.get("reference") ?? "");
   const city = query.get("city") ?? "Santiago";
+  const availableTaskOptions = TASK_FILTER_OPTIONS_BY_CATEGORY[categorySlug] ?? [];
+  const [selectedTasks, setSelectedTasks] = useState<string[]>(
+    (query.get("tasks") ?? "")
+      .split(",")
+      .map((item) => item.trim())
+      .filter(Boolean)
+      .filter((item) => availableTaskOptions.some((option) => option.value === item))
+  );
   const autoAdvanceCategorySlugs = new Set([
     "limpieza",
     "mascotas",
@@ -192,10 +221,15 @@ export default function ServicioCategoriaPage() {
     });
     if (apartment.trim()) qs.set("apartment", apartment.trim());
     if (reference.trim()) qs.set("reference", reference.trim());
+    if (selectedTasks.length > 0) qs.set("tasks", selectedTasks.join(","));
     const nextServiceId = serviceIdOverride ?? selectedServiceId;
     if (nextServiceId) qs.set("serviceId", nextServiceId);
 
     router.push(`/servicios/${category.slug}/pros?${qs.toString()}`);
+  };
+
+  const toggleTask = (task: string) => {
+    setSelectedTasks((current) => (current.includes(task) ? current.filter((item) => item !== task) : [...current, task]));
   };
 
   const openPros = (event: FormEvent) => {
@@ -288,12 +322,28 @@ export default function ServicioCategoriaPage() {
                     <strong>Comuna detectada</strong>
                     <span>{detectedCommune ?? "Aún no detectamos una comuna válida."}</span>
                   </div>
+                  {availableTaskOptions.length > 0 ? (
+                    <div className="full service-task-filter-card">
+                      <div className="panel-head">
+                        <h3>Tareas o focos que necesitas</h3>
+                        <p>Opcional. Esto nos ayuda a mostrar taskers más alineados antes de entrar a resultados.</p>
+                      </div>
+                      <div className="onboarding-checkbox-grid onboarding-checkbox-grid-compact">
+                        {availableTaskOptions.map((task) => (
+                          <label key={task.value} className="onboarding-check-card">
+                            <input type="checkbox" checked={selectedTasks.includes(task.value)} onChange={() => toggleTask(task.value)} />
+                            <span>{task.label}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
                   <label className="full">
                     Tipo de servicio
                     <div className={`auth-service-grid ${autoAdvanceOnServiceSelect ? "auth-service-grid-compact" : "auth-service-grid-cleaning"}`}>
                       {category.services.map((service) => {
                         const cleaningDefinition = category.slug === "limpieza" ? getCleaningServiceDefinition(service.slug) : null;
-                        const chefDefinition = category.slug === "chef-a-domicilio" ? getChefServiceDefinition(service.slug) : null;
+                        const chefDefinition = category.slug === "chef" ? getChefServiceDefinition(service.slug) : null;
                         const isActive = selectedServiceId === service.id;
                         return (
                           <label
