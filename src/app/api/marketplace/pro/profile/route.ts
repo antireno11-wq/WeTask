@@ -35,7 +35,10 @@ export async function GET(req: NextRequest) {
         professionalProfile: true,
         cleaningOnboarding: {
           select: {
+            categorySlug: true,
             profilePhotoUrl: true,
+            availabilityMode: true,
+            availabilityBlocks: true,
             serviceCommunes: true,
             baseCommune: true
           }
@@ -47,13 +50,35 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Profesional no encontrado" }, { status: 404 });
     }
 
+    const taskerServices = user.professionalProfile
+      ? await prisma.taskerService.findMany({
+          where: {
+            professionalProfileId: user.professionalProfile.id,
+            isActive: true
+          },
+          orderBy: [{ createdAt: "asc" }],
+          select: {
+            service: {
+              select: {
+                id: true,
+                name: true
+              }
+            }
+          }
+        })
+      : [];
+
     return NextResponse.json(
       {
         user: { id: user.id, fullName: user.fullName, email: user.email },
         profile: user.professionalProfile,
+        categorySlug: user.cleaningOnboarding?.categorySlug ?? null,
         profilePhotoUrl: user.cleaningOnboarding?.profilePhotoUrl ?? null,
+        availabilityMode: user.cleaningOnboarding?.availabilityMode ?? null,
+        availabilityBlocks: user.cleaningOnboarding?.availabilityBlocks ?? [],
         serviceCommunes: normalizeCommuneList(user.cleaningOnboarding?.serviceCommunes),
-        baseCommune: user.cleaningOnboarding?.baseCommune ?? user.professionalProfile?.coverageComuna ?? null
+        baseCommune: user.cleaningOnboarding?.baseCommune ?? user.professionalProfile?.coverageComuna ?? null,
+        taskerServices: taskerServices.map((item) => item.service)
       },
       { status: 200 }
     );

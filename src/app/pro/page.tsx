@@ -61,6 +61,14 @@ type Service = {
   name: string;
 };
 
+type DayKey = "lunes" | "martes" | "miercoles" | "jueves" | "viernes" | "sabado" | "domingo";
+
+type AvailabilityBlock = {
+  day: DayKey;
+  start: string;
+  end: string;
+};
+
 type ProProfile = {
   id: string;
   bio: string | null;
@@ -82,7 +90,11 @@ type ProProfileResponse = {
     email: string;
   };
   profile?: ProProfile | null;
+  categorySlug?: string | null;
   profilePhotoUrl?: string | null;
+  availabilityMode?: "FIJA" | "VARIABLE" | null;
+  availabilityBlocks?: unknown;
+  taskerServices?: Service[];
   serviceCommunes?: string[];
   error?: string;
   detail?: string;
@@ -104,6 +116,7 @@ type ProSlot = {
   startsAt: string;
   endsAt: string;
   isAvailable: boolean;
+  source?: "saved" | "onboarding";
   service: { id: string; name: string } | null;
   bookings: Array<{ id: string; status: string }>;
 };
@@ -138,6 +151,10 @@ function formatDayKey(date: Date) {
   return `${year}-${month}-${day}`;
 }
 
+function weekdayToDayKey(date: Date): DayKey {
+  return ["domingo", "lunes", "martes", "miercoles", "jueves", "viernes", "sabado"][date.getDay()] as DayKey;
+}
+
 function initialsFromName(value: string) {
   const words = value
     .trim()
@@ -149,9 +166,29 @@ function initialsFromName(value: string) {
   return words.map((word) => word[0]?.toUpperCase() ?? "").join("");
 }
 
+function normalizeAvailabilityBlocks(value: unknown): AvailabilityBlock[] {
+  if (!Array.isArray(value)) return [];
+
+  return value
+    .map((item) => {
+      if (!item || typeof item !== "object") return null;
+      const candidate = item as Partial<AvailabilityBlock>;
+      if (typeof candidate.day !== "string" || typeof candidate.start !== "string" || typeof candidate.end !== "string") {
+        return null;
+      }
+      return {
+        day: candidate.day as DayKey,
+        start: candidate.start,
+        end: candidate.end
+      };
+    })
+    .filter((item): item is AvailabilityBlock => Boolean(item));
+}
+
 export default function ProPage() {
   const [proId, setProId] = useState("");
   const [proName, setProName] = useState("");
+  const [categorySlug, setCategorySlug] = useState("");
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [services, setServices] = useState<Service[]>([]);
@@ -161,6 +198,8 @@ export default function ProPage() {
 
   const [profile, setProfile] = useState<ProProfile | null>(null);
   const [profilePhotoUrl, setProfilePhotoUrl] = useState("");
+  const [availabilityMode, setAvailabilityMode] = useState<"FIJA" | "VARIABLE" | null>(null);
+  const [onboardingAvailabilityBlocks, setOnboardingAvailabilityBlocks] = useState<AvailabilityBlock[]>([]);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [bio, setBio] = useState("");
   const [coverageStreet, setCoverageStreet] = useState("");
@@ -221,17 +260,6 @@ export default function ProPage() {
     return `https://www.google.com/maps?q=${query}&z=11&output=embed`;
   }, [mapLat, mapLng]);
   const todayKey = useMemo(() => formatDayKey(new Date()), []);
-  const slotsByDay = useMemo(() => {
-    const map = new Map<string, ProSlot[]>();
-    for (const slot of slots) {
-      const key = slot.startsAt.slice(0, 10);
-      const prev = map.get(key) ?? [];
-      map.set(key, [...prev, slot].sort((a, b) => a.startsAt.localeCompare(b.startsAt)));
-    }
-    return map;
-  }, [slots]);
-  const todaySlots = slotsByDay.get(todayKey) ?? [];
-  const selectedDaySlots = slotsByDay.get(slotDate) ?? [];
   const selectedDate = useMemo(() => new Date(`${slotDate}T12:00:00`), [slotDate]);
   const selectedMonthLabel = useMemo(
     () => selectedDate.toLocaleDateString("es-CL", { month: "long", year: "numeric" }),
@@ -241,8 +269,6 @@ export default function ProPage() {
     () => selectedDate.toLocaleDateString("es-CL", { weekday: "long", day: "numeric", month: "long" }),
     [selectedDate]
   );
-  const bookedSlotsCount = useMemo(() => slots.filter((item) => item.bookings.length > 0).length, [slots]);
-  const daysWithSlotsCount = useMemo(() => slotsByDay.size, [slotsByDay]);
   const monthCalendarDays = useMemo(() => {
     const start = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1);
     const startWeekday = (start.getDay() + 6) % 7;
@@ -258,13 +284,47 @@ export default function ProPage() {
       };
     });
   }, [selectedDate]);
+  const displaySlots = useMemo(() => {
+    if (slots.length > 0) {
+      return slots.map((slot) => ({ ...slot, source: "saved" as const }));
+    }
+
+    if (onboardingAvailabilityBlocks.length === 0) return [];
+
+    const primaryService = services[0] ?? null;
+    return monthCalendarDays.flatMap((day) => {
+      const blocksForDay = onboardingAvailabilityBlocks.filter((block) => block.day === weekdayToDayKey(day.date));
+      return blocksForDay.map((block, index) => ({
+        id: `onboarding-${day.key}-${block.start}-${block.end}-${index}`,
+        startsAt: new Date(`${day.key}T${block.start}:00`).toISOString(),
+        endsAt: new Date(`${day.key}T${block.end}:00`).toISOString(),
+        isAvailable: true,
+        source: "onboarding" as const,
+        service: primaryService,
+        bookings: []
+      }));
+    });
+  }, [monthCalendarDays, onboardingAvailabilityBlocks, services, slots]);
+  const slotsByDay = useMemo(() => {
+    const map = new Map<string, ProSlot[]>();
+    for (const slot of displaySlots) {
+      const key = slot.startsAt.slice(0, 10);
+      const prev = map.get(key) ?? [];
+      map.set(key, [...prev, slot].sort((a, b) => a.startsAt.localeCompare(b.startsAt)));
+    }
+    return map;
+  }, [displaySlots]);
+  const todaySlots = slotsByDay.get(todayKey) ?? [];
+  const selectedDaySlots = slotsByDay.get(slotDate) ?? [];
+  const bookedSlotsCount = useMemo(() => displaySlots.filter((item) => item.bookings.length > 0).length, [displaySlots]);
+  const daysWithSlotsCount = useMemo(() => slotsByDay.size, [slotsByDay]);
 
   const upcomingBookings = useMemo(
     () => bookings.filter((item) => new Date(item.scheduledAt).getTime() >= Date.now() && item.status !== "COMPLETED"),
     [bookings]
   );
   const completedBookings = useMemo(() => bookings.filter((item) => item.status === "COMPLETED"), [bookings]);
-  const availableSlotsCount = useMemo(() => slots.filter((item) => item.isAvailable).length, [slots]);
+  const availableSlotsCount = useMemo(() => displaySlots.filter((item) => item.isAvailable).length, [displaySlots]);
 
   const applyProfile = (nextProfile: ProProfile | null, nextServiceCommunes: string[] = []) => {
     setProfile(nextProfile);
@@ -345,23 +405,17 @@ export default function ProPage() {
   const loadAll = async (targetProId: string) => {
     if (!targetProId) return;
 
-    const [bookingsRes, notificationsRes, profileRes, slotsRes, catalogRes] = await Promise.all([
+    const [bookingsRes, notificationsRes, profileRes, slotsRes] = await Promise.all([
       fetch(`/api/marketplace/pro/bookings?proId=${targetProId}`),
       fetch(`/api/marketplace/notifications?userId=${targetProId}`),
       fetch(`/api/marketplace/pro/profile?proId=${targetProId}`),
-      fetch(`/api/marketplace/pro/slots?proId=${targetProId}&days=14&limit=300`),
-      fetch("/api/marketplace/catalog")
+      fetch(`/api/marketplace/pro/slots?proId=${targetProId}&days=14&limit=300`)
     ]);
 
     const bookingsData = (await bookingsRes.json()) as { bookings?: Booking[]; error?: string; detail?: string };
     const notificationsData = (await notificationsRes.json()) as { notifications?: Notification[]; error?: string; detail?: string };
     const profileData = (await profileRes.json()) as ProProfileResponse;
     const slotsData = (await slotsRes.json()) as { slots?: ProSlot[]; error?: string; detail?: string };
-    const catalogData = (await catalogRes.json()) as {
-      categories?: Array<{ services: Array<{ id: string; name: string }> }>;
-      error?: string;
-      detail?: string;
-    };
 
     if (!bookingsRes.ok || !bookingsData.bookings) throw new Error(bookingsData.detail || bookingsData.error || "No se pudo cargar reservas");
     if (!notificationsRes.ok || !notificationsData.notifications) {
@@ -369,7 +423,6 @@ export default function ProPage() {
     }
     if (!profileRes.ok) throw new Error(profileData.detail || profileData.error || "No se pudo cargar perfil");
     if (!slotsRes.ok || !slotsData.slots) throw new Error(slotsData.detail || slotsData.error || "No se pudo cargar disponibilidad");
-    if (!catalogRes.ok || !catalogData.categories) throw new Error(catalogData.detail || catalogData.error || "No se pudo cargar catálogo");
 
     setBookings(bookingsData.bookings);
     const nextStatuses: Record<string, string> = {};
@@ -380,11 +433,15 @@ export default function ProPage() {
 
     setNotifications(notificationsData.notifications);
     setProName(profileData.user?.fullName ?? "");
+    setCategorySlug(profileData.categorySlug ?? "");
     setProfilePhotoUrl(profileData.profilePhotoUrl?.trim() ?? "");
+    setAvailabilityMode(profileData.availabilityMode ?? null);
+    setOnboardingAvailabilityBlocks(normalizeAvailabilityBlocks(profileData.availabilityBlocks));
     applyProfile(profileData.profile ?? null, profileData.serviceCommunes ?? []);
     setSlots(slotsData.slots);
-    const list = catalogData.categories.flatMap((category) => category.services);
-    setServices(list);
+    const nextServices = profileData.taskerServices ?? [];
+    setServices(nextServices);
+    setSlotServiceId((current) => (nextServices.some((service) => service.id === current) ? current : nextServices[0]?.id ?? ""));
   };
 
   useEffect(() => {
@@ -551,7 +608,7 @@ export default function ProPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           proId,
-          serviceId: slotServiceId || null,
+          serviceId: slotServiceId || services[0]?.id || null,
           startsAt: startsAt.toISOString(),
           endsAt: endsAt.toISOString()
         })
@@ -1100,18 +1157,22 @@ export default function ProPage() {
                         <option value={240}>240 min</option>
                       </select>
                     </label>
-                    <label>
-                      Servicio
-                      <select value={slotServiceId} onChange={(e) => setSlotServiceId(e.target.value)}>
-                        <option value="">Cualquier servicio</option>
-                        {services.map((service) => (
-                          <option key={service.id} value={service.id}>
-                            {service.name}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
                   </div>
+
+                  <p className="availability-inline-note">
+                    {services[0]?.name
+                      ? `Este bloque se publicará para ${services[0].name}.`
+                      : categorySlug
+                        ? `Este bloque se publicará para tu servicio de ${categorySlug.replaceAll("-", " ")}.`
+                        : "Este bloque se publicará para el servicio que registraste en tu onboarding."}
+                  </p>
+
+                  {slots.length === 0 && onboardingAvailabilityBlocks.length > 0 ? (
+                    <p className="availability-inline-note soft">
+                      Ya cargaste {onboardingAvailabilityBlocks.length} bloque(s) en tu onboarding. Los estamos mostrando abajo como base
+                      {availabilityMode === "VARIABLE" ? " variable" : " semanal"}.
+                    </p>
+                  ) : null}
 
                   <div className="cta-row availability-form-actions">
                     <button className="cta" type="button" onClick={createSlot}>
@@ -1208,21 +1269,25 @@ export default function ProPage() {
                           <div className="availability-task-copy">
                             <strong>{slot.service?.name ?? "Disponibilidad general"}</strong>
                             <p>
-                              {slot.bookings.length > 0
+                              {slot.source === "onboarding"
+                                ? "Bloque base traído desde tu onboarding."
+                                : slot.bookings.length > 0
                                 ? "Este bloque ya tiene una reserva asociada."
                                 : slot.isAvailable
                                   ? "Visible para nuevas reservas."
                                   : "Guardado pero oculto para clientes."}
                             </p>
                           </div>
-                          <div className="availability-task-actions">
-                            <button className="cta small" type="button" onClick={() => updateSlotAvailability(slot.id, !slot.isAvailable)}>
-                              {slot.isAvailable ? "Desactivar" : "Activar"}
-                            </button>
-                            <button className="cta ghost small" type="button" onClick={() => deleteSlot(slot.id)}>
-                              Eliminar
-                            </button>
-                          </div>
+                          {slot.source === "onboarding" ? null : (
+                            <div className="availability-task-actions">
+                              <button className="cta small" type="button" onClick={() => updateSlotAvailability(slot.id, !slot.isAvailable)}>
+                                {slot.isAvailable ? "Desactivar" : "Activar"}
+                              </button>
+                              <button className="cta ghost small" type="button" onClick={() => deleteSlot(slot.id)}>
+                                Eliminar
+                              </button>
+                            </div>
+                          )}
                         </article>
                       ))}
                     </div>

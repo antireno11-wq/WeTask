@@ -2438,6 +2438,17 @@ textarea {
   margin-top: 0;
 }
 
+.availability-inline-note {
+  margin: -4px 0 0;
+  color: #23476f;
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+
+.availability-inline-note.soft {
+  color: #627991;
+}
+
 .availability-board-card {
   padding: 22px;
   display: grid;
