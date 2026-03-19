@@ -19,6 +19,11 @@ import {
   BABYSITTER_TASK_INCLUDED_OPTIONS
 } from "@/lib/babysitter-scope";
 import {
+  CHEF_SCOPE_SERVICE_OPTIONS,
+  CHEF_TASK_EXCLUDED_OPTIONS,
+  CHEF_TASK_INCLUDED_OPTIONS
+} from "@/lib/chef-scope";
+import {
   TRAINER_MODE_OPTIONS,
   TRAINER_SCOPE_SERVICE_OPTIONS,
   TRAINER_TASK_EXCLUDED_OPTIONS,
@@ -52,6 +57,9 @@ const babysitterScopeServiceEnum = z.enum(BABYSITTER_SCOPE_SERVICE_OPTIONS.map((
 const babysitterAgeRangeEnum = z.enum(BABYSITTER_AGE_RANGE_OPTIONS.map((option) => option.value) as [string, ...string[]]);
 const babysitterIncludedTaskEnum = z.enum(BABYSITTER_TASK_INCLUDED_OPTIONS.map((option) => option.value) as [string, ...string[]]);
 const babysitterExcludedTaskEnum = z.enum(BABYSITTER_TASK_EXCLUDED_OPTIONS.map((option) => option.value) as [string, ...string[]]);
+const chefScopeServiceEnum = z.enum(CHEF_SCOPE_SERVICE_OPTIONS.map((option) => option.value) as [string, ...string[]]);
+const chefIncludedTaskEnum = z.enum(CHEF_TASK_INCLUDED_OPTIONS.map((option) => option.value) as [string, ...string[]]);
+const chefExcludedTaskEnum = z.enum(CHEF_TASK_EXCLUDED_OPTIONS.map((option) => option.value) as [string, ...string[]]);
 const trainerScopeServiceEnum = z.enum(TRAINER_SCOPE_SERVICE_OPTIONS.map((option) => option.value) as [string, ...string[]]);
 const trainerModeEnum = z.enum(TRAINER_MODE_OPTIONS.map((option) => option.value) as [string, ...string[]]);
 const trainerIncludedTaskEnum = z.enum(TRAINER_TASK_INCLUDED_OPTIONS.map((option) => option.value) as [string, ...string[]]);
@@ -490,6 +498,15 @@ export const taskerOnboardingStep7Schema = z.object({
       multi_child: z.boolean().optional().nullable(),
       tasks_included: z.array(babysitterIncludedTaskEnum).min(1),
       tasks_excluded: z.array(babysitterExcludedTaskEnum).optional().default([]),
+      special_conditions: z.string().max(600).optional().default("")
+    })
+    .optional()
+    .nullable(),
+  chefScope: z
+    .object({
+      services_offered: z.array(chefScopeServiceEnum).min(1),
+      tasks_included: z.array(chefIncludedTaskEnum).min(1),
+      tasks_excluded: z.array(chefExcludedTaskEnum).optional().default([]),
       special_conditions: z.string().max(600).optional().default("")
     })
     .optional()

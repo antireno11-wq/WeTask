@@ -2,6 +2,7 @@ import { CleaningOnboardingStatus, UserRole } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { getRequestIdentity, hasRole } from "@/lib/auth";
 import { normalizeBabysitterScope } from "@/lib/babysitter-scope";
+import { normalizeChefScope } from "@/lib/chef-scope";
 import { normalizeCleaningScope } from "@/lib/cleaning-scope";
 import { normalizePetScope } from "@/lib/pet-scope";
 import { normalizeTeacherScope } from "@/lib/teacher-scope";
@@ -75,6 +76,14 @@ function listMissingFields(onboarding: Awaited<ReturnType<typeof prisma.cleaning
       babysitterScope.services_offered.length > 0 && babysitterScope.age_ranges.length > 0 && babysitterScope.tasks_included.length > 0
         ? babysitterScope
         : null
+    ]);
+  }
+
+  if (onboarding.categorySlug === "chef") {
+    const chefScope = normalizeChefScope(onboarding.chefScope);
+    required.splice(8, 0, [
+      "chefScope",
+      chefScope.services_offered.length > 0 && chefScope.tasks_included.length > 0 ? chefScope : null
     ]);
   }
 

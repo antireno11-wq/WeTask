@@ -11,6 +11,17 @@ import {
   isChefServiceSlug
 } from "@/lib/chef-service-types";
 import {
+  CHEF_SCOPE_SERVICE_OPTIONS,
+  CHEF_TASK_EXCLUDED_OPTIONS,
+  CHEF_TASK_INCLUDED_OPTIONS,
+  emptyChefScope,
+  getChefExcludedTaskLabel,
+  getChefIncludedTaskLabel,
+  getChefScopeServiceLabel,
+  normalizeChefScope,
+  type ChefScopeData
+} from "@/lib/chef-scope";
+import {
   CLEANING_SERVICE_DEFINITIONS,
   type CleaningServiceDefinition,
   type CleaningServiceSlug,
@@ -120,6 +131,7 @@ type OnboardingPayload = {
   cleaningScope: unknown;
   petScope: unknown;
   babysitterScope: unknown;
+  chefScope: unknown;
   trainerScope: unknown;
   teacherScope: unknown;
   acceptsHomesWithPets: boolean | null;
@@ -209,6 +221,7 @@ type DraftState = {
   cleaningScope: CleaningScopeData;
   chefServiceType: ChefServiceSlug[];
   chefServiceRates: Partial<Record<ChefServiceSlug, string>>;
+  chefScope: ChefScopeData;
   cleaningBringsProducts: boolean | null;
   cleaningBringsEquipment: boolean | null;
   petServiceType: PetScopeServiceSlug[];
@@ -253,6 +266,7 @@ type DraftState = {
 type CleaningScopeScreen = 1 | 2 | 3 | 4 | 5;
 type PetScopeScreen = 1 | 2 | 3 | 4 | 5 | 6;
 type BabysitterScopeScreen = 1 | 2 | 3 | 4 | 5 | 6;
+type ChefScopeScreen = 1 | 2 | 3 | 4 | 5;
 type TeacherScopeScreen = 1 | 2 | 3 | 4 | 5 | 6;
 type TrainerScopeScreen = 1 | 2 | 3 | 4 | 5 | 6;
 type MissingFieldItem = {
@@ -336,6 +350,7 @@ const SUBMIT_REQUIRED_FIELDS: Record<string, { label: string; step: WizardStep }
   cleaningScope: { label: "Alcance del servicio de limpieza", step: 7 },
   petScope: { label: "Alcance del servicio de mascotas", step: 7 },
   babysitterScope: { label: "Alcance del servicio de babysitter", step: 7 },
+  chefScope: { label: "Alcance del servicio de chef", step: 7 },
   teacherScope: { label: "Alcance del servicio de profesor particular", step: 7 },
   trainerScope: { label: "Alcance del servicio de personal trainer", step: 7 },
   serviceCommunes: { label: "Comunas de cobertura", step: 4 },
@@ -542,6 +557,7 @@ function createInitialDraft(): DraftState {
     cleaningScope: emptyCleaningScope(),
     chefServiceType: [],
     chefServiceRates: {},
+    chefScope: emptyChefScope(),
     cleaningBringsProducts: null,
     cleaningBringsEquipment: null,
     petServiceType: [],
@@ -704,8 +720,11 @@ function buildStep7Payload(draft: DraftState) {
       };
     case "chef":
       return {
-        offeredServices: draft.chefServiceType,
-        experienceTypes: draft.chefServiceType,
+        offeredServices: draft.chefScope.services_offered,
+        experienceTypes: draft.chefScope.services_offered,
+        chefScope: {
+          ...draft.chefScope
+        },
         worksWithClientProducts: true
       };
     case "maquillaje":
@@ -762,6 +781,7 @@ function CleaningOnboardingPageContent() {
   const [cleaningScopeScreen, setCleaningScopeScreen] = useState<CleaningScopeScreen>(1);
   const [petScopeScreen, setPetScopeScreen] = useState<PetScopeScreen>(1);
   const [babysitterScopeScreen, setBabysitterScopeScreen] = useState<BabysitterScopeScreen>(1);
+  const [chefScopeScreen, setChefScopeScreen] = useState<ChefScopeScreen>(1);
   const [teacherScopeScreen, setTeacherScopeScreen] = useState<TeacherScopeScreen>(1);
   const [trainerScopeScreen, setTrainerScopeScreen] = useState<TrainerScopeScreen>(1);
   const [selectedAvailabilityDay, setSelectedAvailabilityDay] = useState<DayKey>(currentWeekDayKey);
@@ -791,6 +811,9 @@ function CleaningOnboardingPageContent() {
   const babysitterScopeAgePreview = draft.babysitterScope.age_ranges.map(getBabysitterAgeRangeLabel);
   const babysitterScopeIncludedPreview = draft.babysitterScope.tasks_included.map(getBabysitterIncludedTaskLabel);
   const babysitterScopeExcludedPreview = draft.babysitterScope.tasks_excluded.map(getBabysitterExcludedTaskLabel);
+  const chefScopeServicesPreview = draft.chefScope.services_offered.map(getChefScopeServiceLabel);
+  const chefScopeIncludedPreview = draft.chefScope.tasks_included.map(getChefIncludedTaskLabel);
+  const chefScopeExcludedPreview = draft.chefScope.tasks_excluded.map(getChefExcludedTaskLabel);
   const teacherScopeServicesPreview = draft.teacherScope.services_offered.map(getTeacherServiceLabel);
   const teacherScopeLevelsPreview = draft.teacherScope.levels.map(getTeacherLevelLabel);
   const teacherScopeModesPreview = draft.teacherScope.modes.map(getTeacherModeLabel);
@@ -828,6 +851,7 @@ function CleaningOnboardingPageContent() {
             ? (parsed.cleaningServiceRates as Partial<Record<CleaningServiceSlug, string>>)
             : current.cleaningServiceRates,
         chefServiceType: normalizeChefServiceTypes(parsed.chefServiceType),
+        chefScope: normalizeChefScope(parsed.chefScope ?? current.chefScope),
         chefServiceRates:
           parsed.chefServiceRates && typeof parsed.chefServiceRates === "object"
             ? (parsed.chefServiceRates as Partial<Record<ChefServiceSlug, string>>)
@@ -998,6 +1022,23 @@ function CleaningOnboardingPageContent() {
   }, [draft.babysitterAgeRange, draft.babysitterFirstAid, draft.babysitterMultiChild, draft.babysitterScope, draft.category]);
 
   useEffect(() => {
+    if (draft.category !== "chef") return;
+    const scope = draft.chefScope;
+    const normalizedServices = normalizeChefServiceTypes(scope.services_offered);
+    const nextService = normalizedServices[0] ?? draft.chefServiceType[0] ?? null;
+    const servicesChanged =
+      normalizedServices.join("|") !== draft.chefServiceType.join("|") ||
+      (nextService != null && nextService !== draft.chefServiceType[0]);
+
+    if (!servicesChanged) return;
+
+    setDraft((current) => ({
+      ...current,
+      chefServiceType: normalizeChefServiceTypes(current.chefScope.services_offered)
+    }));
+  }, [draft.category, draft.chefScope, draft.chefServiceType]);
+
+  useEffect(() => {
     if (draft.category !== "profesor-particular") return;
     const scope = draft.teacherScope;
     const nextSubject = scope.services_offered[0] ?? draft.teacherSubject;
@@ -1064,20 +1105,27 @@ function CleaningOnboardingPageContent() {
 
   useEffect(() => {
     if (draft.category !== "chef") return;
-    const normalizedServices = normalizeChefServiceTypes(draft.chefServiceType);
+    const normalizedServices = normalizeChefServiceTypes(
+      draft.chefScope.services_offered.length > 0 ? draft.chefScope.services_offered : draft.chefServiceType
+    );
     const nextRates = normalizedServices.reduce<Partial<Record<ChefServiceSlug, string>>>((acc, slug) => {
       acc[slug] = draft.chefServiceRates[slug] ?? "";
       return acc;
     }, {});
     const servicesChanged = normalizedServices.join("|") !== draft.chefServiceType.join("|");
     const ratesChanged = JSON.stringify(nextRates) !== JSON.stringify(draft.chefServiceRates);
-    if (!servicesChanged && !ratesChanged) return;
+    const scopeChanged = normalizedServices.join("|") !== draft.chefScope.services_offered.join("|");
+    if (!servicesChanged && !ratesChanged && !scopeChanged) return;
     setDraft((current) => ({
       ...current,
       chefServiceType: normalizedServices,
+      chefScope: {
+        ...current.chefScope,
+        services_offered: normalizedServices
+      },
       chefServiceRates: nextRates
     }));
-  }, [draft.category, draft.chefServiceRates, draft.chefServiceType]);
+  }, [draft.category, draft.chefScope, draft.chefServiceRates, draft.chefServiceType]);
 
   useEffect(() => {
     if (activeStep !== 7 || draft.category !== "limpieza") {
@@ -1094,6 +1142,12 @@ function CleaningOnboardingPageContent() {
   useEffect(() => {
     if (activeStep !== 7 || draft.category !== "babysitter") {
       setBabysitterScopeScreen(1);
+    }
+  }, [activeStep, draft.category]);
+
+  useEffect(() => {
+    if (activeStep !== 7 || draft.category !== "chef") {
+      setChefScopeScreen(1);
     }
   }, [activeStep, draft.category]);
 
@@ -1185,6 +1239,19 @@ function CleaningOnboardingPageContent() {
               };
             })()
           : current.babysitterScope,
+      chefScope:
+        nextOnboarding.categorySlug === "chef"
+          ? (() => {
+              const normalizedScope = normalizeChefScope(nextOnboarding.chefScope);
+              if (normalizedScope.services_offered.length > 0 || normalizedScope.tasks_included.length > 0) {
+                return normalizedScope;
+              }
+              return {
+                ...normalizedScope,
+                services_offered: normalizeChefServiceTypes(nextOnboarding.offeredServices)
+              };
+            })()
+          : current.chefScope,
       teacherScope:
         nextOnboarding.categorySlug === "profesor-particular"
           ? (() => {
@@ -1786,6 +1853,24 @@ function CleaningOnboardingPageContent() {
     setBabysitterScopeScreen((current) => (Math.max(1, current - 1) as BabysitterScopeScreen));
   };
 
+  const continueChefScopeScreen = () => {
+    if (chefScopeScreen === 1 && draft.chefScope.services_offered.length === 0) {
+      setError("Selecciona al menos un tipo de servicio de chef que ofreces.");
+      return;
+    }
+    if (chefScopeScreen === 2 && draft.chefScope.tasks_included.length === 0) {
+      setError("Selecciona al menos una tarea que sí realizas.");
+      return;
+    }
+    setError("");
+    setChefScopeScreen((current) => (Math.min(5, current + 1) as ChefScopeScreen));
+  };
+
+  const previousChefScopeScreen = () => {
+    setError("");
+    setChefScopeScreen((current) => (Math.max(1, current - 1) as ChefScopeScreen));
+  };
+
   const continueTeacherScopeScreen = () => {
     if (teacherScopeScreen === 1 && draft.teacherScope.services_offered.length === 0) {
       setError("Selecciona al menos una asignatura que ofreces.");
@@ -1871,6 +1956,14 @@ function CleaningOnboardingPageContent() {
       return;
     }
     if (draft.category === "babysitter" && draft.babysitterScope.tasks_included.length === 0) {
+      setError("Selecciona al menos una tarea que sí realizas.");
+      return;
+    }
+    if (draft.category === "chef" && draft.chefScope.services_offered.length === 0) {
+      setError("Selecciona al menos un tipo de servicio de chef que ofreces.");
+      return;
+    }
+    if (draft.category === "chef" && draft.chefScope.tasks_included.length === 0) {
       setError("Selecciona al menos una tarea que sí realizas.");
       return;
     }
@@ -3589,37 +3682,162 @@ function CleaningOnboardingPageContent() {
 
                 {draft.category === "chef" ? (
                   <div className="grid-form auth-flow-form">
-                    <div className="full">
-                      <p className="field-label">Tipos de servicio que quieres ofrecer</p>
-                      <div className="auth-service-grid auth-service-grid-cleaning">
-                        {CHEF_SERVICE_DEFINITIONS.map((service) => (
-                          <label key={service.slug} className={`auth-service-card ${draft.chefServiceType.includes(service.slug) ? "active" : ""}`}>
-                            <input
-                              type="checkbox"
-                              checked={draft.chefServiceType.includes(service.slug)}
-                              onChange={(event) => {
-                                setDraft((current) => ({
-                                  ...current,
-                                  chefServiceType: event.target.checked
-                                    ? Array.from(new Set([...current.chefServiceType, service.slug]))
-                                    : current.chefServiceType.filter((item) => item !== service.slug)
-                                }));
-                              }}
-                            />
-                            <strong>{service.name}</strong>
-                            <span>{service.description}</span>
-                            <span>{service.forClients}</span>
-                            <span>
-                              Incluye: <strong>{service.includes.slice(0, 3).join(", ")}</strong>
-                            </span>
-                          </label>
-                        ))}
+                    <div className="full onboarding-scope-progress">
+                      <span className={chefScopeScreen >= 1 ? "active" : ""}>Servicios</span>
+                      <span className={chefScopeScreen >= 2 ? "active" : ""}>Sí realiza</span>
+                      <span className={chefScopeScreen >= 3 ? "active" : ""}>No realiza</span>
+                      <span className={chefScopeScreen >= 4 ? "active" : ""}>Condiciones</span>
+                      <span className={chefScopeScreen >= 5 ? "active" : ""}>Revisión</span>
+                    </div>
+
+                    {chefScopeScreen === 1 ? (
+                      <div className="full">
+                        <p className="field-label">¿Qué tipos de servicio ofreces?</p>
+                        <div className="auth-service-grid auth-service-grid-cleaning">
+                          {CHEF_SERVICE_DEFINITIONS.map((service) => (
+                            <label
+                              key={service.slug}
+                              className={`auth-service-card auth-service-card-scope ${draft.chefScope.services_offered.includes(service.slug) ? "active" : ""}`}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={draft.chefScope.services_offered.includes(service.slug)}
+                                onChange={(event) => {
+                                  setDraft((current) => ({
+                                    ...current,
+                                    chefScope: {
+                                      ...current.chefScope,
+                                      services_offered: event.target.checked
+                                        ? Array.from(new Set([...current.chefScope.services_offered, service.slug]))
+                                        : current.chefScope.services_offered.filter((item) => item !== service.slug)
+                                    }
+                                  }));
+                                }}
+                              />
+                              <strong>{service.name}</strong>
+                              <span>{service.description}</span>
+                              <span>{service.forClients}</span>
+                            </label>
+                          ))}
+                        </div>
+                        <div className="auth-flow-note-card" style={{ marginTop: 16 }}>
+                          <strong>Cocina en casa del cliente</strong>
+                          <span>En WeTask, chef se considera siempre un servicio realizado en casa del cliente.</span>
+                        </div>
                       </div>
-                    </div>
-                    <div className="full auth-flow-note-card">
-                      <strong>Cocina en casa del cliente</strong>
-                      <span>En WeTask, chef se considera siempre un servicio realizado en casa del cliente.</span>
-                    </div>
+                    ) : null}
+
+                    {chefScopeScreen === 2 ? (
+                      <div className="full">
+                        <p className="field-label">¿Qué tareas sí realizas?</p>
+                        <div className="onboarding-task-checklist">
+                          {CHEF_TASK_INCLUDED_OPTIONS.map((task) => (
+                            <label key={task.value} className={`onboarding-task-checklist-row ${draft.chefScope.tasks_included.includes(task.value) ? "checked" : ""}`}>
+                              <div>
+                                <strong>{task.label}</strong>
+                              </div>
+                              <span className="onboarding-task-checklist-control">
+                                <input
+                                  type="checkbox"
+                                  checked={draft.chefScope.tasks_included.includes(task.value)}
+                                  onChange={(event) => {
+                                    setDraft((current) => ({
+                                      ...current,
+                                      chefScope: {
+                                        ...current.chefScope,
+                                        tasks_included: event.target.checked
+                                          ? Array.from(new Set([...current.chefScope.tasks_included, task.value]))
+                                          : current.chefScope.tasks_included.filter((item) => item !== task.value)
+                                      }
+                                    }));
+                                  }}
+                                />
+                                <span className="onboarding-task-checklist-box" aria-hidden />
+                              </span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    ) : null}
+
+                    {chefScopeScreen === 3 ? (
+                      <div className="full">
+                        <p className="field-label">¿Qué tareas no realizas?</p>
+                        <div className="onboarding-task-checklist">
+                          {CHEF_TASK_EXCLUDED_OPTIONS.map((task) => (
+                            <label
+                              key={task.value}
+                              className={`onboarding-task-checklist-row onboarding-task-checklist-row-warning ${draft.chefScope.tasks_excluded.includes(task.value) ? "checked" : ""}`}
+                            >
+                              <div>
+                                <strong>{task.label}</strong>
+                              </div>
+                              <span className="onboarding-task-checklist-control">
+                                <input
+                                  type="checkbox"
+                                  checked={draft.chefScope.tasks_excluded.includes(task.value)}
+                                  onChange={(event) => {
+                                    setDraft((current) => ({
+                                      ...current,
+                                      chefScope: {
+                                        ...current.chefScope,
+                                        tasks_excluded: event.target.checked
+                                          ? Array.from(new Set([...current.chefScope.tasks_excluded, task.value]))
+                                          : current.chefScope.tasks_excluded.filter((item) => item !== task.value)
+                                      }
+                                    }));
+                                  }}
+                                />
+                                <span className="onboarding-task-checklist-box" aria-hidden />
+                              </span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    ) : null}
+
+                    {chefScopeScreen === 4 ? (
+                      <div className="full">
+                        <label>
+                          Condiciones especiales de tu servicio
+                          <textarea
+                            value={draft.chefScope.special_conditions}
+                            rows={4}
+                            placeholder="Ejemplo: no compro insumos, no hago eventos sobre cierta cantidad de personas y la repostería se cotiza aparte."
+                            onChange={(event) =>
+                              setDraft((current) => ({
+                                ...current,
+                                chefScope: {
+                                  ...current.chefScope,
+                                  special_conditions: event.target.value
+                                }
+                              }))
+                            }
+                          />
+                        </label>
+                      </div>
+                    ) : null}
+
+                    {chefScopeScreen === 5 ? (
+                      <div className="full onboarding-scope-review-grid">
+                        <div className="auth-flow-note-card">
+                          <strong>Servicios de chef</strong>
+                          <span>{chefScopeServicesPreview.length > 0 ? chefScopeServicesPreview.join(", ") : "Sin información aún."}</span>
+                        </div>
+                        <div className="auth-flow-note-card">
+                          <strong>Tareas que sí realiza</strong>
+                          <span>{chefScopeIncludedPreview.length > 0 ? chefScopeIncludedPreview.join(", ") : "Sin información aún."}</span>
+                        </div>
+                        <div className="auth-flow-note-card">
+                          <strong>Tareas que no realiza</strong>
+                          <span>{chefScopeExcludedPreview.length > 0 ? chefScopeExcludedPreview.join(", ") : "No marcaste exclusiones."}</span>
+                        </div>
+                        <div className="auth-flow-note-card">
+                          <strong>Condiciones especiales</strong>
+                          <span>{draft.chefScope.special_conditions.trim() || "No agregaste condiciones especiales."}</span>
+                        </div>
+                      </div>
+                    ) : null}
                   </div>
                 ) : null}
 
@@ -3709,6 +3927,10 @@ function CleaningOnboardingPageContent() {
                     <button type="button" className="cta ghost" onClick={previousBabysitterScopeScreen}>
                       Volver
                     </button>
+                  ) : draft.category === "chef" && chefScopeScreen > 1 ? (
+                    <button type="button" className="cta ghost" onClick={previousChefScopeScreen}>
+                      Volver
+                    </button>
                   ) : draft.category === "profesor-particular" && teacherScopeScreen > 1 ? (
                     <button type="button" className="cta ghost" onClick={previousTeacherScopeScreen}>
                       Volver
@@ -3732,6 +3954,10 @@ function CleaningOnboardingPageContent() {
                     </button>
                   ) : draft.category === "babysitter" && babysitterScopeScreen < 6 ? (
                     <button type="button" className="cta" onClick={continueBabysitterScopeScreen}>
+                      Siguiente
+                    </button>
+                  ) : draft.category === "chef" && chefScopeScreen < 5 ? (
+                    <button type="button" className="cta" onClick={continueChefScopeScreen}>
                       Siguiente
                     </button>
                   ) : draft.category === "profesor-particular" && teacherScopeScreen < 6 ? (

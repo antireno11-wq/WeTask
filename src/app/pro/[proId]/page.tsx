@@ -11,6 +11,12 @@ import {
   getBabysitterServiceLabel,
   normalizeBabysitterScope
 } from "@/lib/babysitter-scope";
+import {
+  getChefExcludedTaskLabel,
+  getChefIncludedTaskLabel,
+  getChefScopeServiceLabel,
+  normalizeChefScope
+} from "@/lib/chef-scope";
 import { getChefServiceDefinition } from "@/lib/chef-service-types";
 import { getCleaningServiceDefinition } from "@/lib/cleaning-service-types";
 import {
@@ -53,6 +59,7 @@ type CleaningOnboardingSummary = {
   cleaningScope: unknown;
   petScope: unknown;
   babysitterScope: unknown;
+  chefScope: unknown;
   trainerScope: unknown;
   teacherScope: unknown;
   acceptsHomesWithPets: boolean | null;
@@ -470,6 +477,7 @@ function buildDemoProfessional(proId: string): ProfessionalDetail {
         },
         petScope: null,
         babysitterScope: null,
+        chefScope: null,
         trainerScope: null,
         teacherScope: null,
         acceptsHomesWithPets: null,
@@ -673,6 +681,26 @@ export default function ProDetailPage() {
       multi_child: onboarding?.acceptsHomesWithChildren ?? null
     };
   }, [onboarding?.babysitterScope, onboarding?.offeredServices, onboarding?.experienceTypes, onboarding?.bringsOwnTools, onboarding?.acceptsHomesWithChildren]);
+  const chefScope = useMemo(() => {
+    const normalized = normalizeChefScope(onboarding?.chefScope);
+    if (normalized.services_offered.length > 0 || normalized.tasks_included.length > 0) {
+      return normalized;
+    }
+
+    return {
+      ...normalized,
+      services_offered: Array.isArray(onboarding?.offeredServices)
+        ? onboarding.offeredServices.filter(
+            (item): item is "cocina-gourmet" | "cocina-casera" | "reposteria" | "cocina-eventos" | "cumpleanos" =>
+              item === "cocina-gourmet" ||
+              item === "cocina-casera" ||
+              item === "reposteria" ||
+              item === "cocina-eventos" ||
+              item === "cumpleanos"
+          )
+        : []
+    };
+  }, [onboarding?.chefScope, onboarding?.offeredServices]);
   const trainerScope = useMemo(() => {
     const normalized = normalizeTrainerScope(onboarding?.trainerScope);
     if (normalized.services_offered.length > 0 || normalized.modes.length > 0 || normalized.tasks_included.length > 0) {
@@ -766,6 +794,9 @@ export default function ProDetailPage() {
   const babysitterScopeAges = babysitterScope.age_ranges.map(getBabysitterAgeRangeLabel);
   const babysitterScopeIncludedTasks = babysitterScope.tasks_included.map(getBabysitterIncludedTaskLabel);
   const babysitterScopeExcludedTasks = babysitterScope.tasks_excluded.map(getBabysitterExcludedTaskLabel);
+  const chefScopeServices = chefScope.services_offered.map(getChefScopeServiceLabel);
+  const chefScopeIncludedTasks = chefScope.tasks_included.map(getChefIncludedTaskLabel);
+  const chefScopeExcludedTasks = chefScope.tasks_excluded.map(getChefExcludedTaskLabel);
   const trainerScopeServices = trainerScope.services_offered.map(getTrainerServiceLabel);
   const trainerScopeModes = trainerScope.modes.map(getTrainerModeLabel);
   const trainerScopeIncludedTasks = trainerScope.tasks_included.map(getTrainerIncludedTaskLabel);
@@ -1060,6 +1091,31 @@ export default function ProDetailPage() {
                         </div>
                       </div>
                       <p className="minimal-note">Si necesitas apoyo fuera de este alcance base, revísalo antes de reservar para evitar malos entendidos.</p>
+                    </article>
+                  ) : null}
+
+                  {normalizedPrimaryCategorySlug === "chef" ? (
+                    <article className="auth-flow-panel client-dashboard-section">
+                      <h2>Alcance del servicio</h2>
+                      <div className="we-info-grid">
+                        <div>
+                          <h3>Servicios de chef que ofrece</h3>
+                          <p>{chefScopeServices.length > 0 ? chefScopeServices.join(", ") : "Aún no informado."}</p>
+                        </div>
+                        <div>
+                          <h3>Tareas que sí realiza</h3>
+                          <p>{chefScopeIncludedTasks.length > 0 ? chefScopeIncludedTasks.join(", ") : "Aún no informado."}</p>
+                        </div>
+                        <div>
+                          <h3>Tareas que no realiza</h3>
+                          <p>{chefScopeExcludedTasks.length > 0 ? chefScopeExcludedTasks.join(", ") : "No reporta exclusiones."}</p>
+                        </div>
+                        <div>
+                          <h3>Condiciones especiales</h3>
+                          <p>{chefScope.special_conditions || "Sin condiciones especiales reportadas."}</p>
+                        </div>
+                      </div>
+                      <p className="minimal-note">Si necesitas algo fuera de este alcance base, revísalo antes de reservar para evitar malos entendidos.</p>
                     </article>
                   ) : null}
 

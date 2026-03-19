@@ -32,6 +32,7 @@ export async function GET(_: Request, context: { params: { proId: string } }) {
                 cleaningScope: true,
                 petScope: true,
                 babysitterScope: true,
+                chefScope: true,
                 trainerScope: true,
                 teacherScope: true,
                 acceptsHomesWithPets: true,
