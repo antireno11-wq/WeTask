@@ -604,13 +604,13 @@ body {
 
 .brand-logo-wordmark-mask {
   position: absolute;
-  inset: 52% 0 0 0;
+  inset: 53% 0 0 0;
   overflow: hidden;
   pointer-events: none;
 }
 
 .brand-logo-layer-wordmark {
-  transform: translateY(-52%);
+  transform: translateY(-53%);
 }
 
 .brand-pill {
