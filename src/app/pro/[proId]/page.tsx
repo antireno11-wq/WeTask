@@ -83,6 +83,7 @@ type CleaningOnboardingSummary = {
   languages: unknown;
   baseCommune: string | null;
   maxTravelKm: number | null;
+  serviceCommunes?: unknown;
 };
 
 type ProfessionalDetail = {
@@ -820,6 +821,26 @@ export default function ProDetailPage() {
       }));
   }, [data?.taskerServices]);
   const profilePhotoUrl = onboarding?.profilePhotoUrl?.trim() || "";
+  const activeCommunes = useMemo(() => {
+    const raw = Array.isArray(onboarding?.serviceCommunes) ? onboarding.serviceCommunes : [];
+    const cleaned = raw
+      .filter((item): item is string => typeof item === "string" && item.trim().length > 0)
+      .map(labelize);
+
+    if (cleaned.length > 0) return cleaned;
+    if (onboarding?.baseCommune) return [labelize(onboarding.baseCommune)];
+    return requestedCommune ? [labelize(requestedCommune)] : [];
+  }, [onboarding?.baseCommune, onboarding?.serviceCommunes, requestedCommune]);
+  const coverageMapUrl = useMemo(() => {
+    if (data?.coverageLatitude != null && data?.coverageLongitude != null) {
+      return `https://www.google.com/maps?q=${data.coverageLatitude},${data.coverageLongitude}&z=11&output=embed`;
+    }
+
+    const fallbackQuery =
+      activeCommunes[0] || onboarding?.baseCommune || data?.coverageCity || requestedCommune || "Santiago, Chile";
+
+    return `https://www.google.com/maps?q=${encodeURIComponent(fallbackQuery)}&z=11&output=embed`;
+  }, [activeCommunes, data?.coverageCity, data?.coverageLatitude, data?.coverageLongitude, onboarding?.baseCommune, requestedCommune]);
   const summaryDescription =
     onboarding?.shortDescription?.trim() ||
     "Tasker con experiencia en servicios a domicilio, buena valoración y agenda activa durante la semana.";
@@ -1052,6 +1073,39 @@ export default function ProDetailPage() {
                         <h3>¿Qué busca en WeTask?</h3>
                         <p>{goalText}</p>
                       </div>
+                    </div>
+                  </article>
+
+                  <article className="auth-flow-panel client-dashboard-section">
+                    <h2>Cobertura</h2>
+                    <div className="coverage-map-card pro-profile-map-preview">
+                      <div className="coverage-map-head">
+                        <h3>Comunas donde trabaja</h3>
+                        <p>Estas son las comunas activas que el tasker tiene configuradas hoy.</p>
+                      </div>
+                      <div className="coverage-map-wrap">
+                        <iframe
+                          title="Mapa de cobertura del tasker"
+                          src={coverageMapUrl}
+                          className="coverage-map-frame"
+                          loading="lazy"
+                          referrerPolicy="no-referrer-when-downgrade"
+                        />
+                      </div>
+                      {activeCommunes.length > 0 ? (
+                        <>
+                          <p className="coverage-map-tag-head">Comunas activas</p>
+                          <div className="coverage-map-chip-list" aria-label="Comunas donde trabaja">
+                            {activeCommunes.map((commune) => (
+                              <span key={commune} className="coverage-map-chip">
+                                {commune}
+                              </span>
+                            ))}
+                          </div>
+                        </>
+                      ) : (
+                        <p className="coverage-meta">Aún no hay comunas informadas en este perfil.</p>
+                      )}
                     </div>
                   </article>
 

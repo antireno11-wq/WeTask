@@ -919,13 +919,16 @@ export default function ProPage() {
                     </span>
                   </div>
                   {selectedCommunes.length > 0 ? (
-                    <div className="coverage-map-chip-list" aria-label="Comunas activas">
-                      {selectedCommunes.map((commune) => (
-                        <span key={commune} className="coverage-map-chip">
-                          {commune}
-                        </span>
-                      ))}
-                    </div>
+                    <>
+                      <p className="coverage-map-tag-head">Comunas donde trabajas</p>
+                      <div className="coverage-map-chip-list" aria-label="Comunas activas">
+                        {selectedCommunes.map((commune) => (
+                          <span key={commune} className="coverage-map-chip">
+                            {commune}
+                          </span>
+                        ))}
+                      </div>
+                    </>
                   ) : null}
                   <p className="coverage-meta">
                     Dirección base: {coverageStreet || "Sin dirección"}, {coverageComuna || "Sin comuna"}, {coverageCity}
@@ -1099,9 +1102,20 @@ export default function ProPage() {
                   </p>
                 ) : null}
                 {addressValidationError ? <p className="coverage-meta coverage-meta-error">{addressValidationError}</p> : null}
-                <p className="coverage-meta">
-                  Comunas activas: {selectedCommunes.length > 0 ? selectedCommunes.join(", ") : "Selecciona al menos una comuna."}
-                </p>
+                {selectedCommunes.length > 0 ? (
+                  <>
+                    <p className="coverage-map-tag-head">Comunas donde trabajas</p>
+                    <div className="coverage-map-chip-list" aria-label="Comunas activas">
+                      {selectedCommunes.map((commune) => (
+                        <span key={commune} className="coverage-map-chip">
+                          {commune}
+                        </span>
+                      ))}
+                    </div>
+                  </>
+                ) : (
+                  <p className="coverage-meta">Selecciona al menos una comuna.</p>
+                )}
               </div>
             </div> : null}
 

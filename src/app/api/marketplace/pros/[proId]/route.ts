@@ -43,7 +43,8 @@ export async function GET(_: Request, context: { params: { proId: string } }) {
                 bringsOwnTools: true,
                 languages: true,
                 baseCommune: true,
-                maxTravelKm: true
+                maxTravelKm: true,
+                serviceCommunes: true
               }
             }
           }

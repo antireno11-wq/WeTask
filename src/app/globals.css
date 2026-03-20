@@ -1686,6 +1686,13 @@ textarea {
   gap: 10px;
 }
 
+.coverage-map-tag-head {
+  margin: 0;
+  color: #264d7a;
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+
 .coverage-map-chip {
   display: inline-flex;
   align-items: center;
