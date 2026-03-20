@@ -25,7 +25,7 @@ export function buildWhiteWordmarkLogo(src: string, onReady: (dataUrl: string) =
       Math.round((topLeft[2] + topRight[2] + bottomLeft[2] + bottomRight[2]) / 4)
     ];
 
-    const textStartX = canvas.width * 0.28;
+    const textStartX = canvas.width * 0.37;
 
     for (let i = 0; i < pixels.length; i += 4) {
       const pixelIndex = i / 4;
