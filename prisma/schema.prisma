@@ -198,6 +198,7 @@ model Service {
 model ProfessionalProfile {
   id                String      @id @default(cuid())
   userId            String      @unique
+  avatarUrl         String?
   bio               String?
   isVerified        Boolean     @default(false)
   verificationStatus String     @default("PENDING_REVIEW")

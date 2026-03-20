@@ -89,6 +89,7 @@ type CleaningOnboardingSummary = {
 
 type ProfessionalDetail = {
   id: string;
+  avatarUrl?: string | null;
   userId: string;
   bio: string | null;
   isVerified: boolean;
@@ -824,7 +825,7 @@ export default function ProDetailPage() {
         label: `${item.service?.name} · ${item.priceClp ? clp(item.priceClp) : "Por definir"}/h`
       }));
   }, [data?.taskerServices]);
-  const profilePhotoUrl = onboarding?.profilePhotoUrl?.trim() || "";
+  const profilePhotoUrl = onboarding?.profilePhotoUrl?.trim() || data?.avatarUrl?.trim() || "";
   const activeCommunes = useMemo(() => {
     const raw = Array.isArray(onboarding?.serviceCommunes) ? onboarding.serviceCommunes : [];
     const cleaned = raw

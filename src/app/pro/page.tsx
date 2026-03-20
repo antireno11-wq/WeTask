@@ -72,6 +72,7 @@ type AvailabilityBlock = {
 
 type ProProfile = {
   id: string;
+  avatarUrl?: string | null;
   bio: string | null;
   coverageStreet: string | null;
   coverageComuna: string | null;
@@ -459,7 +460,7 @@ export default function ProPage() {
     setNotifications(notificationsData.notifications);
     setProName(profileData.user?.fullName ?? "");
     setCategorySlug(profileData.categorySlug ?? "");
-    const nextProfilePhoto = profileData.profilePhotoUrl?.trim() || localDraftProfilePhoto();
+    const nextProfilePhoto = profileData.profilePhotoUrl?.trim() || profileData.profile?.avatarUrl?.trim() || localDraftProfilePhoto();
     setProfilePhotoUrl(nextProfilePhoto);
     setAvailabilityMode(profileData.availabilityMode ?? null);
     setOnboardingAvailabilityBlocks(normalizeAvailabilityBlocks(profileData.availabilityBlocks));

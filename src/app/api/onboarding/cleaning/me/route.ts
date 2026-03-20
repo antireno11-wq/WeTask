@@ -304,6 +304,7 @@ export async function PATCH(req: NextRequest) {
         where: { userId },
         create: {
           userId,
+          avatarUrl: parsed.profilePhotoUrl,
           coverageStreet: parsed.referenceAddress.trim(),
           coverageComuna: parsed.baseCommune,
           coverageCity: "Santiago",
@@ -312,6 +313,7 @@ export async function PATCH(req: NextRequest) {
           serviceRadiusKm: 8
         },
         update: {
+          avatarUrl: parsed.profilePhotoUrl,
           coverageStreet: parsed.referenceAddress.trim(),
           coverageComuna: parsed.baseCommune,
           coverageCity: "Santiago",

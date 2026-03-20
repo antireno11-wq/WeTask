@@ -49,6 +49,7 @@ export async function POST(req: NextRequest) {
         },
         professionalProfile: {
           create: {
+            avatarUrl: input.profilePhotoUrl ?? null,
             isVerified: false,
             verificationStatus: "PENDING_REVIEW",
             coverageComuna: baseCommune,

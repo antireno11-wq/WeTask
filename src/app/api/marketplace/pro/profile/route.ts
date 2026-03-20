@@ -32,7 +32,23 @@ export async function GET(req: NextRequest) {
         fullName: true,
         email: true,
         role: true,
-        professionalProfile: true,
+        professionalProfile: {
+          select: {
+            id: true,
+            avatarUrl: true,
+            bio: true,
+            isVerified: true,
+            verificationStatus: true,
+            coverageStreet: true,
+            coverageComuna: true,
+            coverageCity: true,
+            coveragePostal: true,
+            coverageLatitude: true,
+            coverageLongitude: true,
+            serviceRadiusKm: true,
+            hourlyRateFromClp: true
+          }
+        },
         cleaningOnboarding: {
           select: {
             categorySlug: true,
@@ -73,7 +89,7 @@ export async function GET(req: NextRequest) {
         user: { id: user.id, fullName: user.fullName, email: user.email },
         profile: user.professionalProfile,
         categorySlug: user.cleaningOnboarding?.categorySlug ?? null,
-        profilePhotoUrl: user.cleaningOnboarding?.profilePhotoUrl ?? null,
+        profilePhotoUrl: user.cleaningOnboarding?.profilePhotoUrl ?? user.professionalProfile?.avatarUrl ?? null,
         availabilityMode: user.cleaningOnboarding?.availabilityMode ?? null,
         availabilityBlocks: user.cleaningOnboarding?.availabilityBlocks ?? [],
         serviceCommunes: normalizeCommuneList(user.cleaningOnboarding?.serviceCommunes),

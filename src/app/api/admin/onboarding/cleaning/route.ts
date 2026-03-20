@@ -53,6 +53,7 @@ async function ensureCleaningTaskerService(userId: string) {
     where: { userId },
     create: {
       userId,
+      avatarUrl: onboarding.profilePhotoUrl,
       bio: onboarding.shortDescription,
       isVerified: true,
       verificationStatus: "APPROVED",
@@ -65,6 +66,7 @@ async function ensureCleaningTaskerService(userId: string) {
       hourlyRateFromClp: onboarding.hourlyRateClp
     },
     update: {
+      avatarUrl: onboarding.profilePhotoUrl ?? undefined,
       bio: onboarding.shortDescription,
       isVerified: true,
       verificationStatus: "APPROVED",
