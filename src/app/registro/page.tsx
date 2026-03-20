@@ -11,7 +11,7 @@ export default function RegistroPage() {
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [phone, setPhone] = useState("");
+  const [phoneDigits, setPhoneDigits] = useState("");
   const [acceptTerms, setAcceptTerms] = useState(false);
 
   const [loading, setLoading] = useState(false);
@@ -25,6 +25,7 @@ export default function RegistroPage() {
     setError("");
 
     try {
+      const normalizedPhone = phoneDigits.trim() ? `+569${phoneDigits.trim()}` : undefined;
       const response = await fetch("/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -32,7 +33,7 @@ export default function RegistroPage() {
           fullName,
           email,
           password,
-          phone,
+          phone: normalizedPhone,
           role: "CUSTOMER",
           acceptTerms
         })
@@ -42,6 +43,7 @@ export default function RegistroPage() {
         error?: string;
         detail?: string;
         emailVerificationRequired?: boolean;
+        emailDeliveryConfigured?: boolean;
         verificationTokenPreview?: string;
         session?: { fullName: string; role: "CUSTOMER" | "PRO" | "ADMIN" };
       };
@@ -52,7 +54,9 @@ export default function RegistroPage() {
 
       if (data.emailVerificationRequired) {
         setFeedback(
-          `Cuenta creada. Revisa tu correo para verificar tu cuenta.${data.verificationTokenPreview ? ` Token dev: ${data.verificationTokenPreview}` : ""}`
+          data.emailDeliveryConfigured === false
+            ? `Cuenta creada, pero el correo de verificación no está configurado en este ambiente.${data.verificationTokenPreview ? ` Token dev: ${data.verificationTokenPreview}` : ""}`
+            : `Cuenta creada. Revisa tu correo para verificar tu cuenta.${data.verificationTokenPreview ? ` Token dev: ${data.verificationTokenPreview}` : ""}`
         );
         return;
       }
@@ -95,15 +99,10 @@ export default function RegistroPage() {
                 <strong>Acceso seguro</strong>
                 <span>Tu información queda asociada a tu perfil y puedes continuar el flujo después desde tu sesión.</span>
               </div>
-              <div className="auth-flow-meta-card">
-                <strong>¿Quieres ofrecer servicios?</strong>
-                <span>Si quieres ser tasker, crea tu cuenta directamente desde el flujo de profesionales.</span>
-              </div>
             </div>
 
             <div className="auth-flow-inline-links">
               <Link href="/ingresar">Ya tengo cuenta</Link>
-              <Link href="/trabaja-con-nosotros">Quiero ofrecer servicios</Link>
               <Link href="/legal">Términos y privacidad</Link>
             </div>
           </div>
@@ -139,13 +138,17 @@ export default function RegistroPage() {
 
             <label>
               Teléfono
-              <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+56 9 ..." />
+              <div className="phone-inline-field">
+                <span className="phone-inline-prefix">+569</span>
+                <input
+                  inputMode="numeric"
+                  pattern="[0-9]{8}"
+                  value={phoneDigits}
+                  onChange={(e) => setPhoneDigits(e.target.value.replace(/\D/g, "").slice(0, 8))}
+                  placeholder="12345678"
+                />
+              </div>
             </label>
-
-            <div className="full auth-flow-note-card">
-              <strong>¿Quieres ser tasker?</strong>
-              <span>El registro de profesionales ahora vive solo en Ofrecer servicios para que el onboarding sea más claro y ordenado.</span>
-            </div>
 
             <label className="full auth-flow-checkbox">
               <input type="checkbox" checked={acceptTerms} onChange={(e) => setAcceptTerms(e.target.checked)} required />
@@ -156,9 +159,6 @@ export default function RegistroPage() {
               <button type="submit" className="cta" disabled={loading}>
                 {loading ? "Creando cuenta..." : "Crear cuenta"}
               </button>
-              <Link href="/trabaja-con-nosotros" className="cta ghost">
-                Ofrecer servicios
-              </Link>
               <Link href="/ingresar" className="cta ghost">
                 Iniciar sesión
               </Link>

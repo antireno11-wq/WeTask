@@ -2,6 +2,7 @@ import { UserRole } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { encodeSessionCookie, SESSION_COOKIE_NAME } from "@/lib/auth";
 import { normalizeCommune } from "@/lib/communes";
+import { sendPlatformEmail } from "@/lib/notifications";
 import { prisma } from "@/lib/prisma";
 import { hashPassword, randomToken, sha256 } from "@/lib/security";
 
@@ -150,6 +151,7 @@ export async function POST(req: NextRequest) {
     });
 
     let emailVerificationToken: string | null = null;
+    let emailDeliveryConfigured = true;
     if (authProvider === "EMAIL") {
       emailVerificationToken = randomToken(24);
       await prisma.emailVerificationToken.create({
@@ -159,6 +161,18 @@ export async function POST(req: NextRequest) {
           expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24)
         }
       });
+
+      emailDeliveryConfigured = Boolean(process.env.RESEND_API_KEY && process.env.RESEND_FROM_EMAIL);
+      if (emailDeliveryConfigured) {
+        const verifyUrl = new URL("/verificar-correo", req.nextUrl.origin);
+        verifyUrl.searchParams.set("token", emailVerificationToken);
+
+        await sendPlatformEmail({
+          to: user.email,
+          subject: "Verifica tu cuenta de WeTask",
+          text: `Hola ${user.fullName},\n\nVerifica tu cuenta entrando a este link:\n${verifyUrl.toString()}\n\nSi no creaste esta cuenta, ignora este correo.\n\nEquipo WeTask`
+        });
+      }
     }
 
     const shouldCreateSession = authProvider !== "EMAIL";
@@ -173,6 +187,7 @@ export async function POST(req: NextRequest) {
             }
           : null,
         emailVerificationRequired: authProvider === "EMAIL",
+        emailDeliveryConfigured,
         verificationTokenPreview:
           process.env.NODE_ENV !== "production" && emailVerificationToken ? emailVerificationToken : undefined
       },

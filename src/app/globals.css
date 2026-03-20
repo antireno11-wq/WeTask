@@ -1700,6 +1700,26 @@ textarea {
   box-shadow: 0 12px 22px rgba(22, 86, 176, 0.18);
 }
 
+.phone-inline-field {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 10px;
+}
+
+.phone-inline-prefix {
+  min-height: 48px;
+  padding: 0 14px;
+  border-radius: 14px;
+  border: 1px solid #cfe2f3;
+  background: #f3f8fd;
+  color: #173b5f;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .coverage-meta-ok {
   color: #166a41;
   font-weight: 700;
