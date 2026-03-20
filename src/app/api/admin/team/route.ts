@@ -1,15 +1,18 @@
-import { UserRole } from "@prisma/client";
+import { AuthProvider, UserRole } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { requireAdminRequest } from "@/lib/admin-access";
 import { prisma } from "@/lib/prisma";
+import { hashPassword } from "@/lib/security";
 
 export const dynamic = "force-dynamic";
 
 const teamActionSchema = z.object({
-  action: z.enum(["grant", "revoke", "delete_user"]),
+  action: z.enum(["grant", "revoke", "delete_user", "create_admin"]),
   userId: z.string().trim().min(1).optional(),
-  email: z.string().trim().email().optional()
+  email: z.string().trim().email().optional(),
+  fullName: z.string().trim().min(3).optional(),
+  password: z.string().min(8).optional()
 });
 
 const teamListQuerySchema = z.object({
@@ -208,7 +211,9 @@ export async function PATCH(req: NextRequest) {
     const body = await req.json();
     const input = teamActionSchema.parse(body);
 
-    const target = await prisma.user.findFirst({
+    const target = input.action === "create_admin"
+      ? null
+      : await prisma.user.findFirst({
       where: input.userId ? { id: input.userId } : { email: input.email?.trim().toLowerCase() },
       select: {
         id: true,
@@ -236,7 +241,7 @@ export async function PATCH(req: NextRequest) {
       }
     });
 
-    if (!target) {
+    if (input.action !== "create_admin" && !target) {
       return NextResponse.json({ error: "No encontramos un usuario registrado con ese correo." }, { status: 404 });
     }
 
@@ -255,6 +260,64 @@ export async function PATCH(req: NextRequest) {
       update: { label: "Tasker" },
       create: { code: UserRole.PRO, label: "Tasker" }
     });
+
+    if (input.action === "create_admin") {
+      const email = input.email?.trim().toLowerCase();
+      const fullName = input.fullName?.trim();
+      const password = input.password;
+
+      if (!email || !fullName || !password) {
+        return NextResponse.json(
+          { error: "Debes ingresar nombre, correo y contraseña para crear el administrador." },
+          { status: 400 }
+        );
+      }
+
+      const existing = await prisma.user.findUnique({
+        where: { email },
+        select: { id: true }
+      });
+      if (existing) {
+        return NextResponse.json({ error: "Ya existe una cuenta con ese correo." }, { status: 409 });
+      }
+
+      const passwordHash = await hashPassword(password);
+      const created = await prisma.user.create({
+        data: {
+          fullName,
+          email,
+          role: UserRole.ADMIN,
+          authProvider: AuthProvider.EMAIL,
+          passwordHash,
+          termsAcceptedAt: new Date(),
+          emailVerifiedAt: new Date(),
+          roleAssignments: {
+            create: {
+              roleId: roleAdmin.id
+            }
+          }
+        },
+        select: {
+          id: true,
+          fullName: true,
+          email: true,
+          role: true
+        }
+      });
+
+      return NextResponse.json(
+        {
+          ok: true,
+          message: `${created.fullName} fue creado como administrador.`,
+          user: created
+        },
+        { status: 201 }
+      );
+    }
+
+    if (!target) {
+      return NextResponse.json({ error: "No encontramos un usuario registrado con ese correo." }, { status: 404 });
+    }
 
     if (input.action === "delete_user") {
       const primaryAdminEmail = process.env.PRIMARY_ADMIN_EMAIL?.trim().toLowerCase() ?? null;

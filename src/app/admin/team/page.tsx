@@ -60,6 +60,9 @@ export default function AdminTeamPage() {
   const [error, setError] = useState("");
   const [feedback, setFeedback] = useState("");
   const [email, setEmail] = useState("");
+  const [existingEmail, setExistingEmail] = useState("");
+  const [fullName, setFullName] = useState("");
+  const [password, setPassword] = useState("");
   const [deleteEmail, setDeleteEmail] = useState("");
   const [busyId, setBusyId] = useState("");
   const [page, setPage] = useState(1);
@@ -84,7 +87,10 @@ export default function AdminTeamPage() {
     void load();
   }, []);
 
-  const runAction = async (action: "grant" | "revoke" | "delete_user", target: { userId?: string; email?: string }) => {
+  const runAction = async (
+    action: "grant" | "revoke" | "delete_user" | "create_admin",
+    target: { userId?: string; email?: string; fullName?: string; password?: string }
+  ) => {
     setBusyId(target.userId || target.email || action);
     setError("");
     setFeedback("");
@@ -97,7 +103,12 @@ export default function AdminTeamPage() {
       const payload = (await response.json()) as { ok?: boolean; error?: string; detail?: string; message?: string };
       if (!response.ok || !payload.ok) throw new Error(payload.detail || payload.error || "No se pudo actualizar acceso");
       setFeedback(payload.message || "Acceso actualizado correctamente.");
-      if (action === "grant") setEmail("");
+      if (action === "grant") setExistingEmail("");
+      if (action === "create_admin") {
+        setEmail("");
+        setFullName("");
+        setPassword("");
+      }
       if (action === "delete_user") setDeleteEmail("");
       await load(page);
     } catch (e) {
@@ -124,13 +135,22 @@ export default function AdminTeamPage() {
         <div className="admin-section-head">
           <div>
             <h3>Crear otro administrador</h3>
-            <p>Ingresa el correo de una cuenta existente para darle acceso y permitirle aprobar usuarios.</p>
+            <p>Crea un administrador nuevo desde cero o usa el correo de alguien existente para darle acceso.</p>
           </div>
         </div>
 
         <div className="admin-team-form">
           <label>
-            Correo del integrante
+            Nombre completo
+            <input
+              type="text"
+              value={fullName}
+              onChange={(event) => setFullName(event.target.value)}
+              placeholder="Nombre del administrador"
+            />
+          </label>
+          <label>
+            Correo del administrador
             <input
               type="email"
               value={email}
@@ -138,13 +158,48 @@ export default function AdminTeamPage() {
               placeholder="equipo@wetask.cl"
             />
           </label>
+          <label>
+            Contraseña inicial
+            <input
+              type="password"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              placeholder="Mínimo 8 caracteres"
+            />
+          </label>
           <button
             type="button"
             className="cta"
-            disabled={!email.trim() || busyId === email.trim().toLowerCase()}
-            onClick={() => void runAction("grant", { email: email.trim().toLowerCase() })}
+            disabled={!fullName.trim() || !email.trim() || password.trim().length < 8 || busyId === email.trim().toLowerCase()}
+            onClick={() =>
+              void runAction("create_admin", {
+                fullName: fullName.trim(),
+                email: email.trim().toLowerCase(),
+                password
+              })
+            }
           >
             Crear administrador
+          </button>
+        </div>
+
+        <div className="admin-team-form admin-team-form-secondary">
+          <label>
+            Dar acceso a cuenta existente
+            <input
+              type="email"
+              value={existingEmail}
+              onChange={(event) => setExistingEmail(event.target.value)}
+              placeholder="usuario-existente@wetask.cl"
+            />
+          </label>
+          <button
+            type="button"
+            className="cta ghost"
+            disabled={!existingEmail.trim() || busyId === existingEmail.trim().toLowerCase()}
+            onClick={() => void runAction("grant", { email: existingEmail.trim().toLowerCase() })}
+          >
+            Dar acceso admin
           </button>
         </div>
       </section>
