@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import { MarketNav } from "@/components/market-nav";
 import { BABYSITTER_TASK_INCLUDED_OPTIONS } from "@/lib/babysitter-scope";
 import { CHEF_TASK_INCLUDED_OPTIONS } from "@/lib/chef-scope";
+import { copyCleaningEstimateParams, parseCleaningRecommendedHours } from "@/lib/cleaning-duration-estimator";
 import { CLEANING_TASK_INCLUDED_OPTIONS } from "@/lib/cleaning-scope";
 import { IRONING_TASK_INCLUDED_OPTIONS } from "@/lib/ironing-scope";
 import { MAKEUP_TASK_INCLUDED_OPTIONS } from "@/lib/makeup-scope";
@@ -109,6 +110,9 @@ export default function ServiceProsPage() {
     .filter((item) => availableTaskOptions.some((option) => option.value === item));
   const [selectedTasks, setSelectedTasks] = useState<string[]>(initialRequestedTasks);
   const selectedServiceId = search.get("serviceId") ?? "";
+  const recommendedHours = parseCleaningRecommendedHours(search.get("recommendedHours"));
+  const estimatedMinHours = search.get("estimatedMinHours") ?? "";
+  const estimatedMaxHours = search.get("estimatedMaxHours") ?? "";
   const requestedMinutes = requestedTime ? timeToMinutes(requestedTime) : null;
   const requestedIso = useMemo(() => {
     if (!requestedDate || !requestedTime) return undefined;
@@ -127,8 +131,9 @@ export default function ServiceProsPage() {
     if (requestedTime) qs.set("requestedTime", requestedTime);
     if (selectedServiceId) qs.set("serviceId", selectedServiceId);
     if (selectedTasks.length > 0) qs.set("tasks", selectedTasks.join(","));
+    copyCleaningEstimateParams(search, qs);
     return qs.toString();
-  }, [address, apartment, city, comuna, reference, requestedDate, requestedTime, selectedServiceId, selectedTasks]);
+  }, [address, apartment, city, comuna, reference, requestedDate, requestedTime, search, selectedServiceId, selectedTasks]);
   const selectedService = useMemo(
     () => category?.services.find((service) => service.id === selectedServiceId) ?? null,
     [category, selectedServiceId]
@@ -283,6 +288,15 @@ export default function ServiceProsPage() {
                 <strong>Horario</strong>
                 <span>{requestedDate && requestedTime ? `${requestedDate} a las ${requestedTime}` : "Aún no definido"}</span>
               </div>
+              {recommendedHours ? (
+                <div className="auth-flow-meta-card">
+                  <strong>Tiempo sugerido</strong>
+                  <span>
+                    {estimatedMinHours && estimatedMaxHours ? `${estimatedMinHours} a ${estimatedMaxHours} h · ` : ""}
+                    Recomendado: {recommendedHours} h
+                  </span>
+                </div>
+              ) : null}
             </div>
           </div>
 
@@ -330,7 +344,7 @@ export default function ServiceProsPage() {
 
             <div className="cta-row service-pros-top-actions">
               <Link
-                href={`/servicios/${categorySlug}?address=${encodeURIComponent(address)}&apartment=${encodeURIComponent(apartment)}&reference=${encodeURIComponent(reference)}&comuna=${encodeURIComponent(comuna)}&city=${encodeURIComponent(city)}&requestedDate=${encodeURIComponent(requestedDate)}&requestedTime=${encodeURIComponent(requestedTime)}`}
+                href={`/servicios/${categorySlug}?${contextQuery}`}
                 className="cta ghost small"
               >
                 Cambiar dirección y horario

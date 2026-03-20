@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { MarketNav } from "@/components/market-nav";
+import { parseCleaningRecommendedHours } from "@/lib/cleaning-duration-estimator";
 import { COVERAGE_UNAVAILABLE_MESSAGE, inferCommuneFromAddress, normalizeCommune } from "@/lib/communes";
 
 export const dynamic = "force-dynamic";
@@ -125,6 +126,8 @@ export default function ReservarPage() {
   const [selectedSlotId, setSelectedSlotId] = useState("");
 
   const [hours, setHours] = useState(2);
+  const [recommendedHours, setRecommendedHours] = useState<number | null>(null);
+  const [estimatedHoursRange, setEstimatedHoursRange] = useState("");
   const [materials, setMaterials] = useState(false);
   const [urgency, setUrgency] = useState(false);
   const [travelFeeClp, setTravelFeeClp] = useState(0);
@@ -223,6 +226,9 @@ export default function ReservarPage() {
     const serviceId = params.get("serviceId");
     const proId = params.get("proId");
     const startsAt = params.get("startsAt");
+    const suggestedHours = parseCleaningRecommendedHours(params.get("recommendedHours"));
+    const estimatedMinHours = params.get("estimatedMinHours");
+    const estimatedMaxHours = params.get("estimatedMaxHours");
     const addressLine = params.get("address");
     const city = params.get("city");
     const commune = params.get("commune") ?? params.get("comuna");
@@ -238,6 +244,13 @@ export default function ReservarPage() {
       if (derivedDate) {
         setFilters((prev) => ({ ...prev, date: derivedDate }));
       }
+    }
+    if (suggestedHours) {
+      setRecommendedHours(suggestedHours);
+      setHours(suggestedHours);
+    }
+    if (estimatedMinHours && estimatedMaxHours) {
+      setEstimatedHoursRange(`${estimatedMinHours} a ${estimatedMaxHours} horas`);
     }
     if (addressLine || city || postalCode) {
       setAddress((prev) => ({
@@ -840,6 +853,12 @@ export default function ReservarPage() {
                     <label>
                       Horas (1-8)
                       <input type="number" min={1} max={8} value={hours} onChange={(e) => setHours(Number(e.target.value) || 1)} />
+                      {recommendedHours ? (
+                        <small className="input-hint">
+                          Recomendación WeTask: {estimatedHoursRange ? `${estimatedHoursRange} · ` : ""}
+                          reserva sugerida {recommendedHours} hora(s).
+                        </small>
+                      ) : null}
                     </label>
                     <label>
                       Desplazamiento (CLP)
@@ -889,6 +908,12 @@ export default function ReservarPage() {
                   <div className="price-box booking-price-box">
                     Resumen en vivo: ({clp(baseHourly)} x {hours}h) + extras {clp(extrasTotal)} + comisión {clp(commission)} = <strong>{clp(total)}</strong>
                   </div>
+                  {recommendedHours ? (
+                    <p className="minimal-note">
+                      Tiempo recomendado para este servicio: <strong>{recommendedHours} hora(s)</strong>
+                      {estimatedHoursRange ? ` · Rango estimado ${estimatedHoursRange}` : ""}
+                    </p>
+                  ) : null}
                   <p className="minimal-note">Pago seguro procesado por Mercado Pago.</p>
                 </section>
               </div>
@@ -915,6 +940,12 @@ export default function ReservarPage() {
                 <p>
                   Horas estimadas: <strong>{hours}</strong> · Total: <strong>{clp(total)}</strong>
                 </p>
+                {recommendedHours ? (
+                  <p>
+                    Recomendación WeTask: <strong>{recommendedHours} hora(s)</strong>
+                    {estimatedHoursRange ? ` · ${estimatedHoursRange}` : ""}
+                  </p>
+                ) : null}
               </div>
 
               {!mercadoPagoPublicKey ? (

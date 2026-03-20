@@ -17,6 +17,7 @@ import {
   getChefScopeServiceLabel,
   normalizeChefScope
 } from "@/lib/chef-scope";
+import { copyCleaningEstimateParams, parseCleaningRecommendedHours } from "@/lib/cleaning-duration-estimator";
 import { getChefServiceDefinition } from "@/lib/chef-service-types";
 import { getCleaningServiceDefinition } from "@/lib/cleaning-service-types";
 import {
@@ -554,6 +555,9 @@ export default function ProDetailPage() {
   const requestedCommune = searchParams.get("commune") ?? searchParams.get("comuna") ?? "";
   const requestedCity = searchParams.get("city") ?? "";
   const requestedServiceId = searchParams.get("serviceId") ?? "";
+  const requestedRecommendedHours = parseCleaningRecommendedHours(searchParams.get("recommendedHours"));
+  const requestedEstimatedMinHours = searchParams.get("estimatedMinHours") ?? "";
+  const requestedEstimatedMaxHours = searchParams.get("estimatedMaxHours") ?? "";
   const initialDate = isValidYmd(requestedDate) ? requestedDate! : dateInputDefault();
   const [date, setDate] = useState(initialDate);
   const [selectedDay, setSelectedDay] = useState(initialDate);
@@ -893,6 +897,7 @@ export default function ProDetailPage() {
     if (requestedReference) qs.set("reference", requestedReference);
     if (requestedCommune) qs.set("commune", requestedCommune);
     if (requestedCity) qs.set("city", requestedCity);
+    copyCleaningEstimateParams(searchParams, qs);
     return `/reservar?${qs.toString()}`;
   };
   const focusLabel = normalizedPrimaryCategorySlug === "mascotas" ? "Tipos de mascota" : "Especialidades";
@@ -945,6 +950,17 @@ export default function ProDetailPage() {
                     <strong>Disponibilidad</strong>
                     <span>{dayGroups.length} día(s) con agenda visible para reserva.</span>
                   </div>
+                  {requestedRecommendedHours ? (
+                    <div className="auth-flow-meta-card">
+                      <strong>Tiempo sugerido</strong>
+                      <span>
+                        {requestedEstimatedMinHours && requestedEstimatedMaxHours
+                          ? `${requestedEstimatedMinHours} a ${requestedEstimatedMaxHours} horas · `
+                          : ""}
+                        Recomendado: {requestedRecommendedHours} h
+                      </span>
+                    </div>
+                  ) : null}
                 </div>
               </div>
 

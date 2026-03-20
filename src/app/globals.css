@@ -5805,6 +5805,71 @@ textarea {
   box-shadow: 0 14px 28px rgba(19, 42, 87, 0.08);
 }
 
+.service-duration-card {
+  display: grid;
+  gap: 16px;
+  padding: 18px;
+  border: 1px solid #d6e7f5;
+  border-radius: 22px;
+  background: linear-gradient(180deg, #fbfdff 0%, #f2f8ff 100%);
+}
+
+.service-duration-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.service-duration-toggles {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.service-duration-extras {
+  display: grid;
+  gap: 10px;
+}
+
+.service-duration-extras strong {
+  color: #173b5f;
+  font-size: 0.94rem;
+}
+
+.service-duration-extras .onboarding-check-card span {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.service-duration-extras .onboarding-check-card small {
+  color: #5f7b95;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.service-duration-result {
+  display: grid;
+  gap: 6px;
+  padding: 14px 16px;
+  border-radius: 18px;
+  border: 1px dashed #bfd5e8;
+  background: rgba(255, 255, 255, 0.82);
+  color: #5f7b95;
+}
+
+.service-duration-result strong {
+  color: #173b5f;
+  font-size: 1.06rem;
+}
+
+.service-duration-result.ready {
+  border-style: solid;
+  border-color: #9ec7e5;
+  background: linear-gradient(180deg, #ffffff 0%, #edf7ff 100%);
+}
+
 .auth-service-card-scope {
   border-width: 2px;
 }

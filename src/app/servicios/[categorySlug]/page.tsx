@@ -2,12 +2,24 @@
 
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import { AuthHeroNav } from "@/components/auth-hero-nav";
 import { BABYSITTER_TASK_INCLUDED_OPTIONS } from "@/lib/babysitter-scope";
 import { CHEF_TASK_INCLUDED_OPTIONS } from "@/lib/chef-scope";
 import { getChefServiceDefinition } from "@/lib/chef-service-types";
 import { CLEANING_TASK_INCLUDED_OPTIONS } from "@/lib/cleaning-scope";
+import {
+  CLEANING_DIRT_LEVEL_OPTIONS,
+  CLEANING_EXTRA_OPTIONS,
+  CLEANING_OCCUPANCY_OPTIONS,
+  CLEANING_SIZE_OPTIONS,
+  estimateCleaningDuration,
+  isCleaningDirtLevel,
+  isCleaningExtraTask,
+  isCleaningOccupancy,
+  isCleaningSizeBand,
+  parseCleaningServiceSlug
+} from "@/lib/cleaning-duration-estimator";
 import { getCleaningServiceDefinition } from "@/lib/cleaning-service-types";
 import { COVERAGE_UNAVAILABLE_MESSAGE, inferCommuneFromAddress, normalizeCommune } from "@/lib/communes";
 import { IRONING_TASK_INCLUDED_OPTIONS } from "@/lib/ironing-scope";
@@ -71,6 +83,25 @@ export default function ServicioCategoriaPage() {
       .filter(Boolean)
       .filter((item) => availableTaskOptions.some((option) => option.value === item))
   );
+  const [cleaningBedrooms, setCleaningBedrooms] = useState(query.get("cleaningBedrooms") ?? "");
+  const [cleaningBathrooms, setCleaningBathrooms] = useState(query.get("cleaningBathrooms") ?? "");
+  const [cleaningSize, setCleaningSize] = useState(
+    isCleaningSizeBand(query.get("cleaningSize") ?? "") ? (query.get("cleaningSize") as string) : ""
+  );
+  const [cleaningDirt, setCleaningDirt] = useState(
+    isCleaningDirtLevel(query.get("cleaningDirt") ?? "") ? (query.get("cleaningDirt") as string) : ""
+  );
+  const [cleaningOccupancy, setCleaningOccupancy] = useState(
+    isCleaningOccupancy(query.get("cleaningOccupancy") ?? "") ? (query.get("cleaningOccupancy") as string) : ""
+  );
+  const [cleaningExtras, setCleaningExtras] = useState<string[]>(
+    (query.get("cleaningExtras") ?? "")
+      .split(",")
+      .map((item) => item.trim())
+      .filter((item): item is string => Boolean(item) && isCleaningExtraTask(item))
+  );
+  const [cleaningKitchen, setCleaningKitchen] = useState(query.get("cleaningKitchen") !== "false");
+  const [cleaningLivingDining, setCleaningLivingDining] = useState(query.get("cleaningLivingDining") !== "false");
   const autoAdvanceCategorySlugs = new Set([
     "limpieza",
     "mascotas",
@@ -82,6 +113,7 @@ export default function ServicioCategoriaPage() {
     "planchado"
   ]);
   const autoAdvanceOnServiceSelect = category ? autoAdvanceCategorySlugs.has(category.slug) : false;
+  const isCleaningCategory = category?.slug === "limpieza";
 
   useEffect(() => {
     const loadSession = async () => {
@@ -187,6 +219,42 @@ export default function ServicioCategoriaPage() {
     setDetectedCommune(commune);
   }, [street]);
 
+  const selectedCleaningServiceSlug = useMemo(() => {
+    if (!isCleaningCategory || !category || !selectedServiceId) return null;
+    const service = category.services.find((item) => item.id === selectedServiceId);
+    return parseCleaningServiceSlug(service?.slug);
+  }, [category, isCleaningCategory, selectedServiceId]);
+
+  const cleaningEstimate = useMemo(() => {
+    if (!selectedCleaningServiceSlug) return null;
+    const bedrooms = Number(cleaningBedrooms);
+    const bathrooms = Number(cleaningBathrooms);
+    if (!Number.isFinite(bedrooms) || !Number.isFinite(bathrooms)) return null;
+    if (!isCleaningSizeBand(cleaningSize) || !isCleaningDirtLevel(cleaningDirt) || !isCleaningOccupancy(cleaningOccupancy)) return null;
+
+    return estimateCleaningDuration({
+      serviceSlug: selectedCleaningServiceSlug,
+      bedrooms,
+      bathrooms,
+      sizeBand: cleaningSize,
+      dirtLevel: cleaningDirt,
+      occupancy: cleaningOccupancy,
+      hasKitchen: cleaningKitchen,
+      hasLivingDining: cleaningLivingDining,
+      extras: cleaningExtras.filter(isCleaningExtraTask)
+    });
+  }, [
+    cleaningBathrooms,
+    cleaningBedrooms,
+    cleaningDirt,
+    cleaningExtras,
+    cleaningKitchen,
+    cleaningLivingDining,
+    cleaningOccupancy,
+    cleaningSize,
+    selectedCleaningServiceSlug
+  ]);
+
   const saveCoverageEmail = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!coverageEmail.trim()) return;
@@ -228,6 +296,16 @@ export default function ServicioCategoriaPage() {
       setCoverageNote(COVERAGE_UNAVAILABLE_MESSAGE);
       return;
     }
+    if (category?.slug === "limpieza") {
+      if (!cleaningBedrooms || !cleaningBathrooms || !cleaningSize || !cleaningDirt || !cleaningOccupancy) {
+        setCoverageNote("Completa habitaciones, baños y condiciones del espacio para recomendar la duración del aseo.");
+        return;
+      }
+      if (!cleaningEstimate) {
+        setCoverageNote("No pudimos calcular la duración estimada. Revisa los datos de tu hogar y vuelve a intentarlo.");
+        return;
+      }
+    }
     setCoverageNote("");
 
     const qs = new URLSearchParams({
@@ -241,6 +319,19 @@ export default function ServicioCategoriaPage() {
     if (selectedTasks.length > 0) qs.set("tasks", selectedTasks.join(","));
     const nextServiceId = serviceIdOverride ?? selectedServiceId;
     if (nextServiceId) qs.set("serviceId", nextServiceId);
+    if (category?.slug === "limpieza" && cleaningEstimate) {
+      qs.set("cleaningBedrooms", cleaningBedrooms);
+      qs.set("cleaningBathrooms", cleaningBathrooms);
+      qs.set("cleaningSize", cleaningSize);
+      qs.set("cleaningDirt", cleaningDirt);
+      qs.set("cleaningOccupancy", cleaningOccupancy);
+      qs.set("cleaningKitchen", String(cleaningKitchen));
+      qs.set("cleaningLivingDining", String(cleaningLivingDining));
+      if (cleaningExtras.length > 0) qs.set("cleaningExtras", cleaningExtras.join(","));
+      qs.set("recommendedHours", String(cleaningEstimate.recommendedHours));
+      qs.set("estimatedMinHours", String(cleaningEstimate.minHours));
+      qs.set("estimatedMaxHours", String(cleaningEstimate.maxHours));
+    }
     const nextUrl = `/servicios/${category.slug}/pros?${qs.toString()}`;
     if (sessionChecked && !hasSession) {
       router.push(`/ingresar/cliente?next=${encodeURIComponent(nextUrl)}`);
@@ -252,6 +343,10 @@ export default function ServicioCategoriaPage() {
 
   const toggleTask = (task: string) => {
     setSelectedTasks((current) => (current.includes(task) ? current.filter((item) => item !== task) : [...current, task]));
+  };
+
+  const toggleCleaningExtra = (value: string) => {
+    setCleaningExtras((current) => (current.includes(value) ? current.filter((item) => item !== value) : [...current, value]));
   };
 
   const openPros = (event: FormEvent) => {
@@ -360,6 +455,112 @@ export default function ServicioCategoriaPage() {
                       </div>
                     </div>
                   ) : null}
+                  {isCleaningCategory ? (
+                    <div className="full service-duration-card">
+                      <div className="panel-head">
+                        <h3>Ayúdanos a estimar la duración</h3>
+                        <p>Con esto te recomendamos cuántas horas reservar según tu casa y el tipo de aseo.</p>
+                      </div>
+
+                      <div className="service-duration-grid">
+                        <label>
+                          Habitaciones
+                          <select value={cleaningBedrooms} onChange={(event) => setCleaningBedrooms(event.target.value)} required>
+                            <option value="">Selecciona</option>
+                            <option value="0">Estudio / sin dormitorios</option>
+                            <option value="1">1 habitación</option>
+                            <option value="2">2 habitaciones</option>
+                            <option value="3">3 habitaciones</option>
+                            <option value="4">4 habitaciones</option>
+                            <option value="5">5 o más</option>
+                          </select>
+                        </label>
+                        <label>
+                          Baños
+                          <select value={cleaningBathrooms} onChange={(event) => setCleaningBathrooms(event.target.value)} required>
+                            <option value="">Selecciona</option>
+                            <option value="1">1 baño</option>
+                            <option value="2">2 baños</option>
+                            <option value="3">3 baños</option>
+                            <option value="4">4 baños</option>
+                            <option value="5">5 o más</option>
+                          </select>
+                        </label>
+                        <label>
+                          Tamaño aproximado
+                          <select value={cleaningSize} onChange={(event) => setCleaningSize(event.target.value)} required>
+                            <option value="">Selecciona</option>
+                            {CLEANING_SIZE_OPTIONS.map((option) => (
+                              <option key={option.value} value={option.value}>
+                                {option.label} · {option.helper}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                        <label>
+                          Nivel de suciedad
+                          <select value={cleaningDirt} onChange={(event) => setCleaningDirt(event.target.value)} required>
+                            <option value="">Selecciona</option>
+                            {CLEANING_DIRT_LEVEL_OPTIONS.map((option) => (
+                              <option key={option.value} value={option.value}>
+                                {option.label}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                        <label className="full">
+                          Estado del espacio
+                          <select value={cleaningOccupancy} onChange={(event) => setCleaningOccupancy(event.target.value)} required>
+                            <option value="">Selecciona</option>
+                            {CLEANING_OCCUPANCY_OPTIONS.map((option) => (
+                              <option key={option.value} value={option.value}>
+                                {option.label}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                      </div>
+
+                      <div className="service-duration-toggles">
+                        <label className={`onboarding-check-card ${cleaningKitchen ? "active" : ""}`}>
+                          <input type="checkbox" checked={cleaningKitchen} onChange={() => setCleaningKitchen((current) => !current)} />
+                          <span>Incluir cocina</span>
+                        </label>
+                        <label className={`onboarding-check-card ${cleaningLivingDining ? "active" : ""}`}>
+                          <input type="checkbox" checked={cleaningLivingDining} onChange={() => setCleaningLivingDining((current) => !current)} />
+                          <span>Incluir living / comedor</span>
+                        </label>
+                      </div>
+
+                      <div className="service-duration-extras">
+                        <strong>Extras que agregan tiempo</strong>
+                        <div className="onboarding-checkbox-grid onboarding-checkbox-grid-compact">
+                          {CLEANING_EXTRA_OPTIONS.map((extra) => (
+                            <label key={extra.value} className={`onboarding-check-card ${cleaningExtras.includes(extra.value) ? "active" : ""}`}>
+                              <input
+                                type="checkbox"
+                                checked={cleaningExtras.includes(extra.value)}
+                                onChange={() => toggleCleaningExtra(extra.value)}
+                              />
+                              <span>
+                                {extra.label}
+                                <small>+{extra.minutes} min</small>
+                              </span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className={`service-duration-result ${cleaningEstimate ? "ready" : ""}`}>
+                        <strong>{cleaningEstimate ? `${cleaningEstimate.minHours} a ${cleaningEstimate.maxHours} horas` : "Completa los datos para estimar el tiempo"}</strong>
+                        <span>
+                          {cleaningEstimate
+                            ? `${cleaningEstimate.summary} Si quieres irte a la segura, reserva ${cleaningEstimate.recommendedHours} hora(s).`
+                            : "Te ayudaremos a calcular una recomendación antes de mostrar taskers."}
+                        </span>
+                      </div>
+                    </div>
+                  ) : null}
                   <label className="full">
                     Tipo de servicio
                     <div className={`auth-service-grid ${autoAdvanceOnServiceSelect ? "auth-service-grid-compact" : "auth-service-grid-cleaning"}`}>
@@ -394,6 +595,11 @@ export default function ServicioCategoriaPage() {
                             <span>{cleaningDefinition?.forClients ?? chefDefinition?.forClients ?? service.description}</span>
                             {isActive ? (
                               <div className="auth-service-card-detail">
+                                {isCleaningCategory && cleaningEstimate ? (
+                                  <span>
+                                    Tiempo sugerido: {cleaningEstimate.minHours} a {cleaningEstimate.maxHours} horas · Recomendado: {cleaningEstimate.recommendedHours} h.
+                                  </span>
+                                ) : null}
                                 {cleaningDefinition ? <span>Incluye: {cleaningDefinition.includes.slice(0, 4).join(", ")}.</span> : null}
                                 {chefDefinition ? <span>Incluye: {chefDefinition.includes.slice(0, 4).join(", ")}.</span> : null}
                                 {cleaningDefinition?.excludes?.length ? <span>No incluye: {cleaningDefinition.excludes.slice(0, 3).join(", ")}.</span> : null}
