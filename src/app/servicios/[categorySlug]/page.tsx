@@ -46,6 +46,8 @@ export default function ServicioCategoriaPage() {
   const [category, setCategory] = useState<Category | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [sessionChecked, setSessionChecked] = useState(false);
+  const [hasSession, setHasSession] = useState(false);
   const [coverageNote, setCoverageNote] = useState("");
   const [detectedCommune, setDetectedCommune] = useState<string | null>(null);
   const [coverageEmail, setCoverageEmail] = useState("");
@@ -80,6 +82,21 @@ export default function ServicioCategoriaPage() {
     "planchado"
   ]);
   const autoAdvanceOnServiceSelect = category ? autoAdvanceCategorySlugs.has(category.slug) : false;
+
+  useEffect(() => {
+    const loadSession = async () => {
+      try {
+        const response = await fetch("/api/auth/session");
+        const data = (await response.json()) as { session?: { userId?: string | null } | null };
+        setHasSession(Boolean(data.session?.userId));
+      } catch {
+        setHasSession(false);
+      } finally {
+        setSessionChecked(true);
+      }
+    };
+    void loadSession();
+  }, []);
 
   useEffect(() => {
     const load = async () => {
@@ -224,8 +241,13 @@ export default function ServicioCategoriaPage() {
     if (selectedTasks.length > 0) qs.set("tasks", selectedTasks.join(","));
     const nextServiceId = serviceIdOverride ?? selectedServiceId;
     if (nextServiceId) qs.set("serviceId", nextServiceId);
+    const nextUrl = `/servicios/${category.slug}/pros?${qs.toString()}`;
+    if (sessionChecked && !hasSession) {
+      router.push(`/ingresar/cliente?next=${encodeURIComponent(nextUrl)}`);
+      return;
+    }
 
-    router.push(`/servicios/${category.slug}/pros?${qs.toString()}`);
+    router.push(nextUrl);
   };
 
   const toggleTask = (task: string) => {
