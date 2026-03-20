@@ -60,6 +60,7 @@ export default function ServicioCategoriaPage() {
   const [error, setError] = useState("");
   const [sessionChecked, setSessionChecked] = useState(false);
   const [hasSession, setHasSession] = useState(false);
+  const [sessionRole, setSessionRole] = useState<string | null>(null);
   const [coverageNote, setCoverageNote] = useState("");
   const [detectedCommune, setDetectedCommune] = useState<string | null>(null);
   const [coverageEmail, setCoverageEmail] = useState("");
@@ -114,15 +115,19 @@ export default function ServicioCategoriaPage() {
   ]);
   const autoAdvanceOnServiceSelect = category ? autoAdvanceCategorySlugs.has(category.slug) : false;
   const isCleaningCategory = category?.slug === "limpieza";
+  const isCustomerSession = sessionRole === "CUSTOMER";
+  const skipAddressStep = query.get("skipAddress") === "1";
 
   useEffect(() => {
     const loadSession = async () => {
       try {
         const response = await fetch("/api/auth/session");
-        const data = (await response.json()) as { session?: { userId?: string | null } | null };
+        const data = (await response.json()) as { session?: { userId?: string | null; role?: string | null } | null };
         setHasSession(Boolean(data.session?.userId));
+        setSessionRole(data.session?.role ?? null);
       } catch {
         setHasSession(false);
+        setSessionRole(null);
       } finally {
         setSessionChecked(true);
       }
@@ -231,6 +236,15 @@ export default function ServicioCategoriaPage() {
       // noop
     }
   }, [street]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (!(skipAddressStep && isCustomerSession)) return;
+    const timer = window.setTimeout(() => {
+      document.getElementById("task-focos")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 160);
+    return () => window.clearTimeout(timer);
+  }, [isCustomerSession, skipAddressStep]);
 
   const selectedCleaningServiceSlug = useMemo(() => {
     if (!isCleaningCategory || !category || !selectedServiceId) return null;
@@ -347,7 +361,7 @@ export default function ServicioCategoriaPage() {
     }
     const nextUrl = `/servicios/${category.slug}/pros?${qs.toString()}`;
     if (sessionChecked && !hasSession) {
-      router.push(`/ingresar/cliente?next=${encodeURIComponent(nextUrl)}`);
+      router.push(`/registro?next=${encodeURIComponent(nextUrl)}`);
       return;
     }
 
@@ -403,57 +417,67 @@ export default function ServicioCategoriaPage() {
                 </div>
 
                 <form className="grid-form auth-flow-form" onSubmit={openPros}>
-                  <label>
-                    Dirección
-                    <input
-                      value={street}
-                      onChange={(event) => {
-                        setStreet(event.target.value);
-                        setSelectedFromAutocomplete(false);
-                        setShowSuggestions(true);
-                      }}
-                      onFocus={() => setShowSuggestions(addressSuggestions.length > 0)}
-                      placeholder="Calle y número"
-                      required
-                    />
-                    {autocompleteLoading ? <p className="input-hint">Buscando direcciones...</p> : null}
-                    {showSuggestions && addressSuggestions.length > 0 ? (
-                      <div className="address-suggestions">
-                        {addressSuggestions.map((suggestion) => (
-                          <button
-                            key={suggestion}
-                            type="button"
-                            className="address-suggestion-btn"
-                            onClick={() => selectAddressSuggestion(suggestion)}
-                          >
-                            {suggestion}
-                          </button>
-                        ))}
+                  {isCustomerSession && street.trim() ? (
+                    <div className="full auth-flow-note-card auth-flow-note-card-compact">
+                      <strong>Usaremos tu dirección guardada</strong>
+                      <span>{street}</span>
+                      <span>{detectedCommune ? `Comuna detectada: ${detectedCommune}` : "Si quieres cambiarla, edítala desde tu panel cliente."}</span>
+                    </div>
+                  ) : (
+                    <>
+                      <label>
+                        Dirección
+                        <input
+                          value={street}
+                          onChange={(event) => {
+                            setStreet(event.target.value);
+                            setSelectedFromAutocomplete(false);
+                            setShowSuggestions(true);
+                          }}
+                          onFocus={() => setShowSuggestions(addressSuggestions.length > 0)}
+                          placeholder="Calle y número"
+                          required
+                        />
+                        {autocompleteLoading ? <p className="input-hint">Buscando direcciones...</p> : null}
+                        {showSuggestions && addressSuggestions.length > 0 ? (
+                          <div className="address-suggestions">
+                            {addressSuggestions.map((suggestion) => (
+                              <button
+                                key={suggestion}
+                                type="button"
+                                className="address-suggestion-btn"
+                                onClick={() => selectAddressSuggestion(suggestion)}
+                              >
+                                {suggestion}
+                              </button>
+                            ))}
+                          </div>
+                        ) : null}
+                      </label>
+                      <label>
+                        Departamento
+                        <input
+                          value={apartment}
+                          onChange={(event) => setApartment(event.target.value)}
+                          placeholder="Ej: 504, Torre B"
+                        />
+                      </label>
+                      <label>
+                        Referencia
+                        <input
+                          value={reference}
+                          onChange={(event) => setReference(event.target.value)}
+                          placeholder="Ej: portón gris, frente a la plaza"
+                        />
+                      </label>
+                      <div className="full auth-flow-note-card">
+                        <strong>Comuna detectada</strong>
+                        <span>{detectedCommune ?? "Aún no detectamos una comuna válida."}</span>
                       </div>
-                    ) : null}
-                  </label>
-                  <label>
-                    Departamento
-                    <input
-                      value={apartment}
-                      onChange={(event) => setApartment(event.target.value)}
-                      placeholder="Ej: 504, Torre B"
-                    />
-                  </label>
-                  <label>
-                    Referencia
-                    <input
-                      value={reference}
-                      onChange={(event) => setReference(event.target.value)}
-                      placeholder="Ej: portón gris, frente a la plaza"
-                    />
-                  </label>
-                  <div className="full auth-flow-note-card">
-                    <strong>Comuna detectada</strong>
-                    <span>{detectedCommune ?? "Aún no detectamos una comuna válida."}</span>
-                  </div>
+                    </>
+                  )}
                   {availableTaskOptions.length > 0 ? (
-                    <div className="full service-task-filter-card">
+                    <div className="full service-task-filter-card" id="task-focos">
                       <div className="panel-head">
                         <h3>Tareas o focos que necesitas</h3>
                         <p>Opcional. Esto nos ayuda a mostrar taskers más alineados antes de entrar a resultados.</p>

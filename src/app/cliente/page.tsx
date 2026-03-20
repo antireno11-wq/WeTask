@@ -96,9 +96,10 @@ export default function ClientePage() {
   const displayedAddress = customAddress.trim() || defaultAddress;
   const servicesHref = useMemo(() => {
     const qs = new URLSearchParams();
-    if (customAddress.trim()) qs.set("address", customAddress.trim());
-    return qs.toString() ? `/services?${qs.toString()}` : "/services";
-  }, [customAddress]);
+    const savedAddress = customAddress.trim() || (defaultAddress !== "Aún no tienes una dirección guardada." ? defaultAddress : "");
+    if (savedAddress) qs.set("address", savedAddress);
+    return qs.toString() ? `/servicios?${qs.toString()}` : "/servicios";
+  }, [customAddress, defaultAddress]);
 
   const upcomingBookings = sortedBookings.filter((item) => new Date(item.scheduledAt).getTime() >= Date.now());
   const historyBookings = sortedBookings.filter((item) => new Date(item.scheduledAt).getTime() < Date.now());

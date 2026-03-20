@@ -18,6 +18,8 @@ export default function ServiciosPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [savedAddress, setSavedAddress] = useState("");
+  const [sessionChecked, setSessionChecked] = useState(false);
+  const [sessionRole, setSessionRole] = useState<string | null>(null);
   const serviceByCategorySlug = new Map<string, { image: string; icon: string }>(
     CORE_SERVICES.map((service) => [service.categorySlug, { image: service.image, icon: service.icon }])
   );
@@ -53,6 +55,21 @@ export default function ServiciosPage() {
   }, []);
 
   useEffect(() => {
+    const loadSession = async () => {
+      try {
+        const response = await fetch("/api/auth/session");
+        const data = (await response.json()) as { session?: { role?: string | null } | null };
+        setSessionRole(data.session?.role ?? null);
+      } catch {
+        setSessionRole(null);
+      } finally {
+        setSessionChecked(true);
+      }
+    };
+    void loadSession();
+  }, []);
+
+  useEffect(() => {
     try {
       const params = new URLSearchParams(window.location.search);
       const fromQuery = params.get("address")?.trim() ?? "";
@@ -62,6 +79,17 @@ export default function ServiciosPage() {
       setSavedAddress("");
     }
   }, []);
+
+  const buildCategoryHref = (slug: string) => {
+    if (sessionChecked && sessionRole === "CUSTOMER") {
+      const qs = new URLSearchParams();
+      if (savedAddress) qs.set("address", savedAddress);
+      qs.set("skipAddress", "1");
+      return `/servicios/${slug}?${qs.toString()}#task-focos`;
+    }
+
+    return `/registro?next=${encodeURIComponent(`/servicios/${slug}`)}`;
+  };
 
   return (
     <main className="auth-flow-screen auth-flow-screen-scroll">
@@ -102,7 +130,7 @@ export default function ServiciosPage() {
               {categories.map((category) => (
                 <Link
                   key={category.id}
-                  href={savedAddress ? `/servicios/${category.slug}?address=${encodeURIComponent(savedAddress)}` : `/servicios/${category.slug}`}
+                  href={buildCategoryHref(category.slug)}
                   className="services-showcase-card"
                 >
                   <div

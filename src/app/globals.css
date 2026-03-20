@@ -5616,11 +5616,20 @@ textarea {
   color: #173b5f;
 }
 
+.auth-flow-note-card-compact {
+  gap: 6px;
+}
+
 .auth-flow-note-card span,
 .auth-flow-status span {
   color: #58718c;
   line-height: 1.55;
   font-size: 0.9rem;
+}
+
+.auth-flow-note-card-compact span:last-child {
+  font-size: 0.88rem;
+  color: #5b748e;
 }
 
 .auth-flow-status {
