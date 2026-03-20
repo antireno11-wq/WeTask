@@ -25,11 +25,12 @@ export function buildWhiteWordmarkLogo(src: string, onReady: (dataUrl: string) =
       Math.round((topLeft[2] + topRight[2] + bottomLeft[2] + bottomRight[2]) / 4)
     ];
 
-    const textStartX = canvas.width * 0.37;
+    const wordmarkStartX = canvas.width * 0.34;
 
     for (let i = 0; i < pixels.length; i += 4) {
       const pixelIndex = i / 4;
       const x = pixelIndex % canvas.width;
+      const y = Math.floor(pixelIndex / canvas.width);
       const r = pixels[i];
       const g = pixels[i + 1];
       const b = pixels[i + 2];
@@ -48,8 +49,8 @@ export function buildWhiteWordmarkLogo(src: string, onReady: (dataUrl: string) =
         pixels[i + 3] = Math.min(pixels[i + 3], 72);
       }
 
-      const isBlueWordmarkPixel = x >= textStartX && b >= r + 12 && g >= r - 6;
-      if (isBlueWordmarkPixel && pixels[i + 3] > 0) {
+      const isWordmarkRegion = x >= wordmarkStartX && y >= canvas.height * 0.18 && y <= canvas.height * 0.82;
+      if (isWordmarkRegion && pixels[i + 3] > 0) {
         pixels[i] = 255;
         pixels[i + 1] = 255;
         pixels[i + 2] = 255;
