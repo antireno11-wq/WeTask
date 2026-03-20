@@ -527,7 +527,7 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 8px;
+  gap: 28px;
   flex-wrap: wrap;
 }
 
@@ -912,6 +912,7 @@ body {
 }
 
 .auth-login-pill {
+  margin-left: 22px;
   background: #ffffff !important;
   color: #16395c !important;
   border-color: #c9dced !important;
@@ -4506,7 +4507,7 @@ textarea {
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 18px;
+  gap: 32px;
   flex-wrap: wrap;
 }
 
@@ -4531,11 +4532,11 @@ textarea {
 }
 
 .auth-hero-links-secondary {
-  margin-left: 10px;
+  margin-left: 22px;
 }
 
 .auth-hero-actions {
-  margin-left: 10px;
+  margin-left: 22px;
 }
 
 .auth-hero-link {
