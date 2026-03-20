@@ -71,6 +71,11 @@ export default function ClientePage() {
   const [customAddress, setCustomAddress] = useState("");
   const [addressDraft, setAddressDraft] = useState("");
   const [editingAddress, setEditingAddress] = useState(false);
+  const [addressSuggestions, setAddressSuggestions] = useState<string[]>([]);
+  const [autocompleteLoading, setAutocompleteLoading] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [selectedFromAutocomplete, setSelectedFromAutocomplete] = useState(false);
+  const [savingAddress, setSavingAddress] = useState(false);
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [feedback, setFeedback] = useState("");
@@ -153,6 +158,63 @@ export default function ClientePage() {
     }
   }, []);
 
+  useEffect(() => {
+    if (!editingAddress) {
+      setAddressSuggestions([]);
+      setShowSuggestions(false);
+      setAutocompleteLoading(false);
+      return;
+    }
+
+    const queryAddress = addressDraft.trim();
+    if (selectedFromAutocomplete) {
+      setAddressSuggestions([]);
+      setShowSuggestions(false);
+      setAutocompleteLoading(false);
+      return;
+    }
+
+    if (queryAddress.length < 4) {
+      setAddressSuggestions([]);
+      setShowSuggestions(false);
+      setAutocompleteLoading(false);
+      return;
+    }
+
+    const controller = new AbortController();
+    const timer = setTimeout(async () => {
+      setAutocompleteLoading(true);
+      try {
+        const response = await fetch(`/api/maps/autocomplete?input=${encodeURIComponent(`${queryAddress}, Santiago, Chile`)}`, {
+          signal: controller.signal
+        });
+        const data = (await response.json()) as { predictions?: string[] };
+        if (!response.ok) {
+          setAddressSuggestions([]);
+          setShowSuggestions(false);
+          return;
+        }
+        const suggestions = Array.isArray(data.predictions) ? data.predictions : [];
+        setAddressSuggestions(suggestions);
+        setShowSuggestions(suggestions.length > 0);
+      } catch {
+        if (!controller.signal.aborted) {
+          setAddressSuggestions([]);
+          setShowSuggestions(false);
+        }
+      } finally {
+        if (!controller.signal.aborted) {
+          setAutocompleteLoading(false);
+        }
+      }
+    }, 320);
+
+    return () => {
+      controller.abort();
+      clearTimeout(timer);
+    };
+  }, [addressDraft, editingAddress, selectedFromAutocomplete]);
+
   const handlePhotoChange = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -179,21 +241,52 @@ export default function ClientePage() {
     }
   };
 
-  const saveAddress = () => {
+  const saveAddress = async () => {
     const nextAddress = addressDraft.trim();
     if (!nextAddress) {
       setError("Ingresa una dirección antes de guardar.");
       return;
     }
-    setCustomAddress(nextAddress);
-    setEditingAddress(false);
-    setFeedback("Dirección actualizada en tu panel.");
+    setSavingAddress(true);
     setError("");
+    setFeedback("");
     try {
-      window.localStorage.setItem("wetask_customer_address", nextAddress);
-    } catch {
-      // noop
+      const response = await fetch(`/api/maps/validate-address?address=${encodeURIComponent(nextAddress)}`);
+      const data = (await response.json()) as {
+        valid?: boolean;
+        normalizedAddress?: string;
+        commune?: string | null;
+        error?: string;
+      };
+
+      if (!response.ok || !data.valid) {
+        throw new Error(data.error || "No pudimos validar esa dirección con Google.");
+      }
+
+      const normalizedAddress = data.normalizedAddress?.trim() || nextAddress;
+      setCustomAddress(normalizedAddress);
+      setAddressDraft(normalizedAddress);
+      setEditingAddress(false);
+      setShowSuggestions(false);
+      setAddressSuggestions([]);
+      setFeedback(data.commune ? `Dirección validada y guardada para ${data.commune}.` : "Dirección validada y guardada en tu panel.");
+      try {
+        window.localStorage.setItem("wetask_customer_address", normalizedAddress);
+      } catch {
+        // noop
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "No pudimos validar la dirección.");
+    } finally {
+      setSavingAddress(false);
     }
+  };
+
+  const selectAddressSuggestion = (value: string) => {
+    setAddressDraft(value);
+    setSelectedFromAutocomplete(true);
+    setAddressSuggestions([]);
+    setShowSuggestions(false);
   };
 
   const statusClassByBooking = (status: string) => {
@@ -264,10 +357,35 @@ export default function ClientePage() {
                 <strong className="client-profile-address">{displayedAddress}</strong>
                 {editingAddress ? (
                   <div className="client-address-editor">
-                    <input value={addressDraft} onChange={(event) => setAddressDraft(event.target.value)} placeholder="Ingresa tu dirección" />
+                    <input
+                      value={addressDraft}
+                      onChange={(event) => {
+                        setAddressDraft(event.target.value);
+                        setSelectedFromAutocomplete(false);
+                        setShowSuggestions(true);
+                      }}
+                      onFocus={() => setShowSuggestions(addressSuggestions.length > 0)}
+                      placeholder="Ingresa tu dirección"
+                    />
+                    {autocompleteLoading ? <p className="input-hint">Buscando direcciones en Google...</p> : null}
+                    {showSuggestions && addressSuggestions.length > 0 ? (
+                      <div className="address-suggestions">
+                        {addressSuggestions.map((suggestion) => (
+                          <button
+                            key={suggestion}
+                            type="button"
+                            className="address-suggestion-btn"
+                            onClick={() => selectAddressSuggestion(suggestion)}
+                          >
+                            {suggestion}
+                          </button>
+                        ))}
+                      </div>
+                    ) : null}
+                    <p className="input-hint">Guardaremos la dirección validada con Google para evitar errores al reservar.</p>
                     <div className="client-profile-actions">
-                      <button className="cta small" type="button" onClick={saveAddress}>
-                        Guardar dirección
+                      <button className="cta small" type="button" onClick={() => void saveAddress()} disabled={savingAddress}>
+                        {savingAddress ? "Validando..." : "Guardar dirección"}
                       </button>
                       <button
                         className="cta ghost small"
@@ -275,6 +393,9 @@ export default function ClientePage() {
                         onClick={() => {
                           setAddressDraft(displayedAddress);
                           setEditingAddress(false);
+                          setAddressSuggestions([]);
+                          setShowSuggestions(false);
+                          setSelectedFromAutocomplete(false);
                         }}
                       >
                         Cancelar
