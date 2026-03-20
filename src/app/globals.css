@@ -4249,7 +4249,7 @@ textarea {
   position: absolute;
   inset: 0;
   background:
-    linear-gradient(110deg, rgba(11, 32, 67, 0.78) 0%, rgba(17, 68, 132, 0.36) 42%, rgba(255, 106, 0, 0.22) 100%),
+    linear-gradient(110deg, rgba(11, 32, 67, 0.66) 0%, rgba(17, 68, 132, 0.31) 42%, rgba(255, 106, 0, 0.19) 100%),
     url("/hero-webel-reference.webp");
   background-position: center;
   background-size: cover;
@@ -4260,7 +4260,7 @@ textarea {
   content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.08) 0%, rgba(13, 36, 70, 0.08) 100%);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.07) 0%, rgba(13, 36, 70, 0.07) 100%);
   backdrop-filter: blur(2px);
 }
 
@@ -5449,7 +5449,7 @@ textarea {
   position: absolute;
   inset: 0;
   background:
-    linear-gradient(118deg, rgba(11, 32, 67, 0.84) 0%, rgba(18, 86, 176, 0.42) 46%, rgba(255, 106, 0, 0.18) 100%),
+    linear-gradient(118deg, rgba(11, 32, 67, 0.71) 0%, rgba(18, 86, 176, 0.36) 46%, rgba(255, 106, 0, 0.15) 100%),
     url("/hero-webel-reference.webp");
   background-position: center;
   background-size: cover;
@@ -5460,7 +5460,7 @@ textarea {
   content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.05) 0%, rgba(13, 36, 70, 0.1) 100%);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.04) 0%, rgba(13, 36, 70, 0.085) 100%);
   backdrop-filter: blur(3px);
 }
 
