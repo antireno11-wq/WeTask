@@ -21,6 +21,7 @@ type TeamUserRow = {
   email: string;
   phone: string | null;
   role: "CUSTOMER" | "PRO" | "ADMIN";
+  roleAssignments: Array<{ code: "CUSTOMER" | "PRO" | "ADMIN"; label: string }>;
   createdAt: string;
   latestActivityAt: string;
   latestActivityLabel: string;
@@ -47,6 +48,11 @@ function roleLabel(role: TeamAdminRow["role"] | TeamUserRow["role"]) {
   if (role === "ADMIN") return "Admin";
   if (role === "PRO") return "Tasker";
   return "Cliente";
+}
+
+function assignmentLabelList(roleAssignments: Array<{ code: "CUSTOMER" | "PRO" | "ADMIN"; label: string }>, fallbackRole: TeamUserRow["role"]) {
+  if (roleAssignments.length > 0) return roleAssignments.map((role) => role.label).join(", ");
+  return roleLabel(fallbackRole);
 }
 
 function dateLabel(value: string) {
@@ -135,7 +141,7 @@ export default function AdminTeamPage() {
         <div className="admin-section-head">
           <div>
             <h3>Crear otro administrador</h3>
-            <p>Crea un administrador nuevo desde cero o usa el correo de alguien existente para darle acceso.</p>
+          <p>Crea un administrador nuevo desde cero o dale acceso admin a alguien que ya exista como cliente o tasker.</p>
           </div>
         </div>
 
@@ -291,7 +297,7 @@ export default function AdminTeamPage() {
                 <div>
                   <h4>{user.fullName}</h4>
                   <p>
-                    {user.email} · {roleLabel(user.role)}
+                    {user.email} · {assignmentLabelList(user.roleAssignments, user.role)}
                   </p>
                   <p>
                     {user.cleaningOnboarding ? `Onboarding: ${user.cleaningOnboarding.status.toLowerCase()}` : "Sin onboarding"} ·{" "}
@@ -302,8 +308,8 @@ export default function AdminTeamPage() {
                   </p>
                 </div>
                 <div className="cta-row admin-team-row-actions">
-                  {user.role === "ADMIN" ? <span className="status status-approved">Admin</span> : null}
-                  {user.role !== "ADMIN" ? (
+                  {user.roleAssignments.some((role) => role.code === "ADMIN") ? <span className="status status-approved">Admin</span> : null}
+                  {!user.roleAssignments.some((role) => role.code === "ADMIN") ? (
                     <button
                       type="button"
                       className="cta ghost small"

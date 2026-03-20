@@ -24,11 +24,22 @@ export async function requireAdminRequest(
       id: true,
       role: true,
       email: true,
-      fullName: true
+      fullName: true,
+      roleAssignments: {
+        select: {
+          role: {
+            select: {
+              code: true
+            }
+          }
+        }
+      }
     }
   });
 
-  if (!user || user.role !== UserRole.ADMIN) {
+  const isAdmin = Boolean(user?.roleAssignments.some((assignment) => assignment.role.code === UserRole.ADMIN));
+
+  if (!user || !isAdmin) {
     return { ok: false, response: NextResponse.json({ error: "No autorizado" }, { status: 403 }) };
   }
 

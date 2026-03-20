@@ -22,18 +22,42 @@ export async function POST(req: NextRequest) {
     const user = body.userId
       ? await prisma.user.findUnique({
           where: { id: body.userId },
-          select: { id: true, email: true, fullName: true, role: true, passwordHash: true, authProvider: true, emailVerifiedAt: true }
+          select: {
+            id: true,
+            email: true,
+            fullName: true,
+            role: true,
+            passwordHash: true,
+            authProvider: true,
+            emailVerifiedAt: true,
+            roleAssignments: { select: { role: { select: { code: true } } } }
+          }
         })
       : await prisma.user.findUnique({
           where: { email: body.email! },
-          select: { id: true, email: true, fullName: true, role: true, passwordHash: true, authProvider: true, emailVerifiedAt: true }
+          select: {
+            id: true,
+            email: true,
+            fullName: true,
+            role: true,
+            passwordHash: true,
+            authProvider: true,
+            emailVerifiedAt: true,
+            roleAssignments: { select: { role: { select: { code: true } } } }
+          }
         });
 
     if (!user) {
       return NextResponse.json({ error: "Usuario no encontrado" }, { status: 404 });
     }
 
-    if (body.role && body.role !== user.role) {
+    const assignedRoles = user.roleAssignments.map((assignment) => assignment.role.code);
+    const requestedRole = body.role ?? user.role;
+    const canLoginAsRequestedRole =
+      requestedRole === user.role ||
+      (requestedRole === UserRole.ADMIN && assignedRoles.includes(UserRole.ADMIN));
+
+    if (body.role && !canLoginAsRequestedRole) {
       return NextResponse.json({ error: "El rol no coincide con el usuario" }, { status: 400 });
     }
 
@@ -53,13 +77,15 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    const sessionRole = requestedRole === UserRole.ADMIN && assignedRoles.includes(UserRole.ADMIN) ? UserRole.ADMIN : user.role;
+
     const response = NextResponse.json(
       {
         session: {
           userId: user.id,
           email: user.email,
           fullName: user.fullName,
-          role: user.role
+          role: sessionRole
         }
       },
       { status: 200 }
@@ -67,7 +93,7 @@ export async function POST(req: NextRequest) {
 
     response.cookies.set({
       name: SESSION_COOKIE_NAME,
-      value: encodeSessionCookie({ userId: user.id, role: user.role, email: user.email, fullName: user.fullName }),
+      value: encodeSessionCookie({ userId: user.id, role: sessionRole, email: user.email, fullName: user.fullName }),
       path: "/",
       httpOnly: true,
       sameSite: "lax",

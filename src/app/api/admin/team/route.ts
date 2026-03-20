@@ -26,6 +26,10 @@ function formatRoleLabel(role: UserRole) {
   return "Cliente";
 }
 
+function hasAdminAssignment(roleAssignments: Array<{ role: { code: UserRole } }>) {
+  return roleAssignments.some((assignment) => assignment.role.code === UserRole.ADMIN);
+}
+
 function formatBookingActivity(kind: "customer" | "pro", booking: { updatedAt: Date; service: { name: string } | null } | null) {
   if (!booking) return null;
   return {
@@ -49,7 +53,15 @@ export async function GET(req: NextRequest) {
 
   const [admins, totalRecentUsers, recentUsers] = await Promise.all([
     prisma.user.findMany({
-      where: { role: UserRole.ADMIN },
+      where: {
+        roleAssignments: {
+          some: {
+            role: {
+              code: UserRole.ADMIN
+            }
+          }
+        }
+      },
       orderBy: [{ fullName: "asc" }],
       select: {
         id: true,
@@ -82,6 +94,16 @@ export async function GET(req: NextRequest) {
         role: true,
         createdAt: true,
         updatedAt: true,
+        roleAssignments: {
+          select: {
+            role: {
+              select: {
+                code: true,
+                label: true
+              }
+            }
+          }
+        },
         professionalProfile: {
           select: {
             isVerified: true,
@@ -140,9 +162,9 @@ export async function GET(req: NextRequest) {
       totalPages: Math.max(1, Math.ceil(totalRecentUsers / query.pageSize)),
       admins: admins.map((user) => ({
         ...user,
-        roleAssignments: user.roleAssignments.map((assignment) => ({
-          code: assignment.role.code,
-          label: assignment.role.label
+          roleAssignments: user.roleAssignments.map((assignment) => ({
+            code: assignment.role.code,
+            label: assignment.role.label
         }))
       })),
       recentUsers: recentUsers.map((user) => {
@@ -182,6 +204,10 @@ export async function GET(req: NextRequest) {
           email: user.email,
           phone: user.phone,
           role: user.role,
+          roleAssignments: user.roleAssignments.map((assignment) => ({
+            code: assignment.role.code,
+            label: assignment.role.label
+          })),
           createdAt: user.createdAt,
           professionalProfile: user.professionalProfile
             ? {
@@ -275,10 +301,41 @@ export async function PATCH(req: NextRequest) {
 
       const existing = await prisma.user.findUnique({
         where: { email },
-        select: { id: true }
+        select: {
+          id: true,
+          fullName: true,
+          email: true,
+          role: true,
+          roleAssignments: {
+            select: {
+              role: {
+                select: {
+                  code: true
+                }
+              }
+            }
+          }
+        }
       });
       if (existing) {
-        return NextResponse.json({ error: "Ya existe una cuenta con ese correo." }, { status: 409 });
+        if (hasAdminAssignment(existing.roleAssignments)) {
+          return NextResponse.json({ error: "Ese correo ya tiene acceso administrador." }, { status: 409 });
+        }
+
+        await prisma.userRoleAssignment.create({
+          data: {
+            userId: existing.id,
+            roleId: roleAdmin.id
+          }
+        });
+
+        return NextResponse.json(
+          {
+            ok: true,
+            message: `${existing.fullName} ya existía en WeTask y ahora también tiene acceso administrador.`
+          },
+          { status: 200 }
+        );
       }
 
       const passwordHash = await hashPassword(password);
@@ -319,6 +376,8 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: "No encontramos un usuario registrado con ese correo." }, { status: 404 });
     }
 
+    const targetHasAdmin = hasAdminAssignment(target.roleAssignments);
+
     if (input.action === "delete_user") {
       const primaryAdminEmail = process.env.PRIMARY_ADMIN_EMAIL?.trim().toLowerCase() ?? null;
 
@@ -330,7 +389,7 @@ export async function PATCH(req: NextRequest) {
         return NextResponse.json({ error: "No se puede borrar el administrador principal configurado en WeTask." }, { status: 409 });
       }
 
-      if (target.role === UserRole.ADMIN) {
+      if (targetHasAdmin) {
         return NextResponse.json({ error: "Primero quítale el acceso admin. Este borrado rápido no elimina cuentas admin." }, { status: 409 });
       }
 
@@ -365,6 +424,10 @@ export async function PATCH(req: NextRequest) {
     }
 
     if (input.action === "grant") {
+      if (targetHasAdmin) {
+        return NextResponse.json({ error: "Ese usuario ya tiene acceso administrador." }, { status: 409 });
+      }
+
       const updated = await prisma.$transaction(async (tx) => {
         await tx.userRoleAssignment.upsert({
           where: {
@@ -380,9 +443,8 @@ export async function PATCH(req: NextRequest) {
           }
         });
 
-        return tx.user.update({
+        return tx.user.findUniqueOrThrow({
           where: { id: target.id },
-          data: { role: UserRole.ADMIN },
           select: {
             id: true,
             fullName: true,
@@ -402,8 +464,18 @@ export async function PATCH(req: NextRequest) {
       );
     }
 
-    const adminCount = await prisma.user.count({ where: { role: UserRole.ADMIN } });
-    if (target.role === UserRole.ADMIN && adminCount <= 1) {
+    const adminCount = await prisma.user.count({
+      where: {
+        roleAssignments: {
+          some: {
+            role: {
+              code: UserRole.ADMIN
+            }
+          }
+        }
+      }
+    });
+    if (targetHasAdmin && adminCount <= 1) {
       return NextResponse.json({ error: "Debe existir al menos un admin activo en WeTask." }, { status: 409 });
     }
 
@@ -435,9 +507,17 @@ export async function PATCH(req: NextRequest) {
         }
       });
 
-      return tx.user.update({
+      const shouldDowngradePrimaryRole = target.role === UserRole.ADMIN;
+
+      if (shouldDowngradePrimaryRole) {
+        await tx.user.update({
+          where: { id: target.id },
+          data: { role: nextRole }
+        });
+      }
+
+      return tx.user.findUniqueOrThrow({
         where: { id: target.id },
-        data: { role: nextRole },
         select: {
           id: true,
           fullName: true,
