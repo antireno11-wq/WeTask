@@ -47,7 +47,7 @@ export default function HomePage() {
           <section className="auth-flow-panel home-hero-strip">
             <div className="home-hero-intro">
               <p className="auth-flow-kicker home-hero-kicker">Marketplace WeTask</p>
-              <h1>Servicios a domicilio confiables para tu rutina.</h1>
+              <h1>Servicios a domicilio confiables para simplificar tu vida.</h1>
               <p>Reserva ayuda real para tu casa, bienestar o día a día con pago protegido y profesionales listos para atenderte.</p>
               <div className="auth-flow-actions">
                 <Link href="/solicitar-tecnico?source=hero_primary" className="cta">
