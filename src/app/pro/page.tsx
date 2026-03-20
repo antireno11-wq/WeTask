@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, MouseEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, MouseEvent, useEffect, useMemo, useRef, useState } from "react";
 import { MarketNav } from "@/components/market-nav";
 import { ACTIVE_MVP_COMMUNES, inferCommuneFromAddress, normalizeCommune, normalizeCommuneList } from "@/lib/communes";
 import { geocodeAddress } from "@/lib/geo";
@@ -223,6 +223,7 @@ export default function ProPage() {
   const [serviceRadiusKm, setServiceRadiusKm] = useState(8);
   const [hourlyRateFromClp, setHourlyRateFromClp] = useState(12000);
   const [serviceCommunes, setServiceCommunes] = useState<string[]>([]);
+  const hourlyRateInputRef = useRef<HTMLInputElement | null>(null);
 
   const [slotDate, setSlotDate] = useState(dateInputDefault());
   const [slotTime, setSlotTime] = useState("09:00");
@@ -480,6 +481,14 @@ export default function ProPage() {
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error inesperado");
     }
+  };
+
+  const openHourlyRateEditor = () => {
+    setIsEditingProfile(true);
+    window.setTimeout(() => {
+      hourlyRateInputRef.current?.focus();
+      hourlyRateInputRef.current?.select();
+    }, 40);
   };
 
   const updateCoverageFromPointer = (clientX: number, clientY: number, rect: DOMRect) => {
@@ -880,6 +889,11 @@ export default function ProPage() {
                   <article className="module-card client-dashboard-card">
                     <h3>Tarifa desde</h3>
                     <p>{clp(hourlyRateFromClp)}/hora</p>
+                    <div className="cta-row">
+                      <button className="cta ghost small" type="button" onClick={openHourlyRateEditor}>
+                        Editar valor por hora
+                      </button>
+                    </div>
                   </article>
                   <article className="module-card client-dashboard-card">
                     <h3>Comunas activas</h3>
@@ -1020,6 +1034,7 @@ export default function ProPage() {
               <label>
                 Tarifa desde (CLP/h)
                 <input
+                  ref={hourlyRateInputRef}
                   type="number"
                   min={5000}
                   value={hourlyRateFromClp}
