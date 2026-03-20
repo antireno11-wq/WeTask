@@ -331,11 +331,18 @@ export default function ServiceProsPage() {
                   <h3>Tareas que necesitas</h3>
                   <p>Filtra taskers según lo que sí incluyen dentro del alcance base de este servicio.</p>
                 </div>
-                <div className="onboarding-checkbox-grid onboarding-checkbox-grid-compact">
+                <div className="onboarding-task-checklist onboarding-task-checklist-compact">
+                  <div className="onboarding-task-checklist-head onboarding-task-checklist-head-neutral">
+                    <span>Lista de tareas</span>
+                    <span>Filtro</span>
+                  </div>
                   {availableTaskOptions.map((task) => (
-                    <label key={task.value} className="onboarding-check-card">
-                      <input type="checkbox" checked={selectedTasks.includes(task.value)} onChange={() => toggleTask(task.value)} />
-                      <span>{task.label}</span>
+                    <label key={task.value} className={`onboarding-task-checklist-row ${selectedTasks.includes(task.value) ? "checked" : ""}`}>
+                      <span className="onboarding-task-checklist-label">{task.label}</span>
+                      <span className="onboarding-task-checklist-control">
+                        <input type="checkbox" checked={selectedTasks.includes(task.value)} onChange={() => toggleTask(task.value)} />
+                        <span className="onboarding-task-checklist-box" aria-hidden />
+                      </span>
                     </label>
                   ))}
                 </div>

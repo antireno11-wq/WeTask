@@ -6249,6 +6249,16 @@ textarea {
   margin: 0;
 }
 
+.onboarding-task-checklist-compact {
+  gap: 0;
+  border-radius: 20px;
+  box-shadow: none;
+}
+
+.onboarding-task-checklist-head-neutral {
+  background: linear-gradient(90deg, #5b80cd 0%, #7aa2ea 100%);
+}
+
 .service-pros-shell {
   align-items: start;
 }

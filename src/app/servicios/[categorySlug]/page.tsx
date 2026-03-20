@@ -219,6 +219,19 @@ export default function ServicioCategoriaPage() {
     setDetectedCommune(commune);
   }, [street]);
 
+  useEffect(() => {
+    if (street.trim()) return;
+    try {
+      const savedAddress = window.localStorage.getItem("wetask_customer_address")?.trim() ?? "";
+      if (savedAddress) {
+        setStreet(savedAddress);
+        setSelectedFromAutocomplete(true);
+      }
+    } catch {
+      // noop
+    }
+  }, [street]);
+
   const selectedCleaningServiceSlug = useMemo(() => {
     if (!isCleaningCategory || !category || !selectedServiceId) return null;
     const service = category.services.find((item) => item.id === selectedServiceId);
@@ -445,11 +458,18 @@ export default function ServicioCategoriaPage() {
                         <h3>Tareas o focos que necesitas</h3>
                         <p>Opcional. Esto nos ayuda a mostrar taskers más alineados antes de entrar a resultados.</p>
                       </div>
-                      <div className="onboarding-checkbox-grid onboarding-checkbox-grid-compact">
+                      <div className="onboarding-task-checklist onboarding-task-checklist-compact">
+                        <div className="onboarding-task-checklist-head onboarding-task-checklist-head-neutral">
+                          <span>Lista de tareas</span>
+                          <span>Agregar</span>
+                        </div>
                         {availableTaskOptions.map((task) => (
-                          <label key={task.value} className="onboarding-check-card">
-                            <input type="checkbox" checked={selectedTasks.includes(task.value)} onChange={() => toggleTask(task.value)} />
-                            <span>{task.label}</span>
+                          <label key={task.value} className={`onboarding-task-checklist-row ${selectedTasks.includes(task.value) ? "checked" : ""}`}>
+                            <span className="onboarding-task-checklist-label">{task.label}</span>
+                            <span className="onboarding-task-checklist-control">
+                              <input type="checkbox" checked={selectedTasks.includes(task.value)} onChange={() => toggleTask(task.value)} />
+                              <span className="onboarding-task-checklist-box" aria-hidden />
+                            </span>
                           </label>
                         ))}
                       </div>

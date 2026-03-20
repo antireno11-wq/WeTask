@@ -94,6 +94,11 @@ export default function ClientePage() {
       .join(", ");
   }, [bookings]);
   const displayedAddress = customAddress.trim() || defaultAddress;
+  const servicesHref = useMemo(() => {
+    const qs = new URLSearchParams();
+    if (customAddress.trim()) qs.set("address", customAddress.trim());
+    return qs.toString() ? `/services?${qs.toString()}` : "/services";
+  }, [customAddress]);
 
   const upcomingBookings = sortedBookings.filter((item) => new Date(item.scheduledAt).getTime() >= Date.now());
   const historyBookings = sortedBookings.filter((item) => new Date(item.scheduledAt).getTime() < Date.now());
@@ -328,7 +333,7 @@ export default function ClientePage() {
             </div>
 
             <div className="auth-flow-actions">
-              <Link href="/solicitar-tecnico" className="cta">
+              <Link href={servicesHref} className="cta">
                 Buscar servicio
               </Link>
               <button className="cta ghost" type="button" onClick={() => void refreshDashboard()} disabled={!sessionUserId}>
@@ -407,7 +412,7 @@ export default function ClientePage() {
                   <button className="cta ghost small" type="button" onClick={() => setEditingAddress((current) => !current)}>
                     Editar dirección
                   </button>
-                  <Link className="cta small" href="/services">
+                  <Link className="cta small" href={servicesHref}>
                     Explorar servicios
                   </Link>
                 </div>

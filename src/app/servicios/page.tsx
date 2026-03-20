@@ -17,6 +17,7 @@ export default function ServiciosPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [savedAddress, setSavedAddress] = useState("");
   const serviceByCategorySlug = new Map<string, { image: string; icon: string }>(
     CORE_SERVICES.map((service) => [service.categorySlug, { image: service.image, icon: service.icon }])
   );
@@ -49,6 +50,17 @@ export default function ServiciosPage() {
       }
     };
     void load();
+  }, []);
+
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const fromQuery = params.get("address")?.trim() ?? "";
+      const fromStorage = window.localStorage.getItem("wetask_customer_address")?.trim() ?? "";
+      setSavedAddress(fromQuery || fromStorage);
+    } catch {
+      setSavedAddress("");
+    }
   }, []);
 
   return (
@@ -88,7 +100,11 @@ export default function ServiciosPage() {
 
             <div className="services-showcase-grid">
               {categories.map((category) => (
-                <Link key={category.id} href={`/servicios/${category.slug}`} className="services-showcase-card">
+                <Link
+                  key={category.id}
+                  href={savedAddress ? `/servicios/${category.slug}?address=${encodeURIComponent(savedAddress)}` : `/servicios/${category.slug}`}
+                  className="services-showcase-card"
+                >
                   <div
                     className="services-showcase-media"
                     style={{ backgroundImage: `url("${serviceByCategorySlug.get(category.slug)?.image ?? ""}")` }}
