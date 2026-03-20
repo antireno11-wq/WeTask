@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { buildVerificationEmailTemplate, sendPlatformEmail } from "@/lib/notifications";
 import { prisma } from "@/lib/prisma";
+import { resolvePublicAppUrl } from "@/lib/public-app-url";
 import { randomToken, sha256 } from "@/lib/security";
 
 export const dynamic = "force-dynamic";
@@ -17,6 +18,7 @@ export async function POST(req: NextRequest) {
     if (user.emailVerifiedAt) return NextResponse.json({ ok: true, alreadyVerified: true }, { status: 200 });
 
     const code = randomToken(6).replace(/[^0-9]/g, "").slice(0, 6).padEnd(6, "0");
+    const appUrl = resolvePublicAppUrl(req);
     await prisma.emailVerificationToken.create({
       data: {
         userId: user.id,
@@ -25,7 +27,7 @@ export async function POST(req: NextRequest) {
       }
     });
 
-    const verifyUrl = new URL("/verificar-correo", req.nextUrl.origin);
+    const verifyUrl = new URL("/verificar-correo", appUrl);
     verifyUrl.searchParams.set("token", code);
 
     await sendPlatformEmail({
@@ -38,7 +40,7 @@ export async function POST(req: NextRequest) {
         fullName: "Hola",
         verifyUrl: verifyUrl.toString(),
         code,
-        appUrl: process.env.NEXT_PUBLIC_APP_URL || req.nextUrl.origin
+        appUrl
       })
     });
 

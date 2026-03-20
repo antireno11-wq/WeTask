@@ -4,6 +4,7 @@ import { encodeSessionCookie, SESSION_COOKIE_NAME } from "@/lib/auth";
 import { normalizeCommune } from "@/lib/communes";
 import { buildVerificationEmailTemplate, sendPlatformEmail } from "@/lib/notifications";
 import { prisma } from "@/lib/prisma";
+import { resolvePublicAppUrl } from "@/lib/public-app-url";
 import { hashPassword, randomToken, sha256 } from "@/lib/security";
 
 export const dynamic = "force-dynamic";
@@ -157,6 +158,7 @@ export async function POST(req: NextRequest) {
     let emailVerificationToken: string | null = null;
     let emailDeliveryConfigured = true;
     if (authProvider === "EMAIL") {
+      const appUrl = resolvePublicAppUrl(req);
       emailVerificationToken = createEmailVerificationCode();
       await prisma.emailVerificationToken.create({
         data: {
@@ -168,13 +170,13 @@ export async function POST(req: NextRequest) {
 
       emailDeliveryConfigured = Boolean(process.env.RESEND_API_KEY && process.env.RESEND_FROM_EMAIL);
       if (emailDeliveryConfigured) {
-        const verifyUrl = new URL("/verificar-correo", req.nextUrl.origin);
+        const verifyUrl = new URL("/verificar-correo", appUrl);
         verifyUrl.searchParams.set("token", emailVerificationToken);
         const html = buildVerificationEmailTemplate({
           fullName: user.fullName,
           verifyUrl: verifyUrl.toString(),
           code: emailVerificationToken,
-          appUrl: process.env.NEXT_PUBLIC_APP_URL || req.nextUrl.origin
+          appUrl
         });
 
         await sendPlatformEmail({
