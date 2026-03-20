@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { sendPlatformEmail } from "@/lib/notifications";
+import { buildVerificationEmailTemplate, sendPlatformEmail } from "@/lib/notifications";
 import { prisma } from "@/lib/prisma";
 import { randomToken, sha256 } from "@/lib/security";
 
@@ -25,10 +25,21 @@ export async function POST(req: NextRequest) {
       }
     });
 
+    const verifyUrl = new URL("/verificar-correo", req.nextUrl.origin);
+    verifyUrl.searchParams.set("token", code);
+
     await sendPlatformEmail({
       to: email,
       subject: "Tu código de verificación WeTask",
-      text: `Tu código de verificación es ${code}. Expira en 10 minutos.`
+      text:
+        `Tu código de verificación es ${code}. Expira en 10 minutos.\n\n` +
+        `También puedes verificarlo desde este enlace:\n${verifyUrl.toString()}`,
+      html: buildVerificationEmailTemplate({
+        fullName: "Hola",
+        verifyUrl: verifyUrl.toString(),
+        code,
+        appUrl: process.env.NEXT_PUBLIC_APP_URL || req.nextUrl.origin
+      })
     });
 
     return NextResponse.json(

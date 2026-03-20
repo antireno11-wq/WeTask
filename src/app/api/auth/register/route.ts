@@ -2,11 +2,15 @@ import { UserRole } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { encodeSessionCookie, SESSION_COOKIE_NAME } from "@/lib/auth";
 import { normalizeCommune } from "@/lib/communes";
-import { sendPlatformEmail } from "@/lib/notifications";
+import { buildVerificationEmailTemplate, sendPlatformEmail } from "@/lib/notifications";
 import { prisma } from "@/lib/prisma";
 import { hashPassword, randomToken, sha256 } from "@/lib/security";
 
 export const dynamic = "force-dynamic";
+
+function createEmailVerificationCode() {
+  return randomToken(6).replace(/[^0-9]/g, "").slice(0, 6).padEnd(6, "0");
+}
 
 type RegisterPayload = {
   fullName?: string;
@@ -153,7 +157,7 @@ export async function POST(req: NextRequest) {
     let emailVerificationToken: string | null = null;
     let emailDeliveryConfigured = true;
     if (authProvider === "EMAIL") {
-      emailVerificationToken = randomToken(24);
+      emailVerificationToken = createEmailVerificationCode();
       await prisma.emailVerificationToken.create({
         data: {
           userId: user.id,
@@ -166,11 +170,22 @@ export async function POST(req: NextRequest) {
       if (emailDeliveryConfigured) {
         const verifyUrl = new URL("/verificar-correo", req.nextUrl.origin);
         verifyUrl.searchParams.set("token", emailVerificationToken);
+        const html = buildVerificationEmailTemplate({
+          fullName: user.fullName,
+          verifyUrl: verifyUrl.toString(),
+          code: emailVerificationToken,
+          appUrl: process.env.NEXT_PUBLIC_APP_URL || req.nextUrl.origin
+        });
 
         await sendPlatformEmail({
           to: user.email,
           subject: "Verifica tu cuenta de WeTask",
-          text: `Hola ${user.fullName},\n\nVerifica tu cuenta entrando a este link:\n${verifyUrl.toString()}\n\nSi no creaste esta cuenta, ignora este correo.\n\nEquipo WeTask`
+          text:
+            `Hola ${user.fullName},\n\n` +
+            `Tu código de verificación de WeTask es: ${emailVerificationToken}\n\n` +
+            `También puedes verificar tu cuenta entrando a este link:\n${verifyUrl.toString()}\n\n` +
+            `Si no creaste esta cuenta, ignora este correo.\n\nEquipo WeTask`,
+          html
         });
       }
     }
