@@ -2136,6 +2136,7 @@ textarea {
 }
 
 .client-photo-frame {
+  position: relative;
   width: 96px;
   height: 96px;
   border-radius: 14px;
@@ -2186,6 +2187,38 @@ textarea {
 
 .client-photo-upload input[type="file"] {
   max-width: 240px;
+}
+
+.client-photo-upload-floating {
+  position: absolute;
+  left: 8px;
+  bottom: 8px;
+  min-width: 34px;
+  height: 34px;
+  padding: 0 10px;
+  justify-content: center;
+  border-radius: 999px;
+  border: 1px solid rgba(22, 57, 92, 0.14);
+  background: rgba(255, 255, 255, 0.96);
+  color: #16395c;
+  box-shadow: 0 12px 24px rgba(22, 57, 92, 0.16);
+  font-size: 0.74rem;
+  line-height: 1;
+  cursor: pointer;
+  backdrop-filter: blur(8px);
+}
+
+.client-photo-upload-floating:hover {
+  background: #ffffff;
+}
+
+.client-photo-upload-floating input[type="file"] {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
 }
 
 .client-profile-actions {
@@ -5028,6 +5061,11 @@ textarea {
   border-style: solid;
   background: linear-gradient(180deg, #eef7ff 0%, #e5f1fb 100%);
   font-size: 0.92rem;
+}
+
+.client-profile-box-auth .client-photo-upload-floating {
+  left: 12px;
+  bottom: 12px;
 }
 
 .client-profile-box-auth .client-profile-copy {

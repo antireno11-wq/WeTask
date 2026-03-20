@@ -251,8 +251,12 @@ export default function ClientePage() {
             </div>
 
             <div className="client-profile-box client-profile-box-auth">
-              <div className="client-photo-frame" aria-hidden>
+              <div className="client-photo-frame">
                 {customerPhotoUrl ? <img src={customerPhotoUrl} alt="Foto del cliente" className="client-photo-img" /> : <span>Sin foto</span>}
+                <label className="client-photo-upload client-photo-upload-floating">
+                  Cambiar
+                  <input type="file" accept="image/png,image/jpeg,image/webp" onChange={handlePhotoChange} />
+                </label>
               </div>
               <div className="client-profile-copy">
                 <h3>{customerName}</h3>
@@ -277,12 +281,6 @@ export default function ClientePage() {
                       </button>
                     </div>
                   </div>
-                ) : null}
-                {!customerPhotoUrl ? (
-                  <label className="client-photo-upload">
-                    Cargar foto
-                    <input type="file" accept="image/png,image/jpeg,image/webp" onChange={handlePhotoChange} />
-                  </label>
                 ) : null}
                 <div className="client-profile-actions">
                   <button className="cta ghost small" type="button" onClick={() => setEditingAddress((current) => !current)}>
