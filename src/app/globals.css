@@ -590,6 +590,29 @@ body {
   display: block;
 }
 
+.brand-logo-composite {
+  position: relative;
+  display: inline-block;
+  line-height: 0;
+}
+
+.brand-logo-layer {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.brand-logo-wordmark-mask {
+  position: absolute;
+  inset: 48% 0 0 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.brand-logo-layer-wordmark {
+  transform: translateY(-48%);
+}
+
 .brand-pill {
   background: linear-gradient(135deg, var(--brand-deep) 0%, var(--accent) 100%);
   color: #ffffff;

@@ -3,17 +3,12 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { buildWhiteWordmarkLogo } from "@/lib/logo-processing";
+import { BrandLogo } from "@/components/brand-logo";
 
 export function MarketNav() {
   const router = useRouter();
   const pathname = usePathname();
-  const [logoSrc, setLogoSrc] = useState("/logo-wetask.png");
   const [session, setSession] = useState<{ fullName?: string | null; role?: string | null } | null>(null);
-
-  useEffect(() => {
-    buildWhiteWordmarkLogo("/logo-wetask.png", setLogoSrc);
-  }, []);
 
   useEffect(() => {
     const loadSession = async () => {
@@ -49,7 +44,7 @@ export function MarketNav() {
   return (
     <header className="market-nav">
       <Link href="/" className="brand-link">
-        <img alt="WeTask" className="brand-logo" src={logoSrc} width={170} height={68} />
+        <BrandLogo className="brand-logo" width={170} height={68} variant="white-wordmark" />
       </Link>
       <div className="nav-right">
         <nav>
