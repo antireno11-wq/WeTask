@@ -3,11 +3,15 @@
 import Link from "next/link";
 import { BrandLogo } from "@/components/brand-logo";
 
-const navLinks = [
+const primaryLinks = [
   { href: "/", label: "Inicio" },
-  { href: "/services", label: "Servicios" },
   { href: "/como-funciona", label: "Cómo funciona" },
-  { href: "/trabaja-con-nosotros", label: "Ofrecer servicios" }
+  { href: "/services", label: "Servicios" }
+];
+
+const accountLinks = [
+  { href: "/trabaja-con-nosotros", label: "Soy tasker" },
+  { href: "/registro", label: "Soy cliente" }
 ];
 
 export function AuthHeroNav() {
@@ -17,21 +21,28 @@ export function AuthHeroNav() {
         <BrandLogo width={180} height={60} variant="white-wordmark" />
       </Link>
 
-      <nav className="auth-hero-links" aria-label="Navegación principal">
-        {navLinks.map((item) => (
-          <Link key={item.href} href={item.href} className="auth-hero-link">
-            {item.label}
-          </Link>
-        ))}
-      </nav>
+      <div className="auth-hero-nav-groups">
+        <nav className="auth-hero-links" aria-label="Navegación principal">
+          {primaryLinks.map((item) => (
+            <Link key={item.href} href={item.href} className="auth-hero-link">
+              {item.label}
+            </Link>
+          ))}
+        </nav>
 
-      <div className="auth-hero-actions">
-        <Link href="/ingresar" className="auth-hero-link">
-          Acceder
-        </Link>
-        <Link href="/registro" className="auth-hero-link auth-hero-link-strong">
-          Crear cuenta
-        </Link>
+        <div className="auth-hero-links auth-hero-links-secondary">
+          {accountLinks.map((item) => (
+            <Link key={item.href} href={item.href} className="auth-hero-link auth-hero-link-strong">
+              {item.label}
+            </Link>
+          ))}
+        </div>
+
+        <div className="auth-hero-actions">
+          <Link href="/ingresar" className="auth-hero-link">
+            Acceder
+          </Link>
+        </div>
       </div>
     </header>
   );

@@ -4501,6 +4501,15 @@ textarea {
   flex-wrap: wrap;
 }
 
+.auth-hero-nav-groups {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+
 .auth-hero-brand {
   display: inline-flex;
   align-items: center;
@@ -4519,6 +4528,14 @@ textarea {
   align-items: center;
   gap: 10px;
   flex-wrap: wrap;
+}
+
+.auth-hero-links-secondary {
+  margin-left: 10px;
+}
+
+.auth-hero-actions {
+  margin-left: 10px;
 }
 
 .auth-hero-link {
@@ -6722,6 +6739,17 @@ textarea {
   .auth-hero-actions {
     display: grid;
     width: 100%;
+  }
+
+  .auth-hero-nav-groups {
+    width: 100%;
+    display: grid;
+    gap: 12px;
+  }
+
+  .auth-hero-links-secondary,
+  .auth-hero-actions {
+    margin-left: 0;
   }
 
   .auth-hero-link {

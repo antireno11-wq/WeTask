@@ -34,11 +34,18 @@ export function MarketNav() {
   const roleLabel = role === "PRO" ? "Tasker" : role === "ADMIN" ? "Admin" : role === "CUSTOMER" ? "Cliente" : role;
   const accountHref = role === "PRO" ? "/pro" : "/cliente";
   const isAdminArea = pathname.startsWith("/admin");
-  const links = isAdminArea
+  const primaryLinks = isAdminArea
     ? []
     : [
+        { href: "/", label: "Inicio" },
+        { href: "/como-funciona", label: "Cómo funciona" },
         { href: "/services", label: "Servicios" },
-        { href: "/como-funciona", label: "¿Cómo funciona?" }
+      ];
+  const guestLinks = isAdminArea
+    ? []
+    : [
+        { href: "/trabaja-con-nosotros", label: "Soy tasker" },
+        { href: "/registro", label: "Soy cliente" }
       ];
 
   return (
@@ -48,7 +55,7 @@ export function MarketNav() {
       </Link>
       <div className="nav-right">
         <nav>
-          {links.map((item) => (
+          {primaryLinks.map((item) => (
             <Link key={item.href} href={item.href} className="nav-link">
               {item.label}
             </Link>
@@ -67,9 +74,11 @@ export function MarketNav() {
             </>
           ) : (
             <>
-              <Link href="/trabaja-con-nosotros" className="nav-link auth-btn">
-                Ofrecer servicios
-              </Link>
+              {guestLinks.map((item) => (
+                <Link key={item.href} href={item.href} className="nav-link auth-btn">
+                  {item.label}
+                </Link>
+              ))}
               <Link href="/ingresar" className="nav-link auth-btn auth-login-pill">
                 Acceder
               </Link>
