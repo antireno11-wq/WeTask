@@ -13,6 +13,7 @@ const SANTIAGO_BOUNDS = {
   maxLng: -70.45
 };
 const CHILE_CITIES = ["Santiago", "Valparaiso", "Vina del Mar", "Concepcion", "La Serena", "Antofagasta", "Temuco", "Puerto Montt"];
+const TASKER_WIZARD_STORAGE_KEY = "wetask_tasker_wizard_v2";
 const PRO_STATUS_LABELS: Record<string, string> = {
   ACCEPTED: "Aceptado",
   IN_PROGRESS: "En curso",
@@ -194,6 +195,18 @@ function normalizeAvailabilityBlocks(value: unknown): AvailabilityBlock[] {
       };
     })
     .filter((item): item is AvailabilityBlock => Boolean(item));
+}
+
+function localDraftProfilePhoto() {
+  if (typeof window === "undefined") return "";
+  try {
+    const raw = window.localStorage.getItem(TASKER_WIZARD_STORAGE_KEY);
+    if (!raw) return "";
+    const parsed = JSON.parse(raw) as { profilePhotoUrl?: string };
+    return typeof parsed.profilePhotoUrl === "string" ? parsed.profilePhotoUrl.trim() : "";
+  } catch {
+    return "";
+  }
 }
 
 export default function ProPage() {
@@ -446,7 +459,8 @@ export default function ProPage() {
     setNotifications(notificationsData.notifications);
     setProName(profileData.user?.fullName ?? "");
     setCategorySlug(profileData.categorySlug ?? "");
-    setProfilePhotoUrl(profileData.profilePhotoUrl?.trim() ?? "");
+    const nextProfilePhoto = profileData.profilePhotoUrl?.trim() || localDraftProfilePhoto();
+    setProfilePhotoUrl(nextProfilePhoto);
     setAvailabilityMode(profileData.availabilityMode ?? null);
     setOnboardingAvailabilityBlocks(normalizeAvailabilityBlocks(profileData.availabilityBlocks));
     applyProfile(profileData.profile ?? null, profileData.serviceCommunes ?? []);
