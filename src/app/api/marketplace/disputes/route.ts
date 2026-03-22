@@ -39,6 +39,23 @@ export async function POST(req: NextRequest) {
       }
     });
 
+    await prisma.booking.update({
+      where: { id: booking.id },
+      data: { status: "DISPUTE" }
+    });
+
+    const notifyIds = [booking.customerId, booking.proId].filter(Boolean) as string[];
+    if (notifyIds.length > 0) {
+      await prisma.notification.createMany({
+        data: notifyIds.map((userId) => ({
+          userId,
+          bookingId: booking.id,
+          title: "Disputa abierta",
+          body: "El pago quedó retenido mientras WeTask revisa el caso."
+        }))
+      });
+    }
+
     return NextResponse.json({ ticket }, { status: 201 });
   } catch (error) {
     return NextResponse.json(

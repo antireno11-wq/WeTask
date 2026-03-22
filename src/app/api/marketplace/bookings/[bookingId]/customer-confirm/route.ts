@@ -25,6 +25,14 @@ export async function POST(req: NextRequest, context: { params: { bookingId: str
       return NextResponse.json({ error: "Solo puedes confirmar servicios marcados como realizados." }, { status: 400 });
     }
 
+    const hasBlockingDispute = await prisma.disputeTicket.findFirst({
+      where: { bookingId: booking.id, status: { in: ["OPEN", "IN_REVIEW"] } }
+    });
+
+    if (hasBlockingDispute) {
+      return NextResponse.json({ error: "No puedes confirmar mientras exista un reclamo abierto." }, { status: 400 });
+    }
+
     const payoutAmount = Math.max(booking.totalPriceClp - booking.platformFeeClp, 0);
 
     const result = await prisma.$transaction(async (tx) => {

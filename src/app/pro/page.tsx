@@ -21,7 +21,8 @@ const PRO_STATUS_LABELS: Record<string, string> = {
   CANCELLED: "Cancelado",
   CONFIRMED: "Reserva confirmada",
   ASSIGNED: "Asignado",
-  PENDING: "Pendiente"
+  PENDING: "Pendiente",
+  DISPUTE: "Disputa abierta"
 };
 const COMMUNE_MAP_POSITIONS: Record<string, { top: string; left: string }> = {
   Vitacura: { top: "26%", left: "56%" },
@@ -1474,7 +1475,7 @@ export default function ProPage() {
                       <strong>Total:</strong> {clp(booking.totalPriceClp)}
                     </p>
                     <p>
-                      <strong>Estado del pago:</strong> {booking.status === "COMPLETED" ? booking.payout?.status ?? "Pendiente de programación" : booking.status === "IN_PROGRESS" ? "Retenido hasta terminar el servicio" : booking.status === "CONFIRMED" || booking.status === "ACCEPTED" || booking.status === "ASSIGNED" ? "Pago reservado por WeTask" : booking.payout?.status ?? "Aún no aplica"}
+                      <strong>Estado del pago:</strong> {booking.status === "DISPUTE" ? "Retenido por disputa abierta" : booking.status === "COMPLETED" ? booking.payout?.status ?? "Pendiente de programación" : booking.status === "IN_PROGRESS" ? "Retenido hasta terminar el servicio" : booking.status === "CONFIRMED" || booking.status === "ACCEPTED" || booking.status === "ASSIGNED" ? "Pago reservado por WeTask" : booking.payout?.status ?? "Aún no aplica"}
                     </p>
                     <div className="status-editor">
                       <label>
@@ -1578,14 +1579,15 @@ export default function ProPage() {
                           <button className="cta ghost small" type="button" onClick={() => submitClientReview(booking.id)}>
                             Guardar reseña
                           </button>
-                          <button className="cta small" type="button" onClick={() => requestPayout(booking.id)}>
-                            Solicitar payout
+                          <button className="cta small" type="button" onClick={() => requestPayout(booking.id)} disabled={booking.status === "DISPUTE"}>
+                            {booking.status === "DISPUTE" ? "Payout bloqueado" : "Solicitar payout"}
                           </button>
                         </div>
                       </div>
                     <div className="client-booking-note">
                       <strong>Lógica de cobro</strong>
                       <p>El cliente paga al reservar. WeTask retiene ese dinero y tu pago entra al próximo ciclo cuando el cliente confirma o cuando vence el plazo sin reclamo.</p>
+                      {booking.status === "DISPUTE" ? <p><strong>Disputa abierta:</strong> el payout queda congelado hasta que WeTask resuelva el caso.</p> : null}
                     </div>
                     </article>
                   ))

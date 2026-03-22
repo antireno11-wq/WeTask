@@ -263,6 +263,7 @@ export default function ClienteBookingActionsPage() {
       const data = (await response.json()) as { ticket?: { id: string }; error?: string; detail?: string };
       if (!response.ok || !data.ticket) throw new Error(data.detail || data.error || "No se pudo abrir el reclamo");
       setBooking((current) => (current ? { ...current, status: "DISPUTE" } : current));
+      setCustomerConfirmed(false);
       setFeedback("Reclamo enviado. El pago seguirá retenido mientras revisamos el caso.");
       setDisputeReason("");
     } catch (e) {
