@@ -2646,32 +2646,34 @@ function CleaningOnboardingPageContent() {
                   </label>
                   <label className="full">
                     Dirección
-                    <input
-                      value={draft.address}
-                      onChange={(event) => {
-                        setSelectedFromAutocomplete(false);
-                        setAddressValidationMessage("");
-                        setAddressValidationError("");
-                        updateDraft("address", event.target.value);
-                      }}
-                      onFocus={() => setShowSuggestions(addressSuggestions.length > 0)}
-                      placeholder="Av. Apoquindo 1234"
-                    />
+                    <div className="address-autocomplete-shell">
+                      <input
+                        value={draft.address}
+                        onChange={(event) => {
+                          setSelectedFromAutocomplete(false);
+                          setAddressValidationMessage("");
+                          setAddressValidationError("");
+                          updateDraft("address", event.target.value);
+                        }}
+                        onFocus={() => setShowSuggestions(addressSuggestions.length > 0)}
+                        placeholder="Av. Apoquindo 1234"
+                      />
+                      {showSuggestions && addressSuggestions.length > 0 ? (
+                        <div className="address-suggestions">
+                          {addressSuggestions.map((suggestion) => (
+                            <button
+                              key={suggestion}
+                              type="button"
+                              className="address-suggestion-btn"
+                              onClick={() => selectAddressSuggestion(suggestion)}
+                            >
+                              {suggestion}
+                            </button>
+                          ))}
+                        </div>
+                      ) : null}
+                    </div>
                     {autocompleteLoading ? <p className="input-hint">Buscando direcciones en Google...</p> : null}
-                    {showSuggestions && addressSuggestions.length > 0 ? (
-                      <div className="address-suggestions">
-                        {addressSuggestions.map((suggestion) => (
-                          <button
-                            key={suggestion}
-                            type="button"
-                            className="address-suggestion-btn"
-                            onClick={() => selectAddressSuggestion(suggestion)}
-                          >
-                            {suggestion}
-                          </button>
-                        ))}
-                      </div>
-                    ) : null}
                     <p className="input-hint">
                       {validatingAddress
                         ? "Estamos corroborando esta dirección con Google automáticamente."
