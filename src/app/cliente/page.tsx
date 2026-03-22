@@ -48,6 +48,8 @@ type CardFormData = {
   paymentMethodId?: string;
   issuerId?: string;
   cardholderEmail?: string;
+  identificationType?: string;
+  identificationNumber?: string;
 };
 
 const STATUS_LABELS: Record<string, string> = {
@@ -262,10 +264,8 @@ export default function ClientePage() {
             cardNumber: { id: "client-payment-card-number" },
             expirationDate: { id: "client-payment-expiration-date" },
             securityCode: { id: "client-payment-security-code" },
-            installments: { id: "client-payment-installments" },
             identificationType: { id: "client-payment-identification-type" },
-            identificationNumber: { id: "client-payment-identification-number" },
-            issuer: { id: "client-payment-issuer" }
+            identificationNumber: { id: "client-payment-identification-number" }
           }
         });
         if (cancelled) {
@@ -275,10 +275,10 @@ export default function ClientePage() {
         }
         addPaymentFormRef.current = cardForm;
         setPaymentFormReady(true);
-      } catch {
+      } catch (error) {
         if (!cancelled) {
           setPaymentFormReady(false);
-          setPaymentMethodError("No pudimos inicializar el formulario de tarjeta.");
+          setPaymentMethodError(error instanceof Error ? error.message : "No pudimos inicializar el formulario de tarjeta.");
         }
       }
     };
@@ -737,14 +737,6 @@ export default function ClientePage() {
                       <label>
                         Código de seguridad
                         <div id="client-payment-security-code" className="mp-secure-field" />
-                      </label>
-                      <label>
-                        Cuotas
-                        <select id="client-payment-installments" defaultValue="" />
-                      </label>
-                      <label>
-                        Banco emisor
-                        <select id="client-payment-issuer" defaultValue="" />
                       </label>
                       <label>
                         Tipo de identificación
