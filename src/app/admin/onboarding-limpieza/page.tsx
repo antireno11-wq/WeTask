@@ -202,9 +202,6 @@ export default function AdminCleaningOnboardingPage() {
               <Link href={`/admin/onboarding-limpieza/${row.id}`} className="cta ghost small">
                 Ver ficha
               </Link>
-              <button type="button" className="cta ghost small" onClick={() => void runAction(row.id, "set_pending")}>
-                Pendiente
-              </button>
               <button type="button" className="cta ghost small" onClick={() => void runAction(row.id, "request_correction")}>
                 Rechazar
               </button>
