@@ -276,6 +276,7 @@ export default function ClientePage() {
         const mp = new MercadoPagoCtor(publicKey, { locale: "es-CL" });
         const cardForm = mp.cardForm({
           amount: "1000",
+          autoMount: true,
           iframe: true,
           form: {
             id: "client-payment-card-form",
@@ -284,8 +285,22 @@ export default function ClientePage() {
             cardNumber: { id: "client-payment-card-number" },
             expirationDate: { id: "client-payment-expiration-date" },
             securityCode: { id: "client-payment-security-code" },
+            issuer: { id: "client-payment-issuer" },
+            installments: { id: "client-payment-installments" },
             identificationType: { id: "client-payment-identification-type" },
             identificationNumber: { id: "client-payment-identification-number" }
+          },
+          callbacks: {
+            onFormMounted: (mountError: unknown) => {
+              if (cancelled) return;
+              if (mountError) {
+                console.error("Mercado Pago onFormMounted error", mountError);
+                setPaymentFormReady(false);
+                setPaymentMethodError(describeMercadoPagoError(mountError));
+                return;
+              }
+              setPaymentFormReady(true);
+            }
           }
         });
         if (cancelled) {
@@ -294,7 +309,6 @@ export default function ClientePage() {
           return;
         }
         addPaymentFormRef.current = cardForm;
-        setPaymentFormReady(true);
       } catch (error) {
         console.error("Mercado Pago cardForm init error", error);
         if (!cancelled) {
@@ -811,6 +825,16 @@ export default function ClientePage() {
                         Número de identificación
                         <input id="client-payment-identification-number" type="text" placeholder="RUT / documento" />
                       </label>
+                      <div className="mp-support-fields" aria-hidden>
+                        <label>
+                          Emisor
+                          <select id="client-payment-issuer" defaultValue="" />
+                        </label>
+                        <label>
+                          Cuotas
+                          <select id="client-payment-installments" defaultValue="" />
+                        </label>
+                      </div>
                     </form>
 
                     <div className="client-profile-actions">
