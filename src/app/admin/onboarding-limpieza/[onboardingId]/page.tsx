@@ -98,7 +98,7 @@ export default async function AdminCleaningOnboardingDetailPage({ params }: { pa
     <AdminHeroShell>
       <div className="panel-head admin-page-head">
         <div>
-          <span className="eyebrow">Ficha del profesional</span>
+          <span className="eyebrow">Ficha del tasker</span>
           <h2>Validación manual completa</h2>
           <p>Revisa identidad, cobertura, tarifas y documentación antes de aprobar, rechazar o activar este perfil.</p>
         </div>
@@ -232,7 +232,7 @@ export default async function AdminCleaningOnboardingDetailPage({ params }: { pa
         <div className="admin-section-head">
           <div>
             <h3>Documentos para validación manual</h3>
-            <p>Todo lo que tu equipo necesita revisar antes de activar al profesional.</p>
+            <p>Todo lo que tu equipo necesita revisar antes de activar al tasker.</p>
           </div>
         </div>
 
