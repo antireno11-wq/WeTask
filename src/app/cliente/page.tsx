@@ -143,9 +143,15 @@ export default function ClientePage() {
   const [paymentMethodError, setPaymentMethodError] = useState("");
   const [cardholderName, setCardholderName] = useState("");
   const [payerEmail, setPayerEmail] = useState("");
+  const [paymentExpiryMonth, setPaymentExpiryMonth] = useState("");
+  const [paymentExpiryYear, setPaymentExpiryYear] = useState("");
   const [feedback, setFeedback] = useState("");
   const [error, setError] = useState("");
   const [activeView, setActiveView] = useState<ClientView>("resumen");
+  const paymentExpiryYears = useMemo(() => {
+    const baseYear = new Date().getFullYear();
+    return Array.from({ length: 16 }, (_, index) => String(baseYear + index));
+  }, []);
 
   const sortedBookings = useMemo(
     () => [...bookings].sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime()),
@@ -319,13 +325,13 @@ export default function ClientePage() {
         const cardForm = mp.cardForm({
           amount: "1000",
           autoMount: true,
-          iframe: true,
           form: {
             id: "client-payment-card-form",
             cardholderName: { id: "client-payment-cardholder-name" },
             cardholderEmail: { id: "client-payment-cardholder-email" },
             cardNumber: { id: "client-payment-card-number" },
-            expirationDate: { id: "client-payment-expiration-date" },
+            cardExpirationMonth: { id: "client-payment-expiration-month" },
+            cardExpirationYear: { id: "client-payment-expiration-year" },
             securityCode: { id: "client-payment-security-code" },
             issuer: { id: "client-payment-issuer" },
             installments: { id: "client-payment-installments" },
@@ -855,16 +861,57 @@ export default function ClientePage() {
                       </label>
                       <label className="full">
                         Número de tarjeta
-                        <div id="client-payment-card-number" className="mp-secure-field mp-secure-field-compact" />
+                        <input
+                          id="client-payment-card-number"
+                          type="text"
+                          inputMode="numeric"
+                          autoComplete="cc-number"
+                          placeholder="Ej: 5416752602582580"
+                          maxLength={19}
+                          onInput={(event) => {
+                            event.currentTarget.value = event.currentTarget.value.replace(/\D/g, "").slice(0, 19);
+                          }}
+                        />
+                        <span className="input-hint">Visa y Mastercard usan 16 dígitos. American Express usa 15.</span>
                       </label>
                       <div className="client-payment-inline-row full">
                         <label className="payment-small-field">
-                          Vencimiento
-                          <div id="client-payment-expiration-date" className="mp-secure-field mp-secure-field-compact" />
+                          Mes
+                          <select value={paymentExpiryMonth} onChange={(event) => setPaymentExpiryMonth(event.target.value)}>
+                            <option value="">MM</option>
+                            {Array.from({ length: 12 }, (_, index) => String(index + 1).padStart(2, "0")).map((month) => (
+                              <option key={month} value={month}>
+                                {month}
+                              </option>
+                            ))}
+                          </select>
+                          <input id="client-payment-expiration-month" type="hidden" value={paymentExpiryMonth} readOnly />
+                        </label>
+                        <label className="payment-small-field">
+                          Año
+                          <select value={paymentExpiryYear} onChange={(event) => setPaymentExpiryYear(event.target.value)}>
+                            <option value="">AAAA</option>
+                            {paymentExpiryYears.map((year) => (
+                              <option key={year} value={year}>
+                                {year}
+                              </option>
+                            ))}
+                          </select>
+                          <input id="client-payment-expiration-year" type="hidden" value={paymentExpiryYear} readOnly />
                         </label>
                         <label className="payment-small-field">
                           CVV
-                          <div id="client-payment-security-code" className="mp-secure-field mp-secure-field-compact" />
+                          <input
+                            id="client-payment-security-code"
+                            type="text"
+                            inputMode="numeric"
+                            autoComplete="cc-csc"
+                            placeholder="123"
+                            maxLength={4}
+                            onInput={(event) => {
+                              event.currentTarget.value = event.currentTarget.value.replace(/\D/g, "").slice(0, 4);
+                            }}
+                          />
                         </label>
                       </div>
                       <div className="client-payment-inline-row full">
