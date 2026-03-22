@@ -69,3 +69,40 @@ export function buildVerificationEmailTemplate(payload: VerificationEmailTemplat
     </div>
   `;
 }
+
+type AdminTaskerReviewEmailTemplatePayload = {
+  taskerName: string;
+  taskerEmail: string;
+  categoryLabel: string;
+  commune: string;
+  reviewUrl: string;
+};
+
+export function buildAdminTaskerReviewEmailTemplate(payload: AdminTaskerReviewEmailTemplatePayload) {
+  return `
+    <div style="margin:0;padding:32px 16px;background:#eef4fb;font-family:Arial,sans-serif;color:#17324d;">
+      <div style="max-width:620px;margin:0 auto;background:#ffffff;border-radius:28px;overflow:hidden;box-shadow:0 18px 46px rgba(21,58,97,0.14);border:1px solid rgba(34,97,160,0.12);">
+        <div style="padding:28px 32px 18px;background:linear-gradient(135deg,#173e73 0%,#1d7fc6 100%);">
+          <p style="margin:0;font-size:13px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#d8ecff;">Nuevo tasker para revisión</p>
+          <h1 style="margin:10px 0 0;font-size:28px;line-height:1.12;color:#ffffff;">Hay un perfil esperando validación</h1>
+        </div>
+        <div style="padding:28px 32px 32px;">
+          <p style="margin:0 0 16px;font-size:16px;line-height:1.6;color:#48627d;">
+            Un nuevo tasker terminó su onboarding y quedó listo para revisión manual en WeTask.
+          </p>
+          <div style="display:grid;gap:10px;margin:0 0 24px;padding:18px 20px;border-radius:20px;background:#f4f8fd;border:1px solid rgba(29,127,198,0.18);">
+            <p style="margin:0;"><strong>Nombre:</strong> ${payload.taskerName}</p>
+            <p style="margin:0;"><strong>Email:</strong> ${payload.taskerEmail}</p>
+            <p style="margin:0;"><strong>Categoría:</strong> ${payload.categoryLabel}</p>
+            <p style="margin:0;"><strong>Comuna base:</strong> ${payload.commune}</p>
+          </div>
+          <div style="text-align:center;">
+            <a href="${payload.reviewUrl}" style="display:inline-block;padding:14px 24px;border-radius:999px;background:linear-gradient(135deg,#173e73 0%,#1d7fc6 100%);color:#ffffff;text-decoration:none;font-weight:800;">
+              Abrir cola de revisión
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}

@@ -6,12 +6,24 @@ import { normalizeChefScope } from "@/lib/chef-scope";
 import { normalizeCleaningScope } from "@/lib/cleaning-scope";
 import { normalizeIroningScope } from "@/lib/ironing-scope";
 import { normalizeMakeupScope } from "@/lib/makeup-scope";
+import { buildAdminTaskerReviewEmailTemplate, sendPlatformEmail } from "@/lib/notifications";
 import { normalizePetScope } from "@/lib/pet-scope";
 import { normalizeTeacherScope } from "@/lib/teacher-scope";
 import { normalizeTrainerScope } from "@/lib/trainer-scope";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
+
+const CATEGORY_LABELS: Record<string, string> = {
+  limpieza: "Limpieza",
+  mascotas: "Paseo y cuidado de mascotas",
+  babysitter: "Babysitter",
+  "profesor-particular": "Profesor particular",
+  "personal-trainer": "Personal trainer",
+  chef: "Chef",
+  maquillaje: "Maquillaje",
+  planchado: "Planchado"
+};
 
 function missing(value: unknown) {
   if (value == null) return true;
@@ -136,7 +148,27 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "No autorizado" }, { status: 403 });
     }
 
-    const onboarding = await prisma.cleaningOnboarding.findUnique({ where: { userId: identity.userId } });
+    const onboarding = await prisma.cleaningOnboarding.findUnique({
+      where: { userId: identity.userId },
+      include: {
+        user: {
+          select: {
+            id: true,
+            fullName: true,
+            email: true,
+            roleAssignments: {
+              select: {
+                role: {
+                  select: {
+                    code: true
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    });
     const missingFields = listMissingFields(onboarding);
     if (missingFields.length > 0) {
       console.warn("[tasker-onboarding] submit blocked", {
@@ -168,6 +200,51 @@ export async function POST(req: NextRequest) {
       status: updated.status,
       currentStep: updated.currentStep
     });
+
+    const adminEmailsFromEnv = (process.env.ADMIN_ONBOARDING_ALERT_EMAILS ?? "")
+      .split(",")
+      .map((item) => item.trim().toLowerCase())
+      .filter(Boolean);
+
+    const adminUsers = await prisma.user.findMany({
+      where: {
+        OR: [{ role: UserRole.ADMIN }, { roleAssignments: { some: { role: { code: UserRole.ADMIN } } } }]
+      },
+      select: { email: true }
+    });
+
+    const recipientEmails = Array.from(new Set([...adminEmailsFromEnv, ...adminUsers.map((item) => item.email?.trim().toLowerCase()).filter(Boolean) as string[]]));
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/+$/, "") || process.env.APP_URL?.replace(/\/+$/, "") || "https://wetask.cl";
+    const reviewUrl = `${appUrl}/admin/onboarding-limpieza`;
+    const categoryLabel = CATEGORY_LABELS[updated.categorySlug] ?? updated.categorySlug;
+    const taskerName = onboarding?.user.fullName?.trim() || "Tasker nuevo";
+    const taskerEmail = onboarding?.user.email?.trim() || "Sin email";
+    const commune = updated.baseCommune?.trim() || "Sin comuna";
+
+    if (recipientEmails.length > 0) {
+      await Promise.allSettled(
+        recipientEmails.map((email) =>
+          sendPlatformEmail({
+            to: email,
+            subject: `Nuevo tasker para revisión: ${taskerName}`,
+            text:
+              `Hay un nuevo tasker esperando validación en WeTask.\n\n` +
+              `Nombre: ${taskerName}\n` +
+              `Email: ${taskerEmail}\n` +
+              `Categoría: ${categoryLabel}\n` +
+              `Comuna base: ${commune}\n\n` +
+              `Revisa la cola aquí: ${reviewUrl}`,
+            html: buildAdminTaskerReviewEmailTemplate({
+              taskerName,
+              taskerEmail,
+              categoryLabel,
+              commune,
+              reviewUrl
+            })
+          })
+        )
+      );
+    }
 
     return NextResponse.json({ ok: true, onboarding: updated }, { status: 200 });
   } catch (error) {
