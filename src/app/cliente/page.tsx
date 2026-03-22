@@ -53,11 +53,11 @@ type CardFormData = {
 const STATUS_LABELS: Record<string, string> = {
   PENDING: "Pendiente",
   PENDING_PAYMENT: "Pago pendiente",
-  ACCEPTED: "Aceptado",
-  ASSIGNED: "Asignado",
-  CONFIRMED: "Confirmado",
-  IN_PROGRESS: "En curso",
-  COMPLETED: "Completado",
+  ACCEPTED: "Aceptado por el tasker",
+  ASSIGNED: "Tasker asignado",
+  CONFIRMED: "Reserva confirmada",
+  IN_PROGRESS: "Servicio en curso",
+  COMPLETED: "Servicio cerrado",
   CANCELLED: "Cancelado",
   REFUNDED: "Reembolsado",
   PAYMENT_FAILED: "Pago fallido"
@@ -542,7 +542,7 @@ export default function ClientePage() {
           <div className="auth-flow-copy client-dashboard-copy">
             <p className="auth-flow-kicker">Panel cliente</p>
             <h1>Gestiona tus reservas con el mismo look de WeTask.</h1>
-            <p>Revisa tus próximas visitas, historial, avisos importantes y vuelve a reservar en segundos desde un solo panel.</p>
+            <p>Revisa tus próximas visitas, historial, avisos importantes y vuelve a reservar en segundos desde un solo panel. Aquí también verás cuándo tu pago sigue protegido y cuándo ya fue liberado.</p>
 
             <div className="auth-flow-copy-list client-dashboard-summary">
               <div className="auth-flow-meta-card">
@@ -827,6 +827,9 @@ export default function ClientePage() {
                       <span className={`status ${statusClassByBooking(booking.status)}`}>{statusLabelByBooking(booking.status)}</span>
                     </div>
                     <p className="client-booking-eyebrow">{bookingEyebrow(booking.status, booking.scheduledAt)}</p>
+                    <p>
+                      <strong>Pago protegido:</strong> {booking.status === "COMPLETED" ? "cerrado o liberado" : booking.status === "CANCELLED" || booking.status === "REFUNDED" ? "resuelto" : "retenido hasta tu confirmación o hasta que venza el plazo sin reclamo"}
+                    </p>
                     <p>
                       <strong>Fecha:</strong> {formatBookingDate(booking.scheduledAt)}
                     </p>

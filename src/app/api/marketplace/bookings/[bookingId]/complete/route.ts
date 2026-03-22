@@ -26,6 +26,17 @@ export async function POST(req: NextRequest, context: { params: { bookingId: str
       data: { status: "COMPLETED" }
     });
 
+    if (booking.customerId) {
+      await prisma.notification.create({
+        data: {
+          userId: booking.customerId,
+          bookingId: booking.id,
+          title: "Confirma tu servicio",
+          body: "El tasker marcó el trabajo como realizado. Revisa el resultado o reporta un problema antes de la liberación del pago."
+        }
+      });
+    }
+
     return NextResponse.json({ booking: updated }, { status: 200 });
   } catch (error) {
     return NextResponse.json(

@@ -25,6 +25,11 @@ export async function PATCH(req: NextRequest, context: { params: { bookingId: st
       return NextResponse.json({ error: "Solo puedes actualizar tus propias reservas" }, { status: 403 });
     }
 
+    const allowedTransitionsByPro = new Set(["ACCEPTED", "IN_PROGRESS", "COMPLETED", "CANCELLED"]);
+    if (identity.role === UserRole.PRO && !allowedTransitionsByPro.has(input.status)) {
+      return NextResponse.json({ error: "Estado no permitido para taskers" }, { status: 400 });
+    }
+
     const updated = await prisma.booking.update({
       where: { id: booking.id },
       data: { status: input.status }

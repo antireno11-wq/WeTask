@@ -14,8 +14,8 @@ const howItWorks = [
     visual: "collage-two"
   },
   {
-    title: "Contrátalo en 1 click",
-    text: "Reserva online y coordina todo desde WeTask con pago protegido.",
+    title: "Reserva con pago protegido",
+    text: "Pagas online, WeTask retiene el dinero y el profesional cobra cuando confirmas o vence el plazo sin reclamo.",
     visual: "collage-three"
   }
 ];
@@ -48,7 +48,7 @@ export default function HomePage() {
             <div className="home-hero-intro">
               <p className="auth-flow-kicker home-hero-kicker">Marketplace WeTask</p>
               <h1>Servicios a domicilio confiables para simplificar tu vida.</h1>
-              <p>Reserva ayuda real para tu casa, bienestar o día a día con pago protegido y profesionales listos para atenderte.</p>
+              <p>Reserva ayuda real para tu casa, bienestar o día a día con pago protegido, profesionales listos para atenderte y liberación del dinero solo al confirmar o al vencer el plazo sin reclamo.</p>
               <div className="auth-flow-actions">
                 <Link href="/solicitar-tecnico?source=hero_primary" className="cta">
                   Buscar servicio
@@ -133,8 +133,8 @@ export default function HomePage() {
             <h2>
               No te preocupes, tu servicio está <span>siempre protegido</span>
             </h2>
-            <p>El profesional solo recibe el dinero cuando confirmas que todo fue según lo esperado.</p>
-            <p>Si algo sale mal, te devolvemos el importe total del servicio.</p>
+            <p>El profesional solo entra a pago cuando confirmas que todo fue según lo esperado o cuando vence el plazo sin reclamo.</p>
+            <p>Si algo sale mal, puedes reportarlo antes de la liberación y nuestro equipo revisa el caso.</p>
           </div>
 
           <div className="home-guarantee-visual" aria-hidden>

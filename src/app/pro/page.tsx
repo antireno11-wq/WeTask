@@ -17,9 +17,9 @@ const TASKER_WIZARD_STORAGE_KEY = "wetask_tasker_wizard_v2";
 const PRO_STATUS_LABELS: Record<string, string> = {
   ACCEPTED: "Aceptado",
   IN_PROGRESS: "En curso",
-  COMPLETED: "Completado",
+  COMPLETED: "Servicio informado como terminado",
   CANCELLED: "Cancelado",
-  CONFIRMED: "Confirmado",
+  CONFIRMED: "Reserva confirmada",
   ASSIGNED: "Asignado",
   PENDING: "Pendiente"
 };
@@ -793,7 +793,7 @@ export default function ProPage() {
           <div className="auth-flow-copy client-dashboard-copy">
             <p className="auth-flow-kicker">Panel profesional</p>
             <h1>Gestiona tu operación diaria con el look nuevo de WeTask.</h1>
-            <p>Controla tu perfil, cobertura, agenda, reservas y pagos desde un panel más claro y más fácil de usar.</p>
+            <p>Controla tu perfil, cobertura, agenda, reservas y pagos desde un panel más claro y más fácil de usar. Aquí verás cuándo una reserva ya está pagada, cuándo sigue retenida y cuándo entra al próximo payout.</p>
 
             <div className="auth-flow-copy-list client-dashboard-summary">
               <div className="auth-flow-meta-card">
@@ -1421,7 +1421,7 @@ export default function ProPage() {
                       <strong>Total:</strong> {clp(booking.totalPriceClp)}
                     </p>
                     <p>
-                      <strong>Payout:</strong> {booking.payout?.status ?? "No solicitado"}
+                      <strong>Estado del pago:</strong> {booking.status === "COMPLETED" ? booking.payout?.status ?? "Pendiente de programación" : booking.status === "IN_PROGRESS" ? "Retenido hasta terminar el servicio" : booking.status === "CONFIRMED" || booking.status === "ACCEPTED" || booking.status === "ASSIGNED" ? "Pago reservado por WeTask" : booking.payout?.status ?? "Aún no aplica"}
                     </p>
                     {booking.status === "COMPLETED" ? (
                       <div className="pro-review-card">
@@ -1471,6 +1471,10 @@ export default function ProPage() {
                         </div>
                       </div>
                     ) : null}
+                    <div className="client-booking-note">
+                      <strong>Lógica de cobro</strong>
+                      <p>El cliente paga al reservar. WeTask retiene ese dinero y tu pago entra al próximo ciclo cuando el cliente confirma o cuando vence el plazo sin reclamo.</p>
+                    </div>
                     <div className="status-editor">
                       <label>
                         Estado
@@ -1489,10 +1493,10 @@ export default function ProPage() {
                         Guardar estado
                       </button>
                       <button className="cta ghost small" type="button" onClick={() => completeBooking(booking.id)}>
-                        Finalizar
+                        Marcar trabajo realizado
                       </button>
                       <button className="cta ghost small" type="button" onClick={() => requestPayout(booking.id)}>
-                        Solicitar payout
+                        Programar payout
                       </button>
                     </div>
                   </article>

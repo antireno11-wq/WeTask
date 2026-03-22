@@ -43,14 +43,15 @@ type BookingDetail = {
 const STATUS_LABELS: Record<string, string> = {
   PENDING: "Pendiente",
   PENDING_PAYMENT: "Pago pendiente",
-  ACCEPTED: "Aceptado",
-  ASSIGNED: "Asignado",
-  CONFIRMED: "Confirmado",
-  IN_PROGRESS: "En curso",
-  COMPLETED: "Completado",
+  ACCEPTED: "Aceptado por el tasker",
+  ASSIGNED: "Tasker asignado",
+  CONFIRMED: "Reserva confirmada",
+  IN_PROGRESS: "Servicio en curso",
+  COMPLETED: "Servicio cerrado",
   CANCELLED: "Cancelado",
   REFUNDED: "Reembolsado",
-  PAYMENT_FAILED: "Pago fallido"
+  PAYMENT_FAILED: "Pago fallido",
+  DISPUTE: "En revisión"
 };
 
 const PAYMENT_LABELS: Record<string, string> = {
@@ -108,6 +109,8 @@ export default function ClienteBookingActionsPage() {
   const [chatBody, setChatBody] = useState("");
   const [reviewScore, setReviewScore] = useState(5);
   const [reviewComment, setReviewComment] = useState("");
+  const [disputeReason, setDisputeReason] = useState("");
+  const [customerConfirmed, setCustomerConfirmed] = useState(false);
   const [feedback, setFeedback] = useState("");
   const [error, setError] = useState("");
 
@@ -216,7 +219,52 @@ export default function ClienteBookingActionsPage() {
             }
           : current
       );
-      setFeedback("Reseña enviada correctamente.");
+      setFeedback("Reseña enviada correctamente. Si todo estuvo bien, el pago seguirá su flujo normal de liberación.");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Error inesperado");
+    }
+  };
+
+  const confirmService = async () => {
+    if (!bookingId) return;
+    setError("");
+    setFeedback("");
+    try {
+      const response = await fetch(`/api/marketplace/bookings/${bookingId}/customer-confirm`, {
+        method: "POST"
+      });
+      const data = (await response.json()) as { ok?: boolean; error?: string; detail?: string };
+      if (!response.ok || !data.ok) throw new Error(data.detail || data.error || "No se pudo confirmar el servicio");
+      setCustomerConfirmed(true);
+      setFeedback("Servicio confirmado. El pago quedó programado para el próximo ciclo automático.");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Error inesperado");
+    }
+  };
+
+  const openDispute = async () => {
+    if (!bookingId || !customerId) return;
+    if (disputeReason.trim().length < 8) {
+      setError("Cuéntanos brevemente qué salió mal para abrir el reclamo.");
+      return;
+    }
+    setError("");
+    setFeedback("");
+    try {
+      const response = await fetch("/api/marketplace/disputes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          bookingId,
+          openedById: customerId,
+          reason: disputeReason
+        })
+      });
+      const data = (await response.json()) as { ticket?: { id: string }; error?: string; detail?: string };
+      if (!response.ok || !data.ticket) throw new Error(data.detail || data.error || "No se pudo abrir el reclamo");
+      setBooking((current) => (current ? { ...current, status: "DISPUTE" } : current));
+      setFeedback("Reclamo enviado. El pago seguirá retenido mientras revisamos el caso.");
+      setDisputeReason("");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error inesperado");
     }
@@ -255,6 +303,7 @@ export default function ClienteBookingActionsPage() {
                 <article className="module-card client-dashboard-metric">
                   <h3>Pago</h3>
                   <p>{PAYMENT_LABELS[booking.paymentStatus] ?? booking.paymentStatus}</p>
+                  <small>Dinero protegido hasta confirmar el servicio o hasta que venza el plazo sin reclamo.</small>
                 </article>
               </div>
             ) : (
@@ -338,6 +387,11 @@ export default function ClienteBookingActionsPage() {
                     <p>{booking.notes}</p>
                   </div>
                 ) : null}
+
+                <div className="client-booking-note">
+                  <strong>Cómo funciona el pago protegido</strong>
+                  <p>Pagaste al reservar y WeTask mantiene ese dinero retenido. Cuando el servicio termine, podrás confirmar si todo salió bien o reportar un problema. Si no reclamas dentro del plazo, el pago entra automáticamente al próximo ciclo de pago del profesional.</p>
+                </div>
               </section>
 
               <section className="auth-flow-panel client-dashboard-section">
@@ -378,8 +432,8 @@ export default function ClienteBookingActionsPage() {
 
               <section className="auth-flow-panel client-dashboard-section">
                 <div className="panel-head client-dashboard-panel-head">
-                  <h2>Tu reseña</h2>
-                  <p>Valora tu experiencia con este servicio.</p>
+                  <h2>Confirmación y soporte</h2>
+                  <p>Cuando termine el servicio, puedes dejar constancia de que todo salió bien o reportar un problema antes de la liberación del pago.</p>
                 </div>
 
                 <div className="action-grid client-booking-actions-grid">
@@ -388,7 +442,7 @@ export default function ClienteBookingActionsPage() {
                     <StarPicker value={reviewScore} onChange={setReviewScore} />
                   </label>
                   <label>
-                    Comentario reseña
+                    Comentario de confirmación
                     <textarea
                       value={reviewComment}
                       onChange={(e) => setReviewComment(e.target.value)}
@@ -397,8 +451,33 @@ export default function ClienteBookingActionsPage() {
                       required
                     />
                   </label>
-                  <button className="cta ghost small" type="button" onClick={leaveReview}>
-                    Enviar reseña
+                  <div className="cta-row">
+                    <button className="cta small" type="button" onClick={confirmService} disabled={customerConfirmed || booking.status === "DISPUTE"}>
+                      {customerConfirmed ? "Servicio confirmado" : "Confirmar servicio"}
+                    </button>
+                    <button className="cta ghost small" type="button" onClick={leaveReview}>
+                      Guardar reseña
+                    </button>
+                  </div>
+                </div>
+
+                <div className="client-booking-note">
+                  <strong>Plazo de revisión</strong>
+                  <p>Cuando el tasker marca el trabajo como realizado, tu pago sigue retenido. Puedes confirmar el servicio o reportar un problema. Si no reclamas dentro del plazo definido por WeTask, el pago entra al siguiente ciclo automático.</p>
+                </div>
+
+                <div className="action-grid client-booking-actions-grid" style={{ marginTop: 16 }}>
+                  <label>
+                    ¿Algo salió mal?
+                    <textarea
+                      value={disputeReason}
+                      onChange={(e) => setDisputeReason(e.target.value)}
+                      placeholder="Describe el problema para que WeTask revise antes de liberar el pago."
+                      rows={4}
+                    />
+                  </label>
+                  <button className="cta small" type="button" onClick={openDispute}>
+                    Reportar problema
                   </button>
                 </div>
 

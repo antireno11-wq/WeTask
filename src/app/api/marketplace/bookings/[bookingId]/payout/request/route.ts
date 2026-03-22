@@ -20,12 +20,23 @@ export async function POST(req: NextRequest, context: { params: { bookingId: str
     }
 
     if (booking.status !== "COMPLETED") {
-      return NextResponse.json({ error: "El payout se solicita solo para reservas finalizadas" }, { status: 400 });
+      return NextResponse.json({ error: "El payout se programa solo para reservas marcadas como realizadas" }, { status: 400 });
+    }
+
+    const hasBlockingDispute = await prisma.disputeTicket.findFirst({
+      where: {
+        bookingId: booking.id,
+        status: { in: ["OPEN", "IN_REVIEW"] }
+      }
+    });
+
+    if (hasBlockingDispute) {
+      return NextResponse.json({ error: "Existe un reclamo abierto. El payout sigue retenido hasta resolverlo." }, { status: 400 });
     }
 
     if (!booking.proReviewedAt || !booking.proReviewRating || !booking.proReviewComment) {
       return NextResponse.json(
-        { error: "Antes de solicitar tu payout debes dejar una reseña del cliente." },
+        { error: "Antes de programar el payout debes dejar una reseña del cliente." },
         { status: 400 }
       );
     }
@@ -43,6 +54,15 @@ export async function POST(req: NextRequest, context: { params: { bookingId: str
         proId: booking.proId,
         amountClp: payoutAmount,
         status: "PENDING"
+      }
+    });
+
+    await prisma.notification.create({
+      data: {
+        userId: booking.proId,
+        bookingId: booking.id,
+        title: "Payout programado",
+        body: "Tu pago quedó programado para el próximo ciclo automático de WeTask."
       }
     });
 

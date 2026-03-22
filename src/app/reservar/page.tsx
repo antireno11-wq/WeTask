@@ -644,7 +644,7 @@ export default function ReservarPage() {
           <div className="auth-flow-copy client-dashboard-copy">
             <p className="auth-flow-kicker">Reserva protegida</p>
             <h1>Agenda, compara y paga en un solo flujo.</h1>
-            <p>Elige el servicio, encuentra profesionales disponibles en tu zona y confirma tu reserva con pago seguro dentro de WeTask.</p>
+            <p>Elige el servicio, encuentra profesionales disponibles en tu zona y confirma tu reserva con pago seguro dentro de WeTask. Tu dinero queda retenido hasta que confirmes o venza el plazo sin reclamo.</p>
 
             <div className="auth-flow-copy-list client-dashboard-summary">
               <div className="auth-flow-meta-card">
@@ -669,11 +669,15 @@ export default function ReservarPage() {
                 <span className={filters.serviceId ? "is-complete" : ""}>1. Servicio seleccionado</span>
                 <span className={matches.length > 0 ? "is-complete" : ""}>2. Profesionales encontrados</span>
                 <span className={selectedSlot ? "is-complete" : ""}>3. Horario elegido</span>
-                <span className={checkoutState === "approved" ? "is-complete" : ""}>4. Pago confirmado</span>
+                <span className={checkoutState === "approved" ? "is-complete" : ""}>4. Pago retenido y protegido</span>
               </div>
               <div className="auth-flow-note-card">
                 <strong>Resumen rápido</strong>
                 <span>{selectedPro ? `${selectedPro.fullName} · ${selectedSlot ? new Date(selectedSlot.startsAt).toLocaleString("es-CL") : "falta horario"}` : "Aún no eliges profesional."}</span>
+              </div>
+              <div className="auth-flow-note-card">
+                <strong>¿Qué pasa con tu pago?</strong>
+                <span>WeTask retiene el dinero. El tasker entra a pago cuando confirmas que todo salió bien o cuando vence el plazo sin reclamo.</span>
               </div>
             </div>
           </section>
@@ -957,7 +961,7 @@ export default function ReservarPage() {
                       {estimatedHoursRange ? ` · Rango estimado ${estimatedHoursRange}` : ""}
                     </p>
                   ) : null}
-                  <p className="minimal-note">Pago seguro procesado por Mercado Pago.</p>
+                  <p className="minimal-note">Pago seguro procesado por Mercado Pago. El cobro queda protegido hasta tu confirmación o hasta que venza el plazo sin reclamo.</p>
                 </section>
               </div>
             ) : null}
