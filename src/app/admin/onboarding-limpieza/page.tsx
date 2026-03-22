@@ -150,7 +150,7 @@ export default function AdminCleaningOnboardingPage() {
             <option value="ACTIVO">Activo</option>
           </select>
         </label>
-        <button type="button" className="cta ghost" onClick={() => void runAction("", "clear_all")}>
+        <button type="button" className="cta ghost small admin-clear-button" onClick={() => void runAction("", "clear_all")}>
           Borrar inscripciones anteriores
         </button>
       </div>
