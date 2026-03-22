@@ -2,6 +2,17 @@ import { ProviderPaymentCreateInput, ProviderPaymentResult, ProviderRefundInput 
 
 const MP_API_BASE = "https://api.mercadopago.com";
 
+export type MercadoPagoStoredCard = {
+  customerId: string;
+  cardId: string;
+  paymentMethodId: string | null;
+  brand: string | null;
+  last4: string;
+  expirationMonth: number | null;
+  expirationYear: number | null;
+  cardholderName: string | null;
+};
+
 function mpAccessToken() {
   const token = process.env.MERCADOPAGO_ACCESS_TOKEN;
   if (!token) {
@@ -80,6 +91,12 @@ export async function createMercadoPagoPayment(input: ProviderPaymentCreateInput
     issuer_id: input.issuerId ? Number(input.issuerId) : undefined,
     payer: {
       email: input.payerEmail,
+      ...(input.customerId
+        ? {
+            id: input.customerId,
+            type: "customer"
+          }
+        : {}),
       identification:
         input.payerIdentification?.type && input.payerIdentification?.number
           ? {
@@ -181,4 +198,88 @@ export async function refundMercadoPagoPayment(input: ProviderRefundInput): Prom
     refundedAt: parseDate(payload?.date_created) ?? new Date(),
     raw: payload
   };
+}
+
+function normalizeStoredCard(payload: any, customerId: string): MercadoPagoStoredCard {
+  return {
+    customerId,
+    cardId: String(payload?.id ?? ""),
+    paymentMethodId: payload?.payment_method?.id ? String(payload.payment_method.id) : payload?.payment_method_id ? String(payload.payment_method_id) : null,
+    brand: payload?.payment_method?.name ? String(payload.payment_method.name) : payload?.payment_method?.id ? String(payload.payment_method.id) : null,
+    last4: String(payload?.last_four_digits ?? payload?.last4 ?? ""),
+    expirationMonth: typeof payload?.expiration_month === "number" ? payload.expiration_month : null,
+    expirationYear: typeof payload?.expiration_year === "number" ? payload.expiration_year : null,
+    cardholderName: payload?.cardholder?.name ? String(payload.cardholder.name) : null
+  };
+}
+
+export async function findMercadoPagoCustomerByEmail(email: string) {
+  const { response, payload } = await mpRequest(`/v1/customers/search?email=${encodeURIComponent(email)}`, { method: "GET" });
+  if (!response.ok) {
+    throw new Error(payload?.message ? String(payload.message) : "No se pudo buscar cliente en Mercado Pago");
+  }
+  const first = Array.isArray(payload?.results) ? payload.results[0] : null;
+  return first?.id ? String(first.id) : null;
+}
+
+export async function createMercadoPagoCustomer(input: { email: string; firstName?: string | null; lastName?: string | null }) {
+  const { response, payload } = await mpRequest("/v1/customers", {
+    method: "POST",
+    body: JSON.stringify({
+      email: input.email,
+      first_name: input.firstName ?? undefined,
+      last_name: input.lastName ?? undefined
+    })
+  });
+
+  if (!response.ok || !payload?.id) {
+    throw new Error(payload?.message ? String(payload.message) : "No se pudo crear cliente en Mercado Pago");
+  }
+
+  return String(payload.id);
+}
+
+export async function ensureMercadoPagoCustomer(input: { email: string; firstName?: string | null; lastName?: string | null; existingCustomerId?: string | null }) {
+  if (input.existingCustomerId) return input.existingCustomerId;
+  const found = await findMercadoPagoCustomerByEmail(input.email);
+  if (found) return found;
+  return createMercadoPagoCustomer(input);
+}
+
+export async function createMercadoPagoCustomerCard(input: {
+  customerId: string;
+  token: string;
+  paymentMethodId?: string;
+  issuerId?: string;
+}) {
+  const { response, payload } = await mpRequest(`/v1/customers/${input.customerId}/cards`, {
+    method: "POST",
+    body: JSON.stringify({
+      token: input.token,
+      payment_method_id: input.paymentMethodId,
+      issuer_id: input.issuerId ? Number(input.issuerId) : undefined
+    })
+  });
+
+  if (!response.ok || !payload?.id) {
+    throw new Error(payload?.message ? String(payload.message) : "No se pudo guardar la tarjeta en Mercado Pago");
+  }
+
+  return normalizeStoredCard(payload, input.customerId);
+}
+
+export async function listMercadoPagoCustomerCards(customerId: string) {
+  const { response, payload } = await mpRequest(`/v1/customers/${customerId}/cards`, { method: "GET" });
+  if (!response.ok) {
+    throw new Error(payload?.message ? String(payload.message) : "No se pudieron cargar las tarjetas guardadas");
+  }
+  const items = Array.isArray(payload) ? payload : [];
+  return items.map((item) => normalizeStoredCard(item, customerId));
+}
+
+export async function deleteMercadoPagoCustomerCard(customerId: string, cardId: string) {
+  const { response, payload } = await mpRequest(`/v1/customers/${customerId}/cards/${cardId}`, { method: "DELETE" });
+  if (!response.ok) {
+    throw new Error(payload?.message ? String(payload.message) : "No se pudo eliminar la tarjeta guardada");
+  }
 }

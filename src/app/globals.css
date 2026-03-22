@@ -5325,6 +5325,64 @@ textarea {
   margin: 0 0 18px;
 }
 
+.client-payment-methods-list {
+  display: grid;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.client-payment-methods-list.compact {
+  margin-top: 4px;
+}
+
+.client-payment-method-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 14px 16px;
+  border: 1px solid rgba(139, 177, 235, 0.26);
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.88);
+}
+
+.client-payment-method-card strong {
+  color: #173762;
+}
+
+.client-payment-method-card p {
+  margin: 6px 0 0;
+  color: rgba(36, 60, 95, 0.78);
+}
+
+.client-payment-method-card.compact {
+  padding: 12px 14px;
+}
+
+.client-payment-method-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.client-payment-method-editor {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(139, 177, 235, 0.22);
+  display: grid;
+  gap: 14px;
+}
+
+.booking-checkout-saved-methods {
+  margin: 16px 0 18px;
+  padding: 16px 18px;
+  border: 1px solid rgba(139, 177, 235, 0.22);
+  border-radius: 24px;
+  background: linear-gradient(180deg, rgba(248, 251, 255, 0.96), rgba(241, 247, 255, 0.92));
+}
+
 .booking-flow-page .auth-flow-backdrop {
   background:
     linear-gradient(118deg, rgba(11, 32, 67, 0.84) 0%, rgba(18, 86, 176, 0.38) 44%, rgba(255, 106, 0, 0.16) 100%),

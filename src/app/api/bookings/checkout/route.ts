@@ -34,12 +34,13 @@ const checkoutSchema = z.object({
     .default({ materials: false, urgency: false, travelFeeClp: 0 }),
   payment: z.object({
     token: z.string().min(6),
-    paymentMethodId: z.string().min(2),
+    paymentMethodId: z.string().min(2).optional(),
     issuerId: z.string().optional(),
     installments: z.coerce.number().int().min(1).max(48).default(1),
     payerEmail: z.string().email(),
     payerIdentificationType: z.string().max(10).optional(),
-    payerIdentificationNumber: z.string().max(32).optional()
+    payerIdentificationNumber: z.string().max(32).optional(),
+    savedCardId: z.string().min(1).optional()
   }),
   idempotencyKey: z.string().min(8).max(120).optional()
 });
@@ -95,6 +96,30 @@ export async function POST(req: NextRequest) {
     let assignedProId = input.proId ?? null;
     let selectedSlotId = input.slotId ?? null;
     let hourlyRateClp = service.basePriceClp;
+    let savedPaymentMethod:
+      | {
+          providerCustomerId: string;
+          providerCardId: string;
+          paymentMethodId: string | null;
+          payerEmail: string | null;
+        }
+      | null = null;
+
+    if (input.payment.savedCardId) {
+      savedPaymentMethod = await prisma.customerPaymentMethod.findFirst({
+        where: { id: input.payment.savedCardId, userId: input.customerId },
+        select: {
+          providerCustomerId: true,
+          providerCardId: true,
+          paymentMethodId: true,
+          payerEmail: true
+        }
+      });
+
+      if (!savedPaymentMethod) {
+        return NextResponse.json({ error: "La tarjeta guardada no pertenece al cliente" }, { status: 400 });
+      }
+    }
 
     if (selectedSlotId) {
       const slot = await prisma.availabilitySlot.findUnique({
@@ -205,6 +230,11 @@ export async function POST(req: NextRequest) {
       ? input.idempotencyKey
       : `checkout_${input.customerId}_${selectedSlotId ?? "noslot"}_${input.startsAt.getTime()}_${price.totalClp}`;
     const idempotencyKey = sanitizeIdempotencyKey(derivedKey);
+    const paymentMethodId = savedPaymentMethod?.paymentMethodId ?? input.payment.paymentMethodId ?? null;
+    if (!paymentMethodId) {
+      return NextResponse.json({ error: "Falta el medio de pago seleccionado" }, { status: 400 });
+    }
+    const normalizedPayerEmail = (savedPaymentMethod?.payerEmail ?? input.payment.payerEmail).trim().toLowerCase();
 
     const existing = await prisma.payment.findUnique({
       where: { idempotencyKey },
@@ -297,8 +327,8 @@ export async function POST(req: NextRequest) {
           platformFeeClp: price.platformFeeClp,
           status: PaymentStatus.PENDING,
           currency: "CLP",
-          paymentMethod: input.payment.paymentMethodId,
-          payerEmail: input.payment.payerEmail.trim().toLowerCase(),
+          paymentMethod: paymentMethodId,
+          payerEmail: normalizedPayerEmail,
           idempotencyKey
         }
       });
@@ -315,17 +345,19 @@ export async function POST(req: NextRequest) {
         externalReference: created.booking.id,
         idempotencyKey,
         token: input.payment.token,
-        paymentMethodId: input.payment.paymentMethodId,
+        paymentMethodId,
         issuerId: input.payment.issuerId,
         installments: input.payment.installments,
-        payerEmail: input.payment.payerEmail.trim().toLowerCase(),
+        payerEmail: normalizedPayerEmail,
         payerIdentification:
           input.payment.payerIdentificationType && input.payment.payerIdentificationNumber
             ? {
                 type: input.payment.payerIdentificationType,
                 number: input.payment.payerIdentificationNumber
               }
-            : undefined
+            : undefined,
+        customerId: savedPaymentMethod?.providerCustomerId,
+        cardId: savedPaymentMethod?.providerCardId
       });
     } catch (providerError) {
       await prisma.$transaction(async (tx) => {
@@ -368,7 +400,7 @@ export async function POST(req: NextRequest) {
           refundedAt: providerResult.refundedAt,
           paymentMethod: providerResult.paymentMethod ?? created.payment.paymentMethod,
           last4: providerResult.last4 ?? null,
-          payerEmail: input.payment.payerEmail.trim().toLowerCase(),
+          payerEmail: normalizedPayerEmail,
           rawResponseJson: providerResult.raw as any,
           errorCode: providerResult.errorCode ?? null,
           errorMessage: providerResult.errorMessage ?? null

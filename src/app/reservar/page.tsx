@@ -45,6 +45,18 @@ type BookingResponse = {
   totalPriceClp: number;
 };
 
+type SavedPaymentMethod = {
+  id: string;
+  brand: string | null;
+  last4: string;
+  expirationMonth: number | null;
+  expirationYear: number | null;
+  cardholderName: string | null;
+  payerEmail: string | null;
+  paymentMethodId: string | null;
+  isDefault: boolean;
+};
+
 type CardFormData = {
   token?: string;
   paymentMethodId?: string;
@@ -85,6 +97,15 @@ function initials(name: string) {
     .slice(0, 2)
     .map((chunk) => chunk[0]?.toUpperCase() ?? "")
     .join("");
+}
+
+function paymentMethodLabel(paymentMethod: SavedPaymentMethod) {
+  const base = paymentMethod.brand?.trim() || paymentMethod.paymentMethodId?.trim() || "Tarjeta";
+  const expiry =
+    paymentMethod.expirationMonth && paymentMethod.expirationYear
+      ? ` · ${String(paymentMethod.expirationMonth).padStart(2, "0")}/${String(paymentMethod.expirationYear).slice(-2)}`
+      : "";
+  return `${base} terminada en ${paymentMethod.last4}${expiry}`;
 }
 
 export default function ReservarPage() {
@@ -136,6 +157,8 @@ export default function ReservarPage() {
   const [dietaryNotes, setDietaryNotes] = useState("");
 
   const [createdBooking, setCreatedBooking] = useState<BookingResponse | null>(null);
+  const [savedPaymentMethods, setSavedPaymentMethods] = useState<SavedPaymentMethod[]>([]);
+  const [loadingSavedPaymentMethods, setLoadingSavedPaymentMethods] = useState(false);
   const [preferredStartsAt, setPreferredStartsAt] = useState("");
   const [quickCheckoutEnabled, setQuickCheckoutEnabled] = useState(false);
   const mercadoPagoPublicKey = process.env.NEXT_PUBLIC_MERCADOPAGO_PUBLIC_KEY ?? "";
@@ -275,6 +298,26 @@ export default function ReservarPage() {
     };
     void bootstrapSession();
   }, []);
+
+  useEffect(() => {
+    if (!customerId) return;
+    const loadSavedPaymentMethods = async () => {
+      try {
+        setLoadingSavedPaymentMethods(true);
+        const response = await fetch("/api/marketplace/client/payment-methods");
+        const data = (await response.json()) as { paymentMethods?: SavedPaymentMethod[] };
+        if (response.ok) {
+          setSavedPaymentMethods(data.paymentMethods ?? []);
+        }
+      } catch {
+        // noop
+      } finally {
+        setLoadingSavedPaymentMethods(false);
+      }
+    };
+
+    void loadSavedPaymentMethods();
+  }, [customerId]);
 
   useEffect(() => {
     const nextKey =
@@ -951,6 +994,36 @@ export default function ReservarPage() {
               {!mercadoPagoPublicKey ? (
                 <p className="feedback error">Configura `NEXT_PUBLIC_MERCADOPAGO_PUBLIC_KEY` para habilitar pagos.</p>
               ) : null}
+
+              <div className="booking-checkout-saved-methods">
+                <div className="panel-head auth-flow-panel-head">
+                  <h3>Tus tarjetas guardadas</h3>
+                  <p>Guárdalas en tu panel cliente para acelerar futuras reservas con Mercado Pago.</p>
+                </div>
+
+                {loadingSavedPaymentMethods ? (
+                  <p className="minimal-note">Cargando tarjetas guardadas...</p>
+                ) : savedPaymentMethods.length === 0 ? (
+                  <p className="minimal-note">Aún no tienes tarjetas guardadas. Puedes agregarlas desde tu panel cliente.</p>
+                ) : (
+                  <div className="client-payment-methods-list compact">
+                    {savedPaymentMethods.map((paymentMethod) => (
+                      <article key={paymentMethod.id} className="client-payment-method-card compact">
+                        <div>
+                          <strong>{paymentMethodLabel(paymentMethod)}</strong>
+                          <p>{paymentMethod.isDefault ? "Tarjeta principal" : "Tarjeta guardada"}</p>
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                )}
+
+                <div className="cta-row">
+                  <Link className="cta ghost small" href="/cliente">
+                    Gestionar tarjetas
+                  </Link>
+                </div>
+              </div>
 
               <form id="mp-card-form" className="grid-form auth-flow-form" onSubmit={(event) => event.preventDefault()}>
                 <label>

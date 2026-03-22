@@ -80,6 +80,7 @@ model User {
   email               String                @unique
   fullName            String
   phone               String?
+  mercadoPagoCustomerId String?
   role                UserRole              @default(CUSTOMER)
   authProvider        AuthProvider          @default(EMAIL)
   passwordHash        String?
@@ -90,6 +91,7 @@ model User {
   bookings            Booking[]             @relation("CustomerBookings")
   proBookings         Booking[]             @relation("ProBookings")
   addresses           Address[]
+  paymentMethods      CustomerPaymentMethod[]
   sentMessages        Message[]             @relation("SenderMessages")
   reviewsGiven        Review[]              @relation("ReviewAuthor")
   professionalProfile ProfessionalProfile?
@@ -100,6 +102,28 @@ model User {
   emailVerifications  EmailVerificationToken[]
   passwordResets      PasswordResetToken[]
   sessions            AuthSession[]
+}
+
+model CustomerPaymentMethod {
+  id                  String   @id @default(cuid())
+  userId              String
+  provider            String   @default("MERCADOPAGO")
+  providerCustomerId  String
+  providerCardId      String   @unique
+  paymentMethodId     String?
+  brand               String?
+  last4               String
+  expirationMonth     Int?
+  expirationYear      Int?
+  cardholderName      String?
+  payerEmail          String?
+  isDefault           Boolean  @default(false)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([userId, isDefault])
 }
 
 model Role {

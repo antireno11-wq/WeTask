@@ -15,6 +15,8 @@ export type ProviderPaymentCreateInput = {
     type?: string;
     number?: string;
   };
+  customerId?: string;
+  cardId?: string;
 };
 
 export type ProviderPaymentStatus = "approved" | "failed" | "pending" | "refunded";

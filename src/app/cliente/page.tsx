@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ChangeEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { MarketNav } from "@/components/market-nav";
 
 type Booking = {
@@ -28,6 +28,26 @@ type Notification = {
 type SessionPayload = {
   userId: string;
   fullName?: string | null;
+  email?: string | null;
+};
+
+type PaymentMethod = {
+  id: string;
+  brand: string | null;
+  last4: string;
+  expirationMonth: number | null;
+  expirationYear: number | null;
+  cardholderName: string | null;
+  payerEmail: string | null;
+  paymentMethodId: string | null;
+  isDefault: boolean;
+};
+
+type CardFormData = {
+  token?: string;
+  paymentMethodId?: string;
+  issuerId?: string;
+  cardholderEmail?: string;
 };
 
 const STATUS_LABELS: Record<string, string> = {
@@ -65,8 +85,11 @@ function bookingEyebrow(status: string, scheduledAt: string) {
 }
 
 export default function ClientePage() {
+  const addPaymentFormRef = useRef<any>(null);
+
   const [sessionUserId, setSessionUserId] = useState("");
   const [customerName, setCustomerName] = useState("Cliente");
+  const [customerEmail, setCustomerEmail] = useState("");
   const [customerPhotoUrl, setCustomerPhotoUrl] = useState("");
   const [customAddress, setCustomAddress] = useState("");
   const [addressDraft, setAddressDraft] = useState("");
@@ -78,6 +101,16 @@ export default function ClientePage() {
   const [savingAddress, setSavingAddress] = useState(false);
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
+  const [loadingPaymentMethods, setLoadingPaymentMethods] = useState(false);
+  const [savingPaymentMethod, setSavingPaymentMethod] = useState(false);
+  const [editingPayments, setEditingPayments] = useState(false);
+  const [paymentSdkReady, setPaymentSdkReady] = useState(false);
+  const [paymentFormReady, setPaymentFormReady] = useState(false);
+  const [paymentMethodMessage, setPaymentMethodMessage] = useState("");
+  const [paymentMethodError, setPaymentMethodError] = useState("");
+  const [cardholderName, setCardholderName] = useState("");
+  const [payerEmail, setPayerEmail] = useState("");
   const [feedback, setFeedback] = useState("");
   const [error, setError] = useState("");
 
@@ -118,6 +151,22 @@ export default function ClientePage() {
     setNotifications(data.notifications ?? []);
   };
 
+  const fetchPaymentMethods = useCallback(async () => {
+    try {
+      setLoadingPaymentMethods(true);
+      const response = await fetch("/api/marketplace/client/payment-methods");
+      const data = (await response.json()) as { paymentMethods?: PaymentMethod[]; error?: string; detail?: string };
+      if (!response.ok) {
+        throw new Error(data.detail || data.error || "No se pudieron cargar los medios de pago");
+      }
+      setPaymentMethods(data.paymentMethods ?? []);
+    } catch (e) {
+      setPaymentMethodError(e instanceof Error ? e.message : "No se pudieron cargar los medios de pago");
+    } finally {
+      setLoadingPaymentMethods(false);
+    }
+  }, []);
+
   const loadDashboard = useCallback(async (targetName: string) => {
     const count = await fetchBookings();
     await fetchNotifications();
@@ -141,6 +190,9 @@ export default function ClientePage() {
         const nextName = sessionData.session.fullName?.trim() || "Cliente";
         setSessionUserId(sessionData.session.userId);
         setCustomerName(nextName);
+        setCustomerEmail(sessionData.session.email?.trim() || "");
+        setCardholderName(nextName);
+        setPayerEmail(sessionData.session.email?.trim() || "");
         await loadDashboard(nextName);
       } catch (e) {
         setError(e instanceof Error ? e.message : "Error inesperado");
@@ -163,6 +215,89 @@ export default function ClientePage() {
       // Ignorar errores de almacenamiento local.
     }
   }, []);
+
+  useEffect(() => {
+    if (!sessionUserId) return;
+    void fetchPaymentMethods();
+  }, [fetchPaymentMethods, sessionUserId]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if ((window as any).MercadoPago) {
+      setPaymentSdkReady(true);
+      return;
+    }
+
+    const script = document.createElement("script");
+    script.src = "https://sdk.mercadopago.com/js/v2";
+    script.async = true;
+    script.onload = () => setPaymentSdkReady(true);
+    script.onerror = () => setPaymentMethodError("No pudimos cargar Mercado Pago para guardar tu tarjeta.");
+    document.body.appendChild(script);
+
+    return () => {
+      script.remove();
+    };
+  }, []);
+
+  useEffect(() => {
+    const publicKey = process.env.NEXT_PUBLIC_MERCADOPAGO_PUBLIC_KEY ?? "";
+    if (!editingPayments || !paymentSdkReady || !publicKey) return;
+    if (typeof window === "undefined") return;
+    const MercadoPagoCtor = (window as any).MercadoPago;
+    if (!MercadoPagoCtor) return;
+
+    let cancelled = false;
+
+    const mount = async () => {
+      try {
+        const mp = new MercadoPagoCtor(publicKey, { locale: "es-CL" });
+        const cardForm = mp.cardForm({
+          amount: "1",
+          iframe: true,
+          form: {
+            id: "client-payment-card-form",
+            cardholderName: { id: "client-payment-cardholder-name" },
+            cardholderEmail: { id: "client-payment-cardholder-email" },
+            cardNumber: { id: "client-payment-card-number" },
+            expirationDate: { id: "client-payment-expiration-date" },
+            securityCode: { id: "client-payment-security-code" },
+            installments: { id: "client-payment-installments" },
+            identificationType: { id: "client-payment-identification-type" },
+            identificationNumber: { id: "client-payment-identification-number" },
+            issuer: { id: "client-payment-issuer" }
+          }
+        });
+        if (cancelled) {
+          cardForm.unmount?.();
+          cardForm.destroy?.();
+          return;
+        }
+        addPaymentFormRef.current = cardForm;
+        setPaymentFormReady(true);
+      } catch {
+        if (!cancelled) {
+          setPaymentFormReady(false);
+          setPaymentMethodError("No pudimos inicializar el formulario de tarjeta.");
+        }
+      }
+    };
+
+    void mount();
+
+    return () => {
+      cancelled = true;
+      setPaymentFormReady(false);
+      try {
+        addPaymentFormRef.current?.unmount?.();
+        addPaymentFormRef.current?.destroy?.();
+      } catch {
+        // noop
+      } finally {
+        addPaymentFormRef.current = null;
+      }
+    };
+  }, [editingPayments, paymentSdkReady]);
 
   useEffect(() => {
     if (!editingAddress) {
@@ -245,6 +380,97 @@ export default function ClientePage() {
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error inesperado");
     }
+  };
+
+  const savePaymentMethod = async () => {
+    if (!addPaymentFormRef.current || !paymentFormReady) {
+      setPaymentMethodError("Espera un momento mientras cargamos el formulario de tarjeta.");
+      return;
+    }
+
+    setPaymentMethodError("");
+    setPaymentMethodMessage("");
+    setSavingPaymentMethod(true);
+    try {
+      const cardData = (addPaymentFormRef.current.getCardFormData?.() ?? {}) as CardFormData;
+      if (!cardData.token) {
+        throw new Error("No pudimos tokenizar la tarjeta. Revisa los datos e inténtalo nuevamente.");
+      }
+
+      const response = await fetch("/api/marketplace/client/payment-methods", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          token: cardData.token,
+          paymentMethodId: cardData.paymentMethodId,
+          issuerId: cardData.issuerId,
+          payerEmail: (cardData.cardholderEmail || payerEmail || customerEmail).trim(),
+          cardholderName: cardholderName.trim(),
+          makeDefault: paymentMethods.length === 0
+        })
+      });
+      const data = (await response.json()) as { error?: string; detail?: string };
+      if (!response.ok) {
+        throw new Error(data.detail || data.error || "No se pudo guardar la tarjeta");
+      }
+
+      await fetchPaymentMethods();
+      setPaymentMethodMessage("Tarjeta guardada correctamente.");
+      setEditingPayments(false);
+    } catch (e) {
+      setPaymentMethodError(e instanceof Error ? e.message : "No se pudo guardar la tarjeta");
+    } finally {
+      setSavingPaymentMethod(false);
+    }
+  };
+
+  const setDefaultPaymentMethod = async (paymentMethodId: string) => {
+    setPaymentMethodError("");
+    setPaymentMethodMessage("");
+    try {
+      const response = await fetch("/api/marketplace/client/payment-methods", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: paymentMethodId, makeDefault: true })
+      });
+      const data = (await response.json()) as { error?: string; detail?: string };
+      if (!response.ok) {
+        throw new Error(data.detail || data.error || "No se pudo actualizar la tarjeta principal");
+      }
+      await fetchPaymentMethods();
+      setPaymentMethodMessage("Tarjeta principal actualizada.");
+    } catch (e) {
+      setPaymentMethodError(e instanceof Error ? e.message : "No se pudo actualizar la tarjeta principal");
+    }
+  };
+
+  const deletePaymentMethod = async (paymentMethodId: string) => {
+    setPaymentMethodError("");
+    setPaymentMethodMessage("");
+    try {
+      const response = await fetch("/api/marketplace/client/payment-methods", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: paymentMethodId })
+      });
+      const data = (await response.json()) as { error?: string; detail?: string };
+      if (!response.ok) {
+        throw new Error(data.detail || data.error || "No se pudo eliminar la tarjeta");
+      }
+      await fetchPaymentMethods();
+      setPaymentMethodMessage("Tarjeta eliminada correctamente.");
+    } catch (e) {
+      setPaymentMethodError(e instanceof Error ? e.message : "No se pudo eliminar la tarjeta");
+    }
+  };
+
+  const paymentMethodLabel = (paymentMethod: PaymentMethod) => {
+    const base = paymentMethod.brand?.trim() || paymentMethod.paymentMethodId?.trim() || "Tarjeta";
+    const expiry =
+      paymentMethod.expirationMonth && paymentMethod.expirationYear
+        ? ` · ${String(paymentMethod.expirationMonth).padStart(2, "0")}/${String(paymentMethod.expirationYear).slice(-2)}`
+        : "";
+    return `${base} terminada en ${paymentMethod.last4}${expiry}`;
   };
 
   const saveAddress = async () => {
@@ -425,6 +651,122 @@ export default function ClientePage() {
         <div className="page client-dashboard-sections">
           {feedback ? <p className="feedback ok">{feedback}</p> : null}
           {error ? <p className="feedback error">{error}</p> : null}
+
+          <section className="auth-flow-panel client-dashboard-section">
+            <div className="panel-head client-dashboard-panel-head">
+              <h2>Medios de pago</h2>
+              <p>Guarda tu tarjeta con Mercado Pago para tenerla lista en futuras reservas.</p>
+            </div>
+
+            {paymentMethodMessage ? <p className="feedback ok">{paymentMethodMessage}</p> : null}
+            {paymentMethodError ? <p className="feedback error">{paymentMethodError}</p> : null}
+
+            <div className="client-payment-methods-list">
+              {loadingPaymentMethods ? (
+                <p className="empty">Cargando tarjetas guardadas...</p>
+              ) : paymentMethods.length === 0 ? (
+                <p className="empty">Aún no tienes tarjetas guardadas. Agrega una para pagar más rápido después.</p>
+              ) : (
+                paymentMethods.map((paymentMethod) => (
+                  <article key={paymentMethod.id} className="client-payment-method-card">
+                    <div>
+                      <strong>{paymentMethodLabel(paymentMethod)}</strong>
+                      <p>{paymentMethod.payerEmail || customerEmail || "Email no informado"}</p>
+                    </div>
+                    <div className="client-payment-method-actions">
+                      {paymentMethod.isDefault ? <span className="status status-completed">Principal</span> : null}
+                      {!paymentMethod.isDefault ? (
+                        <button className="cta ghost small" type="button" onClick={() => void setDefaultPaymentMethod(paymentMethod.id)}>
+                          Dejar principal
+                        </button>
+                      ) : null}
+                      <button className="cta ghost small" type="button" onClick={() => void deletePaymentMethod(paymentMethod.id)}>
+                        Eliminar
+                      </button>
+                    </div>
+                  </article>
+                ))
+              )}
+            </div>
+
+            <div className="client-profile-actions">
+              <button className="cta small" type="button" onClick={() => setEditingPayments((current) => !current)}>
+                {editingPayments ? "Cerrar formulario" : "Agregar tarjeta"}
+              </button>
+            </div>
+
+            {editingPayments ? (
+              <div className="client-payment-method-editor">
+                {!process.env.NEXT_PUBLIC_MERCADOPAGO_PUBLIC_KEY ? (
+                  <p className="feedback error">Configura `NEXT_PUBLIC_MERCADOPAGO_PUBLIC_KEY` para guardar tarjetas.</p>
+                ) : (
+                  <>
+                    <form
+                      id="client-payment-card-form"
+                      className="grid-form auth-flow-form"
+                      onSubmit={(event) => event.preventDefault()}
+                    >
+                      <label>
+                        Nombre del titular
+                        <input
+                          id="client-payment-cardholder-name"
+                          type="text"
+                          value={cardholderName}
+                          onChange={(event) => setCardholderName(event.target.value)}
+                          placeholder="Como aparece en tu tarjeta"
+                        />
+                      </label>
+                      <label>
+                        Email del titular
+                        <input
+                          id="client-payment-cardholder-email"
+                          type="email"
+                          value={payerEmail}
+                          onChange={(event) => setPayerEmail(event.target.value)}
+                          placeholder="correo@ejemplo.com"
+                        />
+                      </label>
+                      <label className="full">
+                        Número de tarjeta
+                        <div id="client-payment-card-number" className="mp-secure-field" />
+                      </label>
+                      <label>
+                        Vencimiento
+                        <div id="client-payment-expiration-date" className="mp-secure-field" />
+                      </label>
+                      <label>
+                        Código de seguridad
+                        <div id="client-payment-security-code" className="mp-secure-field" />
+                      </label>
+                      <label>
+                        Cuotas
+                        <select id="client-payment-installments" defaultValue="" />
+                      </label>
+                      <label>
+                        Banco emisor
+                        <select id="client-payment-issuer" defaultValue="" />
+                      </label>
+                      <label>
+                        Tipo de identificación
+                        <select id="client-payment-identification-type" defaultValue="" />
+                      </label>
+                      <label>
+                        Número de identificación
+                        <input id="client-payment-identification-number" type="text" placeholder="RUT / documento" />
+                      </label>
+                    </form>
+
+                    <div className="client-profile-actions">
+                      <button className="cta small" type="button" onClick={() => void savePaymentMethod()} disabled={savingPaymentMethod || !paymentFormReady}>
+                        {savingPaymentMethod ? "Guardando..." : "Guardar tarjeta"}
+                      </button>
+                    </div>
+                    <p className="minimal-note">Tu tarjeta se guarda en Mercado Pago. WeTask solo conserva una referencia segura y los últimos 4 dígitos.</p>
+                  </>
+                )}
+              </div>
+            ) : null}
+          </section>
 
           <section className="auth-flow-panel client-dashboard-section">
             <div className="panel-head client-dashboard-panel-head">
