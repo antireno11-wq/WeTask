@@ -5322,7 +5322,7 @@ textarea {
 }
 
 .client-dashboard-sections .feedback {
-  margin-top: 0;
+  margin: 0 0 18px;
 }
 
 .booking-flow-page .auth-flow-backdrop {
