@@ -89,6 +89,14 @@ type AdminTaskerReviewEmailTemplatePayload = {
   reviewUrl: string;
 };
 
+type TaskerStatusEmailTemplatePayload = {
+  fullName: string;
+  title: string;
+  message: string;
+  ctaLabel: string;
+  ctaUrl: string;
+};
+
 export function buildAdminTaskerReviewEmailTemplate(payload: AdminTaskerReviewEmailTemplatePayload) {
   return `
     <div style="margin:0;padding:32px 16px;background:#eef4fb;font-family:Arial,sans-serif;color:#17324d;">
@@ -110,6 +118,28 @@ export function buildAdminTaskerReviewEmailTemplate(payload: AdminTaskerReviewEm
           <div style="text-align:center;">
             <a href="${payload.reviewUrl}" style="display:inline-block;padding:14px 24px;border-radius:999px;background:linear-gradient(135deg,#173e73 0%,#1d7fc6 100%);color:#ffffff;text-decoration:none;font-weight:800;">
               Abrir cola de revisión
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+export function buildTaskerStatusEmailTemplate(payload: TaskerStatusEmailTemplatePayload) {
+  return `
+    <div style="margin:0;padding:32px 16px;background:#eef4fb;font-family:Arial,sans-serif;color:#17324d;">
+      <div style="max-width:620px;margin:0 auto;background:#ffffff;border-radius:28px;overflow:hidden;box-shadow:0 18px 46px rgba(21,58,97,0.14);border:1px solid rgba(34,97,160,0.12);">
+        <div style="padding:28px 32px 18px;background:linear-gradient(135deg,#173e73 0%,#1d7fc6 100%);">
+          <p style="margin:0;font-size:13px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#d8ecff;">Actualización de tu perfil</p>
+          <h1 style="margin:10px 0 0;font-size:28px;line-height:1.12;color:#ffffff;">${payload.title}</h1>
+        </div>
+        <div style="padding:28px 32px 32px;">
+          <p style="margin:0 0 16px;font-size:16px;line-height:1.6;color:#48627d;">Hola ${payload.fullName},</p>
+          <p style="margin:0 0 24px;font-size:16px;line-height:1.7;color:#48627d;">${payload.message}</p>
+          <div style="text-align:center;">
+            <a href="${payload.ctaUrl}" style="display:inline-block;padding:14px 24px;border-radius:999px;background:linear-gradient(135deg,#173e73 0%,#1d7fc6 100%);color:#ffffff;text-decoration:none;font-weight:800;">
+              ${payload.ctaLabel}
             </a>
           </div>
         </div>

@@ -5,12 +5,49 @@ import { isChefServiceSlug } from "@/lib/chef-service-types";
 import { isCleaningServiceSlug } from "@/lib/cleaning-service-types";
 import { normalizeCommuneList } from "@/lib/communes";
 import { CORE_SERVICES } from "@/lib/core-services";
-import { sendPlatformEmail } from "@/lib/notifications";
+import { buildTaskerStatusEmailTemplate, sendPlatformEmail } from "@/lib/notifications";
 import { prisma } from "@/lib/prisma";
 import { getTaskerPublicationState, syncTaskerAvailabilitySlotsFromOnboarding } from "@/lib/tasker-publication";
 import { cleaningOnboardingAdminActionSchema } from "@/lib/validators";
 
 export const dynamic = "force-dynamic";
+
+function getAppUrl() {
+  return process.env.NEXT_PUBLIC_APP_URL?.replace(/\/+$/, "") || process.env.APP_URL?.replace(/\/+$/, "") || "https://wetask.cl";
+}
+
+async function notifyTaskerStatusChange(params: {
+  to: string;
+  fullName: string;
+  subject: string;
+  title: string;
+  message: string;
+  ctaLabel: string;
+  ctaPath: string;
+}) {
+  try {
+    const appUrl = getAppUrl();
+    const ctaUrl = `${appUrl}${params.ctaPath}`;
+    await sendPlatformEmail({
+      to: params.to,
+      subject: params.subject,
+      text: [`Hola ${params.fullName},`, "", params.message, "", `${params.ctaLabel}: ${ctaUrl}`, "", "Equipo WeTask"].join("\n"),
+      html: buildTaskerStatusEmailTemplate({
+        fullName: params.fullName,
+        title: params.title,
+        message: params.message,
+        ctaLabel: params.ctaLabel,
+        ctaUrl
+      })
+    });
+  } catch (error) {
+    console.error("[tasker-admin] status email failed", {
+      to: params.to,
+      subject: params.subject,
+      detail: error instanceof Error ? error.message : "Error desconocido"
+    });
+  }
+}
 
 async function deleteOnboardingAndProfessionalData(tx: Prisma.TransactionClient, userId: string, onboardingId?: string) {
   const profile = await tx.professionalProfile.findUnique({
@@ -302,6 +339,18 @@ export async function PATCH(req: NextRequest) {
           adminReviewNotes: input.notes?.trim() || null
         }
       });
+
+      await notifyTaskerStatusChange({
+        to: onboarding.user.email,
+        fullName: onboarding.user.fullName,
+        subject: "WeTask: tu perfil fue aprobado",
+        title: "Tu perfil fue aprobado",
+        message:
+          "Tu validación interna fue aprobada por el equipo de WeTask. Ya pasaste la revisión y tu perfil está listo para la activación final dentro de la plataforma.",
+        ctaLabel: "Ver mi perfil",
+        ctaPath: "/pro"
+      });
+
       return NextResponse.json({ ok: true, onboarding: updated }, { status: 200 });
     }
 
@@ -399,6 +448,17 @@ export async function PATCH(req: NextRequest) {
       createdSlots: syncResult.created,
       publication: syncResult.publication,
       reason: syncResult.reason
+    });
+
+    await notifyTaskerStatusChange({
+      to: onboarding.user.email,
+      fullName: onboarding.user.fullName,
+      subject: "WeTask: tu perfil ya está activo",
+      title: "Ya puedes trabajar en WeTask",
+      message:
+        "Tu perfil ya fue activado y desde ahora puedes aparecer en la plataforma, recibir solicitudes y gestionar tus reservas desde tu panel de tasker.",
+      ctaLabel: "Ir a mi panel",
+      ctaPath: "/pro"
     });
 
     return NextResponse.json({ ok: true, onboarding: updated }, { status: 200 });
