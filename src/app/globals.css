@@ -5375,6 +5375,29 @@ textarea {
   gap: 14px;
 }
 
+.client-payment-card-grid {
+  gap: 12px;
+}
+
+.client-payment-card-grid input,
+.client-payment-card-grid select {
+  min-height: 46px;
+}
+
+.client-payment-inline-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.payment-small-field {
+  min-width: 0;
+}
+
+.payment-small-field-wide {
+  grid-column: span 2;
+}
+
 .booking-checkout-saved-methods {
   margin: 16px 0 18px;
   padding: 16px 18px;
@@ -5568,6 +5591,14 @@ textarea {
 
   .dashboard-summary-grid {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .client-payment-inline-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .payment-small-field-wide {
+    grid-column: span 1;
   }
 }
 

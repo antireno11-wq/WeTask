@@ -105,6 +105,12 @@ function describeMercadoPagoError(error: unknown) {
   return "No pudimos inicializar el formulario de tarjeta. Revisa que la Public Key de Mercado Pago sea correcta y que no estés mezclando credenciales de prueba y producción.";
 }
 
+function readPaymentFieldValue(id: string) {
+  if (typeof document === "undefined") return "";
+  const element = document.getElementById(id) as HTMLInputElement | HTMLSelectElement | null;
+  return element?.value?.trim() ?? "";
+}
+
 export default function ClientePage() {
   const addPaymentFormRef = useRef<any>(null);
 
@@ -135,6 +141,10 @@ export default function ClientePage() {
   const [feedback, setFeedback] = useState("");
   const [error, setError] = useState("");
   const [activeView, setActiveView] = useState<ClientView>("resumen");
+  const paymentExpiryYears = useMemo(() => {
+    const baseYear = new Date().getFullYear();
+    return Array.from({ length: 16 }, (_, index) => String(baseYear + index));
+  }, []);
 
   const sortedBookings = useMemo(
     () => [...bookings].sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime()),
@@ -277,13 +287,13 @@ export default function ClientePage() {
         const cardForm = mp.cardForm({
           amount: "1000",
           autoMount: true,
-          iframe: true,
           form: {
             id: "client-payment-card-form",
             cardholderName: { id: "client-payment-cardholder-name" },
             cardholderEmail: { id: "client-payment-cardholder-email" },
             cardNumber: { id: "client-payment-card-number" },
-            expirationDate: { id: "client-payment-expiration-date" },
+            cardExpirationMonth: { id: "client-payment-expiration-month" },
+            cardExpirationYear: { id: "client-payment-expiration-year" },
             securityCode: { id: "client-payment-security-code" },
             issuer: { id: "client-payment-issuer" },
             installments: { id: "client-payment-installments" },
@@ -420,6 +430,26 @@ export default function ClientePage() {
   const savePaymentMethod = async () => {
     if (!addPaymentFormRef.current || !paymentFormReady) {
       setPaymentMethodError("Espera un momento mientras cargamos el formulario de tarjeta.");
+      return;
+    }
+
+    const cardNumberDigits = readPaymentFieldValue("client-payment-card-number").replace(/\D/g, "");
+    const securityCodeDigits = readPaymentFieldValue("client-payment-security-code").replace(/\D/g, "");
+    const expirationMonth = readPaymentFieldValue("client-payment-expiration-month");
+    const expirationYear = readPaymentFieldValue("client-payment-expiration-year");
+
+    if (cardNumberDigits.length < 13 || cardNumberDigits.length > 19) {
+      setPaymentMethodError("Ingresa un número de tarjeta válido.");
+      return;
+    }
+
+    if (!expirationMonth || !expirationYear) {
+      setPaymentMethodError("Selecciona el mes y el año de vencimiento.");
+      return;
+    }
+
+    if (securityCodeDigits.length < 3 || securityCodeDigits.length > 4) {
+      setPaymentMethodError("Ingresa un código de seguridad válido.");
       return;
     }
 
@@ -782,7 +812,7 @@ export default function ClientePage() {
                   <>
                     <form
                       id="client-payment-card-form"
-                      className="grid-form auth-flow-form"
+                      className="grid-form auth-flow-form client-payment-card-grid"
                       onSubmit={(event) => event.preventDefault()}
                     >
                       <label>
@@ -807,24 +837,75 @@ export default function ClientePage() {
                       </label>
                       <label className="full">
                         Número de tarjeta
-                        <div id="client-payment-card-number" className="mp-secure-field" />
+                        <input
+                          id="client-payment-card-number"
+                          type="text"
+                          inputMode="numeric"
+                          autoComplete="cc-number"
+                          placeholder="1234 5678 9012 3456"
+                          maxLength={19}
+                          onInput={(event) => {
+                            event.currentTarget.value = event.currentTarget.value.replace(/\D/g, "").slice(0, 19);
+                          }}
+                        />
                       </label>
-                      <label>
-                        Vencimiento
-                        <div id="client-payment-expiration-date" className="mp-secure-field" />
-                      </label>
-                      <label>
-                        Código de seguridad
-                        <div id="client-payment-security-code" className="mp-secure-field" />
-                      </label>
-                      <label>
-                        Tipo de identificación
-                        <select id="client-payment-identification-type" defaultValue="" />
-                      </label>
-                      <label>
-                        Número de identificación
-                        <input id="client-payment-identification-number" type="text" placeholder="RUT / documento" />
-                      </label>
+                      <div className="client-payment-inline-row full">
+                        <label className="payment-small-field">
+                          Mes
+                          <select id="client-payment-expiration-month" defaultValue="">
+                            <option value="" disabled>
+                              MM
+                            </option>
+                            {Array.from({ length: 12 }, (_, index) => String(index + 1).padStart(2, "0")).map((month) => (
+                              <option key={month} value={month}>
+                                {month}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                        <label className="payment-small-field">
+                          Año
+                          <select id="client-payment-expiration-year" defaultValue="">
+                            <option value="" disabled>
+                              AAAA
+                            </option>
+                            {paymentExpiryYears.map((year) => (
+                              <option key={year} value={year}>
+                                {year}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                        <label className="payment-small-field">
+                          CVV
+                          <input
+                            id="client-payment-security-code"
+                            type="text"
+                            inputMode="numeric"
+                            autoComplete="cc-csc"
+                            placeholder="123"
+                            maxLength={4}
+                            onInput={(event) => {
+                              event.currentTarget.value = event.currentTarget.value.replace(/\D/g, "").slice(0, 4);
+                            }}
+                          />
+                        </label>
+                      </div>
+                      <div className="client-payment-inline-row full">
+                        <label className="payment-small-field">
+                          Tipo de identificación
+                          <select id="client-payment-identification-type" defaultValue="" />
+                        </label>
+                        <label className="payment-small-field payment-small-field-wide">
+                          Número de identificación
+                          <input
+                            id="client-payment-identification-number"
+                            type="text"
+                            inputMode="numeric"
+                            placeholder="RUT / documento"
+                          />
+                        </label>
+                      </div>
                       <div className="mp-support-fields" aria-hidden>
                         <label>
                           Emisor
