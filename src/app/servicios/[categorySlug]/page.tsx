@@ -439,12 +439,12 @@ export default function ServicioCategoriaPage() {
           <div className="auth-flow-copy">
             <p className="auth-flow-kicker">Servicio</p>
             <h1>{category?.name ?? "Cargando servicio..."}</h1>
-            <p>Elige una variante del servicio y tu dirección para ver profesionales disponibles en tu zona.</p>
+            <p>Elige una variante del servicio y tu dirección para ver taskers disponibles en tu zona.</p>
 
             <div className="auth-flow-copy-list">
               <div className="auth-flow-meta-card">
                 <strong>Cobertura inteligente</strong>
-                <span>Detectamos tu comuna para mostrar solo profesionales y disponibilidad relevante.</span>
+                <span>Detectamos tu comuna para mostrar solo taskers y disponibilidad relevante.</span>
               </div>
               <div className="auth-flow-meta-card">
                 <strong>Siguiente paso</strong>
@@ -461,7 +461,7 @@ export default function ServicioCategoriaPage() {
               <>
                 <div className="panel-head auth-flow-panel-head">
                   <h2>{category.name}</h2>
-                  <p>Completa los datos para continuar con una búsqueda real de profesionales.</p>
+                  <p>Completa los datos para continuar con una búsqueda real de taskers.</p>
                 </div>
 
                 <form className="grid-form auth-flow-form" onSubmit={openPros}>
@@ -748,7 +748,7 @@ export default function ServicioCategoriaPage() {
                   {!autoAdvanceOnServiceSelect ? (
                     <div className="auth-flow-actions full">
                       <button type="submit" className="cta">
-                        Ver profesionales disponibles
+                        Ver taskers disponibles
                       </button>
                     </div>
                   ) : null}

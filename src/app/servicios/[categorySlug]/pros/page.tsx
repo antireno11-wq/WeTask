@@ -65,7 +65,7 @@ function initials(name: string) {
 }
 
 function profileSnippet(categoryName: string) {
-  return `Profesional verificado para ${categoryName.toLowerCase()}, con agenda activa y servicios a domicilio en tu zona.`;
+  return `Tasker verificado para ${categoryName.toLowerCase()}, con agenda activa y servicios a domicilio en tu zona.`;
 }
 
 function localYmd(date: Date) {
@@ -181,7 +181,7 @@ export default function ServiceProsPage() {
           const response = await fetch(`/api/marketplace/search-professionals?${qs.toString()}`);
           const data = (await response.json()) as { professionals?: Professional[]; error?: string; detail?: string };
           if (!response.ok || !data.professionals) {
-            throw new Error(data.detail || data.error || "No se pudieron cargar profesionales");
+            throw new Error(data.detail || data.error || "No se pudieron cargar taskers");
           }
           return data.professionals;
         };
@@ -193,7 +193,7 @@ export default function ServiceProsPage() {
           if (nextProfessionals.length > 0) {
             setUsedCategoryFallback(true);
             setNotifyMessage(
-              `No encontramos taskers publicados para ese tipo exacto todavía, así que te mostramos profesionales disponibles de ${match.name.toLowerCase()} en tu comuna.`
+              `No encontramos taskers publicados para ese tipo exacto todavía, así que te mostramos taskers disponibles de ${match.name.toLowerCase()} en tu comuna.`
             );
           }
         }
@@ -201,7 +201,7 @@ export default function ServiceProsPage() {
         setAllPros(nextProfessionals);
 
         if (nextProfessionals.length === 0) {
-          setNotifyMessage("Aún no tenemos cobertura en esta dirección. Puedes activar aviso cuando haya profesionales.");
+          setNotifyMessage("Aún no tenemos cobertura en esta dirección. Puedes activar aviso cuando haya taskers.");
         }
       } catch (e) {
         setError(e instanceof Error ? e.message : "Error inesperado");
@@ -259,10 +259,6 @@ export default function ServiceProsPage() {
     return filtered;
   }, [allPros, availability, requestedDate, requestedMinutes, sortBy]);
 
-  const toggleTask = (task: string) => {
-    setSelectedTasks((current) => (current.includes(task) ? current.filter((item) => item !== task) : [...current, task]));
-  };
-
   return (
     <main className="auth-flow-screen auth-flow-screen-scroll market-shell-auth">
       <div className="auth-flow-backdrop" aria-hidden />
@@ -271,7 +267,7 @@ export default function ServiceProsPage() {
 
         <section className="auth-flow-shell auth-flow-shell-wide service-pros-shell">
           <div className="auth-flow-copy service-pros-copy">
-            <p className="auth-flow-kicker">Profesionales disponibles</p>
+            <p className="auth-flow-kicker">Taskers disponibles</p>
             <h1>{category?.name ?? "Servicio"} en {comuna || city}</h1>
             <p>
               {selectedService ? `Mostrando resultados para ${selectedService.name.toLowerCase()}. ` : ""}
@@ -334,30 +330,6 @@ export default function ServiceProsPage() {
               </label>
             </div>
 
-            {availableTaskOptions.length > 0 ? (
-              <div className="service-task-filter-card">
-                <div className="panel-head">
-                  <h3>Tareas que necesitas</h3>
-                  <p>Filtra taskers según lo que sí incluyen dentro del alcance base de este servicio.</p>
-                </div>
-                <div className="onboarding-task-checklist onboarding-task-checklist-compact">
-                  <div className="onboarding-task-checklist-head onboarding-task-checklist-head-neutral">
-                    <span>Lista de tareas</span>
-                    <span>Filtro</span>
-                  </div>
-                  {availableTaskOptions.map((task) => (
-                    <label key={task.value} className={`onboarding-task-checklist-row ${selectedTasks.includes(task.value) ? "checked" : ""}`}>
-                      <span className="onboarding-task-checklist-label">{task.label}</span>
-                      <span className="onboarding-task-checklist-control">
-                        <input type="checkbox" checked={selectedTasks.includes(task.value)} onChange={() => toggleTask(task.value)} />
-                        <span className="onboarding-task-checklist-box" aria-hidden />
-                      </span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-            ) : null}
-
             <div className="cta-row service-pros-top-actions">
               <Link
                 href={`/servicios/${categorySlug}?${contextQuery}`}
@@ -370,7 +342,7 @@ export default function ServiceProsPage() {
               </button>
             </div>
 
-            {loading ? <p className="empty">Buscando profesionales...</p> : null}
+            {loading ? <p className="empty">Buscando taskers...</p> : null}
             {error ? <p className="feedback error">{error}</p> : null}
             {notifyMessage ? <p className={`feedback ${usedCategoryFallback ? "warn" : "ok"}`}>{notifyMessage}</p> : null}
             {!loading && !error && professionals.length === 0 ? (
