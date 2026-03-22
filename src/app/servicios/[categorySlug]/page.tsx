@@ -7,7 +7,7 @@ import { AuthHeroNav } from "@/components/auth-hero-nav";
 import { BABYSITTER_TASK_INCLUDED_OPTIONS } from "@/lib/babysitter-scope";
 import { CHEF_TASK_INCLUDED_OPTIONS } from "@/lib/chef-scope";
 import { getChefServiceDefinition } from "@/lib/chef-service-types";
-import { CLEANING_TASK_INCLUDED_OPTIONS } from "@/lib/cleaning-scope";
+import { CLEANING_TASK_INCLUDED_OPTIONS, getCleaningTaskOptionsForService } from "@/lib/cleaning-scope";
 import {
   CLEANING_DIRT_LEVEL_OPTIONS,
   CLEANING_EXTRA_OPTIONS,
@@ -37,6 +37,8 @@ type Category = {
 };
 
 type TaskFilterOption = { value: string; label: string };
+
+const CLEANING_CUSTOMER_SERVICE_ORDER = ["limpieza-hogar", "limpieza-profunda", "limpieza-por-horas", "limpieza-oficina"] as const;
 
 const TASK_FILTER_OPTIONS_BY_CATEGORY: Record<string, TaskFilterOption[]> = {
   limpieza: [...CLEANING_TASK_INCLUDED_OPTIONS],
@@ -76,13 +78,13 @@ export default function ServicioCategoriaPage() {
   const [apartment, setApartment] = useState(query.get("apartment") ?? "");
   const [reference, setReference] = useState(query.get("reference") ?? "");
   const city = query.get("city") ?? "Santiago";
-  const availableTaskOptions = TASK_FILTER_OPTIONS_BY_CATEGORY[categorySlug] ?? [];
+  const categoryTaskOptions = useMemo(() => TASK_FILTER_OPTIONS_BY_CATEGORY[categorySlug] ?? [], [categorySlug]);
   const [selectedTasks, setSelectedTasks] = useState<string[]>(
     (query.get("tasks") ?? "")
       .split(",")
       .map((item) => item.trim())
       .filter(Boolean)
-      .filter((item) => availableTaskOptions.some((option) => option.value === item))
+      .filter((item) => categoryTaskOptions.some((option) => option.value === item))
   );
   const [cleaningBedrooms, setCleaningBedrooms] = useState(query.get("cleaningBedrooms") ?? "");
   const [cleaningBathrooms, setCleaningBathrooms] = useState(query.get("cleaningBathrooms") ?? "");
@@ -256,6 +258,21 @@ export default function ServicioCategoriaPage() {
     return getCleaningServiceDefinition(selectedCleaningServiceSlug);
   }, [selectedCleaningServiceSlug]);
 
+  const visibleServices = useMemo(() => {
+    if (!category) return [];
+    if (category.slug !== "limpieza") return category.services;
+
+    const orderMap = new Map(CLEANING_CUSTOMER_SERVICE_ORDER.map((slug, index) => [slug, index]));
+    return category.services
+      .filter((service) => orderMap.has(service.slug as (typeof CLEANING_CUSTOMER_SERVICE_ORDER)[number]))
+      .sort((a, b) => (orderMap.get(a.slug as (typeof CLEANING_CUSTOMER_SERVICE_ORDER)[number]) ?? 999) - (orderMap.get(b.slug as (typeof CLEANING_CUSTOMER_SERVICE_ORDER)[number]) ?? 999));
+  }, [category]);
+
+  const availableTaskOptions = useMemo(() => {
+    if (!isCleaningCategory) return categoryTaskOptions;
+    return getCleaningTaskOptionsForService(selectedCleaningServiceSlug);
+  }, [categoryTaskOptions, isCleaningCategory, selectedCleaningServiceSlug]);
+
   const cleaningDetailsIntro = useMemo(() => {
     switch (selectedCleaningServiceSlug) {
       case "limpieza-hogar":
@@ -272,6 +289,16 @@ export default function ServicioCategoriaPage() {
         return "Completa estos datos para recomendarte cuántas horas reservar según tu espacio y el alcance del servicio.";
     }
   }, [selectedCleaningServiceSlug]);
+
+  useEffect(() => {
+    if (!category) return;
+    if (selectedServiceId && visibleServices.some((service) => service.id === selectedServiceId)) return;
+    setSelectedServiceId(visibleServices[0]?.id ?? "");
+  }, [category, selectedServiceId, visibleServices]);
+
+  useEffect(() => {
+    setSelectedTasks((current) => current.filter((item) => availableTaskOptions.some((option) => option.value === item)));
+  }, [availableTaskOptions]);
 
   const cleaningEstimate = useMemo(() => {
     if (!selectedCleaningServiceSlug) return null;
@@ -500,7 +527,7 @@ export default function ServicioCategoriaPage() {
                   <label className="full">
                     {isCleaningCategory ? "Elige el tipo de limpieza" : "Tipo de servicio"}
                     <div className={`auth-service-grid ${autoAdvanceOnServiceSelect ? "auth-service-grid-compact" : "auth-service-grid-cleaning"}`}>
-                      {category.services.map((service) => {
+                      {visibleServices.map((service) => {
                         const cleaningDefinition = category.slug === "limpieza" ? getCleaningServiceDefinition(service.slug) : null;
                         const chefDefinition = category.slug === "chef" ? getChefServiceDefinition(service.slug) : null;
                         const isActive = selectedServiceId === service.id;

@@ -6,8 +6,8 @@ import { useEffect, useMemo, useState } from "react";
 import { MarketNav } from "@/components/market-nav";
 import { BABYSITTER_TASK_INCLUDED_OPTIONS } from "@/lib/babysitter-scope";
 import { CHEF_TASK_INCLUDED_OPTIONS } from "@/lib/chef-scope";
-import { copyCleaningEstimateParams, parseCleaningRecommendedHours } from "@/lib/cleaning-duration-estimator";
-import { CLEANING_TASK_INCLUDED_OPTIONS } from "@/lib/cleaning-scope";
+import { copyCleaningEstimateParams, parseCleaningRecommendedHours, parseCleaningServiceSlug } from "@/lib/cleaning-duration-estimator";
+import { CLEANING_TASK_INCLUDED_OPTIONS, getCleaningTaskOptionsForService } from "@/lib/cleaning-scope";
 import { IRONING_TASK_INCLUDED_OPTIONS } from "@/lib/ironing-scope";
 import { MAKEUP_TASK_INCLUDED_OPTIONS } from "@/lib/makeup-scope";
 import { PET_TASK_INCLUDED_OPTIONS } from "@/lib/pet-scope";
@@ -19,7 +19,7 @@ type Category = {
   slug: string;
   name: string;
   description: string | null;
-  services: Array<{ id: string; name: string; basePriceClp: number }>;
+  services: Array<{ id: string; slug: string; name: string; basePriceClp: number }>;
 };
 
 type Professional = {
@@ -102,12 +102,12 @@ export default function ServiceProsPage() {
   const city = search.get("city") ?? "Santiago";
   const requestedDate = search.get("requestedDate") ?? "";
   const requestedTime = search.get("requestedTime") ?? "";
-  const availableTaskOptions = TASK_FILTER_OPTIONS_BY_CATEGORY[categorySlug] ?? [];
+  const categoryTaskOptions = useMemo(() => TASK_FILTER_OPTIONS_BY_CATEGORY[categorySlug] ?? [], [categorySlug]);
   const initialRequestedTasks = (search.get("tasks") ?? "")
     .split(",")
     .map((item) => item.trim())
     .filter(Boolean)
-    .filter((item) => availableTaskOptions.some((option) => option.value === item));
+    .filter((item) => categoryTaskOptions.some((option) => option.value === item));
   const [selectedTasks, setSelectedTasks] = useState<string[]>(initialRequestedTasks);
   const selectedServiceId = search.get("serviceId") ?? "";
   const recommendedHours = parseCleaningRecommendedHours(search.get("recommendedHours"));
@@ -138,6 +138,15 @@ export default function ServiceProsPage() {
     () => category?.services.find((service) => service.id === selectedServiceId) ?? null,
     [category, selectedServiceId]
   );
+  const selectedCleaningServiceSlug = useMemo(() => parseCleaningServiceSlug(selectedService?.slug), [selectedService?.slug]);
+  const availableTaskOptions = useMemo(() => {
+    if (categorySlug !== "limpieza") return categoryTaskOptions;
+    return getCleaningTaskOptionsForService(selectedCleaningServiceSlug);
+  }, [categorySlug, categoryTaskOptions, selectedCleaningServiceSlug]);
+
+  useEffect(() => {
+    setSelectedTasks((current) => current.filter((item) => availableTaskOptions.some((option) => option.value === item)));
+  }, [availableTaskOptions]);
 
   useEffect(() => {
     const load = async () => {

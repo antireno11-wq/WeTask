@@ -149,6 +149,67 @@ export function getCleaningExcludedTaskLabel(value: string) {
   return excludedTaskMap.get(value as CleaningTaskExcludedSlug)?.label ?? value;
 }
 
+const CLEANING_TASKS_BY_SERVICE: Record<CleaningScopeServiceSlug, CleaningTaskIncludedSlug[]> = {
+  "limpieza-hogar": [
+    "barrer",
+    "aspirar",
+    "trapear",
+    "sacudir_polvo",
+    "limpiar_banos",
+    "limpiar_cocina_por_fuera",
+    "lavar_loza",
+    "hacer_camas",
+    "sacar_basura",
+    "orden_basico"
+  ],
+  "limpieza-profunda": [
+    "barrer",
+    "aspirar",
+    "trapear",
+    "sacudir_polvo",
+    "limpiar_banos",
+    "limpiar_cocina_por_fuera",
+    "lavar_loza",
+    "hacer_camas",
+    "sacar_basura",
+    "orden_basico",
+    "limpieza_interior_horno",
+    "limpieza_interior_refrigerador",
+    "limpieza_ventanas",
+    "limpieza_balcones_terrazas"
+  ],
+  "limpieza-por-horas": [
+    "barrer",
+    "aspirar",
+    "trapear",
+    "sacudir_polvo",
+    "limpiar_banos",
+    "limpiar_cocina_por_fuera",
+    "lavar_loza",
+    "hacer_camas",
+    "sacar_basura",
+    "orden_basico"
+  ],
+  "limpieza-post-mudanza": [
+    "barrer",
+    "aspirar",
+    "trapear",
+    "sacudir_polvo",
+    "limpiar_banos",
+    "limpiar_cocina_por_fuera",
+    "sacar_basura",
+    "limpieza_ventanas",
+    "limpieza_balcones_terrazas"
+  ],
+  "limpieza-oficina": ["barrer", "aspirar", "trapear", "sacudir_polvo", "limpiar_banos", "sacar_basura", "orden_basico"]
+};
+
+export function getCleaningTaskOptionsForService(serviceSlug: CleaningScopeServiceSlug | null | undefined) {
+  if (!serviceSlug) return [...CLEANING_TASK_INCLUDED_OPTIONS];
+  const allowed = new Set(CLEANING_TASKS_BY_SERVICE[serviceSlug] ?? []);
+  return CLEANING_TASK_INCLUDED_OPTIONS.filter((option) => allowed.has(option.value));
+}
+
 export function supportsCleaningRequestedTasks(scope: unknown, requestedTasks: string[]) {
   const normalizedScope = normalizeCleaningScope(scope);
   const normalizedRequestedTasks = requestedTasks.filter(isCleaningTaskIncludedSlug);
