@@ -139,6 +139,10 @@ export async function POST(req: NextRequest) {
     const onboarding = await prisma.cleaningOnboarding.findUnique({ where: { userId: identity.userId } });
     const missingFields = listMissingFields(onboarding);
     if (missingFields.length > 0) {
+      console.warn("[tasker-onboarding] submit blocked", {
+        userId: identity.userId,
+        missingFields
+      });
       return NextResponse.json(
         {
           error: "Faltan campos obligatorios antes de enviar a revisión",
@@ -156,6 +160,13 @@ export async function POST(req: NextRequest) {
         submittedAt: new Date(),
         adminReviewNotes: null
       }
+    });
+
+    console.info("[tasker-onboarding] submitted for review", {
+      userId: identity.userId,
+      onboardingId: updated.id,
+      status: updated.status,
+      currentStep: updated.currentStep
     });
 
     return NextResponse.json({ ok: true, onboarding: updated }, { status: 200 });

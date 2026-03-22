@@ -7,6 +7,7 @@ import { normalizeCommuneList } from "@/lib/communes";
 import { CORE_SERVICES } from "@/lib/core-services";
 import { sendPlatformEmail } from "@/lib/notifications";
 import { prisma } from "@/lib/prisma";
+import { getTaskerPublicationState, syncTaskerAvailabilitySlotsFromOnboarding } from "@/lib/tasker-publication";
 import { cleaningOnboardingAdminActionSchema } from "@/lib/validators";
 
 export const dynamic = "force-dynamic";
@@ -330,6 +331,58 @@ export async function PATCH(req: NextRequest) {
 
     await ensureCleaningTaskerService(onboarding.userId);
 
+    const activationUser = await prisma.user.findUnique({
+      where: { id: onboarding.userId },
+      select: {
+        professionalProfile: {
+          select: {
+            id: true,
+            isVerified: true,
+            coverageComuna: true,
+            hourlyRateFromClp: true
+          }
+        },
+        cleaningOnboarding: {
+          select: {
+            status: true,
+            currentStep: true,
+            submittedAt: true,
+            categorySlug: true,
+            baseCommune: true,
+            serviceCommunes: true,
+            hourlyRateClp: true
+          }
+        }
+      }
+    });
+
+    const activeTaskerServicesCount = activationUser?.professionalProfile
+      ? await prisma.taskerService.count({
+          where: {
+            professionalProfileId: activationUser.professionalProfile.id,
+            isActive: true
+          }
+        })
+      : 0;
+
+    const publication = getTaskerPublicationState({
+      onboarding: activationUser?.cleaningOnboarding ?? null,
+      profile: activationUser?.professionalProfile ?? null,
+      activeTaskerServicesCount
+    });
+    const activationMissingRequirements = publication.missingRequirements.filter(
+      (item) => item !== "published" && item !== "status_active"
+    );
+    if (activationMissingRequirements.length > 0) {
+      return NextResponse.json(
+        {
+          error: "El tasker no cumple las condiciones para publicarse.",
+          missingRequirements: activationMissingRequirements
+        },
+        { status: 409 }
+      );
+    }
+
     const updated = await prisma.cleaningOnboarding.update({
       where: { id: input.onboardingId },
       data: {
@@ -337,6 +390,15 @@ export async function PATCH(req: NextRequest) {
         activatedAt: new Date(),
         adminReviewNotes: input.notes?.trim() || onboarding.adminReviewNotes || null
       }
+    });
+
+    const syncResult = await syncTaskerAvailabilitySlotsFromOnboarding(onboarding.userId);
+    console.info("[tasker-admin] activation audit", {
+      onboardingId: input.onboardingId,
+      userId: onboarding.userId,
+      createdSlots: syncResult.created,
+      publication: syncResult.publication,
+      reason: syncResult.reason
     });
 
     return NextResponse.json({ ok: true, onboarding: updated }, { status: 200 });

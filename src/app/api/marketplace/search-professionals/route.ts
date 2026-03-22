@@ -9,6 +9,7 @@ import { COVERAGE_UNAVAILABLE_MESSAGE, inferCommuneFromAddress, normalizeCommune
 import { ensureMarketplaceDemoData } from "@/lib/marketplace-demo-data";
 import { supportsPetRequestedTasks } from "@/lib/pet-scope";
 import { prisma } from "@/lib/prisma";
+import { getTaskerPublicationState, syncTaskerAvailabilitySlotsFromOnboarding } from "@/lib/tasker-publication";
 import { supportsTeacherRequestedTasks } from "@/lib/teacher-scope";
 import { supportsTrainerRequestedTasks } from "@/lib/trainer-scope";
 import { marketplaceSearchProsSchema } from "@/lib/validators";
@@ -99,7 +100,6 @@ export async function GET(req: NextRequest) {
     const profiles = await prisma.professionalProfile.findMany({
       where: {
         isVerified: true,
-        coverageCity: { equals: input.city, mode: "insensitive" },
         user: { role: "PRO" },
         taskerServices:
           input.serviceId || input.categoryId
@@ -130,7 +130,12 @@ export async function GET(req: NextRequest) {
                 makeupScope: true,
                 ironingScope: true,
                 serviceCommunes: true,
-                baseCommune: true
+                baseCommune: true,
+                status: true,
+                currentStep: true,
+                submittedAt: true,
+                hourlyRateClp: true,
+                availabilityBlocks: true
               }
             }
           }
@@ -160,8 +165,55 @@ export async function GET(req: NextRequest) {
       }
     });
 
-    const matched = profiles
-      .map((profile) => {
+    const filterStats = {
+      notPublishable: 0,
+      communeMismatch: 0,
+      tasksMismatch: 0,
+      missingCoordinates: 0,
+      outsideRadius: 0,
+      noAvailability: 0
+    };
+
+    const matched = (
+      await Promise.all(
+        profiles.map(async (profile) => {
+          const publication = getTaskerPublicationState({
+            onboarding: profile.user.cleaningOnboarding,
+            profile: {
+              isVerified: profile.isVerified,
+              coverageComuna: profile.coverageComuna,
+              hourlyRateFromClp: profile.hourlyRateFromClp
+            },
+            activeTaskerServicesCount: profile.taskerServices.length
+          });
+
+          if (!publication.canAppearInSearch) {
+            filterStats.notPublishable += 1;
+            return null;
+          }
+
+          if (profile.slots.length === 0 && profile.user.cleaningOnboarding?.availabilityBlocks) {
+            const syncResult = await syncTaskerAvailabilitySlotsFromOnboarding(profile.user.id);
+            if (syncResult.created > 0) {
+              console.info("[tasker-search] synced onboarding availability", {
+                userId: profile.user.id,
+                createdSlots: syncResult.created
+              });
+              profile.slots = await prisma.availabilitySlot.findMany({
+                where: {
+                  professionalProfileId: profile.id,
+                  isAvailable: true,
+                  startsAt: { gte: startDate },
+                  OR: input.serviceId ? [{ serviceId: null }, { serviceId: input.serviceId }] : undefined,
+                  service: input.categoryId && !input.serviceId ? { categoryId: input.categoryId } : undefined
+                },
+                orderBy: [{ startsAt: "asc" }],
+                take: 12,
+                include: { service: { select: { id: true, name: true } } }
+              });
+            }
+          }
+
         const servesCommune = taskerServesCommune(
           {
             serviceCommunes: profile.user.cleaningOnboarding?.serviceCommunes,
@@ -169,33 +221,48 @@ export async function GET(req: NextRequest) {
           },
           clientCommune
         );
-        if (!servesCommune) return null;
+          if (!servesCommune) {
+            filterStats.communeMismatch += 1;
+            return null;
+          }
 
-        if (
-          input.tasks.length > 0 &&
-          !supportsRequestedTasksByCategory(profile.user.cleaningOnboarding?.categorySlug, profile.user.cleaningOnboarding ?? {}, input.tasks)
-        ) {
-          return null;
-        }
+          if (
+            input.tasks.length > 0 &&
+            !supportsRequestedTasksByCategory(profile.user.cleaningOnboarding?.categorySlug, profile.user.cleaningOnboarding ?? {}, input.tasks)
+          ) {
+            filterStats.tasksMismatch += 1;
+            return null;
+          }
 
-        if (profile.coverageLatitude == null || profile.coverageLongitude == null) return null;
+          if (profile.coverageLatitude == null || profile.coverageLongitude == null) {
+            filterStats.missingCoordinates += 1;
+            return null;
+          }
 
-        const distance = distanceKm(customerCoords, {
-          lat: profile.coverageLatitude,
-          lng: profile.coverageLongitude
-        });
+          const distance = distanceKm(customerCoords, {
+            lat: profile.coverageLatitude,
+            lng: profile.coverageLongitude
+          });
 
-        if (distance > profile.serviceRadiusKm) {
-          return null;
-        }
+          if (distance > profile.serviceRadiusKm) {
+            filterStats.outsideRadius += 1;
+            return null;
+          }
 
-        return {
-          ...profile,
-          hourlyRateFromClp: profile.taskerServices[0]?.priceClp ?? profile.hourlyRateFromClp,
-          distanceKm: Number(distance.toFixed(2)),
-          nextAvailableAt: profile.slots[0]?.startsAt ?? null
-        };
-      })
+          if (profile.slots.length === 0) {
+            filterStats.noAvailability += 1;
+            return null;
+          }
+
+          return {
+            ...profile,
+            hourlyRateFromClp: profile.taskerServices[0]?.priceClp ?? profile.hourlyRateFromClp,
+            distanceKm: Number(distance.toFixed(2)),
+            nextAvailableAt: profile.slots[0]?.startsAt ?? null
+          };
+        })
+      )
+    )
       .filter((item): item is NonNullable<typeof item> => Boolean(item))
       .filter((item) => item.slots.length > 0)
       .sort((a, b) => {
@@ -213,6 +280,16 @@ export async function GET(req: NextRequest) {
         return aRate - bRate;
       })
       .slice(0, input.limit);
+
+    console.info("[tasker-search] search audit", {
+      categoryId: input.categoryId ?? null,
+      serviceId: input.serviceId ?? null,
+      commune: clientCommune,
+      requestedTasks: input.tasks,
+      profilesLoaded: profiles.length,
+      matched: matched.length,
+      filtered: filterStats
+    });
 
     return NextResponse.json({
       customerLocation: {

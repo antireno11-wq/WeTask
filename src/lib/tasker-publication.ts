@@ -1,0 +1,215 @@
+import { CleaningOnboardingStatus, Prisma } from "@prisma/client";
+import { CLEANING_WEEK_DAYS } from "@/lib/cleaning-onboarding";
+import { normalizeCommune, normalizeCommuneList } from "@/lib/communes";
+import { prisma } from "@/lib/prisma";
+
+type AvailabilityBlock = {
+  day: string;
+  start: string;
+  end: string;
+};
+
+type PublicationCheckInput = {
+  onboarding: {
+    status: CleaningOnboardingStatus;
+    currentStep: number;
+    submittedAt: Date | null;
+    categorySlug: string | null;
+    baseCommune: string | null;
+    serviceCommunes: Prisma.JsonValue | null;
+    hourlyRateClp: number | null;
+  } | null;
+  profile: {
+    isVerified: boolean;
+    coverageComuna: string | null;
+    hourlyRateFromClp: number | null;
+  } | null;
+  activeTaskerServicesCount: number;
+};
+
+const WEEK_DAY_INDEX = new Map(
+  CLEANING_WEEK_DAYS.map((day, index) => [
+    day,
+    index === 6 ? 0 : index + 1
+  ])
+);
+
+function toAvailabilityBlocks(value: Prisma.JsonValue | null): AvailabilityBlock[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter((item): item is AvailabilityBlock => {
+    if (!item || typeof item !== "object") return false;
+    const candidate = item as AvailabilityBlock;
+    return (
+      typeof candidate.day === "string" &&
+      typeof candidate.start === "string" &&
+      typeof candidate.end === "string" &&
+      WEEK_DAY_INDEX.has(candidate.day as (typeof CLEANING_WEEK_DAYS)[number]) &&
+      /^\d{2}:\d{2}$/.test(candidate.start) &&
+      /^\d{2}:\d{2}$/.test(candidate.end) &&
+      candidate.end > candidate.start
+    );
+  });
+}
+
+function mergeDateAndTime(date: Date, hhmm: string) {
+  const [hours, minutes] = hhmm.split(":").map(Number);
+  const next = new Date(date);
+  next.setHours(hours, minutes, 0, 0);
+  return next;
+}
+
+export function buildUpcomingSlotsFromBlocks(blocksInput: Prisma.JsonValue | null, weeks = 6, anchorDate = new Date()) {
+  const blocks = toAvailabilityBlocks(blocksInput);
+  if (blocks.length === 0) return [];
+
+  const now = new Date(anchorDate);
+  const slots: Array<{ startsAt: Date; endsAt: Date }> = [];
+
+    for (let weekOffset = 0; weekOffset < weeks; weekOffset += 1) {
+    for (const block of blocks) {
+      const weekday = WEEK_DAY_INDEX.get(block.day as (typeof CLEANING_WEEK_DAYS)[number]);
+      if (weekday == null) continue;
+
+      const baseDate = new Date(now);
+      const dayDelta = (weekday - baseDate.getDay() + 7) % 7;
+      baseDate.setDate(baseDate.getDate() + dayDelta + weekOffset * 7);
+
+      const startsAt = mergeDateAndTime(baseDate, block.start);
+      const endsAt = mergeDateAndTime(baseDate, block.end);
+
+      if (startsAt <= now || endsAt <= startsAt) continue;
+      slots.push({ startsAt, endsAt });
+    }
+  }
+
+  return slots.sort((a, b) => a.startsAt.getTime() - b.startsAt.getTime());
+}
+
+export function getTaskerPublicationState(input: PublicationCheckInput) {
+  const status =
+    input.onboarding?.status === CleaningOnboardingStatus.ACTIVO
+      ? "active"
+      : input.onboarding?.status === CleaningOnboardingStatus.APROBADO
+        ? "approved"
+        : input.onboarding?.status === CleaningOnboardingStatus.PENDIENTE_REVISION
+          ? "pending_review"
+          : input.onboarding?.status === CleaningOnboardingStatus.REQUIERE_CORRECCION
+            ? "requires_correction"
+            : "draft";
+
+  const onboardingCompleted = Boolean(input.onboarding && input.onboarding.currentStep >= 12 && input.onboarding.submittedAt);
+  const published = status === "active" && input.profile?.isVerified === true;
+  const hasCategory = Boolean(input.onboarding?.categorySlug?.trim()) && input.activeTaskerServicesCount > 0;
+  const hasCommune =
+    normalizeCommuneList(input.onboarding?.serviceCommunes).length > 0 ||
+    Boolean(normalizeCommune(input.onboarding?.baseCommune)) ||
+    Boolean(normalizeCommune(input.profile?.coverageComuna));
+  const hasRate = Number(input.profile?.hourlyRateFromClp ?? input.onboarding?.hourlyRateClp ?? 0) > 0;
+
+  const missingRequirements: string[] = [];
+  if (!onboardingCompleted) missingRequirements.push("onboarding_completed");
+  if (!published) missingRequirements.push("published");
+  if (status !== "active") missingRequirements.push("status_active");
+  if (!hasCategory) missingRequirements.push("category");
+  if (!hasCommune) missingRequirements.push("commune");
+  if (!hasRate) missingRequirements.push("hourly_rate");
+
+  return {
+    onboardingCompleted,
+    published,
+    status,
+    hasCategory,
+    hasCommune,
+    hasRate,
+    canAppearInSearch: missingRequirements.length === 0,
+    missingRequirements
+  };
+}
+
+export async function syncTaskerAvailabilitySlotsFromOnboarding(userId: string, weeks = 6) {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: {
+      professionalProfile: {
+        select: {
+          id: true,
+          isVerified: true,
+          coverageComuna: true,
+          hourlyRateFromClp: true
+        }
+      },
+      cleaningOnboarding: {
+        select: {
+          status: true,
+          currentStep: true,
+          submittedAt: true,
+          categorySlug: true,
+          baseCommune: true,
+          serviceCommunes: true,
+          hourlyRateClp: true,
+          availabilityBlocks: true
+        }
+      }
+    }
+  });
+
+  const activeTaskerServicesCount = user?.professionalProfile
+    ? await prisma.taskerService.count({
+        where: {
+          professionalProfileId: user.professionalProfile.id,
+          isActive: true
+        }
+      })
+    : 0;
+
+  const publication = getTaskerPublicationState({
+    onboarding: user?.cleaningOnboarding ?? null,
+    profile: user?.professionalProfile ?? null,
+    activeTaskerServicesCount
+  });
+
+  if (!user?.professionalProfile || !user.cleaningOnboarding) {
+    return { created: 0, publication, reason: "missing_profile_or_onboarding" };
+  }
+
+  if (!publication.canAppearInSearch) {
+    return { created: 0, publication, reason: "not_publishable" };
+  }
+
+  const generatedSlots = buildUpcomingSlotsFromBlocks(user.cleaningOnboarding.availabilityBlocks, weeks);
+  if (generatedSlots.length === 0) {
+    return { created: 0, publication, reason: "no_availability_blocks" };
+  }
+
+  const existingSlots = await prisma.availabilitySlot.findMany({
+    where: {
+      professionalProfileId: user.professionalProfile.id,
+      startsAt: { gte: new Date() }
+    },
+    select: {
+      startsAt: true,
+      endsAt: true
+    }
+  });
+
+  const existingKeys = new Set(existingSlots.map((slot) => `${slot.startsAt.toISOString()}-${slot.endsAt.toISOString()}`));
+  const newSlots = generatedSlots.filter(
+    (slot) => !existingKeys.has(`${slot.startsAt.toISOString()}-${slot.endsAt.toISOString()}`)
+  );
+
+  if (newSlots.length === 0) {
+    return { created: 0, publication, reason: "already_synced" };
+  }
+
+  await prisma.availabilitySlot.createMany({
+    data: newSlots.map((slot) => ({
+      professionalProfileId: user.professionalProfile!.id,
+      serviceId: null,
+      startsAt: slot.startsAt,
+      endsAt: slot.endsAt,
+      isAvailable: true
+    }))
+  });
+
+  return { created: newSlots.length, publication, reason: "created" };
+}
