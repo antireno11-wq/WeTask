@@ -5765,6 +5765,31 @@ textarea {
   font: inherit;
 }
 
+.support-evidence-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.support-evidence-card {
+  display: grid;
+  gap: 4px;
+  padding: 14px 16px;
+  border-radius: 18px;
+  border: 1px solid #d6e7f5;
+  background: linear-gradient(180deg, #fbfdff 0%, #f2f8ff 100%);
+}
+
+.support-evidence-card strong {
+  color: #173b5f;
+  word-break: break-word;
+}
+
+.support-evidence-card span {
+  color: #5b748e;
+  font-size: 0.9rem;
+}
+
 .pro-dashboard-profile-box .client-profile-copy {
   gap: 10px;
 }
@@ -7229,7 +7254,8 @@ textarea {
   .client-dashboard-summary,
   .client-dashboard-metrics,
   .client-booking-overview,
-  .client-booking-summary-grid {
+  .client-booking-summary-grid,
+  .support-evidence-grid {
     grid-template-columns: 1fr;
   }
 

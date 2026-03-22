@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { useParams } from "next/navigation";
 import { MarketNav } from "@/components/market-nav";
 import {
@@ -38,6 +39,7 @@ type BookingDetail = {
   postalCode: string | null;
   review: { id: string; rating: number; comment: string | null } | null;
   extras: Array<{ id: string; label: string; priceClp: number }>;
+  disputes?: Array<{ id: string; status: string; category: string | null; createdAt: string }>;
 };
 
 const STATUS_LABELS: Record<string, string> = {
@@ -80,25 +82,6 @@ function formatTime(value: Date) {
   return value.toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" });
 }
 
-function StarPicker(props: { value: number; onChange: (value: number) => void }) {
-  return (
-    <div className="star-picker" role="radiogroup" aria-label="Calificacion">
-      {[1, 2, 3, 4, 5].map((star) => (
-        <button
-          key={star}
-          type="button"
-          className={`star-btn ${star <= props.value ? "active" : ""}`}
-          onClick={() => props.onChange(star)}
-          aria-label={`${star} estrella${star > 1 ? "s" : ""}`}
-          aria-pressed={star <= props.value}
-        >
-          ★
-        </button>
-      ))}
-    </div>
-  );
-}
-
 export default function ClienteBookingActionsPage() {
   const params = useParams<{ bookingId: string }>();
   const bookingId = params?.bookingId ?? "";
@@ -107,10 +90,6 @@ export default function ClienteBookingActionsPage() {
   const [booking, setBooking] = useState<BookingDetail | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [chatBody, setChatBody] = useState("");
-  const [reviewScore, setReviewScore] = useState(5);
-  const [reviewComment, setReviewComment] = useState("");
-  const [disputeReason, setDisputeReason] = useState("");
-  const [customerConfirmed, setCustomerConfirmed] = useState(false);
   const [feedback, setFeedback] = useState("");
   const [error, setError] = useState("");
 
@@ -182,90 +161,18 @@ export default function ClienteBookingActionsPage() {
     }
   };
 
-  const leaveReview = async () => {
-    if (!bookingId || !customerId) return;
-    if (reviewComment.trim().length < 8) {
-      setError("Escribe un comentario un poco más completo para enviar tu reseña.");
-      return;
-    }
-    setError("");
-    setFeedback("");
-    try {
-      const response = await fetch("/api/marketplace/reviews", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          bookingId,
-          authorId: customerId,
-          rating: reviewScore,
-          comment: reviewComment,
-          punctuality: reviewScore,
-          quality: reviewScore,
-          communication: reviewScore
-        })
-      });
-      const data = (await response.json()) as { review?: { id: string }; error?: string; detail?: string };
-      if (!response.ok || !data.review) throw new Error(data.detail || data.error || "No se pudo enviar reseña");
-      const nextReview = data.review;
-      setBooking((current) =>
-        current
-          ? {
-              ...current,
-              review: {
-                id: nextReview.id,
-                rating: reviewScore,
-                comment: reviewComment || null
-              }
-            }
-          : current
-      );
-      setFeedback("Reseña enviada correctamente. Si todo estuvo bien, el pago seguirá su flujo normal de liberación.");
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Error inesperado");
-    }
-  };
-
   const confirmService = async () => {
-    if (!bookingId) return;
-    setError("");
-    setFeedback("");
-    try {
-      const response = await fetch(`/api/marketplace/bookings/${bookingId}/customer-confirm`, {
-        method: "POST"
-      });
-      const data = (await response.json()) as { ok?: boolean; error?: string; detail?: string };
-      if (!response.ok || !data.ok) throw new Error(data.detail || data.error || "No se pudo confirmar el servicio");
-      setCustomerConfirmed(true);
-      setFeedback("Servicio confirmado. El pago quedó programado para el próximo ciclo automático.");
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Error inesperado");
-    }
-  };
-
-  const openDispute = async () => {
     if (!bookingId || !customerId) return;
-    if (disputeReason.trim().length < 8) {
-      setError("Cuéntanos brevemente qué salió mal para abrir el reclamo.");
-      return;
-    }
     setError("");
     setFeedback("");
     try {
-      const response = await fetch("/api/marketplace/disputes", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          bookingId,
-          openedById: customerId,
-          reason: disputeReason
-        })
-      });
-      const data = (await response.json()) as { ticket?: { id: string }; error?: string; detail?: string };
-      if (!response.ok || !data.ticket) throw new Error(data.detail || data.error || "No se pudo abrir el reclamo");
-      setBooking((current) => (current ? { ...current, status: "DISPUTE" } : current));
-      setCustomerConfirmed(false);
-      setFeedback("Reclamo enviado. El pago seguirá retenido mientras revisamos el caso.");
-      setDisputeReason("");
+      const response = await fetch(`/api/marketplace/bookings/${bookingId}/customer-confirm`, { method: "POST" });
+      const data = (await response.json()) as { booking?: BookingDetail; ok?: boolean; error?: string; detail?: string };
+      if (!response.ok || (!data.booking && !data.ok)) throw new Error(data.detail || data.error || "No se pudo confirmar el servicio");
+      if (data.booking) {
+        setBooking(data.booking);
+      }
+      setFeedback("Servicio confirmado. El pago quedó programado para el próximo ciclo automático.");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error inesperado");
     }
@@ -433,33 +340,17 @@ export default function ClienteBookingActionsPage() {
 
               <section className="auth-flow-panel client-dashboard-section">
                 <div className="panel-head client-dashboard-panel-head">
-                  <h2>Confirmación y soporte</h2>
-                  <p>Cuando termine el servicio, puedes dejar constancia de que todo salió bien o reportar un problema antes de la liberación del pago.</p>
+                  <h2>Acciones del servicio</h2>
+                  <p>Cuando termine la visita, confirma que todo salió bien o reporta el problema desde aquí.</p>
                 </div>
 
-                <div className="action-grid client-booking-actions-grid">
-                  <label>
-                    Calificación
-                    <StarPicker value={reviewScore} onChange={setReviewScore} />
-                  </label>
-                  <label>
-                    Comentario de confirmación
-                    <textarea
-                      value={reviewComment}
-                      onChange={(e) => setReviewComment(e.target.value)}
-                      placeholder="Cuéntanos cómo fue el servicio, la puntualidad y la experiencia general."
-                      rows={5}
-                      required
-                    />
-                  </label>
-                  <div className="cta-row">
-                    <button className="cta small" type="button" onClick={confirmService} disabled={customerConfirmed || booking.status === "DISPUTE"}>
-                      {customerConfirmed ? "Servicio confirmado" : "Confirmar servicio"}
-                    </button>
-                    <button className="cta ghost small" type="button" onClick={leaveReview}>
-                      Guardar reseña
-                    </button>
-                  </div>
+                <div className="booking-actions">
+                  <button className="cta" type="button" onClick={confirmService}>
+                    Confirmar servicio
+                  </button>
+                  <Link className="cta ghost" href={`/cliente/reservas/${bookingId}/problema`}>
+                    Reportar problema
+                  </Link>
                 </div>
 
                 <div className="client-booking-note">
@@ -467,27 +358,12 @@ export default function ClienteBookingActionsPage() {
                   <p>Cuando el tasker marca el trabajo como realizado, tu pago sigue retenido. Puedes confirmar el servicio o reportar un problema. Si no reclamas dentro del plazo definido por WeTask, el pago entra al siguiente ciclo automático.</p>
                 </div>
 
-                <div className="action-grid client-booking-actions-grid" style={{ marginTop: 16 }}>
-                  <label>
-                    ¿Algo salió mal?
-                    <textarea
-                      value={disputeReason}
-                      onChange={(e) => setDisputeReason(e.target.value)}
-                      placeholder="Describe el problema para que WeTask revise antes de liberar el pago."
-                      rows={4}
-                    />
-                  </label>
-                  <button className="cta small" type="button" onClick={openDispute}>
-                    Reportar problema
-                  </button>
-                </div>
-
-                {booking.review?.id ? (
+                {booking.disputes && booking.disputes.length > 0 ? (
                   <div className="client-booking-note">
-                    <strong>Tu valoración actual</strong>
+                    <strong>Reporte abierto</strong>
                     <p>
-                      {booking.review.rating}/5 estrellas
-                      {booking.review.comment ? ` · ${booking.review.comment}` : ""}
+                      Ya existe al menos un reporte para este servicio. Puedes revisar el detalle o enviar información adicional desde
+                      la pantalla de problema.
                     </p>
                   </div>
                 ) : null}

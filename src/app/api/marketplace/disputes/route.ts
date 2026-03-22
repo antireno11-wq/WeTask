@@ -7,7 +7,19 @@ import { prisma } from "@/lib/prisma";
 const createDisputeSchema = z.object({
   bookingId: z.string().min(1),
   openedById: z.string().min(1),
-  reason: z.string().min(5).max(1000)
+  category: z.string().min(2).max(120).optional(),
+  reason: z.string().min(5).max(1000),
+  evidence: z
+    .array(
+      z.object({
+        name: z.string().min(1).max(180),
+        type: z.string().min(1).max(120),
+        size: z.number().int().min(1).max(2_000_000),
+        dataUrl: z.string().min(20).max(3_000_000)
+      })
+    )
+    .max(3)
+    .optional()
 });
 
 export async function POST(req: NextRequest) {
@@ -34,7 +46,9 @@ export async function POST(req: NextRequest) {
       data: {
         bookingId: input.bookingId,
         openedById: input.openedById,
+        category: input.category,
         reason: input.reason,
+        evidence: input.evidence,
         status: "OPEN"
       }
     });

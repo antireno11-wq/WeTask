@@ -12,10 +12,16 @@ export async function POST(req: NextRequest, context: { params: { bookingId: str
 
     const booking = await prisma.booking.findUnique({
       where: { id: context.params.bookingId },
-      include: { payout: true }
+      include: {
+        payout: true,
+        customer: { select: { fullName: true } },
+        pro: { select: { id: true } }
+      }
     });
 
-    if (!booking) return NextResponse.json({ error: "Reserva no encontrada" }, { status: 404 });
+    if (!booking) {
+      return NextResponse.json({ error: "Reserva no encontrada" }, { status: 404 });
+    }
 
     if (identity.role === UserRole.CUSTOMER && identity.userId !== booking.customerId) {
       return NextResponse.json({ error: "No autorizado" }, { status: 403 });
@@ -69,7 +75,7 @@ export async function POST(req: NextRequest, context: { params: { bookingId: str
       return { payout };
     });
 
-    return NextResponse.json({ ok: true, payout: result.payout }, { status: 200 });
+    return NextResponse.json({ ok: true, payout: result.payout, booking }, { status: 200 });
   } catch (error) {
     return NextResponse.json(
       {
