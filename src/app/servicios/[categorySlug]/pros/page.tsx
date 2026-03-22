@@ -376,12 +376,12 @@ export default function ServiceProsPage() {
                       <p className="we-pro-snippet">{profileSnippet(category?.name ?? "servicios")}</p>
 
                       <div className="cta-row we-pro-actions">
-                        <Link className="cta small" href={`/pro/${pro.id}${contextQuery ? `?${contextQuery}` : ""}`}>
+                        <Link className="cta small" href={`/pro/${pro.userId}${contextQuery ? `?${contextQuery}` : ""}`}>
                           Ver perfil
                         </Link>
                         <Link
                           className="cta small"
-                          href={`/pro/${pro.id}?${contextQuery || `date=${encodeURIComponent(requestedDate || localYmd(new Date()))}`}#availability`}
+                          href={`/pro/${pro.userId}?${contextQuery || `date=${encodeURIComponent(requestedDate || localYmd(new Date()))}`}#availability`}
                         >
                           Ver agenda
                         </Link>
