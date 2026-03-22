@@ -49,8 +49,94 @@ function money(value: number) {
   return `$${value.toLocaleString("es-CL")}`;
 }
 
+function getTimeZoneOffsetMs(date: Date, timeZone: string) {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hourCycle: "h23"
+  }).formatToParts(date);
+
+  const map = Object.fromEntries(parts.filter((part) => part.type !== "literal").map((part) => [part.type, part.value]));
+  const asUtc = Date.UTC(
+    Number(map.year),
+    Number(map.month) - 1,
+    Number(map.day),
+    Number(map.hour),
+    Number(map.minute),
+    Number(map.second)
+  );
+  return asUtc - date.getTime();
+}
+
+function zonedTimeToUtc(year: number, month: number, day: number, timeZone: string) {
+  const utcGuess = new Date(Date.UTC(year, month - 1, day, 0, 0, 0));
+  const offset = getTimeZoneOffsetMs(utcGuess, timeZone);
+  return new Date(utcGuess.getTime() - offset);
+}
+
+function getDayRange(dayOffset: number, timeZone: string) {
+  const now = new Date();
+  const currentParts = new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit"
+  })
+    .format(now)
+    .split("-")
+    .map((value) => Number(value));
+
+  const base = new Date(Date.UTC(currentParts[0], currentParts[1] - 1, currentParts[2]));
+  base.setUTCDate(base.getUTCDate() + dayOffset);
+
+  const year = base.getUTCFullYear();
+  const month = base.getUTCMonth() + 1;
+  const day = base.getUTCDate();
+
+  return {
+    start: zonedTimeToUtc(year, month, day, timeZone),
+    end: zonedTimeToUtc(year, month, day + 1, timeZone)
+  };
+}
+
+function roleDailyCopy(today: number, yesterday: number) {
+  const delta = today - yesterday;
+  const trend = delta > 0 ? "subiendo" : delta < 0 ? "bajando" : "estable";
+  const deltaLabel = delta > 0 ? `+${delta}` : `${delta}`;
+  return {
+    trend,
+    deltaLabel,
+    detail: `Hoy ${today} · Ayer ${yesterday} · ${deltaLabel}`
+  };
+}
+
 export default async function AdminPage() {
-  const [pendingReview, needsCorrection, approved, activePros, openDisputes, pendingPayouts, admins, recentOnboarding, recentBookings] =
+  const chileTimeZone = "America/Santiago";
+  const todayRange = getDayRange(0, chileTimeZone);
+  const yesterdayRange = getDayRange(-1, chileTimeZone);
+
+  const [
+    pendingReview,
+    needsCorrection,
+    approved,
+    activePros,
+    openDisputes,
+    pendingPayouts,
+    admins,
+    taskersTotal,
+    customersTotal,
+    newTaskersToday,
+    newTaskersYesterday,
+    newCustomersToday,
+    newCustomersYesterday,
+    recentOnboarding,
+    recentBookings
+  ] =
     await Promise.all([
       prisma.cleaningOnboarding.count({ where: { status: CleaningOnboardingStatus.PENDIENTE_REVISION } }),
       prisma.cleaningOnboarding.count({ where: { status: CleaningOnboardingStatus.REQUIERE_CORRECCION } }),
@@ -59,6 +145,40 @@ export default async function AdminPage() {
       prisma.disputeTicket.count({ where: { status: { in: [TicketStatus.OPEN, TicketStatus.IN_REVIEW] } } }),
       prisma.payout.count({ where: { status: { in: [PayoutStatus.PENDING, PayoutStatus.PROCESSING] } } }),
       prisma.user.count({ where: { role: UserRole.ADMIN } }),
+      prisma.user.count({
+        where: {
+          OR: [{ role: UserRole.PRO }, { roleAssignments: { some: { role: { code: UserRole.PRO } } } }]
+        }
+      }),
+      prisma.user.count({
+        where: {
+          OR: [{ role: UserRole.CUSTOMER }, { roleAssignments: { some: { role: { code: UserRole.CUSTOMER } } } }]
+        }
+      }),
+      prisma.user.count({
+        where: {
+          createdAt: { gte: todayRange.start, lt: todayRange.end },
+          OR: [{ role: UserRole.PRO }, { roleAssignments: { some: { role: { code: UserRole.PRO } } } }]
+        }
+      }),
+      prisma.user.count({
+        where: {
+          createdAt: { gte: yesterdayRange.start, lt: yesterdayRange.end },
+          OR: [{ role: UserRole.PRO }, { roleAssignments: { some: { role: { code: UserRole.PRO } } } }]
+        }
+      }),
+      prisma.user.count({
+        where: {
+          createdAt: { gte: todayRange.start, lt: todayRange.end },
+          OR: [{ role: UserRole.CUSTOMER }, { roleAssignments: { some: { role: { code: UserRole.CUSTOMER } } } }]
+        }
+      }),
+      prisma.user.count({
+        where: {
+          createdAt: { gte: yesterdayRange.start, lt: yesterdayRange.end },
+          OR: [{ role: UserRole.CUSTOMER }, { roleAssignments: { some: { role: { code: UserRole.CUSTOMER } } } }]
+        }
+      }),
       prisma.cleaningOnboarding.findMany({
         where: {
           status: {
@@ -86,6 +206,9 @@ export default async function AdminPage() {
         }
       })
     ]);
+
+  const taskerDaily = roleDailyCopy(newTaskersToday, newTaskersYesterday);
+  const customerDaily = roleDailyCopy(newCustomersToday, newCustomersYesterday);
 
   return (
     <AdminHeroShell>
@@ -130,6 +253,25 @@ export default async function AdminPage() {
           <span className="metric-label">Payouts pendientes</span>
           <strong>{pendingPayouts}</strong>
           <p>Pagos a profesionales que aún no se han completado.</p>
+        </article>
+      </div>
+
+      <div className="module-grid">
+        <article className="module-card admin-metric-card">
+          <span className="metric-label">Taskers en la plataforma</span>
+          <strong>{taskersTotal}</strong>
+          <p>Altas diarias de taskers en WeTask.</p>
+          <span className="module-meta">
+            {taskerDaily.detail} · {taskerDaily.trend}
+          </span>
+        </article>
+        <article className="module-card admin-metric-card">
+          <span className="metric-label">Clientes en la plataforma</span>
+          <strong>{customersTotal}</strong>
+          <p>Altas diarias de clientes registrados.</p>
+          <span className="module-meta">
+            {customerDaily.detail} · {customerDaily.trend}
+          </span>
         </article>
       </div>
 
