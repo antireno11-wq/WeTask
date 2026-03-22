@@ -17,7 +17,7 @@ export async function sendPlatformEmail(payload: EmailPayload): Promise<void> {
     return;
   }
 
-  await fetch("https://api.resend.com/emails", {
+  const response = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: {
       Authorization: `Bearer ${apiKey}`,
@@ -31,6 +31,17 @@ export async function sendPlatformEmail(payload: EmailPayload): Promise<void> {
       html: payload.html
     })
   });
+
+  if (!response.ok) {
+    const detail = await response.text().catch(() => "");
+    console.error("[email] resend delivery failed", {
+      to: payload.to,
+      subject: payload.subject,
+      status: response.status,
+      detail
+    });
+    throw new Error(`No se pudo enviar correo (${response.status})`);
+  }
 }
 
 type VerificationEmailTemplatePayload = {

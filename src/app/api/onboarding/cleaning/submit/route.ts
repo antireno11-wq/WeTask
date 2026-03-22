@@ -205,6 +205,7 @@ export async function POST(req: NextRequest) {
       .split(",")
       .map((item) => item.trim().toLowerCase())
       .filter(Boolean);
+    const primaryAdminEmail = process.env.PRIMARY_ADMIN_EMAIL?.trim().toLowerCase();
 
     const adminUsers = await prisma.user.findMany({
       where: {
@@ -213,7 +214,13 @@ export async function POST(req: NextRequest) {
       select: { email: true }
     });
 
-    const recipientEmails = Array.from(new Set([...adminEmailsFromEnv, ...adminUsers.map((item) => item.email?.trim().toLowerCase()).filter(Boolean) as string[]]));
+    const recipientEmails = Array.from(
+      new Set([
+        ...adminEmailsFromEnv,
+        ...(primaryAdminEmail ? [primaryAdminEmail] : []),
+        ...(adminUsers.map((item) => item.email?.trim().toLowerCase()).filter(Boolean) as string[])
+      ])
+    );
     const appUrl = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/+$/, "") || process.env.APP_URL?.replace(/\/+$/, "") || "https://wetask.cl";
     const reviewUrl = `${appUrl}/admin/onboarding-limpieza`;
     const categoryLabel = CATEGORY_LABELS[updated.categorySlug] ?? updated.categorySlug;
@@ -222,7 +229,7 @@ export async function POST(req: NextRequest) {
     const commune = updated.baseCommune?.trim() || "Sin comuna";
 
     if (recipientEmails.length > 0) {
-      await Promise.allSettled(
+      const results = await Promise.allSettled(
         recipientEmails.map((email) =>
           sendPlatformEmail({
             to: email,
@@ -244,6 +251,29 @@ export async function POST(req: NextRequest) {
           })
         )
       );
+
+      const failures = results
+        .map((result, index) => ({ result, email: recipientEmails[index] }))
+        .filter((item) => item.result.status === "rejected")
+        .map((item) => ({
+          email: item.email,
+          reason: item.result.status === "rejected" ? String(item.result.reason) : ""
+        }));
+
+      console.info("[tasker-onboarding] review alert emails processed", {
+        onboardingId: updated.id,
+        recipients: recipientEmails,
+        sentCount: recipientEmails.length - failures.length,
+        failedCount: failures.length,
+        failures
+      });
+    } else {
+      console.warn("[tasker-onboarding] no review alert recipients configured", {
+        onboardingId: updated.id,
+        primaryAdminEmailConfigured: Boolean(primaryAdminEmail),
+        adminUsersFound: adminUsers.length,
+        alertEnvConfigured: adminEmailsFromEnv.length > 0
+      });
     }
 
     return NextResponse.json({ ok: true, onboarding: updated }, { status: 200 });
