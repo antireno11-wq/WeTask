@@ -13,7 +13,7 @@ export function AdminHeroShell({ children }: AdminHeroShellProps) {
       <div className="market-shell-auth-content admin-auth-content">
         <MarketNav />
         <div className="admin-shell-actions">
-          <Link href="/" className="cta ghost small admin-head-action">
+          <Link href="/admin" className="cta ghost small admin-head-action">
             Volver al inicio
           </Link>
         </div>
