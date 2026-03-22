@@ -520,7 +520,7 @@ export const taskerOnboardingStep7Schema = z.object({
     .object({
       services_offered: z.array(ironingScopeServiceEnum).min(1),
       delicate_clothes: z.boolean().optional().nullable(),
-      tasks_included: z.array(ironingIncludedTaskEnum).min(1),
+      tasks_included: z.array(ironingIncludedTaskEnum).optional().default([]),
       tasks_excluded: z.array(ironingExcludedTaskEnum).optional().default([]),
       special_conditions: z.string().max(600).optional().default("")
     })

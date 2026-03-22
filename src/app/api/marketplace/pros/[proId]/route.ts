@@ -44,7 +44,10 @@ export async function GET(_: Request, context: { params: { proId: string } }) {
                 languages: true,
                 baseCommune: true,
                 maxTravelKm: true,
-                serviceCommunes: true
+                serviceCommunes: true,
+                identityDocumentFrontFile: true,
+                identityDocumentBackFile: true,
+                criminalRecordFile: true
               }
             }
           }

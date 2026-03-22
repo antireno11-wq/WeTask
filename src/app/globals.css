@@ -3430,6 +3430,56 @@ textarea {
   margin-top: 12px;
 }
 
+.we-trust-grid {
+  margin-top: 14px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.we-trust-card {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 12px;
+  align-items: start;
+  padding: 14px 16px;
+  border-radius: 18px;
+  border: 1px solid #d9e7f4;
+  background: linear-gradient(180deg, #fbfdff 0%, #f3f8fd 100%);
+}
+
+.we-trust-card.ok {
+  border-color: #c4dfcf;
+  background: linear-gradient(180deg, #fcfffd 0%, #f2fbf5 100%);
+}
+
+.we-trust-check {
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  background: #e8f0f8;
+  color: #173b5f;
+  font-weight: 900;
+}
+
+.we-trust-card.ok .we-trust-check {
+  background: #d9efe1;
+  color: #1a7f46;
+}
+
+.we-trust-card strong {
+  display: block;
+  color: #173b5f;
+}
+
+.we-trust-card p {
+  margin: 4px 0 0;
+  color: #5b748e;
+  line-height: 1.5;
+}
+
 .we-step-card {
   border: 1px solid #d8e6f2;
   border-radius: 12px;
@@ -4078,6 +4128,7 @@ textarea {
   }
 
   .we-info-grid,
+  .we-trust-grid,
   .we-metrics-grid,
   .we-cancel-table {
     grid-template-columns: 1fr;
@@ -6611,9 +6662,11 @@ textarea {
 }
 
 .onboarding-step-nav-item strong {
-  font-size: 0.72rem;
-  line-height: 1.08;
+  font-size: 0.68rem;
+  line-height: 1.12;
   color: #173b5f;
+  max-width: 100%;
+  overflow-wrap: anywhere;
 }
 
 .onboarding-step-nav-item:hover:not(:disabled) {
@@ -7076,12 +7129,43 @@ textarea {
 }
 
 .onboarding-availability-shell .pro-availability-overview {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .onboarding-availability-shell .availability-composer-card {
   grid-template-columns: minmax(0, 1fr);
   padding: 18px;
+}
+
+.availability-day-toggle-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.availability-day-toggle {
+  border: 1px solid #cfe0ef;
+  border-radius: 14px;
+  background: #ffffff;
+  color: #173b5f;
+  padding: 10px 8px;
+  font-size: 0.84rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: border-color 0.16s ease, background 0.16s ease, box-shadow 0.16s ease, transform 0.16s ease;
+}
+
+.availability-day-toggle:hover {
+  transform: translateY(-1px);
+  border-color: #98c2df;
+  background: #f5fbff;
+}
+
+.availability-day-toggle.active {
+  border-color: #1656b0;
+  background: linear-gradient(135deg, #1656b0 0%, #18a6d5 100%);
+  color: #ffffff;
+  box-shadow: 0 10px 20px rgba(22, 86, 176, 0.18);
 }
 
 .onboarding-availability-shell .availability-composer-card .onboarding-checkbox-grid {
@@ -7324,6 +7408,10 @@ textarea {
   }
 
   .onboarding-week-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .availability-day-toggle-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 

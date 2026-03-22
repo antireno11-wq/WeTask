@@ -22,7 +22,7 @@ import {
 } from "@/lib/cleaning-duration-estimator";
 import { getCleaningServiceDefinition } from "@/lib/cleaning-service-types";
 import { COVERAGE_UNAVAILABLE_MESSAGE, inferCommuneFromAddress, normalizeCommune } from "@/lib/communes";
-import { IRONING_TASK_INCLUDED_OPTIONS } from "@/lib/ironing-scope";
+import { estimateIroningDuration } from "@/lib/ironing-duration-estimator";
 import { MAKEUP_TASK_INCLUDED_OPTIONS } from "@/lib/makeup-scope";
 import { PET_TASK_INCLUDED_OPTIONS } from "@/lib/pet-scope";
 import { TEACHER_TASK_INCLUDED_OPTIONS } from "@/lib/teacher-scope";
@@ -48,7 +48,7 @@ const TASK_FILTER_OPTIONS_BY_CATEGORY: Record<string, TaskFilterOption[]> = {
   "personal-trainer": [...TRAINER_TASK_INCLUDED_OPTIONS],
   chef: [...CHEF_TASK_INCLUDED_OPTIONS],
   maquillaje: [...MAKEUP_TASK_INCLUDED_OPTIONS],
-  planchado: [...IRONING_TASK_INCLUDED_OPTIONS]
+  planchado: []
 };
 
 export default function ServicioCategoriaPage() {
@@ -105,17 +105,20 @@ export default function ServicioCategoriaPage() {
   );
   const [cleaningKitchen, setCleaningKitchen] = useState(query.get("cleaningKitchen") !== "false");
   const [cleaningLivingDining, setCleaningLivingDining] = useState(query.get("cleaningLivingDining") !== "false");
+  const [ironingGarments, setIroningGarments] = useState(query.get("ironingGarments") ?? "");
+  const [ironingBulkyItems, setIroningBulkyItems] = useState(query.get("ironingBulkyItems") ?? "");
+  const [ironingDelicates, setIroningDelicates] = useState(query.get("ironingDelicates") === "true");
   const autoAdvanceCategorySlugs = new Set([
     "mascotas",
     "babysitter",
     "profesor-particular",
     "personal-trainer",
     "chef",
-    "maquillaje",
-    "planchado"
+    "maquillaje"
   ]);
   const autoAdvanceOnServiceSelect = category ? autoAdvanceCategorySlugs.has(category.slug) : false;
   const isCleaningCategory = category?.slug === "limpieza";
+  const isIroningCategory = category?.slug === "planchado";
   const isCustomerSession = sessionRole === "CUSTOMER";
   const skipAddressStep = query.get("skipAddress") === "1";
 
@@ -330,6 +333,19 @@ export default function ServicioCategoriaPage() {
     selectedCleaningServiceSlug
   ]);
 
+  const ironingEstimate = useMemo(() => {
+    if (!isIroningCategory || !selectedServiceId) return null;
+    const garments = Number(ironingGarments);
+    const bulkyItems = Number(ironingBulkyItems || 0);
+    if (!Number.isFinite(garments) || garments <= 0) return null;
+    if (!Number.isFinite(bulkyItems) || bulkyItems < 0) return null;
+    return estimateIroningDuration({
+      garments,
+      bulkyItems,
+      includesDelicates: ironingDelicates
+    });
+  }, [ironingBulkyItems, ironingDelicates, ironingGarments, isIroningCategory, selectedServiceId]);
+
   const saveCoverageEmail = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!coverageEmail.trim()) return;
@@ -381,6 +397,16 @@ export default function ServicioCategoriaPage() {
         return;
       }
     }
+    if (category?.slug === "planchado") {
+      if (!ironingGarments.trim()) {
+        setCoverageNote("Cuéntanos cuánta ropa necesitas planchar para estimar bien el tiempo.");
+        return;
+      }
+      if (!ironingEstimate) {
+        setCoverageNote("No pudimos calcular la duración estimada. Revisa la cantidad de prendas y vuelve a intentarlo.");
+        return;
+      }
+    }
     setCoverageNote("");
 
     const qs = new URLSearchParams({
@@ -406,6 +432,14 @@ export default function ServicioCategoriaPage() {
       qs.set("recommendedHours", String(cleaningEstimate.recommendedHours));
       qs.set("estimatedMinHours", String(cleaningEstimate.minHours));
       qs.set("estimatedMaxHours", String(cleaningEstimate.maxHours));
+    }
+    if (category?.slug === "planchado" && ironingEstimate) {
+      qs.set("ironingGarments", ironingGarments);
+      qs.set("ironingBulkyItems", ironingBulkyItems || "0");
+      qs.set("ironingDelicates", String(ironingDelicates));
+      qs.set("recommendedHours", String(ironingEstimate.recommendedHours));
+      qs.set("estimatedMinHours", String(ironingEstimate.minHours));
+      qs.set("estimatedMaxHours", String(ironingEstimate.maxHours));
     }
     const nextUrl = `/servicios/${category.slug}/pros?${qs.toString()}`;
     if (sessionChecked && !hasSession) {
@@ -719,6 +753,59 @@ export default function ServicioCategoriaPage() {
                               : "Te ayudaremos a calcular una recomendación antes de mostrar taskers."}
                           </span>
                         </div>
+                      </div>
+                    </div>
+                  ) : null}
+                  {isIroningCategory && selectedServiceId ? (
+                    <div className="full service-prep-card" id="task-focos">
+                      <div className="panel-head">
+                        <h3>Ayúdanos a estimar el tiempo</h3>
+                        <p>Para planchado trabajamos por hora. Cuéntanos cuánta ropa tienes para sugerirte una duración realista.</p>
+                      </div>
+
+                      <div className="service-prep-summary">
+                        <strong>Planchado por hora</strong>
+                        <span>Luego podrás comparar taskers según agenda, valoración y tarifa por hora.</span>
+                      </div>
+
+                      <div className="service-duration-grid">
+                        <label>
+                          Cantidad de prendas
+                          <select value={ironingGarments} onChange={(event) => setIroningGarments(event.target.value)} required>
+                            <option value="">Selecciona</option>
+                            <option value="8">Hasta 8 prendas</option>
+                            <option value="15">9 a 15 prendas</option>
+                            <option value="25">16 a 25 prendas</option>
+                            <option value="35">26 a 35 prendas</option>
+                            <option value="45">36 a 45 prendas</option>
+                            <option value="60">Más de 45 prendas</option>
+                          </select>
+                        </label>
+                        <label>
+                          Textiles grandes
+                          <select value={ironingBulkyItems} onChange={(event) => setIroningBulkyItems(event.target.value)}>
+                            <option value="0">No</option>
+                            <option value="1">1 prenda grande</option>
+                            <option value="2">2 prendas grandes</option>
+                            <option value="3">3 o más</option>
+                          </select>
+                        </label>
+                      </div>
+
+                      <div className="service-duration-toggles">
+                        <label className={`onboarding-check-card ${ironingDelicates ? "active" : ""}`}>
+                          <input type="checkbox" checked={ironingDelicates} onChange={() => setIroningDelicates((current) => !current)} />
+                          <span>Incluye ropa delicada</span>
+                        </label>
+                      </div>
+
+                      <div className={`service-duration-result ${ironingEstimate ? "ready" : ""}`}>
+                        <strong>{ironingEstimate ? `${ironingEstimate.minHours} a ${ironingEstimate.maxHours} horas` : "Completa la cantidad de ropa para estimar el tiempo"}</strong>
+                        <span>
+                          {ironingEstimate
+                            ? `${ironingEstimate.summary} Si quieres irte a la segura, reserva ${ironingEstimate.recommendedHours} hora(s).`
+                            : "Te mostraremos un rango sugerido antes de buscar taskers."}
+                        </span>
                       </div>
                     </div>
                   ) : null}

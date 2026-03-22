@@ -853,8 +853,6 @@ function CleaningOnboardingPageContent() {
   const makeupScopeIncludedPreview = draft.makeupScope.tasks_included.map(getMakeupIncludedTaskLabel);
   const makeupScopeExcludedPreview = draft.makeupScope.tasks_excluded.map(getMakeupExcludedTaskLabel);
   const ironingScopeServicesPreview = draft.ironingScope.services_offered.map(getIroningServiceLabel);
-  const ironingScopeIncludedPreview = draft.ironingScope.tasks_included.map(getIroningIncludedTaskLabel);
-  const ironingScopeExcludedPreview = draft.ironingScope.tasks_excluded.map(getIroningExcludedTaskLabel);
   const babysitterScopeServicesPreview = draft.babysitterScope.services_offered.map(getBabysitterServiceLabel);
   const babysitterScopeAgePreview = draft.babysitterScope.age_ranges.map(getBabysitterAgeRangeLabel);
   const babysitterScopeIncludedPreview = draft.babysitterScope.tasks_included.map(getBabysitterIncludedTaskLabel);
@@ -1005,6 +1003,12 @@ function CleaningOnboardingPageContent() {
       setDraft((current) => ({ ...current, ironingPricing: "por_hora" }));
     }
   }, [draft.category, draft.ironingPricing]);
+
+  useEffect(() => {
+    if (draft.availabilityMode !== "FIJA") {
+      setDraft((current) => ({ ...current, availabilityMode: "FIJA" }));
+    }
+  }, [draft.availabilityMode]);
 
   useEffect(() => {
     const nextRut = formatRutInput(draft.rut);
@@ -1993,10 +1997,6 @@ function CleaningOnboardingPageContent() {
       setError("Selecciona al menos una modalidad de planchado que ofreces.");
       return;
     }
-    if (ironingScopeScreen === 2 && draft.ironingScope.tasks_included.length === 0) {
-      setError("Selecciona al menos una tarea que sí realizas.");
-      return;
-    }
     setError("");
     setIroningScopeScreen((current) => (Math.min(5, current + 1) as IroningScopeScreen));
   };
@@ -2134,10 +2134,6 @@ function CleaningOnboardingPageContent() {
       setError("Selecciona al menos una modalidad de planchado que ofreces.");
       return;
     }
-    if (draft.category === "planchado" && draft.ironingScope.tasks_included.length === 0) {
-      setError("Selecciona al menos una tarea que sí realizas.");
-      return;
-    }
     if (draft.category === "babysitter" && draft.babysitterScope.services_offered.length === 0) {
       setError("Selecciona al menos un servicio de babysitter que ofreces.");
       return;
@@ -2207,7 +2203,7 @@ function CleaningOnboardingPageContent() {
     setSaving(true);
     setError("");
     try {
-      await persistServerStep(8, { availabilityMode: draft.availabilityMode, availabilityBlocks: validBlocks });
+      await persistServerStep(8, { availabilityMode: "FIJA", availabilityBlocks: validBlocks });
       setActiveStep(9);
     } catch (eventualError) {
       setError(eventualError instanceof Error ? eventualError.message : "Error inesperado");
@@ -4223,186 +4219,68 @@ function CleaningOnboardingPageContent() {
 
                 {draft.category === "planchado" ? (
                   <div className="grid-form auth-flow-form">
-                    <div className="full onboarding-scope-progress">
-                      <span className={ironingScopeScreen >= 1 ? "active" : ""}>Servicio</span>
-                      <span className={ironingScopeScreen >= 2 ? "active" : ""}>Sí realiza</span>
-                      <span className={ironingScopeScreen >= 3 ? "active" : ""}>No realiza</span>
-                      <span className={ironingScopeScreen >= 4 ? "active" : ""}>Condiciones</span>
-                      <span className={ironingScopeScreen >= 5 ? "active" : ""}>Revisión</span>
-                    </div>
+                    <div className="full service-prep-card service-prep-card-tight">
+                      <div className="panel-head">
+                        <h3>Modalidad de tu servicio</h3>
+                        <p>Define cómo quieres trabajar este servicio. En WeTask el planchado se publica solo por hora.</p>
+                      </div>
 
-                    {ironingScopeScreen === 1 ? (
-                      <>
-                        <div className="full">
-                          <p className="field-label">¿Qué modalidad de planchado ofreces?</p>
-                          <div className="auth-service-grid auth-service-grid-cleaning">
-                            {IRONING_SCOPE_SERVICE_OPTIONS.map((option) => (
-                              <label
-                                key={option.value}
-                                className={`auth-service-card auth-service-card-scope ${draft.ironingScope.services_offered.includes(option.value) ? "active" : ""}`}
-                              >
-                                <input
-                                  type="checkbox"
-                                  checked={draft.ironingScope.services_offered.includes(option.value)}
-                                  onChange={(event) => {
-                                    setDraft((current) => ({
-                                      ...current,
-                                      ironingScope: {
-                                        ...current.ironingScope,
-                                        services_offered: event.target.checked
-                                          ? Array.from(new Set([...current.ironingScope.services_offered, option.value]))
-                                          : current.ironingScope.services_offered.filter((item) => item !== option.value)
-                                      }
-                                    }));
-                                  }}
-                                />
-                                <strong>{option.label}</strong>
-                                <span>{option.description}</span>
-                              </label>
-                            ))}
-                          </div>
-                        </div>
-                        <label>
-                          ¿Planchas ropa delicada?
-                          <select
-                            value={draft.ironingScope.delicate_clothes == null ? "" : draft.ironingScope.delicate_clothes ? "si" : "no"}
-                            onChange={(event) =>
-                              setDraft((current) => ({
-                                ...current,
-                                ironingScope: {
-                                  ...current.ironingScope,
-                                  delicate_clothes: event.target.value === "" ? null : event.target.value === "si"
-                                }
-                              }))
-                            }
+                      <div className="auth-service-grid auth-service-grid-cleaning">
+                        {IRONING_SCOPE_SERVICE_OPTIONS.map((option) => (
+                          <label
+                            key={option.value}
+                            className={`auth-service-card auth-service-card-scope ${draft.ironingScope.services_offered.includes(option.value) ? "active" : ""}`}
                           >
-                            <option value="">Selecciona</option>
-                            <option value="si">Sí</option>
-                            <option value="no">No</option>
-                          </select>
-                        </label>
-                        <label>
-                          Cobro
-                          <input value="Por hora" readOnly />
-                        </label>
-                      </>
-                    ) : null}
-
-                    {ironingScopeScreen === 2 ? (
-                      <div className="full">
-                        <p className="field-label">¿Qué tareas sí realizas?</p>
-                        <div className="onboarding-task-checklist">
-                          {IRONING_TASK_INCLUDED_OPTIONS.map((task) => (
-                            <label key={task.value} className={`onboarding-task-checklist-row ${draft.ironingScope.tasks_included.includes(task.value) ? "checked" : ""}`}>
-                              <div>
-                                <strong>{task.label}</strong>
-                              </div>
-                              <span className="onboarding-task-checklist-control">
-                                <input
-                                  type="checkbox"
-                                  checked={draft.ironingScope.tasks_included.includes(task.value)}
-                                  onChange={(event) => {
-                                    setDraft((current) => ({
-                                      ...current,
-                                      ironingScope: {
-                                        ...current.ironingScope,
-                                        tasks_included: event.target.checked
-                                          ? Array.from(new Set([...current.ironingScope.tasks_included, task.value]))
-                                          : current.ironingScope.tasks_included.filter((item) => item !== task.value)
-                                      }
-                                    }));
-                                  }}
-                                />
-                                <span className="onboarding-task-checklist-box" aria-hidden />
-                              </span>
-                            </label>
-                          ))}
-                        </div>
+                            <input
+                              type="checkbox"
+                              checked={draft.ironingScope.services_offered.includes(option.value)}
+                              onChange={(event) => {
+                                setDraft((current) => ({
+                                  ...current,
+                                  ironingScope: {
+                                    ...current.ironingScope,
+                                    services_offered: event.target.checked
+                                      ? Array.from(new Set([...current.ironingScope.services_offered, option.value]))
+                                      : current.ironingScope.services_offered.filter((item) => item !== option.value)
+                                  }
+                                }));
+                              }}
+                            />
+                            <strong>{option.label}</strong>
+                            <span>{option.description}</span>
+                          </label>
+                        ))}
                       </div>
-                    ) : null}
 
-                    {ironingScopeScreen === 3 ? (
-                      <div className="full">
-                        <p className="field-label">¿Qué tareas no realizas?</p>
-                        <div className="onboarding-task-checklist">
-                          {IRONING_TASK_EXCLUDED_OPTIONS.map((task) => (
-                            <label
-                              key={task.value}
-                              className={`onboarding-task-checklist-row onboarding-task-checklist-row-warning ${draft.ironingScope.tasks_excluded.includes(task.value) ? "checked" : ""}`}
-                            >
-                              <div>
-                                <strong>{task.label}</strong>
-                              </div>
-                              <span className="onboarding-task-checklist-control">
-                                <input
-                                  type="checkbox"
-                                  checked={draft.ironingScope.tasks_excluded.includes(task.value)}
-                                  onChange={(event) => {
-                                    setDraft((current) => ({
-                                      ...current,
-                                      ironingScope: {
-                                        ...current.ironingScope,
-                                        tasks_excluded: event.target.checked
-                                          ? Array.from(new Set([...current.ironingScope.tasks_excluded, task.value]))
-                                          : current.ironingScope.tasks_excluded.filter((item) => item !== task.value)
-                                      }
-                                    }));
-                                  }}
-                                />
-                                <span className="onboarding-task-checklist-box" aria-hidden />
-                              </span>
-                            </label>
-                          ))}
-                        </div>
-                      </div>
-                    ) : null}
-
-                    {ironingScopeScreen === 4 ? (
-                      <div className="full">
-                        <label>
-                          Condiciones especiales de tu servicio
-                          <textarea
-                            value={draft.ironingScope.special_conditions}
-                            rows={4}
-                            placeholder="Ejemplo: no recibo textiles grandes, el retiro y entrega se coordina por comuna y las prendas delicadas se revisan antes."
-                            onChange={(event) =>
+                      <div className="service-duration-toggles">
+                        <label className={`onboarding-check-card ${draft.ironingScope.delicate_clothes === true ? "active" : ""}`}>
+                          <input
+                            type="checkbox"
+                            checked={draft.ironingScope.delicate_clothes === true}
+                            onChange={() =>
                               setDraft((current) => ({
                                 ...current,
                                 ironingScope: {
                                   ...current.ironingScope,
-                                  special_conditions: event.target.value
+                                  delicate_clothes: current.ironingScope.delicate_clothes === true ? false : true
                                 }
                               }))
                             }
                           />
+                          <span>También tomo ropa delicada</span>
                         </label>
                       </div>
-                    ) : null}
 
-                    {ironingScopeScreen === 5 ? (
-                      <div className="full onboarding-scope-review-grid">
-                        <div className="auth-flow-note-card">
-                          <strong>Modalidades de planchado</strong>
-                          <span>{ironingScopeServicesPreview.length > 0 ? ironingScopeServicesPreview.join(", ") : "Sin información aún."}</span>
-                        </div>
-                        <div className="auth-flow-note-card">
-                          <strong>Tareas que sí realiza</strong>
-                          <span>{ironingScopeIncludedPreview.length > 0 ? ironingScopeIncludedPreview.join(", ") : "Sin información aún."}</span>
-                        </div>
-                        <div className="auth-flow-note-card">
-                          <strong>Tareas que no realiza</strong>
-                          <span>{ironingScopeExcludedPreview.length > 0 ? ironingScopeExcludedPreview.join(", ") : "No marcaste exclusiones."}</span>
-                        </div>
-                        <div className="auth-flow-note-card">
-                          <strong>Ropa delicada</strong>
-                          <span>{draft.ironingScope.delicate_clothes == null ? "No informado." : draft.ironingScope.delicate_clothes ? "Sí" : "No"}</span>
-                        </div>
-                        <div className="auth-flow-note-card">
-                          <strong>Condiciones especiales</strong>
-                          <span>{draft.ironingScope.special_conditions.trim() || "No agregaste condiciones especiales."}</span>
-                        </div>
+                      <div className="auth-flow-note-card auth-flow-note-card-compact">
+                        <strong>Cómo se publica</strong>
+                        <span>Este servicio se publica siempre por hora. Más adelante podrás editar tu valor por hora desde tu perfil.</span>
                       </div>
-                    ) : null}
+
+                      <div className="auth-flow-note-card auth-flow-note-card-compact">
+                        <strong>Resumen</strong>
+                        <span>{ironingScopeServicesPreview.length > 0 ? ironingScopeServicesPreview.join(", ") : "Selecciona al menos una modalidad para continuar."}</span>
+                      </div>
+                    </div>
                   </div>
                 ) : null}
 
@@ -4417,10 +4295,6 @@ function CleaningOnboardingPageContent() {
                     </button>
                   ) : draft.category === "maquillaje" && makeupScopeScreen > 1 ? (
                     <button type="button" className="cta ghost" onClick={previousMakeupScopeScreen}>
-                      Volver
-                    </button>
-                  ) : draft.category === "planchado" && ironingScopeScreen > 1 ? (
-                    <button type="button" className="cta ghost" onClick={previousIroningScopeScreen}>
                       Volver
                     </button>
                   ) : draft.category === "babysitter" && babysitterScopeScreen > 1 ? (
@@ -4456,10 +4330,6 @@ function CleaningOnboardingPageContent() {
                     <button type="button" className="cta" onClick={continueMakeupScopeScreen}>
                       Siguiente
                     </button>
-                  ) : draft.category === "planchado" && ironingScopeScreen < 5 ? (
-                    <button type="button" className="cta" onClick={continueIroningScopeScreen}>
-                      Siguiente
-                    </button>
                   ) : draft.category === "babysitter" && babysitterScopeScreen < 6 ? (
                     <button type="button" className="cta" onClick={continueBabysitterScopeScreen}>
                       Siguiente
@@ -4491,38 +4361,27 @@ function CleaningOnboardingPageContent() {
                 <div className="pro-availability-shell onboarding-availability-shell">
                   <div className="pro-availability-overview">
                     <article className="availability-stat-card tone-indigo">
-                      <span>Bloques</span>
+                      <span>Bloques semanales</span>
                       <strong>{totalAvailabilityBlocks}</strong>
-                      <p>horarios configurados en la semana</p>
+                      <p>franjas recurrentes activas</p>
                     </article>
                     <article className="availability-stat-card tone-peach">
                       <span>Días activos</span>
                       <strong>{activeAvailabilityDays}</strong>
-                      <p>con disponibilidad cargada</p>
+                      <p>jornadas con horarios publicados</p>
                     </article>
                     <article className="availability-stat-card tone-sky">
-                      <span>Día elegido</span>
+                      <span>Horarios del día</span>
                       <strong>{selectedDayConfig?.blocks.length ?? 0}</strong>
                       <p>bloque(s) en {selectedDayConfig?.label.toLowerCase() ?? "tu día"}</p>
-                    </article>
-                    <article className="availability-stat-card tone-mint">
-                      <span>Modo</span>
-                      <strong>{draft.availabilityMode === "VARIABLE" ? "Mensual" : "Semanal"}</strong>
-                      <p>
-                        {draft.availabilityMode === "VARIABLE"
-                          ? "puedes ajustar estos horarios mes a mes"
-                          : "estos horarios se repiten cada semana"}
-                      </p>
                     </article>
                   </div>
 
                   <div className="availability-board-card onboarding-board-card">
                     <div className="availability-board-head">
                       <div>
-                        <p className="availability-eyebrow">
-                          {draft.availabilityMode === "VARIABLE" ? "Planner mensual" : "Planner semanal"}
-                        </p>
-                        <h3>Selecciona un día y edita sus horarios</h3>
+                        <p className="availability-eyebrow">Paso 1</p>
+                        <h3>Revisa un día y sus horarios</h3>
                       </div>
                       <span className="availability-board-chip">{totalAvailabilityBlocks} bloque(s) en total</span>
                     </div>
@@ -4552,7 +4411,7 @@ function CleaningOnboardingPageContent() {
                     <div className="availability-task-panel" ref={availabilityTaskPanelRef} tabIndex={-1}>
                       <div className="availability-task-head">
                         <div>
-                          <p className="availability-eyebrow">Detalle del día</p>
+                          <p className="availability-eyebrow">Paso 2</p>
                           <h4>{selectedDayConfig?.label ?? "Sin día seleccionado"}</h4>
                         </div>
                         <span className="availability-selected-pill">{selectedDayConfig?.blocks.length ?? 0} bloque(s)</span>
@@ -4604,49 +4463,26 @@ function CleaningOnboardingPageContent() {
                     <div className="availability-composer-card">
                       <div className="availability-composer-head">
                         <div>
-                          <p className="availability-eyebrow">Nuevo bloque</p>
+                          <p className="availability-eyebrow">Paso 3</p>
                           <h3>{bulkAvailabilityDays.length > 1 ? `${bulkAvailabilityDays.length} días seleccionados` : selectedDayConfig?.label ?? "Selecciona un día"}</h3>
                         </div>
-                        <span className="availability-selected-pill">
-                          {draft.availabilityMode === "VARIABLE" ? "Disponibilidad mensual" : "Disponibilidad recurrente"}
-                        </span>
-                      </div>
-
-                      <div className="availability-mode-tabs" role="tablist" aria-label="Modo de disponibilidad">
-                        <button
-                          type="button"
-                          className={`availability-mode-tab ${draft.availabilityMode === "FIJA" ? "active" : ""}`}
-                          aria-pressed={draft.availabilityMode === "FIJA"}
-                          onClick={() => updateDraft("availabilityMode", "FIJA")}
-                        >
-                          Semanal
-                        </button>
-                        <button
-                          type="button"
-                          className={`availability-mode-tab ${draft.availabilityMode === "VARIABLE" ? "active" : ""}`}
-                          aria-pressed={draft.availabilityMode === "VARIABLE"}
-                          onClick={() => updateDraft("availabilityMode", "VARIABLE")}
-                        >
-                          Mensual
-                        </button>
+                        <span className="availability-selected-pill">Se repite cada semana</span>
                       </div>
 
                       <p className="input-hint">
-                        {draft.availabilityMode === "VARIABLE"
-                          ? "Elige un día del planner y arma una pauta flexible que puedas ajustar cada mes según tu agenda."
-                          : "Puedes marcar varios días y crear el mismo bloque horario para todos de una sola vez."}
+                        Marca uno o varios días, elige un rango horario y crea un bloque recurrente. Luego podrás editarlo desde tu perfil.
                       </p>
 
-                      <div className="onboarding-checkbox-grid onboarding-checkbox-grid-compact">
+                      <div className="availability-day-toggle-grid">
                         {DAY_OPTIONS.map((day) => (
-                          <label key={day.key} className="onboarding-check-card onboarding-check-card-compact">
-                            <input
-                              type="checkbox"
-                              checked={bulkAvailabilityDays.includes(day.key)}
-                              onChange={() => toggleBulkAvailabilityDay(day.key)}
-                            />
-                            <span>{day.label}</span>
-                          </label>
+                          <button
+                            key={day.key}
+                            type="button"
+                            className={`availability-day-toggle ${bulkAvailabilityDays.includes(day.key) ? "active" : ""}`}
+                            onClick={() => toggleBulkAvailabilityDay(day.key)}
+                          >
+                            {day.label}
+                          </button>
                         ))}
                       </div>
 

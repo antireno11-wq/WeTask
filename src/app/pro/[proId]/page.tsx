@@ -85,6 +85,9 @@ type CleaningOnboardingSummary = {
   baseCommune: string | null;
   maxTravelKm: number | null;
   serviceCommunes?: unknown;
+  identityDocumentFrontFile?: string | null;
+  identityDocumentBackFile?: string | null;
+  criminalRecordFile?: string | null;
 };
 
 type ProfessionalDetail = {
@@ -941,6 +944,8 @@ export default function ProDetailPage() {
     onboarding?.shortDescription?.trim() ||
     "Tasker con experiencia en servicios a domicilio, buena valoración y agenda activa durante la semana.";
   const experienceYears = onboarding?.yearsExperience ?? 6;
+  const hasIdentityProof = Boolean(onboarding?.identityDocumentFrontFile && onboarding?.identityDocumentBackFile);
+  const hasBackgroundCheck = Boolean(onboarding?.criminalRecordFile);
   const offeredServices = toLabelList(onboarding?.offeredServices, demoOfferedServices);
   const experienceTypes = toLabelList(onboarding?.experienceTypes, demoExperienceTypes);
   const languages = toLabelList(onboarding?.languages, demoLanguages);
@@ -1127,6 +1132,22 @@ export default function ProDetailPage() {
                   <article className="auth-flow-panel client-dashboard-section">
                     <h2>Perfil del tasker</h2>
                     <p>{summaryDescription}</p>
+                    <div className="we-trust-grid">
+                      <div className={`we-trust-card ${hasIdentityProof ? "ok" : ""}`}>
+                        <span className="we-trust-check" aria-hidden>{hasIdentityProof ? "✓" : "•"}</span>
+                        <div>
+                          <strong>Identidad confirmada</strong>
+                          <p>{hasIdentityProof ? "Subió ambos lados de su carnet para validación." : "Aún no informa validación completa."}</p>
+                        </div>
+                      </div>
+                      <div className={`we-trust-card ${hasBackgroundCheck ? "ok" : ""}`}>
+                        <span className="we-trust-check" aria-hidden>{hasBackgroundCheck ? "✓" : "•"}</span>
+                        <div>
+                          <strong>Antecedentes revisados</strong>
+                          <p>{hasBackgroundCheck ? "Tiene certificado de antecedentes cargado en su perfil." : "Aún no informa certificado de antecedentes."}</p>
+                        </div>
+                      </div>
+                    </div>
                     <div className="we-info-grid we-profile-quick-grid">
                       <div>
                         <h3>Experiencia</h3>

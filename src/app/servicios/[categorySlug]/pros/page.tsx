@@ -8,7 +8,6 @@ import { BABYSITTER_TASK_INCLUDED_OPTIONS } from "@/lib/babysitter-scope";
 import { CHEF_TASK_INCLUDED_OPTIONS } from "@/lib/chef-scope";
 import { copyCleaningEstimateParams, parseCleaningRecommendedHours, parseCleaningServiceSlug } from "@/lib/cleaning-duration-estimator";
 import { CLEANING_TASK_INCLUDED_OPTIONS, getCleaningTaskOptionsForService } from "@/lib/cleaning-scope";
-import { IRONING_TASK_INCLUDED_OPTIONS } from "@/lib/ironing-scope";
 import { MAKEUP_TASK_INCLUDED_OPTIONS } from "@/lib/makeup-scope";
 import { PET_TASK_INCLUDED_OPTIONS } from "@/lib/pet-scope";
 import { TEACHER_TASK_INCLUDED_OPTIONS } from "@/lib/teacher-scope";
@@ -48,7 +47,7 @@ const TASK_FILTER_OPTIONS_BY_CATEGORY: Record<string, TaskFilterOption[]> = {
   "profesor-particular": [...TEACHER_TASK_INCLUDED_OPTIONS],
   chef: [...CHEF_TASK_INCLUDED_OPTIONS],
   maquillaje: [...MAKEUP_TASK_INCLUDED_OPTIONS],
-  planchado: [...IRONING_TASK_INCLUDED_OPTIONS]
+  planchado: []
 };
 
 function clp(value: number) {
