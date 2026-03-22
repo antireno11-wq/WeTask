@@ -355,6 +355,40 @@ export default function ProPage() {
   );
   const completedBookings = useMemo(() => bookings.filter((item) => item.status === "COMPLETED"), [bookings]);
   const availableSlotsCount = useMemo(() => displaySlots.filter((item) => item.isAvailable).length, [displaySlots]);
+  const quickAccessCards = [
+    {
+      title: "Reservas activas",
+      detail: `${upcomingBookings.length} servicio(s)`,
+      view: "reservas" as ProView
+    },
+    {
+      title: "Completadas",
+      detail: `${completedBookings.length} servicio(s)`,
+      view: "resenas" as ProView
+    },
+    {
+      title: "Notificaciones",
+      detail: `${notifications.length} aviso(s)`,
+      view: "notificaciones" as ProView
+    },
+    {
+      title: "Próxima reserva",
+      detail: upcomingBookings[0]
+        ? `${upcomingBookings[0].service.name} · ${formatBookingDate(upcomingBookings[0].scheduledAt)}`
+        : "No tienes reservas próximas.",
+      view: "reservas" as ProView
+    },
+    {
+      title: "Comunas activas",
+      detail: selectedCommunes.length > 0 ? selectedCommunes.join(", ") : "Aún no defines cobertura.",
+      view: "perfil" as ProView
+    },
+    {
+      title: "Agenda abierta",
+      detail: availableSlotsCount > 0 ? `${availableSlotsCount} bloque(s) disponible(s)` : "No tienes bloques abiertos por ahora.",
+      view: "agenda" as ProView
+    }
+  ];
 
   const applyProfile = (nextProfile: ProProfile | null, nextServiceCommunes: string[] = []) => {
     setProfile(nextProfile);
@@ -886,36 +920,30 @@ export default function ProPage() {
             </div>
 
             <div className="module-grid client-dashboard-metrics">
-              <article className="module-card client-dashboard-metric">
-                <h3>Reservas activas</h3>
-                <p>{upcomingBookings.length} servicio(s)</p>
-              </article>
-              <article className="module-card client-dashboard-metric">
-                <h3>Completadas</h3>
-                <p>{completedBookings.length} servicio(s)</p>
-              </article>
-              <article className="module-card client-dashboard-metric">
-                <h3>Notificaciones</h3>
-                <p>{notifications.length} aviso(s)</p>
-              </article>
+              {quickAccessCards.slice(0, 3).map((card) => (
+                <button
+                  key={card.title}
+                  type="button"
+                  className="module-card client-dashboard-metric dashboard-nav-card"
+                  onClick={() => setActiveView(card.view)}
+                >
+                  <h3>{card.title}</h3>
+                  <p>{card.detail}</p>
+                </button>
+              ))}
             </div>
             <div className="module-grid dashboard-summary-grid">
-              <article className="module-card client-dashboard-card dashboard-summary-card">
-                <h3>Próxima reserva</h3>
-                <p>
-                  {upcomingBookings[0]
-                    ? `${upcomingBookings[0].service.name} · ${formatBookingDate(upcomingBookings[0].scheduledAt)}`
-                    : "No tienes reservas próximas."}
-                </p>
-              </article>
-              <article className="module-card client-dashboard-card dashboard-summary-card">
-                <h3>Comunas activas</h3>
-                <p>{selectedCommunes.length > 0 ? selectedCommunes.join(", ") : "Aún no defines cobertura."}</p>
-              </article>
-              <article className="module-card client-dashboard-card dashboard-summary-card">
-                <h3>Agenda abierta</h3>
-                <p>{availableSlotsCount > 0 ? `${availableSlotsCount} bloque(s) disponible(s)` : "No tienes bloques abiertos por ahora."}</p>
-              </article>
+              {quickAccessCards.slice(3).map((card) => (
+                <button
+                  key={card.title}
+                  type="button"
+                  className="module-card client-dashboard-card dashboard-summary-card dashboard-nav-card"
+                  onClick={() => setActiveView(card.view)}
+                >
+                  <h3>{card.title}</h3>
+                  <p>{card.detail}</p>
+                </button>
+              ))}
             </div>
             </section>
           ) : null}
