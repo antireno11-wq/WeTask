@@ -82,7 +82,8 @@ export async function middleware(req: NextRequest) {
     if (!hasRequiredRole(session.role, ["CUSTOMER", "ADMIN"])) return redirectToLogin(req, "cliente");
   }
 
-  if (pathname.startsWith("/pro") && !pathname.startsWith("/profesionales")) {
+  const isTaskerPanelPath = pathname === "/pro";
+  if (isTaskerPanelPath) {
     if (!hasRequiredRole(session.role, ["PRO", "ADMIN"])) return redirectToLogin(req, "tasker");
   }
 
