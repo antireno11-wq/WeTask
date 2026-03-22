@@ -123,6 +123,8 @@ type ProSlot = {
   bookings: Array<{ id: string; status: string }>;
 };
 
+type ProView = "resumen" | "perfil" | "agenda" | "reservas" | "resenas" | "notificaciones";
+
 function clp(value: number) {
   return new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP", maximumFractionDigits: 0 }).format(value);
 }
@@ -246,6 +248,7 @@ export default function ProPage() {
 
   const [feedback, setFeedback] = useState("");
   const [error, setError] = useState("");
+  const [activeView, setActiveView] = useState<ProView>("resumen");
   const [addressSuggestions, setAddressSuggestions] = useState<string[]>([]);
   const [autocompleteLoading, setAutocompleteLoading] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -851,7 +854,31 @@ export default function ProPage() {
         </section>
 
         <div className="page client-dashboard-sections">
-          <section className="auth-flow-panel client-dashboard-section">
+          {feedback ? <p className="feedback ok">{feedback}</p> : null}
+          {error ? <p className="feedback error">{error}</p> : null}
+
+          <div className="dashboard-switcher">
+            {[
+              { id: "resumen", label: "Resumen" },
+              { id: "perfil", label: "Perfil" },
+              { id: "agenda", label: "Calendario" },
+              { id: "reservas", label: "Reservas" },
+              { id: "resenas", label: "Reseñas y payouts" },
+              { id: "notificaciones", label: "Notificaciones" }
+            ].map((view) => (
+              <button
+                key={view.id}
+                type="button"
+                className={`dashboard-switch ${activeView === view.id ? "active" : ""}`}
+                onClick={() => setActiveView(view.id as ProView)}
+              >
+                {view.label}
+              </button>
+            ))}
+          </div>
+
+          {activeView === "resumen" ? (
+            <section className="auth-flow-panel client-dashboard-section">
             <div className="panel-head client-dashboard-panel-head">
               <h2>Resumen rápido</h2>
               <p>Vista general de tu actividad actual.</p>
@@ -871,9 +898,29 @@ export default function ProPage() {
                 <p>{notifications.length} aviso(s)</p>
               </article>
             </div>
-          </section>
+            <div className="module-grid dashboard-summary-grid">
+              <article className="module-card client-dashboard-card dashboard-summary-card">
+                <h3>Próxima reserva</h3>
+                <p>
+                  {upcomingBookings[0]
+                    ? `${upcomingBookings[0].service.name} · ${formatBookingDate(upcomingBookings[0].scheduledAt)}`
+                    : "No tienes reservas próximas."}
+                </p>
+              </article>
+              <article className="module-card client-dashboard-card dashboard-summary-card">
+                <h3>Comunas activas</h3>
+                <p>{selectedCommunes.length > 0 ? selectedCommunes.join(", ") : "Aún no defines cobertura."}</p>
+              </article>
+              <article className="module-card client-dashboard-card dashboard-summary-card">
+                <h3>Agenda abierta</h3>
+                <p>{availableSlotsCount > 0 ? `${availableSlotsCount} bloque(s) disponible(s)` : "No tienes bloques abiertos por ahora."}</p>
+              </article>
+            </div>
+            </section>
+          ) : null}
 
-          <section className="auth-flow-panel client-dashboard-section">
+          {activeView === "perfil" ? (
+            <section className="auth-flow-panel client-dashboard-section">
             <div className="panel-head client-dashboard-panel-head">
               <div>
                 <h2>Perfil profesional</h2>
@@ -1144,9 +1191,11 @@ export default function ProPage() {
                 </button>
               </div>
             ) : null}
-          </section>
+            </section>
+          ) : null}
 
-          <section className="auth-flow-panel client-dashboard-section">
+          {activeView === "agenda" ? (
+            <section className="auth-flow-panel client-dashboard-section">
             <div className="panel-head client-dashboard-panel-head">
               <h2>Calendario de disponibilidad</h2>
               <p>Organiza tus horarios como una agenda visual y controla qué bloques quedan abiertos para reservas.</p>
@@ -1364,9 +1413,11 @@ export default function ProPage() {
                 </div>
               </div>
             </div>
-          </section>
+            </section>
+          ) : null}
 
-          <section className="auth-flow-panel client-dashboard-section">
+          {activeView === "notificaciones" ? (
+            <section className="auth-flow-panel client-dashboard-section">
             <div className="panel-head client-dashboard-panel-head">
               <h2>Notificaciones</h2>
               <p>Mensajes y movimientos importantes de tu cuenta.</p>
@@ -1386,19 +1437,21 @@ export default function ProPage() {
                 ))
               )}
             </div>
-          </section>
+            </section>
+          ) : null}
 
-          <section className="auth-flow-panel client-dashboard-section">
+          {activeView === "reservas" ? (
+            <section className="auth-flow-panel client-dashboard-section">
             <div className="panel-head client-dashboard-panel-head">
               <h2>Servicios</h2>
-              <p>Gestiona el estado de tus reservas y solicita payouts cuando corresponda.</p>
+              <p>Revisa y actualiza el estado de tus reservas activas sin mezclarlo con reseñas ni payouts.</p>
             </div>
 
             <div className="list client-dashboard-list">
-              {bookings.length === 0 ? (
+              {upcomingBookings.length === 0 ? (
                 <p className="empty">Todavía no tienes servicios asignados.</p>
               ) : (
-                bookings.map((booking) => (
+                upcomingBookings.map((booking) => (
                   <article className="booking-card client-dashboard-card" key={booking.id}>
                     <div className="booking-head">
                       <h3>{booking.service.name}</h3>
@@ -1423,7 +1476,64 @@ export default function ProPage() {
                     <p>
                       <strong>Estado del pago:</strong> {booking.status === "COMPLETED" ? booking.payout?.status ?? "Pendiente de programación" : booking.status === "IN_PROGRESS" ? "Retenido hasta terminar el servicio" : booking.status === "CONFIRMED" || booking.status === "ACCEPTED" || booking.status === "ASSIGNED" ? "Pago reservado por WeTask" : booking.payout?.status ?? "Aún no aplica"}
                     </p>
-                    {booking.status === "COMPLETED" ? (
+                    <div className="status-editor">
+                      <label>
+                        Estado
+                        <select
+                          value={statusByBooking[booking.id] ?? booking.status}
+                          onChange={(e) => setStatusByBooking((prev) => ({ ...prev, [booking.id]: e.target.value }))}
+                        >
+                          {statusOptions.map((status) => (
+                            <option key={status} value={status}>
+                              {PRO_STATUS_LABELS[status] ?? status}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <button className="cta small" type="button" onClick={() => updateStatus(booking.id)}>
+                        Guardar estado
+                      </button>
+                      <button className="cta ghost small" type="button" onClick={() => completeBooking(booking.id)}>
+                        Finalizar
+                      </button>
+                    </div>
+                  </article>
+                ))
+              )}
+            </div>
+            </section>
+          ) : null}
+
+          {activeView === "resenas" ? (
+            <section className="auth-flow-panel client-dashboard-section">
+              <div className="panel-head client-dashboard-panel-head">
+                <h2>Reseñas y payouts</h2>
+                <p>Completa la reseña del cliente y solicita tu payout cuando corresponda.</p>
+              </div>
+
+              <div className="list client-dashboard-list">
+                {completedBookings.length === 0 ? (
+                  <p className="empty">Todavía no tienes servicios completados para reseñar.</p>
+                ) : (
+                  completedBookings.map((booking) => (
+                    <article className="booking-card client-dashboard-card" key={booking.id}>
+                      <div className="booking-head">
+                        <h3>{booking.service.name}</h3>
+                        <span className="status status-completed">{PRO_STATUS_LABELS[booking.status] ?? booking.status}</span>
+                      </div>
+                      <p className="client-booking-eyebrow">Servicio realizado</p>
+                      <p>
+                        <strong>Cliente:</strong> {booking.customer.fullName} ({booking.customer.email})
+                      </p>
+                      <p>
+                        <strong>Fecha:</strong> {formatBookingDate(booking.scheduledAt)}
+                      </p>
+                      <p>
+                        <strong>Total:</strong> {clp(booking.totalPriceClp)}
+                      </p>
+                      <p>
+                        <strong>Payout:</strong> {booking.payout?.status ?? "No solicitado"}
+                      </p>
                       <div className="pro-review-card">
                         <strong>Reseña del cliente</strong>
                         <label>
@@ -1468,45 +1578,21 @@ export default function ProPage() {
                           <button className="cta ghost small" type="button" onClick={() => submitClientReview(booking.id)}>
                             Guardar reseña
                           </button>
+                          <button className="cta small" type="button" onClick={() => requestPayout(booking.id)}>
+                            Solicitar payout
+                          </button>
                         </div>
                       </div>
-                    ) : null}
                     <div className="client-booking-note">
                       <strong>Lógica de cobro</strong>
                       <p>El cliente paga al reservar. WeTask retiene ese dinero y tu pago entra al próximo ciclo cuando el cliente confirma o cuando vence el plazo sin reclamo.</p>
                     </div>
-                    <div className="status-editor">
-                      <label>
-                        Estado
-                        <select
-                          value={statusByBooking[booking.id] ?? booking.status}
-                          onChange={(e) => setStatusByBooking((prev) => ({ ...prev, [booking.id]: e.target.value }))}
-                        >
-                          {statusOptions.map((status) => (
-                            <option key={status} value={status}>
-                              {PRO_STATUS_LABELS[status] ?? status}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
-                      <button className="cta small" type="button" onClick={() => updateStatus(booking.id)}>
-                        Guardar estado
-                      </button>
-                      <button className="cta ghost small" type="button" onClick={() => completeBooking(booking.id)}>
-                        Marcar trabajo realizado
-                      </button>
-                      <button className="cta ghost small" type="button" onClick={() => requestPayout(booking.id)}>
-                        Programar payout
-                      </button>
-                    </div>
-                  </article>
-                ))
-              )}
-            </div>
-          </section>
-
-          {feedback ? <p className="feedback ok">{feedback}</p> : null}
-          {error ? <p className="feedback error">{error}</p> : null}
+                    </article>
+                  ))
+                )}
+              </div>
+            </section>
+          ) : null}
         </div>
       </div>
     </main>

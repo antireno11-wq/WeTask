@@ -52,6 +52,8 @@ type CardFormData = {
   identificationNumber?: string;
 };
 
+type ClientView = "resumen" | "perfil" | "pagos" | "reservas" | "notificaciones";
+
 const STATUS_LABELS: Record<string, string> = {
   PENDING: "Pendiente",
   PENDING_PAYMENT: "Pago pendiente",
@@ -132,6 +134,7 @@ export default function ClientePage() {
   const [payerEmail, setPayerEmail] = useState("");
   const [feedback, setFeedback] = useState("");
   const [error, setError] = useState("");
+  const [activeView, setActiveView] = useState<ClientView>("resumen");
 
   const sortedBookings = useMemo(
     () => [...bookings].sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime()),
@@ -589,74 +592,21 @@ export default function ClientePage() {
 
           <section className="auth-flow-panel auth-flow-panel-wide client-dashboard-profile-panel">
             <div className="panel-head client-dashboard-panel-head">
-              <h2>Tu perfil</h2>
-              <p>Tu foto y accesos rápidos del lado cliente.</p>
+              <h2>Tu resumen</h2>
+              <p>Datos clave para entrar rápido a tus próximas acciones.</p>
             </div>
 
             <div className="client-profile-box client-profile-box-auth">
               <div className="client-photo-frame">
                 {customerPhotoUrl ? <img src={customerPhotoUrl} alt="Foto del cliente" className="client-photo-img" /> : <span>Sin foto</span>}
-                <label className="client-photo-upload client-photo-upload-floating">
-                  Cambiar
-                  <input type="file" accept="image/png,image/jpeg,image/webp" onChange={handlePhotoChange} />
-                </label>
               </div>
               <div className="client-profile-copy">
                 <h3>{customerName}</h3>
                 <p>Dirección por defecto</p>
                 <strong className="client-profile-address">{displayedAddress}</strong>
-                {editingAddress ? (
-                  <div className="client-address-editor">
-                    <input
-                      value={addressDraft}
-                      onChange={(event) => {
-                        setAddressDraft(event.target.value);
-                        setSelectedFromAutocomplete(false);
-                        setShowSuggestions(true);
-                      }}
-                      onFocus={() => setShowSuggestions(addressSuggestions.length > 0)}
-                      placeholder="Ingresa tu dirección"
-                    />
-                    {autocompleteLoading ? <p className="input-hint">Buscando direcciones en Google...</p> : null}
-                    {showSuggestions && addressSuggestions.length > 0 ? (
-                      <div className="address-suggestions">
-                        {addressSuggestions.map((suggestion) => (
-                          <button
-                            key={suggestion}
-                            type="button"
-                            className="address-suggestion-btn"
-                            onClick={() => selectAddressSuggestion(suggestion)}
-                          >
-                            {suggestion}
-                          </button>
-                        ))}
-                      </div>
-                    ) : null}
-                    <p className="input-hint">Guardaremos la dirección validada con Google para evitar errores al reservar.</p>
-                    <div className="client-profile-actions">
-                      <button className="cta small" type="button" onClick={() => void saveAddress()} disabled={savingAddress}>
-                        {savingAddress ? "Validando..." : "Guardar dirección"}
-                      </button>
-                      <button
-                        className="cta ghost small"
-                        type="button"
-                        onClick={() => {
-                          setAddressDraft(displayedAddress);
-                          setEditingAddress(false);
-                          setAddressSuggestions([]);
-                          setShowSuggestions(false);
-                          setSelectedFromAutocomplete(false);
-                        }}
-                      >
-                        Cancelar
-                      </button>
-                    </div>
-                  </div>
-                ) : null}
                 <div className="client-profile-actions">
-                  <button className="cta ghost small" type="button" onClick={() => setEditingAddress((current) => !current)}>
-                    Editar dirección
-                  </button>
+                  <span className="status status-accepted">{paymentMethods.length} medio(s) de pago</span>
+                  <span className="status status-completed">{upcomingBookings.length} reserva(s) próxima(s)</span>
                   <Link className="cta small" href={servicesHref}>
                     Explorar servicios
                   </Link>
@@ -670,7 +620,104 @@ export default function ClientePage() {
           {feedback ? <p className="feedback ok">{feedback}</p> : null}
           {error ? <p className="feedback error">{error}</p> : null}
 
-          <section className="auth-flow-panel client-dashboard-section">
+          <div className="dashboard-switcher">
+            {[
+              { id: "resumen", label: "Resumen" },
+              { id: "perfil", label: "Perfil" },
+              { id: "pagos", label: "Formas de pago" },
+              { id: "reservas", label: "Reservas" },
+              { id: "notificaciones", label: "Notificaciones" }
+            ].map((view) => (
+              <button
+                key={view.id}
+                type="button"
+                className={`dashboard-switch ${activeView === view.id ? "active" : ""}`}
+                onClick={() => setActiveView(view.id as ClientView)}
+              >
+                {view.label}
+              </button>
+            ))}
+          </div>
+
+          {activeView === "perfil" ? (
+            <section className="auth-flow-panel client-dashboard-section">
+              <div className="panel-head client-dashboard-panel-head">
+                <h2>Perfil</h2>
+                <p>Edita tu foto y tu dirección guardada sin mezclarlo con el resto del panel.</p>
+              </div>
+
+              <div className="client-profile-box client-profile-box-auth client-profile-box-detailed">
+                <div className="client-photo-frame">
+                  {customerPhotoUrl ? <img src={customerPhotoUrl} alt="Foto del cliente" className="client-photo-img" /> : <span>Sin foto</span>}
+                  <label className="client-photo-upload client-photo-upload-floating">
+                    Cambiar
+                    <input type="file" accept="image/png,image/jpeg,image/webp" onChange={handlePhotoChange} />
+                  </label>
+                </div>
+                <div className="client-profile-copy">
+                  <h3>{customerName}</h3>
+                  <p>{customerEmail || "Correo no disponible"}</p>
+                  <strong className="client-profile-address">{displayedAddress}</strong>
+                  {editingAddress ? (
+                    <div className="client-address-editor">
+                      <input
+                        value={addressDraft}
+                        onChange={(event) => {
+                          setAddressDraft(event.target.value);
+                          setSelectedFromAutocomplete(false);
+                          setShowSuggestions(true);
+                        }}
+                        onFocus={() => setShowSuggestions(addressSuggestions.length > 0)}
+                        placeholder="Ingresa tu dirección"
+                      />
+                      {autocompleteLoading ? <p className="input-hint">Buscando direcciones en Google...</p> : null}
+                      {showSuggestions && addressSuggestions.length > 0 ? (
+                        <div className="address-suggestions">
+                          {addressSuggestions.map((suggestion) => (
+                            <button
+                              key={suggestion}
+                              type="button"
+                              className="address-suggestion-btn"
+                              onClick={() => selectAddressSuggestion(suggestion)}
+                            >
+                              {suggestion}
+                            </button>
+                          ))}
+                        </div>
+                      ) : null}
+                      <p className="input-hint">Guardaremos la dirección validada con Google para evitar errores al reservar.</p>
+                      <div className="client-profile-actions">
+                        <button className="cta small" type="button" onClick={() => void saveAddress()} disabled={savingAddress}>
+                          {savingAddress ? "Validando..." : "Guardar dirección"}
+                        </button>
+                        <button
+                          className="cta ghost small"
+                          type="button"
+                          onClick={() => {
+                            setAddressDraft(displayedAddress);
+                            setEditingAddress(false);
+                            setAddressSuggestions([]);
+                            setShowSuggestions(false);
+                            setSelectedFromAutocomplete(false);
+                          }}
+                        >
+                          Cancelar
+                        </button>
+                      </div>
+                    </div>
+                  ) : null}
+                  <div className="client-profile-actions">
+                    <button className="cta ghost small" type="button" onClick={() => setEditingAddress((current) => !current)}>
+                      {editingAddress ? "Cerrar edición" : "Editar dirección"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </section>
+          ) : null}
+
+          {activeView === "pagos" ? (
+            <section className="auth-flow-panel client-dashboard-section">
             <div className="panel-head client-dashboard-panel-head">
               <h2>Medios de pago</h2>
               <p>Guarda tu tarjeta con Mercado Pago para tenerla lista en futuras reservas.</p>
@@ -776,12 +823,14 @@ export default function ClientePage() {
                 )}
               </div>
             ) : null}
-          </section>
+            </section>
+          ) : null}
 
-          <section className="auth-flow-panel client-dashboard-section">
+          {activeView === "resumen" ? (
+            <section className="auth-flow-panel client-dashboard-section">
             <div className="panel-head client-dashboard-panel-head">
               <h2>Resumen rápido</h2>
-              <p>Tu actividad actual dentro de la plataforma.</p>
+              <p>Tu actividad principal dentro de la plataforma, en una sola vista.</p>
             </div>
             <div className="module-grid client-dashboard-metrics">
               <article className="module-card client-dashboard-metric">
@@ -797,9 +846,25 @@ export default function ClientePage() {
                 <p>{bookings.length} servicio(s) en total</p>
               </article>
             </div>
-          </section>
+            <div className="module-grid dashboard-summary-grid">
+              <article className="module-card client-dashboard-card dashboard-summary-card">
+                <h3>Tu dirección actual</h3>
+                <p>{displayedAddress}</p>
+              </article>
+              <article className="module-card client-dashboard-card dashboard-summary-card">
+                <h3>Pago listo</h3>
+                <p>{paymentMethods.length > 0 ? `${paymentMethods.length} tarjeta(s) guardada(s)` : "Todavía no guardas tarjetas."}</p>
+              </article>
+              <article className="module-card client-dashboard-card dashboard-summary-card">
+                <h3>Próxima reserva</h3>
+                <p>{upcomingBookings[0] ? `${upcomingBookings[0].service.name} · ${formatBookingDate(upcomingBookings[0].scheduledAt)}` : "No tienes reservas próximas."}</p>
+              </article>
+            </div>
+            </section>
+          ) : null}
 
-          <section className="auth-flow-panel client-dashboard-section">
+          {activeView === "notificaciones" ? (
+            <section className="auth-flow-panel client-dashboard-section">
             <div className="panel-head client-dashboard-panel-head">
               <h2>Notificaciones</h2>
               <p>Mensajes y actualizaciones sobre tus reservas.</p>
@@ -819,9 +884,11 @@ export default function ClientePage() {
                 ))
               )}
             </div>
-          </section>
+            </section>
+          ) : null}
 
-          <section className="auth-flow-panel client-dashboard-section">
+          {activeView === "reservas" ? (
+            <section className="auth-flow-panel client-dashboard-section">
             <div className="panel-head client-dashboard-panel-head">
               <h2>Servicios</h2>
               <p>Estado y detalle de tus reservas activas e históricas.</p>
@@ -877,7 +944,8 @@ export default function ClientePage() {
                 ))
               )}
             </div>
-          </section>
+            </section>
+          ) : null}
         </div>
       </div>
     </main>
