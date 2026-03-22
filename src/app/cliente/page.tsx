@@ -105,10 +105,15 @@ function describeMercadoPagoError(error: unknown) {
   return "No pudimos inicializar el formulario de tarjeta. Revisa que la Public Key de Mercado Pago sea correcta y que no estés mezclando credenciales de prueba y producción.";
 }
 
-function readPaymentFieldValue(id: string) {
-  if (typeof document === "undefined") return "";
-  const element = document.getElementById(id) as HTMLInputElement | HTMLSelectElement | null;
-  return element?.value?.trim() ?? "";
+function getCardTokenFromData(cardData: CardFormData & { token?: string | { id?: string } | null }) {
+  if (typeof cardData.token === "string") return cardData.token;
+  if (cardData.token && typeof cardData.token === "object") {
+    const nestedToken = cardData.token as { id?: string };
+    if (typeof nestedToken.id === "string") {
+      return nestedToken.id;
+    }
+  }
+  return "";
 }
 
 export default function ClientePage() {
@@ -141,10 +146,6 @@ export default function ClientePage() {
   const [feedback, setFeedback] = useState("");
   const [error, setError] = useState("");
   const [activeView, setActiveView] = useState<ClientView>("resumen");
-  const paymentExpiryYears = useMemo(() => {
-    const baseYear = new Date().getFullYear();
-    return Array.from({ length: 16 }, (_, index) => String(baseYear + index));
-  }, []);
 
   const sortedBookings = useMemo(
     () => [...bookings].sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime()),
@@ -204,6 +205,37 @@ export default function ClientePage() {
     await fetchNotifications();
     setFeedback(`Panel cargado para ${targetName} (${count} reservas).`);
   }, []);
+
+  const submitPaymentMethod = useCallback(
+    async (cardData: CardFormData) => {
+      const token = getCardTokenFromData(cardData);
+      if (!token) {
+        throw new Error("No pudimos tokenizar la tarjeta. Revisa el número, vencimiento y código de seguridad.");
+      }
+
+      const response = await fetch("/api/marketplace/client/payment-methods", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          token,
+          paymentMethodId: cardData.paymentMethodId,
+          issuerId: cardData.issuerId,
+          payerEmail: (cardData.cardholderEmail || payerEmail || customerEmail).trim(),
+          cardholderName: cardholderName.trim(),
+          makeDefault: paymentMethods.length === 0
+        })
+      });
+      const data = (await response.json()) as { error?: string; detail?: string };
+      if (!response.ok) {
+        throw new Error(data.detail || data.error || "No se pudo guardar la tarjeta");
+      }
+
+      await fetchPaymentMethods();
+      setPaymentMethodMessage("Tarjeta guardada correctamente.");
+      setEditingPayments(false);
+    },
+    [cardholderName, customerEmail, fetchPaymentMethods, payerEmail, paymentMethods.length]
+  );
 
   useEffect(() => {
     const bootstrap = async () => {
@@ -287,13 +319,13 @@ export default function ClientePage() {
         const cardForm = mp.cardForm({
           amount: "1000",
           autoMount: true,
+          iframe: true,
           form: {
             id: "client-payment-card-form",
             cardholderName: { id: "client-payment-cardholder-name" },
             cardholderEmail: { id: "client-payment-cardholder-email" },
             cardNumber: { id: "client-payment-card-number" },
-            cardExpirationMonth: { id: "client-payment-expiration-month" },
-            cardExpirationYear: { id: "client-payment-expiration-year" },
+            expirationDate: { id: "client-payment-expiration-date" },
             securityCode: { id: "client-payment-security-code" },
             issuer: { id: "client-payment-issuer" },
             installments: { id: "client-payment-installments" },
@@ -310,6 +342,23 @@ export default function ClientePage() {
                 return;
               }
               setPaymentFormReady(true);
+            },
+            onSubmit: async (event: Event) => {
+              event.preventDefault();
+              if (cancelled) return;
+              setPaymentMethodError("");
+              setPaymentMethodMessage("");
+              setSavingPaymentMethod(true);
+              try {
+                const nextData = (cardForm.getCardFormData?.() ?? {}) as CardFormData;
+                await submitPaymentMethod(nextData);
+              } catch (submitError) {
+                setPaymentMethodError(describeMercadoPagoError(submitError));
+              } finally {
+                if (!cancelled) {
+                  setSavingPaymentMethod(false);
+                }
+              }
             }
           }
         });
@@ -342,7 +391,7 @@ export default function ClientePage() {
         addPaymentFormRef.current = null;
       }
     };
-  }, [editingPayments, paymentSdkReady]);
+  }, [editingPayments, paymentSdkReady, submitPaymentMethod]);
 
   useEffect(() => {
     if (!editingAddress) {
@@ -424,68 +473,6 @@ export default function ClientePage() {
       await loadDashboard(customerName);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error inesperado");
-    }
-  };
-
-  const savePaymentMethod = async () => {
-    if (!addPaymentFormRef.current || !paymentFormReady) {
-      setPaymentMethodError("Espera un momento mientras cargamos el formulario de tarjeta.");
-      return;
-    }
-
-    const cardNumberDigits = readPaymentFieldValue("client-payment-card-number").replace(/\D/g, "");
-    const securityCodeDigits = readPaymentFieldValue("client-payment-security-code").replace(/\D/g, "");
-    const expirationMonth = readPaymentFieldValue("client-payment-expiration-month");
-    const expirationYear = readPaymentFieldValue("client-payment-expiration-year");
-
-    if (cardNumberDigits.length < 13 || cardNumberDigits.length > 19) {
-      setPaymentMethodError("Ingresa un número de tarjeta válido.");
-      return;
-    }
-
-    if (!expirationMonth || !expirationYear) {
-      setPaymentMethodError("Selecciona el mes y el año de vencimiento.");
-      return;
-    }
-
-    if (securityCodeDigits.length < 3 || securityCodeDigits.length > 4) {
-      setPaymentMethodError("Ingresa un código de seguridad válido.");
-      return;
-    }
-
-    setPaymentMethodError("");
-    setPaymentMethodMessage("");
-    setSavingPaymentMethod(true);
-    try {
-      const cardData = (addPaymentFormRef.current.getCardFormData?.() ?? {}) as CardFormData;
-      if (!cardData.token) {
-        throw new Error("No pudimos tokenizar la tarjeta. Revisa los datos e inténtalo nuevamente.");
-      }
-
-      const response = await fetch("/api/marketplace/client/payment-methods", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          token: cardData.token,
-          paymentMethodId: cardData.paymentMethodId,
-          issuerId: cardData.issuerId,
-          payerEmail: (cardData.cardholderEmail || payerEmail || customerEmail).trim(),
-          cardholderName: cardholderName.trim(),
-          makeDefault: paymentMethods.length === 0
-        })
-      });
-      const data = (await response.json()) as { error?: string; detail?: string };
-      if (!response.ok) {
-        throw new Error(data.detail || data.error || "No se pudo guardar la tarjeta");
-      }
-
-      await fetchPaymentMethods();
-      setPaymentMethodMessage("Tarjeta guardada correctamente.");
-      setEditingPayments(false);
-    } catch (e) {
-      setPaymentMethodError(e instanceof Error ? e.message : "No se pudo guardar la tarjeta");
-    } finally {
-      setSavingPaymentMethod(false);
     }
   };
 
@@ -595,6 +582,38 @@ export default function ClientePage() {
     return "status-pending";
   };
   const statusLabelByBooking = (status: string) => STATUS_LABELS[status] ?? status;
+  const quickAccessCards = [
+    {
+      title: "Próximas",
+      detail: `${upcomingBookings.length} reserva(s) programada(s)`,
+      view: "reservas" as ClientView
+    },
+    {
+      title: "Historial",
+      detail: `${historyBookings.length} servicio(s) realizado(s)`,
+      view: "reservas" as ClientView
+    },
+    {
+      title: "Servicios",
+      detail: `${bookings.length} servicio(s) en total`,
+      view: "reservas" as ClientView
+    },
+    {
+      title: "Tu dirección actual",
+      detail: displayedAddress,
+      view: "perfil" as ClientView
+    },
+    {
+      title: "Pago listo",
+      detail: paymentMethods.length > 0 ? `${paymentMethods.length} tarjeta(s) guardada(s)` : "Todavía no guardas tarjetas.",
+      view: "pagos" as ClientView
+    },
+    {
+      title: "Próxima reserva",
+      detail: upcomingBookings[0] ? `${upcomingBookings[0].service.name} · ${formatBookingDate(upcomingBookings[0].scheduledAt)}` : "No tienes reservas próximas.",
+      view: "reservas" as ClientView
+    }
+  ];
 
   return (
     <main className="auth-flow-screen auth-flow-screen-scroll market-shell-auth">
@@ -813,7 +832,6 @@ export default function ClientePage() {
                     <form
                       id="client-payment-card-form"
                       className="grid-form auth-flow-form client-payment-card-grid"
-                      onSubmit={(event) => event.preventDefault()}
                     >
                       <label>
                         Nombre del titular
@@ -837,58 +855,16 @@ export default function ClientePage() {
                       </label>
                       <label className="full">
                         Número de tarjeta
-                        <input
-                          id="client-payment-card-number"
-                          type="text"
-                          inputMode="numeric"
-                          autoComplete="cc-number"
-                          placeholder="1234 5678 9012 3456"
-                          maxLength={19}
-                          onInput={(event) => {
-                            event.currentTarget.value = event.currentTarget.value.replace(/\D/g, "").slice(0, 19);
-                          }}
-                        />
+                        <div id="client-payment-card-number" className="mp-secure-field mp-secure-field-compact" />
                       </label>
                       <div className="client-payment-inline-row full">
                         <label className="payment-small-field">
-                          Mes
-                          <select id="client-payment-expiration-month" defaultValue="">
-                            <option value="" disabled>
-                              MM
-                            </option>
-                            {Array.from({ length: 12 }, (_, index) => String(index + 1).padStart(2, "0")).map((month) => (
-                              <option key={month} value={month}>
-                                {month}
-                              </option>
-                            ))}
-                          </select>
-                        </label>
-                        <label className="payment-small-field">
-                          Año
-                          <select id="client-payment-expiration-year" defaultValue="">
-                            <option value="" disabled>
-                              AAAA
-                            </option>
-                            {paymentExpiryYears.map((year) => (
-                              <option key={year} value={year}>
-                                {year}
-                              </option>
-                            ))}
-                          </select>
+                          Vencimiento
+                          <div id="client-payment-expiration-date" className="mp-secure-field mp-secure-field-compact" />
                         </label>
                         <label className="payment-small-field">
                           CVV
-                          <input
-                            id="client-payment-security-code"
-                            type="text"
-                            inputMode="numeric"
-                            autoComplete="cc-csc"
-                            placeholder="123"
-                            maxLength={4}
-                            onInput={(event) => {
-                              event.currentTarget.value = event.currentTarget.value.replace(/\D/g, "").slice(0, 4);
-                            }}
-                          />
+                          <div id="client-payment-security-code" className="mp-secure-field mp-secure-field-compact" />
                         </label>
                       </div>
                       <div className="client-payment-inline-row full">
@@ -919,7 +895,7 @@ export default function ClientePage() {
                     </form>
 
                     <div className="client-profile-actions">
-                      <button className="cta small" type="button" onClick={() => void savePaymentMethod()} disabled={savingPaymentMethod || !paymentFormReady}>
+                      <button className="cta small" type="submit" form="client-payment-card-form" disabled={savingPaymentMethod || !paymentFormReady}>
                         {savingPaymentMethod ? "Guardando..." : "Guardar tarjeta"}
                       </button>
                     </div>
@@ -938,32 +914,30 @@ export default function ClientePage() {
               <p>Tu actividad principal dentro de la plataforma, en una sola vista.</p>
             </div>
             <div className="module-grid client-dashboard-metrics">
-              <article className="module-card client-dashboard-metric">
-                <h3>Próximas</h3>
-                <p>{upcomingBookings.length} reserva(s) programada(s)</p>
-              </article>
-              <article className="module-card client-dashboard-metric">
-                <h3>Historial</h3>
-                <p>{historyBookings.length} servicio(s) realizado(s)</p>
-              </article>
-              <article className="module-card client-dashboard-metric">
-                <h3>Servicios</h3>
-                <p>{bookings.length} servicio(s) en total</p>
-              </article>
+              {quickAccessCards.slice(0, 3).map((card) => (
+                <button
+                  key={card.title}
+                  type="button"
+                  className="module-card client-dashboard-metric dashboard-nav-card"
+                  onClick={() => setActiveView(card.view)}
+                >
+                  <h3>{card.title}</h3>
+                  <p>{card.detail}</p>
+                </button>
+              ))}
             </div>
             <div className="module-grid dashboard-summary-grid">
-              <article className="module-card client-dashboard-card dashboard-summary-card">
-                <h3>Tu dirección actual</h3>
-                <p>{displayedAddress}</p>
-              </article>
-              <article className="module-card client-dashboard-card dashboard-summary-card">
-                <h3>Pago listo</h3>
-                <p>{paymentMethods.length > 0 ? `${paymentMethods.length} tarjeta(s) guardada(s)` : "Todavía no guardas tarjetas."}</p>
-              </article>
-              <article className="module-card client-dashboard-card dashboard-summary-card">
-                <h3>Próxima reserva</h3>
-                <p>{upcomingBookings[0] ? `${upcomingBookings[0].service.name} · ${formatBookingDate(upcomingBookings[0].scheduledAt)}` : "No tienes reservas próximas."}</p>
-              </article>
+              {quickAccessCards.slice(3).map((card) => (
+                <button
+                  key={card.title}
+                  type="button"
+                  className="module-card client-dashboard-card dashboard-summary-card dashboard-nav-card"
+                  onClick={() => setActiveView(card.view)}
+                >
+                  <h3>{card.title}</h3>
+                  <p>{card.detail}</p>
+                </button>
+              ))}
             </div>
             </section>
           ) : null}
