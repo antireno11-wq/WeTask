@@ -750,9 +750,6 @@ export default function ServicioCategoriaPage() {
                       <button type="submit" className="cta">
                         Ver profesionales disponibles
                       </button>
-                      <Link href="/services" className="cta ghost">
-                        Ver todas las categorias
-                      </Link>
                     </div>
                   ) : null}
                 </form>
