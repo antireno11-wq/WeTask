@@ -86,6 +86,23 @@ function bookingEyebrow(status: string, scheduledAt: string) {
   return "Servicio agendado";
 }
 
+function describeMercadoPagoError(error: unknown) {
+  if (error instanceof Error && error.message.trim()) return error.message;
+  if (error && typeof error === "object") {
+    const maybeMessage =
+      "message" in error && typeof error.message === "string"
+        ? error.message
+        : "cause" in error && typeof error.cause === "string"
+          ? error.cause
+          : "type" in error && typeof error.type === "string"
+            ? error.type
+            : "";
+    if (maybeMessage.trim()) return maybeMessage;
+    return JSON.stringify(error);
+  }
+  return "No pudimos inicializar el formulario de tarjeta. Revisa que la Public Key de Mercado Pago sea correcta y que no estés mezclando credenciales de prueba y producción.";
+}
+
 export default function ClientePage() {
   const addPaymentFormRef = useRef<any>(null);
 
@@ -255,7 +272,7 @@ export default function ClientePage() {
       try {
         const mp = new MercadoPagoCtor(publicKey, { locale: "es-CL" });
         const cardForm = mp.cardForm({
-          amount: "1",
+          amount: "1000",
           iframe: true,
           form: {
             id: "client-payment-card-form",
@@ -276,9 +293,10 @@ export default function ClientePage() {
         addPaymentFormRef.current = cardForm;
         setPaymentFormReady(true);
       } catch (error) {
+        console.error("Mercado Pago cardForm init error", error);
         if (!cancelled) {
           setPaymentFormReady(false);
-          setPaymentMethodError(error instanceof Error ? error.message : "No pudimos inicializar el formulario de tarjeta.");
+          setPaymentMethodError(describeMercadoPagoError(error));
         }
       }
     };
