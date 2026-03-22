@@ -121,6 +121,7 @@ export async function GET(req: NextRequest) {
             cleaningOnboarding: {
               select: {
                 categorySlug: true,
+                profilePhotoUrl: true,
                 cleaningScope: true,
                 petScope: true,
                 babysitterScope: true,
@@ -169,8 +170,6 @@ export async function GET(req: NextRequest) {
       notPublishable: 0,
       communeMismatch: 0,
       tasksMismatch: 0,
-      missingCoordinates: 0,
-      outsideRadius: 0,
       noAvailability: 0
     };
 
@@ -234,20 +233,13 @@ export async function GET(req: NextRequest) {
             return null;
           }
 
-          if (profile.coverageLatitude == null || profile.coverageLongitude == null) {
-            filterStats.missingCoordinates += 1;
-            return null;
-          }
-
-          const distance = distanceKm(customerCoords, {
-            lat: profile.coverageLatitude,
-            lng: profile.coverageLongitude
-          });
-
-          if (distance > profile.serviceRadiusKm) {
-            filterStats.outsideRadius += 1;
-            return null;
-          }
+          const distance =
+            profile.coverageLatitude != null && profile.coverageLongitude != null
+              ? distanceKm(customerCoords, {
+                  lat: profile.coverageLatitude,
+                  lng: profile.coverageLongitude
+                })
+              : null;
 
           if (profile.slots.length === 0) {
             filterStats.noAvailability += 1;
@@ -257,7 +249,7 @@ export async function GET(req: NextRequest) {
           return {
             ...profile,
             hourlyRateFromClp: profile.taskerServices[0]?.priceClp ?? profile.hourlyRateFromClp,
-            distanceKm: Number(distance.toFixed(2)),
+            distanceKm: typeof distance === "number" ? Number(distance.toFixed(2)) : null,
             nextAvailableAt: profile.slots[0]?.startsAt ?? null
           };
         })
@@ -266,7 +258,9 @@ export async function GET(req: NextRequest) {
       .filter((item): item is NonNullable<typeof item> => Boolean(item))
       .filter((item) => item.slots.length > 0)
       .sort((a, b) => {
-        if (a.distanceKm !== b.distanceKm) return a.distanceKm - b.distanceKm;
+        const distanceA = typeof a.distanceKm === "number" ? a.distanceKm : Number.MAX_SAFE_INTEGER;
+        const distanceB = typeof b.distanceKm === "number" ? b.distanceKm : Number.MAX_SAFE_INTEGER;
+        if (distanceA !== distanceB) return distanceA - distanceB;
 
         const aTime = a.nextAvailableAt ? new Date(a.nextAvailableAt).getTime() : Number.MAX_SAFE_INTEGER;
         const bTime = b.nextAvailableAt ? new Date(b.nextAvailableAt).getTime() : Number.MAX_SAFE_INTEGER;

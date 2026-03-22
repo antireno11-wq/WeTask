@@ -27,11 +27,19 @@ type Professional = {
   ratingAvg: number;
   ratingsCount: number;
   hourlyRateFromClp: number | null;
-  distanceKm: number;
+  distanceKm: number | null;
   coverageCity: string | null;
+  coverageComuna?: string | null;
   serviceRadiusKm: number;
+  avatarUrl?: string | null;
   cleaningScope?: unknown;
-  user: { fullName: string };
+  user: {
+    fullName: string;
+    cleaningOnboarding?: {
+      profilePhotoUrl?: string | null;
+      baseCommune?: string | null;
+    } | null;
+  };
   slots: Array<{ id: string; startsAt: string }>;
 };
 
@@ -244,7 +252,11 @@ export default function ServiceProsPage() {
     }
 
     if (sortBy === "near") {
-      filtered.sort((a, b) => a.distanceKm - b.distanceKm);
+      filtered.sort((a, b) => {
+        const distanceA = typeof a.distanceKm === "number" ? a.distanceKm : Number.MAX_SAFE_INTEGER;
+        const distanceB = typeof b.distanceKm === "number" ? b.distanceKm : Number.MAX_SAFE_INTEGER;
+        return distanceA - distanceB;
+      });
     } else if (sortBy === "cheap") {
       filtered.sort((a, b) => (a.hourlyRateFromClp ?? Number.MAX_SAFE_INTEGER) - (b.hourlyRateFromClp ?? Number.MAX_SAFE_INTEGER));
     } else {
@@ -349,52 +361,57 @@ export default function ServiceProsPage() {
             ) : null}
 
             <section className="we-results-list">
-              {professionals.map((pro) => (
-                <article className="we-pro-card" key={pro.id}>
-                  <div className="we-pro-main">
-                    <div className="we-pro-avatar" aria-hidden>
-                      {initials(pro.user.fullName)}
+              {professionals.map((pro) => {
+                const profilePhotoUrl = pro.user.cleaningOnboarding?.profilePhotoUrl?.trim() || pro.avatarUrl?.trim() || "";
+                const communeLabel = pro.coverageComuna ?? pro.user.cleaningOnboarding?.baseCommune ?? comuna ?? city;
+
+                return (
+                  <article className="we-pro-card" key={pro.id}>
+                    <div className="we-pro-main">
+                      <div className="we-pro-avatar" aria-hidden>
+                        {profilePhotoUrl ? <img src={profilePhotoUrl} alt="" className="we-pro-avatar-image" /> : initials(pro.user.fullName)}
+                      </div>
+
+                      <div className="we-pro-content">
+                        <div className="we-pro-title-row">
+                          <h3>{pro.user.fullName}</h3>
+                          <span className="we-verified-badge">Verificado</span>
+                        </div>
+
+                        <p className="we-pro-rating-line">
+                          <span className="we-star">★</span> {Number(pro.ratingAvg || 0).toFixed(1)} ({pro.ratingsCount} reseñas)
+                        </p>
+
+                        <div className="we-pro-tags">
+                          <span className="we-tag">Agenda actualizada</span>
+                          <span className="we-tag">Comunas activas</span>
+                          <span className="we-tag">{communeLabel}</span>
+                        </div>
+
+                        <p className="we-pro-snippet">{profileSnippet(category?.name ?? "servicios")}</p>
+
+                        <div className="cta-row we-pro-actions">
+                          <Link className="cta small" href={`/pro/${pro.userId}${contextQuery ? `?${contextQuery}` : ""}`}>
+                            Ver perfil
+                          </Link>
+                          <Link
+                            className="cta small"
+                            href={`/pro/${pro.userId}?${contextQuery || `date=${encodeURIComponent(requestedDate || localYmd(new Date()))}`}#availability`}
+                          >
+                            Ver agenda
+                          </Link>
+                        </div>
+                      </div>
                     </div>
 
-                    <div className="we-pro-content">
-                      <div className="we-pro-title-row">
-                        <h3>{pro.user.fullName}</h3>
-                        <span className="we-verified-badge">Verificado</span>
-                      </div>
-
-                      <p className="we-pro-rating-line">
-                        <span className="we-star">★</span> {Number(pro.ratingAvg || 0).toFixed(1)} ({pro.ratingsCount}) · {Math.max(8, pro.ratingsCount * 3)} servicios
-                      </p>
-
-                      <div className="we-pro-tags">
-                        <span className="we-tag">Agenda actualizada</span>
-                        <span className="we-tag">Radio {pro.serviceRadiusKm} km</span>
-                        <span className="we-tag">{pro.distanceKm.toFixed(1)} km de distancia</span>
-                      </div>
-
-                      <p className="we-pro-snippet">{profileSnippet(category?.name ?? "servicios")}</p>
-
-                      <div className="cta-row we-pro-actions">
-                        <Link className="cta small" href={`/pro/${pro.userId}${contextQuery ? `?${contextQuery}` : ""}`}>
-                          Ver perfil
-                        </Link>
-                        <Link
-                          className="cta small"
-                          href={`/pro/${pro.userId}?${contextQuery || `date=${encodeURIComponent(requestedDate || localYmd(new Date()))}`}#availability`}
-                        >
-                          Ver agenda
-                        </Link>
-                      </div>
-                    </div>
-                  </div>
-
-                  <aside className="we-pro-price">
-                    <strong>{pro.hourlyRateFromClp ? clp(pro.hourlyRateFromClp) : "Por definir"}</strong>
-                    <span>por hora</span>
-                    <small>{pro.coverageCity ?? city}</small>
-                  </aside>
-                </article>
-              ))}
+                    <aside className="we-pro-price">
+                      <strong>{pro.hourlyRateFromClp ? clp(pro.hourlyRateFromClp) : "Por definir"}</strong>
+                      <span>por hora</span>
+                      <small>{communeLabel}</small>
+                    </aside>
+                  </article>
+                );
+              })}
             </section>
           </section>
         </section>
