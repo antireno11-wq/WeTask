@@ -5002,6 +5002,12 @@ textarea {
   display: block;
 }
 
+.admin-shell-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 12px;
+}
+
 .admin-auth-copy {
   max-width: 520px;
   padding-top: 14px;

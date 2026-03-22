@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import Link from "next/link";
 import { MarketNav } from "@/components/market-nav";
 
 type AdminHeroShellProps = {
@@ -11,6 +12,11 @@ export function AdminHeroShell({ children }: AdminHeroShellProps) {
       <div className="auth-flow-backdrop" aria-hidden />
       <div className="market-shell-auth-content admin-auth-content">
         <MarketNav />
+        <div className="admin-shell-actions">
+          <Link href="/" className="cta ghost small admin-head-action">
+            Volver al inicio
+          </Link>
+        </div>
 
         <section className="admin-auth-shell">
           <section className="auth-flow-panel auth-flow-panel-wide admin-auth-panel admin-auth-panel-full">{children}</section>
