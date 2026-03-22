@@ -139,6 +139,8 @@ type FaqItem = {
   answer: string;
 };
 
+type PublicProfileView = "perfil" | "valoraciones" | "agenda";
+
 const galleryImages = [
   "https://images.unsplash.com/photo-1581578731548-c64695cc6952?auto=format&fit=crop&w=900&q=80",
   "https://images.unsplash.com/photo-1527515637462-cff94eecc1ac?auto=format&fit=crop&w=900&q=80",
@@ -202,6 +204,24 @@ function dateInputDefault(): string {
   return d.toISOString().slice(0, 10);
 }
 
+function formatDayKey(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function shiftMonthKey(dayKey: string, delta: number) {
+  const base = new Date(`${dayKey}T12:00:00`);
+  const desiredDay = base.getDate();
+  const target = new Date(base);
+  target.setDate(1);
+  target.setMonth(target.getMonth() + delta);
+  const lastDay = new Date(target.getFullYear(), target.getMonth() + 1, 0).getDate();
+  target.setDate(Math.min(desiredDay, lastDay));
+  return formatDayKey(target);
+}
+
 function initials(name: string) {
   return name
     .split(" ")
@@ -255,6 +275,13 @@ function categoryLabel(value: string | null | undefined) {
 
 function renderStars(value: number) {
   return Array.from({ length: 5 }, (_, index) => (index < Math.round(value) ? "★" : "☆")).join("");
+}
+
+function ratingLabel(value: number) {
+  if (value >= 4.8) return "Excelente";
+  if (value >= 4.5) return "Muy bien evaluado";
+  if (value >= 4) return "Muy buen servicio";
+  return "Bien evaluado";
 }
 
 function taskerRoleLabel(value: string | null | undefined) {
@@ -563,6 +590,7 @@ export default function ProDetailPage() {
   const [date, setDate] = useState(initialDate);
   const [selectedDay, setSelectedDay] = useState(initialDate);
   const [expandedAbout, setExpandedAbout] = useState(false);
+  const [activeView, setActiveView] = useState<PublicProfileView>("perfil");
 
   const [data, setData] = useState<ProfessionalDetail | null>(null);
   const [slots, setSlots] = useState<AvailabilitySlot[]>([]);
@@ -579,7 +607,7 @@ export default function ProDetailPage() {
 
         const [proRes, availabilityRes] = await Promise.all([
           fetch(`/api/marketplace/pros/${params.proId}`),
-          fetch(`/api/marketplace/availability?proId=${params.proId}&date=${date}&days=10&limit=120`)
+          fetch(`/api/marketplace/availability?proId=${params.proId}&date=${date}&days=45&limit=240`)
         ]);
 
         const proBody = (await proRes.json()) as { professional?: ProfessionalDetail; error?: string; detail?: string };
@@ -627,6 +655,15 @@ export default function ProDetailPage() {
     void load();
   }, [params.proId, date]);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (window.location.hash === "#availability") {
+      setActiveView("agenda");
+    } else if (window.location.hash === "#reviews") {
+      setActiveView("valoraciones");
+    }
+  }, []);
+
   const dayGroups = useMemo(() => {
     const map = new Map<string, AvailabilitySlot[]>();
     for (const slot of slots) {
@@ -648,6 +685,44 @@ export default function ProDetailPage() {
   }, [dayGroups, selectedDay]);
 
   const selectedSlots = useMemo(() => dayGroups.find(([day]) => day === selectedDay)?.[1] ?? [], [dayGroups, selectedDay]);
+  const todayKey = useMemo(() => formatDayKey(new Date()), []);
+  const selectedDate = useMemo(() => new Date(`${selectedDay}T12:00:00`), [selectedDay]);
+  const selectedMonthLabel = useMemo(
+    () => selectedDate.toLocaleDateString("es-CL", { month: "long", year: "numeric" }),
+    [selectedDate]
+  );
+  const selectedDayLabel = useMemo(
+    () => selectedDate.toLocaleDateString("es-CL", { weekday: "long", day: "numeric", month: "long" }),
+    [selectedDate]
+  );
+  const monthCalendarDays = useMemo(() => {
+    const start = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1);
+    const startWeekday = (start.getDay() + 6) % 7;
+    start.setDate(start.getDate() - startWeekday);
+
+    return Array.from({ length: 35 }, (_, index) => {
+      const current = new Date(start);
+      current.setDate(start.getDate() + index);
+      return {
+        key: formatDayKey(current),
+        date: current,
+        isCurrentMonth: current.getMonth() === selectedDate.getMonth()
+      };
+    });
+  }, [selectedDate]);
+  const slotsByDay = useMemo(() => {
+    const map = new Map<string, AvailabilitySlot[]>();
+    for (const slot of slots) {
+      const key = slot.startsAt.slice(0, 10);
+      const prev = map.get(key) ?? [];
+      map.set(key, [...prev, slot].sort((a, b) => a.startsAt.localeCompare(b.startsAt)));
+    }
+    return map;
+  }, [slots]);
+  const availableSlotsCount = slots.length;
+  const daysWithSlotsCount = slotsByDay.size;
+  const todaySlots = slotsByDay.get(todayKey) ?? [];
+  const nextAvailableSlot = slots[0] ?? null;
 
   const aboutText = useMemo(() => {
     const base = data?.bio?.trim() || data?.user.cleaningOnboarding?.shortDescription?.trim();
@@ -663,6 +738,22 @@ export default function ProDetailPage() {
   const friendlinessScore = Math.min(5, Math.max(4, rating + 0.2));
   const professionalismScore = Math.min(5, Math.max(4, rating + 0.15));
   const punctualityScore = Math.min(5, Math.max(4, rating + 0.1));
+  const reviewSummaryCards = [
+    { label: "Servicio", score: rating },
+    { label: "Calidad", score: qualityScore },
+    { label: "Amabilidad", score: friendlinessScore },
+    { label: "Puntualidad", score: punctualityScore }
+  ];
+  const switchPublicView = (view: PublicProfileView) => {
+    setActiveView(view);
+    if (typeof window !== "undefined") {
+      const hash = view === "agenda" ? "#availability" : view === "valoraciones" ? "#reviews" : "#perfil";
+      window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}${hash}`);
+      window.setTimeout(() => {
+        document.getElementById("public-tasker-view")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 40);
+    }
+  };
   const onboarding = data?.user.cleaningOnboarding ?? null;
   const cleaningScope = useMemo(() => normalizeCleaningScope(onboarding?.cleaningScope), [onboarding?.cleaningScope]);
   const petScope = useMemo(() => {
@@ -949,7 +1040,7 @@ export default function ProDetailPage() {
                   </div>
                   <div className="auth-flow-meta-card">
                     <strong>Disponibilidad</strong>
-                    <span>{dayGroups.length} día(s) con agenda visible para reserva.</span>
+                    <span>{daysWithSlotsCount} día(s) con agenda visible para reserva.</span>
                   </div>
                   {requestedRecommendedHours ? (
                     <div className="auth-flow-meta-card">
@@ -990,10 +1081,19 @@ export default function ProDetailPage() {
                 <p className="we-sticky-price">{data.hourlyRateFromClp ? clp(data.hourlyRateFromClp) : "Por definir"}/h</p>
                 <p className="we-sticky-meta">{data.coverageCity ?? "Santiago"} · {workModeLabel}</p>
 
+                <div className="public-profile-switcher">
+                  <button type="button" className={`public-profile-switch ${activeView === "perfil" ? "active" : ""}`} onClick={() => switchPublicView("perfil")}>
+                    Perfil
+                  </button>
+                  <button type="button" className={`public-profile-switch ${activeView === "valoraciones" ? "active" : ""}`} onClick={() => switchPublicView("valoraciones")}>
+                    Valoraciones
+                  </button>
+                  <button type="button" className={`public-profile-switch ${activeView === "agenda" ? "active" : ""}`} onClick={() => switchPublicView("agenda")}>
+                    Agenda
+                  </button>
+                </div>
+
                 <div className="cta-row">
-                  <a href="#availability" className="cta small">
-                    Ver agenda
-                  </a>
                   <Link className="cta small" href={buildReserveHref()}>
                     Reservar ahora
                   </Link>
@@ -1008,8 +1108,22 @@ export default function ProDetailPage() {
               {notice ? <p className="feedback ok">{notice}</p> : null}
               {error ? <p className="feedback error">{error}</p> : null}
 
-              <section className="we-pro-detail-layout">
+              <section className="we-pro-detail-layout" id="public-tasker-view">
                 <div className="we-pro-detail-main">
+                  <div className="public-profile-switcher public-profile-switcher-wide">
+                    <button type="button" className={`public-profile-switch ${activeView === "perfil" ? "active" : ""}`} onClick={() => switchPublicView("perfil")}>
+                      Ver perfil
+                    </button>
+                    <button type="button" className={`public-profile-switch ${activeView === "valoraciones" ? "active" : ""}`} onClick={() => switchPublicView("valoraciones")}>
+                      Ver valoraciones
+                    </button>
+                    <button type="button" className={`public-profile-switch ${activeView === "agenda" ? "active" : ""}`} onClick={() => switchPublicView("agenda")}>
+                      Ver agenda
+                    </button>
+                  </div>
+
+                  {activeView === "perfil" ? (
+                    <>
                   <article className="auth-flow-panel client-dashboard-section">
                     <h2>Perfil del tasker</h2>
                     <p>{summaryDescription}</p>
@@ -1370,152 +1484,6 @@ export default function ProDetailPage() {
                     </article>
                   ) : null}
 
-                  <article id="availability" className="auth-flow-panel client-dashboard-section">
-                    <div className="we-section-head">
-                      <h2>Agenda y disponibilidad</h2>
-                      <label>
-                        Desde fecha
-                        <input type="date" value={date} onChange={(event) => setDate(event.target.value)} />
-                      </label>
-                    </div>
-
-                    <div className="day-tabs">
-                      {dayGroups.map(([day]) => (
-                        <button
-                          key={day}
-                          type="button"
-                          className={`day-tab ${selectedDay === day ? "active" : ""}`}
-                          onClick={() => setSelectedDay(day)}
-                        >
-                          {new Date(`${day}T00:00:00`).toLocaleDateString("es-CL", {
-                            weekday: "short",
-                            day: "2-digit",
-                            month: "2-digit"
-                          })}
-                        </button>
-                      ))}
-                    </div>
-
-                    <div className="calendar-slot-grid">
-                      {selectedSlots.length === 0 ? (
-                        <p className="empty">No hay horarios disponibles en ese dia.</p>
-                      ) : (
-                        selectedSlots.map((slot) => (
-                          <Link
-                            key={slot.id}
-                            className="slot-btn"
-                            href={buildReserveHref({ startsAt: slot.startsAt, serviceId: slot.service?.id })}
-                          >
-                            {new Date(slot.startsAt).toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" })} -{" "}
-                            {new Date(slot.endsAt).toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" })}
-                          </Link>
-                        ))
-                      )}
-                    </div>
-                  </article>
-
-                  <article className="auth-flow-panel client-dashboard-section">
-                    <h2>Valoracion de los clientes</h2>
-                    <p className="we-score-big">{rating.toFixed(1)} · Excepcional ({data.ratingsCount} valoraciones)</p>
-                    <div className="we-metrics-grid">
-                      <p>Servicio: {rating.toFixed(1)}</p>
-                      <p>Calidad / Precio: {qualityScore.toFixed(1)}</p>
-                      <p>Amabilidad: {friendlinessScore.toFixed(1)}</p>
-                      <p>Profesionalidad: {professionalismScore.toFixed(1)}</p>
-                      <p>Puntualidad: {punctualityScore.toFixed(1)}</p>
-                    </div>
-                    <div
-                      className="we-comments-list"
-                      style={{ display: "grid", gap: "16px", marginTop: "18px" }}
-                    >
-                      {sampleComments.map((comment) => (
-                        <article
-                          key={comment.name + comment.time}
-                          className="we-comment-item"
-                          style={{
-                            border: "1px solid #d6e3f2",
-                            borderRadius: "22px",
-                            padding: "18px 20px",
-                            background: "linear-gradient(180deg, #ffffff 0%, #f7fbff 100%)",
-                            boxShadow: "0 12px 30px rgba(16, 44, 84, 0.08)"
-                          }}
-                        >
-                          <div
-                            style={{
-                              display: "flex",
-                              justifyContent: "space-between",
-                              gap: "12px",
-                              alignItems: "flex-start",
-                              flexWrap: "wrap"
-                            }}
-                          >
-                            <div style={{ display: "grid", gap: "4px" }}>
-                              <p style={{ margin: 0, color: "#203a63" }}>
-                                <strong>{comment.name}</strong> · {comment.time}
-                              </p>
-                              <p style={{ margin: 0, color: "#58708f", fontSize: "0.92rem" }}>{comment.serviceLabel}</p>
-                            </div>
-                            <div style={{ display: "grid", justifyItems: "end", gap: "4px" }}>
-                              <strong style={{ color: "#f59e0b", fontSize: "1.05rem", letterSpacing: "0.08em" }}>
-                                {renderStars(comment.overall)}
-                              </strong>
-                              <span style={{ color: "#203a63", fontWeight: 700 }}>{comment.overall.toFixed(1)} / 5</span>
-                            </div>
-                          </div>
-
-                          <div
-                            style={{
-                              display: "grid",
-                              gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
-                              gap: "10px",
-                              marginTop: "14px"
-                            }}
-                          >
-                            <div
-                              style={{
-                                padding: "10px 12px",
-                                borderRadius: "16px",
-                                background: "#edf5ff",
-                                color: "#203a63"
-                              }}
-                            >
-                              <strong style={{ display: "block", fontSize: "0.82rem" }}>Puntualidad</strong>
-                              <span>{comment.punctuality.toFixed(1)} / 5</span>
-                            </div>
-                            <div
-                              style={{
-                                padding: "10px 12px",
-                                borderRadius: "16px",
-                                background: "#fef4e8",
-                                color: "#203a63"
-                              }}
-                            >
-                              <strong style={{ display: "block", fontSize: "0.82rem" }}>Comunicacion</strong>
-                              <span>{comment.communication.toFixed(1)} / 5</span>
-                            </div>
-                            <div
-                              style={{
-                                padding: "10px 12px",
-                                borderRadius: "16px",
-                                background: "#eefaf2",
-                                color: "#203a63"
-                              }}
-                            >
-                              <strong style={{ display: "block", fontSize: "0.82rem" }}>Calidad del servicio</strong>
-                              <span>{comment.quality.toFixed(1)} / 5</span>
-                            </div>
-                          </div>
-
-                          <p style={{ margin: "14px 0 0", color: "#385170", lineHeight: 1.6 }}>{comment.text}</p>
-
-                          <p style={{ margin: "12px 0 0", color: "#1f6a43", fontWeight: 700 }}>
-                            {comment.wouldBookAgain ? "Lo volveria a contratar" : "No volveria a contratar"}
-                          </p>
-                        </article>
-                      ))}
-                    </div>
-                  </article>
-
                   <article className="auth-flow-panel client-dashboard-section">
                     <h2>Garantía WeTask</h2>
                     <p>Hasta confirmar que el servicio fue correcto, el pago permanece protegido en plataforma.</p>
@@ -1565,6 +1533,215 @@ export default function ProDetailPage() {
                       Enviar mensaje
                     </button>
                   </article>
+                    </>
+                  ) : null}
+
+                  {activeView === "agenda" ? (
+                    <article id="availability" className="auth-flow-panel client-dashboard-section">
+                      <div className="we-section-head">
+                        <div>
+                          <h2>Agenda y disponibilidad</h2>
+                          <p className="availability-inline-note">Elige un día y luego el horario que te acomode para reservar.</p>
+                        </div>
+                        <div className="availability-board-controls">
+                          <span className="availability-board-chip">{availableSlotsCount} bloque(s) disponibles</span>
+                        </div>
+                      </div>
+
+                      <div className="pro-availability-shell public-availability-shell">
+                        <aside className="pro-availability-sidebar">
+                          <div className="pro-availability-overview">
+                            <article className="availability-stat-card tone-indigo">
+                              <span>Hoy</span>
+                              <strong>{todaySlots.length}</strong>
+                              <p>bloque(s) abiertos hoy</p>
+                            </article>
+                            <article className="availability-stat-card tone-peach">
+                              <span>Disponibles</span>
+                              <strong>{availableSlotsCount}</strong>
+                              <p>horarios visibles para reserva</p>
+                            </article>
+                            <article className="availability-stat-card tone-sky">
+                              <span>Días activos</span>
+                              <strong>{daysWithSlotsCount}</strong>
+                              <p>días con agenda cargada</p>
+                            </article>
+                            <article className="availability-stat-card tone-mint">
+                              <span>Próximo</span>
+                              <strong>{nextAvailableSlot ? new Date(nextAvailableSlot.startsAt).toLocaleDateString("es-CL", { day: "2-digit", month: "2-digit" }) : "--"}</strong>
+                              <p>{nextAvailableSlot ? new Date(nextAvailableSlot.startsAt).toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" }) : "Sin bloques cercanos"}</p>
+                            </article>
+                          </div>
+                        </aside>
+
+                        <div className="availability-board-card">
+                          <div className="availability-board-head">
+                            <div>
+                              <p className="availability-eyebrow">Calendario</p>
+                              <h3>{selectedMonthLabel}</h3>
+                            </div>
+                            <div className="availability-month-nav">
+                              <button type="button" className="availability-month-nav-btn" onClick={() => {
+                                const next = shiftMonthKey(selectedDay, -1);
+                                setDate(next);
+                                setSelectedDay(next);
+                              }}>
+                                ‹
+                              </button>
+                              <button type="button" className="availability-month-nav-btn" onClick={() => {
+                                const next = shiftMonthKey(selectedDay, 1);
+                                setDate(next);
+                                setSelectedDay(next);
+                              }}>
+                                ›
+                              </button>
+                            </div>
+                          </div>
+
+                          <div className="availability-weekdays">
+                            {["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"].map((day) => (
+                              <span key={day}>{day}</span>
+                            ))}
+                          </div>
+
+                          <div className="availability-month-grid">
+                            {monthCalendarDays.map((day) => {
+                              const slotCount = slotsByDay.get(day.key)?.length ?? 0;
+                              const isToday = day.key === todayKey;
+                              const isSelected = day.key === selectedDay;
+
+                              return (
+                                <button
+                                  key={day.key}
+                                  type="button"
+                                  className={[
+                                    "availability-day-card",
+                                    !day.isCurrentMonth ? "muted" : "",
+                                    isToday ? "today" : "",
+                                    isSelected ? "selected" : ""
+                                  ]
+                                    .filter(Boolean)
+                                    .join(" ")}
+                                  onClick={() => setSelectedDay(day.key)}
+                                >
+                                  <span className="availability-day-number">{day.date.getDate()}</span>
+                                  <span className="availability-day-meta">
+                                    {slotCount > 0 ? `${slotCount} horario(s)` : "Sin horarios"}
+                                  </span>
+                                  <span className="availability-day-dots" aria-hidden>
+                                    {slotCount > 0 ? <span className="availability-dot free" /> : <span className="availability-dot" />}
+                                  </span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                        <div className="availability-task-panel">
+                          <div className="availability-task-head">
+                            <div>
+                              <p className="availability-eyebrow">Día elegido</p>
+                              <h4>{selectedDayLabel}</h4>
+                            </div>
+                            <span className="availability-selected-pill">{selectedSlots.length} bloque(s)</span>
+                          </div>
+
+                          {selectedSlots.length === 0 ? (
+                            <div className="availability-empty-state">
+                              <strong>No hay horarios abiertos ese día.</strong>
+                              <p>Prueba con otro día del calendario para ver la disponibilidad de este tasker.</p>
+                            </div>
+                          ) : (
+                            <div className="availability-task-list">
+                              {selectedSlots.map((slot) => (
+                                <article key={slot.id} className="availability-task-item open public-availability-task-item">
+                                  <div className="availability-task-time">
+                                    {new Date(slot.startsAt).toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" })}
+                                    <span />
+                                    {new Date(slot.endsAt).toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" })}
+                                  </div>
+                                  <div className="availability-task-copy">
+                                    <strong>{slot.service?.name ?? categoryName}</strong>
+                                    <p>Horario disponible para reservar directamente en WeTask.</p>
+                                  </div>
+                                  <div className="availability-task-actions">
+                                    <Link className="cta small" href={buildReserveHref({ startsAt: slot.startsAt, serviceId: slot.service?.id })}>
+                                      Reservar este horario
+                                    </Link>
+                                  </div>
+                                </article>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </article>
+                  ) : null}
+
+                  {activeView === "valoraciones" ? (
+                    <article id="reviews" className="auth-flow-panel client-dashboard-section">
+                      <div className="we-section-head">
+                        <h2>Valoraciones de clientes</h2>
+                        <span className="availability-board-chip">{data.ratingsCount} opinión(es)</span>
+                      </div>
+
+                      <div className="public-rating-hero">
+                        <div className="public-rating-hero-copy">
+                          <span className="public-rating-stars public-rating-stars-large">{renderStars(rating)}</span>
+                          <strong>{ratingLabel(rating)}</strong>
+                          <p>
+                            {rating.toFixed(1)} de 5 basado en {data.ratingsCount} valoraciones verificadas dentro de WeTask.
+                          </p>
+                        </div>
+                        <div className="public-rating-summary-grid">
+                          {reviewSummaryCards.map((item) => (
+                            <article key={item.label} className="public-rating-card">
+                              <span>{item.label}</span>
+                              <strong>{renderStars(item.score)}</strong>
+                              <small>{item.score.toFixed(1)} de 5</small>
+                            </article>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="public-review-list">
+                        {sampleComments.map((comment) => (
+                          <article key={comment.name + comment.time} className="public-review-card">
+                            <div className="public-review-head">
+                              <div>
+                                <strong>{comment.name}</strong>
+                                <span>
+                                  {comment.serviceLabel} · {comment.time}
+                                </span>
+                              </div>
+                              <div className="public-review-score">
+                                <span className="public-rating-stars">{renderStars(comment.overall)}</span>
+                                <small>{comment.overall.toFixed(1)} / 5</small>
+                              </div>
+                            </div>
+
+                            <div className="public-review-metrics">
+                              <div>
+                                <span>Puntualidad</span>
+                                <strong>{renderStars(comment.punctuality)}</strong>
+                              </div>
+                              <div>
+                                <span>Comunicación</span>
+                                <strong>{renderStars(comment.communication)}</strong>
+                              </div>
+                              <div>
+                                <span>Calidad</span>
+                                <strong>{renderStars(comment.quality)}</strong>
+                              </div>
+                            </div>
+
+                            <p>{comment.text}</p>
+                            <em>{comment.wouldBookAgain ? "Lo volvería a contratar" : "No lo volvería a contratar"}</em>
+                          </article>
+                        ))}
+                      </div>
+                    </article>
+                  ) : null}
                 </div>
               </section>
             </div>

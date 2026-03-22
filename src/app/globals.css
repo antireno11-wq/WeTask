@@ -3275,6 +3275,44 @@ textarea {
   gap: 12px;
 }
 
+.public-profile-switcher {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.public-profile-switcher-wide {
+  margin-bottom: 2px;
+}
+
+.public-profile-switch {
+  appearance: none;
+  border: 1px solid rgba(129, 179, 255, 0.34);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.92);
+  color: #23476f;
+  min-height: 44px;
+  padding: 0 16px;
+  font-size: 0.9rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: transform 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease, background 0.16s ease;
+}
+
+.public-profile-switch:hover {
+  transform: translateY(-1px);
+  border-color: #9fc6e6;
+  box-shadow: 0 14px 24px rgba(22, 45, 79, 0.08);
+}
+
+.public-profile-switch.active {
+  border-color: rgba(21, 67, 130, 0.88);
+  background: linear-gradient(180deg, #173b5f 0%, #295b87 100%);
+  color: #ffffff;
+  box-shadow: 0 18px 30px rgba(22, 45, 79, 0.16);
+}
+
 .we-pro-sticky-card {
   position: sticky;
   top: 84px;
@@ -3443,6 +3481,173 @@ textarea {
 .we-comment-item p + p {
   margin-top: 4px;
   color: #2f3a4a;
+}
+
+.public-availability-shell {
+  grid-template-columns: minmax(250px, 290px) minmax(0, 1fr) minmax(260px, 320px);
+  gap: 18px;
+}
+
+.public-availability-shell .availability-stat-card {
+  min-height: 118px;
+}
+
+.public-availability-shell .availability-board-card,
+.public-availability-shell .availability-task-panel {
+  min-width: 0;
+}
+
+.public-availability-task-item {
+  align-items: center;
+}
+
+.public-rating-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.08fr);
+  gap: 16px;
+  margin-top: 12px;
+}
+
+.public-rating-hero-copy,
+.public-rating-card,
+.public-review-card {
+  border: 1px solid rgba(214, 231, 245, 0.96);
+  border-radius: 24px;
+  background: linear-gradient(180deg, #ffffff 0%, #f7fbff 100%);
+  box-shadow: 0 18px 30px rgba(19, 42, 87, 0.08);
+}
+
+.public-rating-hero-copy {
+  padding: 20px;
+  display: grid;
+  gap: 10px;
+}
+
+.public-rating-hero-copy strong {
+  color: #173762;
+  font-size: 1.35rem;
+}
+
+.public-rating-hero-copy p {
+  margin: 0;
+  color: #48617a;
+  line-height: 1.6;
+}
+
+.public-rating-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.public-rating-card {
+  padding: 16px;
+  display: grid;
+  gap: 8px;
+}
+
+.public-rating-card span,
+.public-review-metrics span {
+  color: #5d758f;
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.public-rating-card strong,
+.public-review-score strong {
+  color: #173762;
+}
+
+.public-rating-card small,
+.public-review-score small {
+  color: #5a7188;
+  font-weight: 700;
+}
+
+.public-rating-stars {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  color: #ff9e1b;
+  font-size: 1rem;
+  letter-spacing: 0.06em;
+}
+
+.public-rating-stars-large {
+  font-size: 1.45rem;
+}
+
+.public-review-list {
+  margin-top: 14px;
+  display: grid;
+  gap: 14px;
+}
+
+.public-review-card {
+  padding: 18px;
+  display: grid;
+  gap: 14px;
+}
+
+.public-review-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.public-review-head strong {
+  display: block;
+  color: #173762;
+  font-size: 1.02rem;
+}
+
+.public-review-head span {
+  display: block;
+  margin-top: 4px;
+  color: #526880;
+  font-weight: 700;
+}
+
+.public-review-score {
+  display: grid;
+  gap: 4px;
+  justify-items: end;
+  text-align: right;
+}
+
+.public-review-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.public-review-metrics div {
+  padding: 12px 14px;
+  border: 1px solid rgba(214, 231, 245, 0.98);
+  border-radius: 18px;
+  background: rgba(248, 251, 255, 0.96);
+  display: grid;
+  gap: 6px;
+}
+
+.public-review-metrics strong {
+  color: #173762;
+  font-size: 0.96rem;
+}
+
+.public-review-card p {
+  margin: 0;
+  color: #304257;
+  line-height: 1.65;
+}
+
+.public-review-card em {
+  color: #1b7b4b;
+  font-style: normal;
+  font-weight: 800;
 }
 
 .we-check-list {
@@ -3675,6 +3880,21 @@ textarea {
   margin-top: 10px;
 }
 
+@media (max-width: 1200px) {
+  .public-availability-shell {
+    grid-template-columns: minmax(0, 1fr) minmax(280px, 320px);
+  }
+
+  .public-availability-shell .pro-availability-sidebar,
+  .public-availability-shell .availability-task-panel {
+    grid-column: 1 / -1;
+  }
+
+  .public-rating-hero {
+    grid-template-columns: 1fr;
+  }
+}
+
 .support-report-options {
   margin-top: 10px;
   display: flex;
@@ -3852,6 +4072,28 @@ textarea {
   .we-metrics-grid,
   .we-cancel-table {
     grid-template-columns: 1fr;
+  }
+
+  .public-profile-switcher {
+    width: 100%;
+  }
+
+  .public-profile-switch {
+    flex: 1 1 160px;
+  }
+
+  .public-rating-summary-grid,
+  .public-review-metrics {
+    grid-template-columns: 1fr;
+  }
+
+  .public-review-head {
+    flex-direction: column;
+  }
+
+  .public-review-score {
+    justify-items: start;
+    text-align: left;
   }
 
   .support-hero-grid,
