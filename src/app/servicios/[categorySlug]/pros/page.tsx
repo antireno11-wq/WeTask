@@ -88,6 +88,18 @@ function timeToMinutes(value: string) {
   return hh * 60 + mm;
 }
 
+function getAgendaLabel(slots: Array<{ startsAt: string }>) {
+  if (slots.length === 0) return "Sin agenda visible";
+  const now = new Date();
+  const next7Days = new Date(now);
+  next7Days.setDate(next7Days.getDate() + 7);
+  const hasWeekAvailability = slots.some((slot) => {
+    const startsAt = new Date(slot.startsAt);
+    return startsAt >= now && startsAt <= next7Days;
+  });
+  return hasWeekAvailability ? "Agenda esta semana" : "Agenda disponible";
+}
+
 export default function ServiceProsPage() {
   const params = useParams<{ categorySlug: string }>();
   const search = useSearchParams();
@@ -364,6 +376,7 @@ export default function ServiceProsPage() {
               {professionals.map((pro) => {
                 const profilePhotoUrl = pro.user.cleaningOnboarding?.profilePhotoUrl?.trim() || pro.avatarUrl?.trim() || "";
                 const communeLabel = pro.coverageComuna ?? pro.user.cleaningOnboarding?.baseCommune ?? comuna ?? city;
+                const agendaLabel = getAgendaLabel(pro.slots);
 
                 return (
                   <article className="we-pro-card" key={pro.id}>
@@ -383,9 +396,7 @@ export default function ServiceProsPage() {
                         </p>
 
                         <div className="we-pro-tags">
-                          <span className="we-tag">Agenda actualizada</span>
-                          <span className="we-tag">Comunas activas</span>
-                          <span className="we-tag">{communeLabel}</span>
+                          <span className="we-tag">{agendaLabel}</span>
                         </div>
 
                         <p className="we-pro-snippet">{profileSnippet(category?.name ?? "servicios")}</p>
@@ -407,7 +418,6 @@ export default function ServiceProsPage() {
                     <aside className="we-pro-price">
                       <strong>{pro.hourlyRateFromClp ? clp(pro.hourlyRateFromClp) : "Por definir"}</strong>
                       <span>por hora</span>
-                      <small>{communeLabel}</small>
                     </aside>
                   </article>
                 );
