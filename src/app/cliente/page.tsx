@@ -224,8 +224,8 @@ export default function ClientePage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           token,
-          paymentMethodId: cardData.paymentMethodId,
-          issuerId: cardData.issuerId,
+          paymentMethodId: cardData.paymentMethodId?.trim() || undefined,
+          issuerId: cardData.issuerId?.trim() || undefined,
           payerEmail: (cardData.cardholderEmail || payerEmail || customerEmail).trim(),
           cardholderName: cardholderName.trim(),
           makeDefault: paymentMethods.length === 0

@@ -13,8 +13,8 @@ export const dynamic = "force-dynamic";
 
 const createPaymentMethodSchema = z.object({
   token: z.string().min(6),
-  paymentMethodId: z.string().min(2).optional(),
-  issuerId: z.string().optional(),
+  paymentMethodId: z.preprocess((value) => (typeof value === "string" && value.trim().length === 0 ? undefined : value), z.string().min(2).optional()),
+  issuerId: z.preprocess((value) => (typeof value === "string" && value.trim().length === 0 ? undefined : value), z.string().optional()),
   payerEmail: z.string().email().optional(),
   cardholderName: z.string().min(2).max(120).optional(),
   makeDefault: z.boolean().optional().default(false)
