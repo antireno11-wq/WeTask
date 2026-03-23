@@ -35,6 +35,7 @@ type MatchProfessional = {
   nextAvailableAt: string | null;
   coverageCity: string | null;
   serviceRadiusKm: number;
+  taskerServices: Array<{ serviceId: string | null; serviceName: string | null }>;
   slots: Slot[];
 };
 
@@ -187,6 +188,15 @@ export default function ReservarPage() {
     return selectedPro.slots.find((slot) => slot.id === selectedSlotId) ?? null;
   }, [selectedPro, selectedSlotId]);
 
+  const resolveServiceIdForProfessional = (professional: MatchProfessional | null, slot?: Slot | null) => {
+    return (
+      slot?.service?.id ||
+      professional?.slots.find((item) => item.service?.id)?.service?.id ||
+      professional?.taskerServices.find((item) => item.serviceId)?.serviceId ||
+      ""
+    );
+  };
+
   const bookingDetails = useMemo(() => {
     const sections = [details.trim()].filter(Boolean);
     if (isChefService) {
@@ -229,7 +239,10 @@ export default function ReservarPage() {
 
       const list = data.categories.flatMap((category) => category.services);
       setServices(list);
-      if (!filters.serviceId && list[0]) {
+      const hasPinnedBookingContext =
+        typeof window !== "undefined" &&
+        new URLSearchParams(window.location.search).has("proId");
+      if (!filters.serviceId && list[0] && !hasPinnedBookingContext) {
         setFilters((prev) => ({ ...prev, serviceId: list[0].id }));
       }
     } catch (e) {
@@ -406,6 +419,7 @@ export default function ReservarPage() {
           coverageCity: string | null;
           serviceRadiusKm: number;
           user: { fullName: string };
+          taskerServices?: Array<{ priceClp: number; serviceId: string | null; service?: { id: string; name: string } | null }>;
           slots: Slot[];
         }>;
         error?: string;
@@ -427,6 +441,10 @@ export default function ReservarPage() {
         nextAvailableAt: item.nextAvailableAt,
         coverageCity: item.coverageCity,
         serviceRadiusKm: item.serviceRadiusKm,
+        taskerServices: (item.taskerServices ?? []).map((taskerService) => ({
+          serviceId: taskerService.service?.id ?? taskerService.serviceId ?? null,
+          serviceName: taskerService.service?.name ?? null
+        })),
         slots: item.slots
       }));
 
@@ -447,10 +465,23 @@ export default function ReservarPage() {
           const firstDay = isoDay(nextPro.slots[0]?.startsAt ?? "");
           if (firstDay) setSelectedDay(firstDay);
         }
+
+        const resolvedServiceId = filters.serviceId || resolveServiceIdForProfessional(nextPro, preferredSlot);
+        if (resolvedServiceId && resolvedServiceId !== filters.serviceId) {
+          setFilters((prev) => ({ ...prev, serviceId: resolvedServiceId }));
+        }
+
+        if (options?.preferredStartsAt && !preferredSlot) {
+          setQuickCheckoutEnabled(false);
+          setError("No pudimos reconstruir el horario que elegiste. Vuelve a seleccionar un bloque disponible para continuar.");
+        }
+      } else if (options?.preferredProId || options?.preferredStartsAt) {
+        setQuickCheckoutEnabled(false);
+        setError("No pudimos recuperar el tasker o el horario seleccionado. Revisa los bloques disponibles e inténtalo nuevamente.");
       }
 
       if (!options?.silent) {
-        setMessage(`${normalized.length} profesional(es) encontrados para tu dirección.`);
+        setMessage(`${normalized.length} tasker(s) encontrados para tu dirección.`);
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error inesperado");
@@ -466,7 +497,7 @@ export default function ReservarPage() {
   };
 
   useEffect(() => {
-    if (!quickCheckoutEnabled || !filters.serviceId || !selectedProId || !preferredStartsAt || services.length === 0) return;
+    if (!quickCheckoutEnabled || !selectedProId || !preferredStartsAt || services.length === 0) return;
     void loadProfessionals({
       preferredProId: selectedProId,
       preferredStartsAt,

@@ -965,10 +965,12 @@ export default function ProDetailPage() {
   const teacherScopeModes = teacherScope.modes.map(getTeacherModeLabel);
   const teacherScopeIncludedTasks = teacherScope.tasks_included.map(getTeacherIncludedTaskLabel);
   const teacherScopeExcludedTasks = teacherScope.tasks_excluded.map(getTeacherExcludedTaskLabel);
+  const defaultReserveServiceId = requestedServiceId || data?.taskerServices?.[0]?.service?.id || "";
   const buildReserveHref = (options?: { startsAt?: string; serviceId?: string | null }) => {
     const qs = new URLSearchParams();
     qs.set("proId", data?.userId ?? params.proId);
-    if (options?.serviceId || requestedServiceId) qs.set("serviceId", options?.serviceId || requestedServiceId);
+    const resolvedServiceId = options?.serviceId || defaultReserveServiceId;
+    if (resolvedServiceId) qs.set("serviceId", resolvedServiceId);
     if (options?.startsAt) qs.set("startsAt", options.startsAt);
     if (requestedAddress) qs.set("address", requestedAddress);
     if (requestedApartment) qs.set("apartment", requestedApartment);
