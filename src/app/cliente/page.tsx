@@ -651,11 +651,8 @@ export default function ClientePage() {
 
             <div className="auth-flow-actions">
               <Link href={servicesHref} className="cta">
-                Buscar servicio
+                Buscar servicios
               </Link>
-              <button className="cta ghost" type="button" onClick={() => void refreshDashboard()} disabled={!sessionUserId}>
-                Actualizar panel
-              </button>
             </div>
           </div>
 
@@ -676,9 +673,6 @@ export default function ClientePage() {
                 <div className="client-profile-actions">
                   <span className="status status-accepted">{paymentMethods.length} medio(s) de pago</span>
                   <span className="status status-completed">{upcomingBookings.length} reserva(s) próxima(s)</span>
-                  <Link className="cta small" href={servicesHref}>
-                    Explorar servicios
-                  </Link>
                 </div>
               </div>
             </div>
