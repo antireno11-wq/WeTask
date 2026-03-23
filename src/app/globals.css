@@ -6044,15 +6044,15 @@ textarea {
     url("/hero-webel-reference.webp");
   background-position: center;
   background-size: cover;
-  transform: scale(1.03);
+  filter: blur(22px) saturate(1.05);
+  transform: scale(1.1);
 }
 
 .auth-flow-backdrop::after {
   content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.04) 0%, rgba(13, 36, 70, 0.085) 100%);
-  backdrop-filter: blur(3px);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.05) 0%, rgba(13, 36, 70, 0.09) 100%);
 }
 
 .auth-flow-shell {
