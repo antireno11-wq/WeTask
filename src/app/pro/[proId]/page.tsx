@@ -1630,7 +1630,7 @@ export default function ProDetailPage() {
                                   </div>
                                   <div className="availability-task-copy">
                                     <strong>{slot.service?.name ?? categoryName}</strong>
-                                    <p>Horario disponible para reservar directamente en WeTask.</p>
+                                    <p>Disponible para reservar en WeTask.</p>
                                   </div>
                                   <div className="availability-task-actions">
                                     <Link className="cta small" href={buildReserveHref({ startsAt: slot.startsAt, serviceId: slot.service?.id })}>

@@ -3543,12 +3543,13 @@ textarea {
 }
 
 .public-availability-shell {
-  grid-template-columns: minmax(250px, 290px) minmax(0, 1fr) minmax(260px, 320px);
+  grid-template-columns: minmax(220px, 260px) minmax(0, 1.1fr) minmax(300px, 360px);
   gap: 18px;
 }
 
 .public-availability-shell .availability-stat-card {
-  min-height: 118px;
+  min-height: 104px;
+  padding: 14px;
 }
 
 .public-availability-shell .availability-board-card,
@@ -3556,8 +3557,59 @@ textarea {
   min-width: 0;
 }
 
+.public-availability-shell .availability-month-grid {
+  gap: 8px;
+}
+
+.public-availability-shell .availability-day-card {
+  min-height: 84px;
+  padding: 10px 8px;
+  border-radius: 16px;
+}
+
+.public-availability-shell .availability-day-number {
+  font-size: 0.98rem;
+}
+
+.public-availability-shell .availability-day-meta {
+  font-size: 0.7rem;
+}
+
+.public-availability-shell .availability-task-panel {
+  align-content: start;
+}
+
 .public-availability-task-item {
-  align-items: center;
+  grid-template-columns: minmax(92px, 110px) minmax(0, 1fr);
+  align-items: start;
+  gap: 12px;
+}
+
+.public-availability-task-item .availability-task-actions {
+  grid-column: 1 / -1;
+  justify-content: flex-start;
+  margin-top: 2px;
+}
+
+.public-availability-task-item .availability-task-copy strong {
+  display: block;
+  margin-bottom: 4px;
+}
+
+.public-availability-task-item .cta.small {
+  width: 100%;
+  justify-content: center;
+  text-align: center;
+}
+
+.public-availability-task-item .availability-task-time {
+  display: grid;
+  justify-items: start;
+  gap: 4px;
+}
+
+.public-availability-task-item .availability-task-time span {
+  width: 16px;
 }
 
 .public-rating-hero {
