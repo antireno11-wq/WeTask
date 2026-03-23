@@ -5749,6 +5749,7 @@ textarea {
   font-weight: 700;
   cursor: pointer;
   box-shadow: 0 10px 24px rgba(19, 42, 87, 0.08);
+  background-clip: padding-box;
   transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease, color 0.2s ease;
 }
 
@@ -5759,12 +5760,14 @@ textarea {
 
 .dashboard-switch.active {
   background: linear-gradient(135deg, #1656b0 0%, #18a6d5 100%);
-  border-color: transparent;
+  border-color: rgba(12, 73, 151, 0.5);
   color: #ffffff;
+  box-shadow: 0 12px 28px rgba(19, 42, 87, 0.12), inset 0 0 0 1px rgba(255, 255, 255, 0.18);
 }
 
 .client-dashboard-metrics {
   margin-top: 6px;
+  grid-template-columns: repeat(3, minmax(220px, 1fr));
 }
 
 .client-dashboard-metric {
@@ -5772,6 +5775,10 @@ textarea {
   border-color: #d6e7f5;
   background: linear-gradient(180deg, #ffffff 0%, #f3f8fd 100%);
   box-shadow: 0 16px 28px rgba(19, 42, 87, 0.08);
+  min-height: 136px;
+  padding: 18px;
+  align-content: start;
+  gap: 10px;
 }
 
 .client-dashboard-card {
@@ -5779,6 +5786,10 @@ textarea {
   border-color: #d6e7f5;
   background: linear-gradient(180deg, #ffffff 0%, #f6faff 100%);
   box-shadow: 0 14px 28px rgba(19, 42, 87, 0.06);
+  min-height: 128px;
+  padding: 18px;
+  align-content: start;
+  gap: 10px;
 }
 
 .client-dashboard-list {
@@ -5800,6 +5811,18 @@ textarea {
 .dashboard-summary-grid {
   margin-top: 18px;
   grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.client-dashboard-metric h3,
+.dashboard-summary-card h3 {
+  line-height: 1.1;
+}
+
+.client-dashboard-metric p,
+.dashboard-summary-card p {
+  margin: 0;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
 }
 
 .dashboard-summary-card h3 {
