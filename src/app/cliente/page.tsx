@@ -631,8 +631,8 @@ export default function ClientePage() {
         <section className="auth-flow-shell auth-flow-shell-wide client-dashboard-hero">
           <div className="auth-flow-copy client-dashboard-copy">
             <p className="auth-flow-kicker">Panel cliente</p>
-            <h1>Gestiona tus reservas con el mismo look de WeTask.</h1>
-            <p>Revisa tus próximas visitas, historial, avisos importantes y vuelve a reservar en segundos desde un solo panel. Aquí también verás cuándo tu pago sigue protegido y cuándo ya fue liberado.</p>
+            <h1>Gestiona tus reservas y tu cuenta en un solo lugar.</h1>
+            <p>Revisa tus próximas reservas, tu historial, tus medios de pago y las notificaciones importantes desde un panel simple y claro.</p>
 
             <div className="auth-flow-copy-list client-dashboard-summary">
               <div className="auth-flow-meta-card">
