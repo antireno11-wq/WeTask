@@ -5077,7 +5077,8 @@ textarea {
 }
 
 .client-dashboard-summary {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(210px, 1fr));
+  gap: 14px;
 }
 
 .client-dashboard-profile-panel,
@@ -6126,18 +6127,23 @@ textarea {
 .auth-flow-meta-card {
   border: 1px solid rgba(255, 255, 255, 0.18);
   background: rgba(255, 255, 255, 0.12);
+  min-height: 110px;
+  padding: 18px 18px 16px;
+  align-content: start;
 }
 
 .auth-flow-meta-card strong,
 .auth-flow-note-card strong,
 .auth-flow-status strong {
   font-size: 0.94rem;
+  line-height: 1.15;
 }
 
 .auth-flow-meta-card span {
   color: rgba(255, 255, 255, 0.82);
   font-size: 0.9rem;
   line-height: 1.5;
+  overflow-wrap: anywhere;
 }
 
 .auth-flow-inline-links {
