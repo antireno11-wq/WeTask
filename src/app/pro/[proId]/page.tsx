@@ -144,15 +144,6 @@ type FaqItem = {
 
 type PublicProfileView = "perfil" | "valoraciones" | "agenda";
 
-const galleryImages = [
-  "https://images.unsplash.com/photo-1581578731548-c64695cc6952?auto=format&fit=crop&w=900&q=80",
-  "https://images.unsplash.com/photo-1527515637462-cff94eecc1ac?auto=format&fit=crop&w=900&q=80",
-  "https://images.unsplash.com/photo-1584820927498-cfe5211fd8bf?auto=format&fit=crop&w=900&q=80",
-  "https://images.unsplash.com/photo-1484154218962-a197022b5858?auto=format&fit=crop&w=900&q=80",
-  "https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?auto=format&fit=crop&w=900&q=80",
-  "https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?auto=format&fit=crop&w=900&q=80"
-];
-
 const sampleComments: SampleReview[] = [
   {
     name: "Josefa R.",
@@ -930,16 +921,6 @@ export default function ProDetailPage() {
     if (onboarding?.baseCommune) return [labelize(onboarding.baseCommune)];
     return requestedCommune ? [labelize(requestedCommune)] : [];
   }, [onboarding?.baseCommune, onboarding?.serviceCommunes, requestedCommune]);
-  const coverageMapUrl = useMemo(() => {
-    if (data?.coverageLatitude != null && data?.coverageLongitude != null) {
-      return `https://www.google.com/maps?q=${data.coverageLatitude},${data.coverageLongitude}&z=11&output=embed`;
-    }
-
-    const fallbackQuery =
-      activeCommunes[0] || onboarding?.baseCommune || data?.coverageCity || requestedCommune || "Santiago, Chile";
-
-    return `https://www.google.com/maps?q=${encodeURIComponent(fallbackQuery)}&z=11&output=embed`;
-  }, [activeCommunes, data?.coverageCity, data?.coverageLatitude, data?.coverageLongitude, onboarding?.baseCommune, requestedCommune]);
   const summaryDescription =
     onboarding?.shortDescription?.trim() ||
     "Tasker con experiencia en servicios a domicilio, buena valoración y agenda activa durante la semana.";
@@ -1190,23 +1171,6 @@ export default function ProDetailPage() {
                   </article>
 
                   <article className="auth-flow-panel client-dashboard-section">
-                    <div className="we-section-head">
-                      <h2>Galeria</h2>
-                      <button type="button" className="we-text-link">
-                        Ver galeria
-                      </button>
-                    </div>
-                    <div className="we-gallery-strip">
-                      {galleryImages.map((image, index) => (
-                        <figure key={image} className="we-gallery-item">
-                          <span className="we-gallery-pic" style={{ backgroundImage: `url(${image})` }} aria-hidden />
-                          <figcaption>gallery {index + 1}</figcaption>
-                        </figure>
-                      ))}
-                    </div>
-                  </article>
-
-                  <article className="auth-flow-panel client-dashboard-section">
                     <h2>Informacion de interes</h2>
                     <div className="we-info-grid">
                       <div>
@@ -1230,35 +1194,18 @@ export default function ProDetailPage() {
 
                   <article className="auth-flow-panel client-dashboard-section">
                     <h2>Cobertura</h2>
-                    <div className="coverage-map-card pro-profile-map-preview">
-                      <div className="coverage-map-head">
-                        <h3>Comunas donde trabaja</h3>
-                        <p>Estas son las comunas activas que el tasker tiene configuradas hoy.</p>
+                    <p className="coverage-meta">Estas son las comunas activas que el tasker tiene configuradas hoy.</p>
+                    {activeCommunes.length > 0 ? (
+                      <div className="coverage-map-chip-list" aria-label="Comunas donde trabaja">
+                        {activeCommunes.map((commune) => (
+                          <span key={commune} className="coverage-map-chip">
+                            {commune}
+                          </span>
+                        ))}
                       </div>
-                      <div className="coverage-map-wrap">
-                        <iframe
-                          title="Mapa de cobertura del tasker"
-                          src={coverageMapUrl}
-                          className="coverage-map-frame"
-                          loading="lazy"
-                          referrerPolicy="no-referrer-when-downgrade"
-                        />
-                      </div>
-                      {activeCommunes.length > 0 ? (
-                        <>
-                          <p className="coverage-map-tag-head">Comunas activas</p>
-                          <div className="coverage-map-chip-list" aria-label="Comunas donde trabaja">
-                            {activeCommunes.map((commune) => (
-                              <span key={commune} className="coverage-map-chip">
-                                {commune}
-                              </span>
-                            ))}
-                          </div>
-                        </>
-                      ) : (
-                        <p className="coverage-meta">Aún no hay comunas informadas en este perfil.</p>
-                      )}
-                    </div>
+                    ) : (
+                      <p className="coverage-meta">Aún no hay comunas informadas en este perfil.</p>
+                    )}
                   </article>
 
                   {normalizedPrimaryCategorySlug === "limpieza" ? (
