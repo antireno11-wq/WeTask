@@ -637,7 +637,7 @@ export default function ClientePage() {
       <div className="login-screen-content market-shell-auth-content">
         <MarketNav />
 
-        <section className="auth-flow-shell auth-flow-shell-wide client-dashboard-hero">
+        <section className="auth-flow-shell auth-flow-shell-wide client-dashboard-hero client-home-hero">
           <div className="auth-flow-copy client-dashboard-copy">
             <p className="auth-flow-kicker">Panel cliente</p>
             <h1>Gestiona tus reservas y tu cuenta en un solo lugar.</h1>
