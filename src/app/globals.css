@@ -4476,14 +4476,14 @@ textarea {
 
 .mvp-intro-visual.main {
   min-height: 210px;
-  background-image: url("/hero-webel-twofloor.webp");
+  background:
+    linear-gradient(180deg, rgba(11, 32, 67, 0.94) 0%, rgba(22, 86, 176, 0.86) 34%, rgba(31, 138, 191, 0.74) 66%, rgba(196, 238, 220, 0.78) 100%);
 }
 
 .mvp-intro-visual.secondary {
   min-height: 140px;
-  background-image:
-    linear-gradient(140deg, rgba(16, 46, 79, 0.35) 0%, rgba(16, 46, 79, 0.08) 100%),
-    url("/hero-wetask-gemini-house.png");
+  background:
+    linear-gradient(140deg, rgba(12, 38, 74, 0.92) 0%, rgba(24, 103, 177, 0.78) 46%, rgba(96, 195, 191, 0.7) 80%, rgba(219, 243, 224, 0.82) 100%);
 }
 
 .mvp-service-showcase .panel-head p {
@@ -4670,11 +4670,8 @@ textarea {
 .login-backdrop {
   position: absolute;
   inset: 0;
-  background:
-    linear-gradient(110deg, rgba(11, 32, 67, 0.66) 0%, rgba(17, 68, 132, 0.31) 42%, rgba(255, 106, 0, 0.19) 100%),
-    url("/hero-webel-reference.webp");
-  background-position: center;
-  background-size: cover;
+  background: linear-gradient(180deg, #0d2446 0%, #154f9f 28%, #1e85be 56%, #63c8bf 80%, #d8f1df 100%);
+  filter: blur(8px) saturate(1.01);
   transform: scale(1.04);
 }
 
@@ -4682,8 +4679,7 @@ textarea {
   content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.07) 0%, rgba(13, 36, 70, 0.07) 100%);
-  backdrop-filter: blur(2px);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.03) 0%, rgba(13, 36, 70, 0.04) 100%);
 }
 
 .login-stage {
