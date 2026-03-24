@@ -42,6 +42,8 @@ type BookingDetail = {
   disputes?: Array<{ id: string; status: string; category: string | null; createdAt: string }>;
 };
 
+type BookingDetailView = "resumen" | "chat" | "acciones";
+
 const STATUS_LABELS: Record<string, string> = {
   PENDING: "Pendiente",
   PENDING_PAYMENT: "Pago pendiente",
@@ -92,6 +94,7 @@ export default function ClienteBookingActionsPage() {
   const [chatBody, setChatBody] = useState("");
   const [feedback, setFeedback] = useState("");
   const [error, setError] = useState("");
+  const [activeView, setActiveView] = useState<BookingDetailView>("resumen");
 
   const bookingEnd = useMemo(() => {
     if (!booking) return null;
@@ -226,148 +229,185 @@ export default function ClienteBookingActionsPage() {
 
           {booking ? (
             <>
-              <section className="auth-flow-panel client-dashboard-section">
-                <div className="panel-head client-dashboard-panel-head">
-                  <h2>Resumen del servicio</h2>
-                  <p>Todo lo importante antes, durante y después de la visita.</p>
-                </div>
+              <div className="dashboard-switcher booking-detail-switcher">
+                <button
+                  type="button"
+                  className={`dashboard-switch ${activeView === "resumen" ? "active" : ""}`}
+                  onClick={() => setActiveView("resumen")}
+                >
+                  Resumen
+                </button>
+                <button
+                  type="button"
+                  className={`dashboard-switch ${activeView === "chat" ? "active" : ""}`}
+                  onClick={() => setActiveView("chat")}
+                >
+                  Chat
+                </button>
+                <button
+                  type="button"
+                  className={`dashboard-switch ${activeView === "acciones" ? "active" : ""}`}
+                  onClick={() => setActiveView("acciones")}
+                >
+                  Acciones del servicio
+                </button>
+              </div>
 
-                <div className="client-booking-summary-grid">
-                  <article className="booking-card client-dashboard-card client-booking-summary-card">
-                    <h3>Horario acordado</h3>
-                    <p>
-                      <strong>Inicio:</strong> {formatDateTime(booking.scheduledAt)}
-                    </p>
-                    <p>
-                      <strong>Término estimado:</strong> {bookingEnd ? formatTime(bookingEnd) : "Por definir"}
-                    </p>
-                    <p>
-                      <strong>Duración estimada:</strong> {booking.hours} hora(s)
-                    </p>
-                  </article>
-
-                  <article className="booking-card client-dashboard-card client-booking-summary-card">
-                    <h3>Ubicación</h3>
-                    <p>
-                      <strong>Dirección:</strong> {booking.address?.street ?? booking.addressLine1}
-                    </p>
-                    <p>
-                      <strong>Comuna:</strong> {booking.comuna}
-                    </p>
-                    <p>
-                      <strong>Ciudad:</strong> {booking.address?.city ?? booking.city ?? "Santiago"}
-                    </p>
-                  </article>
-
-                  <article className="booking-card client-dashboard-card client-booking-summary-card">
-                    <h3>Profesional asignado</h3>
-                    <p>
-                      <strong>Nombre:</strong> {booking.pro?.fullName ?? "Pendiente de asignación"}
-                    </p>
-                    <p>
-                      <strong>Email:</strong> {booking.pro?.email ?? "Aún no disponible"}
-                    </p>
-                    <p>
-                      <strong>Estado de la visita:</strong> {STATUS_LABELS[booking.status] ?? booking.status}
-                    </p>
-                  </article>
-
-                  <article className="booking-card client-dashboard-card client-booking-summary-card">
-                    <h3>Desglose de costo</h3>
-                    <p>
-                      <strong>Subtotal:</strong> {clp(booking.subtotalClp)}
-                    </p>
-                    <p>
-                      <strong>Extras:</strong> {clp(booking.extrasTotalClp)}
-                    </p>
-                    <p>
-                      <strong>Comisión plataforma:</strong> {clp(booking.platformFeeClp)}
-                    </p>
-                    <p className="client-booking-total-line">
-                      <strong>Total pagado:</strong> {clp(booking.totalPriceClp)}
-                    </p>
-                  </article>
-                </div>
-
-                {booking.notes ? (
-                  <div className="client-booking-note">
-                    <strong>Indicaciones del servicio</strong>
-                    <p>{booking.notes}</p>
+              {activeView === "resumen" ? (
+                <section className="auth-flow-panel client-dashboard-section">
+                  <div className="panel-head client-dashboard-panel-head">
+                    <h2>Resumen del servicio</h2>
+                    <p>Todo lo importante antes, durante y después de la visita.</p>
                   </div>
-                ) : null}
 
-                <div className="client-booking-note">
-                  <strong>Cómo funciona el pago protegido</strong>
-                  <p>Pagaste al reservar y WeTask mantiene ese dinero retenido. Cuando el servicio termine, podrás confirmar si todo salió bien o reportar un problema. Si no reclamas dentro del plazo, el pago entra automáticamente al próximo ciclo de pago del profesional.</p>
-                </div>
-              </section>
-
-              <section className="auth-flow-panel client-dashboard-section">
-                <div className="panel-head client-dashboard-panel-head">
-                  <h2>Chat y seguimiento</h2>
-                  <p>Habla con tu profesional o deja constancia si necesitas soporte.</p>
-                </div>
-
-                {booking && !canShareContactDetails(booking.status) ? (
-                  <div className="client-booking-note">
-                    <strong>Regla de seguridad del chat</strong>
-                    <p>{PRE_CONFIRMATION_CHAT_BLOCK_MESSAGE}</p>
-                  </div>
-                ) : null}
-
-                <div className="chat-box client-booking-chat">
-                  {messages.length === 0 ? (
-                    <p className="empty">Todavía no hay mensajes en esta reserva.</p>
-                  ) : (
-                    messages.map((item) => (
-                      <p key={item.id}>
-                        <strong>{item.sender.fullName}:</strong> {item.body}
+                  <div className="client-booking-summary-grid">
+                    <article className="booking-card client-dashboard-card client-booking-summary-card">
+                      <h3>Horario acordado</h3>
+                      <p>
+                        <strong>Inicio:</strong> {formatDateTime(booking.scheduledAt)}
                       </p>
-                    ))
-                  )}
-                </div>
+                      <p>
+                        <strong>Término estimado:</strong> {bookingEnd ? formatTime(bookingEnd) : "Por definir"}
+                      </p>
+                      <p>
+                        <strong>Duración estimada:</strong> {booking.hours} hora(s)
+                      </p>
+                    </article>
 
-                <form className="query-row query-single" onSubmit={sendMessage}>
-                  <label>
-                    Mensaje
-                    <input value={chatBody} onChange={(e) => setChatBody(e.target.value)} placeholder="Escribe al profesional" />
-                  </label>
-                  <button className="cta small" type="submit">
-                    Enviar
-                  </button>
-                </form>
-              </section>
+                    <article className="booking-card client-dashboard-card client-booking-summary-card">
+                      <h3>Ubicación</h3>
+                      <p>
+                        <strong>Dirección:</strong> {booking.address?.street ?? booking.addressLine1}
+                      </p>
+                      <p>
+                        <strong>Comuna:</strong> {booking.comuna}
+                      </p>
+                      <p>
+                        <strong>Ciudad:</strong> {booking.address?.city ?? booking.city ?? "Santiago"}
+                      </p>
+                    </article>
 
-              <section className="auth-flow-panel client-dashboard-section">
-                <div className="panel-head client-dashboard-panel-head">
-                  <h2>Acciones del servicio</h2>
-                  <p>Cuando termine la visita, confirma que todo salió bien o reporta el problema desde aquí.</p>
-                </div>
+                    <article className="booking-card client-dashboard-card client-booking-summary-card">
+                      <h3>Tasker asignado</h3>
+                      <p>
+                        <strong>Nombre:</strong> {booking.pro?.fullName ?? "Pendiente de asignación"}
+                      </p>
+                      <p>
+                        <strong>Email:</strong> {booking.pro?.email ?? "Aún no disponible"}
+                      </p>
+                      <p>
+                        <strong>Estado de la visita:</strong> {STATUS_LABELS[booking.status] ?? booking.status}
+                      </p>
+                    </article>
 
-                <div className="booking-actions">
-                  <button className="cta" type="button" onClick={confirmService}>
-                    Confirmar servicio
-                  </button>
-                  <Link className="cta ghost" href={`/cliente/reservas/${bookingId}/problema`}>
-                    Reportar problema
-                  </Link>
-                </div>
+                    <article className="booking-card client-dashboard-card client-booking-summary-card">
+                      <h3>Desglose de costo</h3>
+                      <p>
+                        <strong>Subtotal:</strong> {clp(booking.subtotalClp)}
+                      </p>
+                      <p>
+                        <strong>Extras:</strong> {clp(booking.extrasTotalClp)}
+                      </p>
+                      <p>
+                        <strong>Comisión plataforma:</strong> {clp(booking.platformFeeClp)}
+                      </p>
+                      <p className="client-booking-total-line">
+                        <strong>Total pagado:</strong> {clp(booking.totalPriceClp)}
+                      </p>
+                    </article>
+                  </div>
 
-                <div className="client-booking-note">
-                  <strong>Plazo de revisión</strong>
-                  <p>Cuando el tasker marca el trabajo como realizado, tu pago sigue retenido. Puedes confirmar el servicio o reportar un problema. Si no reclamas dentro del plazo definido por WeTask, el pago entra al siguiente ciclo automático.</p>
-                </div>
+                  {booking.notes ? (
+                    <div className="client-booking-note">
+                      <strong>Indicaciones del servicio</strong>
+                      <p>{booking.notes}</p>
+                    </div>
+                  ) : null}
 
-                {booking.disputes && booking.disputes.length > 0 ? (
                   <div className="client-booking-note">
-                    <strong>Reporte abierto</strong>
+                    <strong>Cómo funciona el pago protegido</strong>
                     <p>
-                      Ya existe al menos un reporte para este servicio. Puedes revisar el detalle o enviar información adicional desde
-                      la pantalla de problema.
+                      Pagaste al reservar y WeTask mantiene ese dinero retenido. Cuando el servicio termine, podrás confirmar si todo salió
+                      bien o reportar un problema. Si no reclamas dentro del plazo, el pago entra automáticamente al próximo ciclo de pago
+                      del profesional.
                     </p>
                   </div>
-                ) : null}
-              </section>
+                </section>
+              ) : null}
+
+              {activeView === "chat" ? (
+                <section className="auth-flow-panel client-dashboard-section">
+                  <div className="panel-head client-dashboard-panel-head">
+                    <h2>Chat y seguimiento</h2>
+                    <p>Habla con tu tasker o deja constancia si necesitas soporte.</p>
+                  </div>
+
+                  {booking && !canShareContactDetails(booking.status) ? (
+                    <div className="client-booking-note">
+                      <strong>Regla de seguridad del chat</strong>
+                      <p>{PRE_CONFIRMATION_CHAT_BLOCK_MESSAGE}</p>
+                    </div>
+                  ) : null}
+
+                  <div className="chat-box client-booking-chat">
+                    {messages.length === 0 ? (
+                      <p className="empty">Todavía no hay mensajes en esta reserva.</p>
+                    ) : (
+                      messages.map((item) => (
+                        <p key={item.id}>
+                          <strong>{item.sender.fullName}:</strong> {item.body}
+                        </p>
+                      ))
+                    )}
+                  </div>
+
+                  <form className="query-row query-single" onSubmit={sendMessage}>
+                    <label>
+                      Mensaje
+                      <input value={chatBody} onChange={(e) => setChatBody(e.target.value)} placeholder="Escribe al tasker" />
+                    </label>
+                    <button className="cta small" type="submit">
+                      Enviar
+                    </button>
+                  </form>
+                </section>
+              ) : null}
+
+              {activeView === "acciones" ? (
+                <section className="auth-flow-panel client-dashboard-section">
+                  <div className="panel-head client-dashboard-panel-head">
+                    <h2>Acciones del servicio</h2>
+                    <p>Cuando termine la visita, confirma que todo salió bien o reporta el problema desde aquí.</p>
+                  </div>
+
+                  <div className="booking-actions">
+                    <button className="cta" type="button" onClick={confirmService}>
+                      Confirmar servicio
+                    </button>
+                    <Link className="cta ghost" href={`/cliente/reservas/${bookingId}/problema`}>
+                      Reportar problema
+                    </Link>
+                  </div>
+
+                  <div className="client-booking-note">
+                    <strong>Plazo de revisión</strong>
+                    <p>
+                      Cuando el tasker marca el trabajo como realizado, tu pago sigue retenido. Puedes confirmar el servicio o reportar un
+                      problema. Si no reclamas dentro del plazo definido por WeTask, el pago entra al siguiente ciclo automático.
+                    </p>
+                  </div>
+
+                  {booking.disputes && booking.disputes.length > 0 ? (
+                    <div className="client-booking-note">
+                      <strong>Reporte abierto</strong>
+                      <p>
+                        Ya existe al menos un reporte para este servicio. Puedes revisar el detalle o enviar información adicional desde
+                        la pantalla de problema.
+                      </p>
+                    </div>
+                  ) : null}
+                </section>
+              ) : null}
             </>
           ) : null}
         </div>
