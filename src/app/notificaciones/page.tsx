@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { MarketNav } from "@/components/market-nav";
 
 type SessionPayload = {
@@ -70,16 +70,7 @@ export default function NotificationsPage() {
     void load();
   }, []);
 
-  const accountHref = useMemo(() => {
-    if (session?.role === "PRO") return "/pro";
-    if (session?.role === "CUSTOMER") return "/cliente";
-    if (session?.role === "ADMIN") return "/admin";
-    return "/ingresar";
-  }, [session?.role]);
-
   const roleLabel = session?.role === "PRO" ? "Tasker" : session?.role === "CUSTOMER" ? "Cliente" : session?.role === "ADMIN" ? "Admin" : "";
-  const latestNotification = notifications[0] ?? null;
-
   return (
     <main className="auth-flow-screen auth-flow-screen-scroll market-shell-auth">
       <div className="auth-flow-backdrop" aria-hidden />
@@ -106,20 +97,6 @@ export default function NotificationsPage() {
                 <p>{loading ? "..." : notifications.length}</p>
                 <small>notificación(es)</small>
               </article>
-              <article className="module-card client-dashboard-metric">
-                <h3>Última</h3>
-                <p>{latestNotification ? formatNotificationDate(latestNotification.createdAt) : "Sin avisos"}</p>
-              </article>
-              <article className="module-card client-dashboard-metric">
-                <h3>Volver</h3>
-                <p>{session?.role === "PRO" ? "Panel tasker" : session?.role === "CUSTOMER" ? "Panel cliente" : "Inicio de sesión"}</p>
-              </article>
-            </div>
-
-            <div className="notifications-hero-actions">
-              <Link href={accountHref} className="cta ghost small">
-                {session?.role === "PRO" ? "Volver al panel tasker" : session?.role === "CUSTOMER" ? "Volver al panel cliente" : "Ir a acceder"}
-              </Link>
             </div>
           </section>
         </section>
