@@ -1,5 +1,6 @@
 import { UserRole } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
+import { sendBookingStatusEmailToCustomer } from "@/lib/booking-status-email";
 import { getRequestIdentity, hasRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
@@ -84,6 +85,12 @@ export async function POST(req: NextRequest, context: { params: { bookingId: str
       }
 
       return updatedBooking;
+    });
+
+    void sendBookingStatusEmailToCustomer({
+      bookingId: updated.id,
+      previousStatus: booking.status,
+      nextStatus: updated.status
     });
 
     return NextResponse.json({ booking: updated }, { status: 200 });

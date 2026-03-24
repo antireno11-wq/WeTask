@@ -1,6 +1,7 @@
 import { UserRole } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import { sendBookingStatusEmailToCustomer } from "@/lib/booking-status-email";
 import { getRequestIdentity, hasRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
@@ -69,6 +70,12 @@ export async function POST(req: NextRequest) {
         }))
       });
     }
+
+    void sendBookingStatusEmailToCustomer({
+      bookingId: booking.id,
+      previousStatus: booking.status,
+      nextStatus: "DISPUTE"
+    });
 
     return NextResponse.json({ ticket }, { status: 201 });
   } catch (error) {

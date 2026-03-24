@@ -1,6 +1,7 @@
 import { UserRole } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { getRequestIdentity, hasRole } from "@/lib/auth";
+import { sendBookingStatusEmailToCustomer } from "@/lib/booking-status-email";
 import { prisma } from "@/lib/prisma";
 import { marketplaceBookingStatusUpdateSchema } from "@/lib/validators";
 
@@ -33,6 +34,12 @@ export async function PATCH(req: NextRequest, context: { params: { bookingId: st
     const updated = await prisma.booking.update({
       where: { id: booking.id },
       data: { status: input.status }
+    });
+
+    void sendBookingStatusEmailToCustomer({
+      bookingId: updated.id,
+      previousStatus: booking.status,
+      nextStatus: updated.status
     });
 
     return NextResponse.json({ booking: updated }, { status: 200 });

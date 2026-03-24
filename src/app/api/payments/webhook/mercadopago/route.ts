@@ -1,5 +1,6 @@
 import { PaymentStatus } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
+import { sendBookingStatusEmailToCustomer } from "@/lib/booking-status-email";
 import { getProviderPayment } from "@/lib/payments/provider-adapter";
 import { prisma } from "@/lib/prisma";
 
@@ -43,7 +44,8 @@ export async function POST(req: NextRequest) {
         booking: {
           select: {
             id: true,
-            bookedSlotId: true
+            bookedSlotId: true,
+            status: true
           }
         }
       }
@@ -86,6 +88,12 @@ export async function POST(req: NextRequest) {
           data: { isAvailable: true }
         });
       }
+    });
+
+    void sendBookingStatusEmailToCustomer({
+      bookingId: payment.booking.id,
+      previousStatus: payment.booking.status,
+      nextStatus: nextState.bookingStatus
     });
 
     return NextResponse.json({ ok: true }, { status: 200 });

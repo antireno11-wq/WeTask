@@ -1,6 +1,7 @@
 import { PaymentStatus, UserRole } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import { sendBookingStatusEmailToCustomer } from "@/lib/booking-status-email";
 import { getRequestIdentity, hasRole } from "@/lib/auth";
 import { COVERAGE_UNAVAILABLE_MESSAGE, inferCommuneFromAddress, normalizeCommune, taskerServesCommune } from "@/lib/communes";
 import { calculateMarketplacePrice } from "@/lib/marketplace-pricing";
@@ -385,6 +386,12 @@ export async function POST(req: NextRequest) {
         }
       });
 
+      void sendBookingStatusEmailToCustomer({
+        bookingId: created.booking.id,
+        previousStatus: created.booking.status,
+        nextStatus: "PAYMENT_FAILED"
+      });
+
       return NextResponse.json({ error: "Error de conexión con Mercado Pago. Intenta nuevamente." }, { status: 502 });
     }
 
@@ -451,6 +458,12 @@ export async function POST(req: NextRequest) {
       }
 
       return booking;
+    });
+
+    void sendBookingStatusEmailToCustomer({
+      bookingId: finalBooking.id,
+      previousStatus: created.booking.status,
+      nextStatus: finalBooking.status
     });
 
     return NextResponse.json(

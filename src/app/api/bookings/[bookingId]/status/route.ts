@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { UserRole } from "@prisma/client";
+import { sendBookingStatusEmailToCustomer } from "@/lib/booking-status-email";
 import { prisma } from "@/lib/prisma";
 import { updateBookingStatusSchema } from "@/lib/validators";
 
@@ -29,6 +30,12 @@ export async function PATCH(req: NextRequest, context: { params: { bookingId: st
         status: input.status,
         proId: input.proId ?? booking.proId
       }
+    });
+
+    void sendBookingStatusEmailToCustomer({
+      bookingId: updatedBooking.id,
+      previousStatus: booking.status,
+      nextStatus: updatedBooking.status
     });
 
     return NextResponse.json({ booking: updatedBooking }, { status: 200 });
