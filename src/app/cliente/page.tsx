@@ -818,7 +818,7 @@ export default function ClientePage() {
               )}
             </div>
 
-            <div className="client-profile-actions">
+            <div className="client-profile-actions client-payment-actions">
               <button className="cta small" type="button" onClick={() => setEditingPayments((current) => !current)}>
                 {editingPayments ? "Cerrar formulario" : "Agregar tarjeta"}
               </button>
@@ -856,18 +856,25 @@ export default function ClientePage() {
                       </label>
                       <label className="full">
                         Número de tarjeta
-                        <input
-                          id="client-payment-card-number"
-                          type="text"
-                          inputMode="numeric"
-                          autoComplete="cc-number"
-                          placeholder="Ej: 5416752602582580"
-                          maxLength={19}
-                          onInput={(event) => {
-                            event.currentTarget.value = event.currentTarget.value.replace(/\D/g, "").slice(0, 19);
-                          }}
-                        />
-                        <span className="input-hint">Visa y Mastercard usan 16 dígitos. American Express usa 15.</span>
+                        <div className="payment-card-number-shell">
+                          {Array.from({ length: 4 }).map((_, index) => (
+                            <span key={index} className="payment-card-number-box" aria-hidden />
+                          ))}
+                          <input
+                            id="client-payment-card-number"
+                            className="payment-card-number-input"
+                            type="text"
+                            inputMode="numeric"
+                            autoComplete="cc-number"
+                            placeholder="0000 0000 0000 0000"
+                            maxLength={19}
+                            onInput={(event) => {
+                              const digits = event.currentTarget.value.replace(/\D/g, "").slice(0, 16);
+                              event.currentTarget.value = digits.replace(/(\d{4})(?=\d)/g, "$1 ").trim();
+                            }}
+                          />
+                        </div>
+                        <span className="input-hint">Ingresa la tarjeta en 4 bloques de 4 dígitos.</span>
                       </label>
                       <div className="client-payment-inline-row full">
                         <label className="payment-small-field">

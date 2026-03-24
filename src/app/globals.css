@@ -5533,6 +5533,10 @@ textarea {
   gap: 14px;
 }
 
+.client-payment-actions {
+  margin-top: 22px;
+}
+
 .client-payment-card-grid {
   gap: 12px;
 }
@@ -5540,6 +5544,39 @@ textarea {
 .client-payment-card-grid input,
 .client-payment-card-grid select {
   min-height: 46px;
+}
+
+.payment-card-number-shell {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  min-height: 52px;
+}
+
+.payment-card-number-box {
+  min-height: 52px;
+  border-radius: 14px;
+  border: 1px solid #cfe2f3;
+  background: #fbfdff;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65);
+}
+
+.payment-card-number-input {
+  position: absolute;
+  inset: 0;
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  padding: 0 16px !important;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 1rem;
+  font-weight: 800;
+  letter-spacing: 0.22em;
+}
+
+.payment-card-number-input:focus {
+  outline: none;
 }
 
 .client-payment-inline-row {
