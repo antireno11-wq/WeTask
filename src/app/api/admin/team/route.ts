@@ -17,7 +17,8 @@ const teamActionSchema = z.object({
 
 const teamListQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
-  pageSize: z.coerce.number().int().min(1).max(20).default(5)
+  pageSize: z.coerce.number().int().min(1).max(20).default(5),
+  roleFilter: z.enum(["all", "taskers", "customers"]).default("all")
 });
 
 function formatRoleLabel(role: UserRole) {
@@ -41,15 +42,33 @@ function formatBookingActivity(kind: "customer" | "pro", booking: { updatedAt: D
   };
 }
 
+function roleFilterWhere(roleFilter: "all" | "taskers" | "customers") {
+  if (roleFilter === "taskers") {
+    return {
+      OR: [{ role: UserRole.PRO }, { roleAssignments: { some: { role: { code: UserRole.PRO } } } }]
+    };
+  }
+
+  if (roleFilter === "customers") {
+    return {
+      OR: [{ role: UserRole.CUSTOMER }, { roleAssignments: { some: { role: { code: UserRole.CUSTOMER } } } }]
+    };
+  }
+
+  return {};
+}
+
 export async function GET(req: NextRequest) {
   const admin = await requireAdminRequest(req);
   if (!admin.ok) return admin.response;
 
   const query = teamListQuerySchema.parse({
     page: req.nextUrl.searchParams.get("page") ?? undefined,
-    pageSize: req.nextUrl.searchParams.get("pageSize") ?? undefined
+    pageSize: req.nextUrl.searchParams.get("pageSize") ?? undefined,
+    roleFilter: req.nextUrl.searchParams.get("roleFilter") ?? undefined
   });
   const skip = (query.page - 1) * query.pageSize;
+  const roleWhere = roleFilterWhere(query.roleFilter);
 
   const [admins, totalRecentUsers, recentUsers] = await Promise.all([
     prisma.user.findMany({
@@ -81,8 +100,9 @@ export async function GET(req: NextRequest) {
         }
       }
     }),
-    prisma.user.count(),
+    prisma.user.count({ where: roleWhere }),
     prisma.user.findMany({
+      where: roleWhere,
       orderBy: [{ updatedAt: "desc" }],
       skip,
       take: query.pageSize,
@@ -158,6 +178,7 @@ export async function GET(req: NextRequest) {
       currentAdminId: admin.identity.userId,
       page: query.page,
       pageSize: query.pageSize,
+      roleFilter: query.roleFilter,
       totalRecentUsers,
       totalPages: Math.max(1, Math.ceil(totalRecentUsers / query.pageSize)),
       admins: admins.map((user) => ({

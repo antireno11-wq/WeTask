@@ -5280,6 +5280,7 @@ textarea {
 
 .admin-dashboard-grid,
 .admin-team-grid,
+.admin-users-grid,
 .admin-detail-grid {
   display: grid;
   gap: 1rem;
@@ -7920,6 +7921,7 @@ textarea {
 
   .admin-dashboard-grid,
   .admin-team-grid,
+  .admin-users-grid,
   .admin-detail-grid,
   .admin-kv-grid,
   .admin-team-form {

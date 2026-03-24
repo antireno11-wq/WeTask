@@ -288,10 +288,16 @@ export default async function AdminPage() {
           <span className="module-meta">{admins} admin(s) con acceso</span>
         </Link>
 
-        <Link href="/admin/team" className="module-card module-link">
+        <Link href="/admin/team/new" className="module-card module-link">
           <h3>Crear otro administrador</h3>
           <p>Invita a otra persona del equipo para que también pueda revisar y aprobar usuarios.</p>
           <span className="module-meta">Acceso para aprobaciones</span>
+        </Link>
+
+        <Link href="/admin/users" className="module-card module-link">
+          <h3>Usuarios de la plataforma</h3>
+          <p>Revisa taskers y clientes por separado para seguir actividad y limpiar cuentas internas.</p>
+          <span className="module-meta">{taskersTotal + customersTotal} cuenta(s) activas</span>
         </Link>
       </div>
 
