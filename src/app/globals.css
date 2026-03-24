@@ -4157,14 +4157,18 @@ textarea {
 @media (max-width: 960px) {
   .we-pro-card {
     grid-template-columns: 1fr;
+    padding: 16px;
+    border-radius: 20px;
   }
 
   .we-pro-main {
     grid-template-columns: 1fr;
+    gap: 14px;
   }
 
   .we-pro-price {
     justify-items: start;
+    gap: 6px;
   }
 
   .we-pro-price strong {
@@ -4177,6 +4181,28 @@ textarea {
 
   .we-pro-sticky-card {
     position: static;
+  }
+
+  .service-pros-copy,
+  .client-dashboard-copy {
+    max-width: none;
+  }
+
+  .service-pros-query-row,
+  .service-pros-top-actions,
+  .we-pro-actions,
+  .public-profile-switcher,
+  .auth-flow-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .service-pros-top-actions .cta,
+  .we-pro-actions .cta,
+  .public-profile-switch,
+  .auth-flow-actions .cta {
+    width: 100%;
+    justify-content: center;
   }
 
   .we-info-grid,
@@ -7477,6 +7503,12 @@ textarea {
     padding: 22px 18px;
   }
 
+  .service-pros-panel,
+  .client-dashboard-section,
+  .client-dashboard-profile-panel {
+    gap: 14px;
+  }
+
   .auth-service-grid {
     grid-template-columns: 1fr;
   }
@@ -7556,6 +7588,20 @@ textarea {
     --site-footer-space: 320px;
   }
 
+  .auth-flow-screen {
+    padding: 14px;
+  }
+
+  .auth-flow-panel {
+    padding: 18px 14px;
+    border-radius: 22px;
+  }
+
+  .auth-flow-copy > p {
+    font-size: 0.96rem;
+    line-height: 1.55;
+  }
+
   .login-stage-copy h2 {
     font-size: 2rem;
   }
@@ -7623,6 +7669,10 @@ textarea {
     font-size: 2rem;
   }
 
+  .auth-flow-kicker {
+    justify-content: center;
+  }
+
   .auth-flow-role-tabs,
   .auth-flow-actions {
     grid-template-columns: 1fr;
@@ -7634,6 +7684,58 @@ textarea {
 
   .auth-flow-actions .cta {
     width: 100%;
+  }
+
+  .client-dashboard-summary {
+    max-width: none;
+    gap: 12px;
+  }
+
+  .auth-flow-meta-card {
+    min-height: 0;
+  }
+
+  .we-pro-card {
+    padding: 14px;
+    gap: 12px;
+  }
+
+  .we-pro-avatar {
+    width: 64px;
+    height: 64px;
+  }
+
+  .we-pro-avatar.large {
+    width: 72px;
+    height: 72px;
+  }
+
+  .we-pro-title-row h3,
+  .we-sticky-head h3 {
+    font-size: 1.35rem;
+  }
+
+  .we-sticky-price {
+    font-size: 2.2rem;
+  }
+
+  .we-pro-snippet,
+  .we-info-grid p,
+  .we-trust-card p {
+    line-height: 1.5;
+  }
+
+  .public-availability-shell {
+    gap: 14px;
+  }
+
+  .public-availability-task-item {
+    gap: 10px;
+    padding: 12px;
+  }
+
+  .public-availability-task-item .availability-task-time {
+    font-size: 0.92rem;
   }
 
   .service-coverage-form {
