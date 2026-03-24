@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { UserRole } from "@prisma/client";
 import { COVERAGE_UNAVAILABLE_MESSAGE, normalizeCommune } from "@/lib/communes";
 import { prisma } from "@/lib/prisma";
+import { hasAssignedRole } from "@/lib/user-roles";
 import { createBookingSchema, listBookingsQuerySchema } from "@/lib/validators";
 
 export async function GET(req: NextRequest) {
@@ -50,14 +51,14 @@ export async function POST(req: NextRequest) {
 
     const [service, customer] = await Promise.all([
       prisma.service.findUnique({ where: { id: input.serviceId } }),
-      prisma.user.findUnique({ where: { id: input.customerId } })
+      prisma.user.findUnique({ where: { id: input.customerId }, include: { roleAssignments: { select: { role: { select: { code: true } } } } } })
     ]);
 
     if (!service || !service.isActive) {
       return NextResponse.json({ error: "Servicio no disponible" }, { status: 400 });
     }
 
-    if (!customer || customer.role !== UserRole.CUSTOMER) {
+    if (!customer || !hasAssignedRole(customer, UserRole.CUSTOMER)) {
       return NextResponse.json({ error: "Cliente no válido" }, { status: 400 });
     }
 

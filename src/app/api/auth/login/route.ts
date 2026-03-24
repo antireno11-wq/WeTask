@@ -5,6 +5,7 @@ import { encodeSessionCookie, SESSION_COOKIE_NAME } from "@/lib/auth";
 import { ensurePrimaryAdminUser } from "@/lib/primary-admin";
 import { prisma } from "@/lib/prisma";
 import { verifyPassword } from "@/lib/security";
+import { hasAssignedRole, resolveLoginRole } from "@/lib/user-roles";
 
 export const dynamic = "force-dynamic";
 
@@ -51,11 +52,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Usuario no encontrado" }, { status: 404 });
     }
 
-    const assignedRoles = user.roleAssignments.map((assignment) => assignment.role.code);
     const requestedRole = body.role ?? user.role;
-    const canLoginAsRequestedRole =
-      requestedRole === user.role ||
-      (requestedRole === UserRole.ADMIN && assignedRoles.includes(UserRole.ADMIN));
+    const canLoginAsRequestedRole = hasAssignedRole(user, requestedRole);
 
     if (body.role && !canLoginAsRequestedRole) {
       return NextResponse.json({ error: "El rol no coincide con el usuario" }, { status: 400 });
@@ -77,7 +75,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const sessionRole = requestedRole === UserRole.ADMIN && assignedRoles.includes(UserRole.ADMIN) ? UserRole.ADMIN : user.role;
+    const sessionRole = resolveLoginRole(user, requestedRole);
 
     const response = NextResponse.json(
       {

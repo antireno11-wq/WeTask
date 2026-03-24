@@ -6,6 +6,7 @@ import { COVERAGE_UNAVAILABLE_MESSAGE, inferCommuneFromAddress, normalizeCommune
 import { calculateMarketplacePrice } from "@/lib/marketplace-pricing";
 import { createProviderPayment } from "@/lib/payments/provider-adapter";
 import { prisma } from "@/lib/prisma";
+import { hasAssignedRole } from "@/lib/user-roles";
 
 export const dynamic = "force-dynamic";
 
@@ -78,11 +79,11 @@ export async function POST(req: NextRequest) {
     }
 
     const [customer, service] = await Promise.all([
-      prisma.user.findUnique({ where: { id: input.customerId } }),
+      prisma.user.findUnique({ where: { id: input.customerId }, include: { roleAssignments: { select: { role: { select: { code: true } } } } } }),
       prisma.service.findUnique({ where: { id: input.serviceId }, include: { category: true } })
     ]);
 
-    if (!customer || customer.role !== UserRole.CUSTOMER) {
+    if (!customer || !hasAssignedRole(customer, UserRole.CUSTOMER)) {
       return NextResponse.json({ error: "Cliente no válido" }, { status: 400 });
     }
     if (!service || !service.isActive || !service.category) {

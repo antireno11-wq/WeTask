@@ -2,6 +2,7 @@ import { UserRole } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { encodeSessionCookie, SESSION_COOKIE_NAME } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { resolveLoginRole } from "@/lib/user-roles";
 
 export const dynamic = "force-dynamic";
 
@@ -33,7 +34,6 @@ export async function POST(req: NextRequest) {
       update: {
         fullName,
         authProvider: provider,
-        role,
         termsAcceptedAt: new Date(),
         emailVerifiedAt: new Date()
       },
@@ -55,7 +55,13 @@ export async function POST(req: NextRequest) {
           }
         }
       },
-      select: { id: true, email: true, fullName: true, role: true }
+      select: {
+        id: true,
+        email: true,
+        fullName: true,
+        role: true,
+        roleAssignments: { select: { role: { select: { code: true } } } }
+      }
     });
 
     const dbRole = await prisma.role.upsert({
@@ -78,10 +84,11 @@ export async function POST(req: NextRequest) {
       }
     });
 
-    const response = NextResponse.json({ session: user }, { status: 200 });
+    const sessionRole = resolveLoginRole(user, role);
+    const response = NextResponse.json({ session: { ...user, role: sessionRole } }, { status: 200 });
     response.cookies.set({
       name: SESSION_COOKIE_NAME,
-      value: encodeSessionCookie({ userId: user.id, role: user.role, email: user.email, fullName: user.fullName }),
+      value: encodeSessionCookie({ userId: user.id, role: sessionRole, email: user.email, fullName: user.fullName }),
       path: "/",
       httpOnly: true,
       sameSite: "lax",

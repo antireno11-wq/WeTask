@@ -6,6 +6,8 @@ import { buildVerificationEmailTemplate, sendPlatformEmail } from "@/lib/notific
 import { prisma } from "@/lib/prisma";
 import { resolvePublicAppUrl } from "@/lib/public-app-url";
 import { hashPassword, randomToken, sha256 } from "@/lib/security";
+import { verifyPassword } from "@/lib/security";
+import { hasAssignedRole, resolveLoginRole } from "@/lib/user-roles";
 
 export const dynamic = "force-dynamic";
 
@@ -93,14 +95,91 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const exists = await prisma.user.findUnique({ where: { email }, select: { id: true } });
-    if (exists) {
-      return NextResponse.json({ error: "Ese email ya esta registrado" }, { status: 409 });
-    }
+    const existingUser = await prisma.user.findUnique({
+      where: { email },
+      select: {
+        id: true,
+        fullName: true,
+        email: true,
+        phone: true,
+        role: true,
+        authProvider: true,
+        passwordHash: true,
+        emailVerifiedAt: true,
+        roleAssignments: { select: { role: { select: { code: true } } } }
+      }
+    });
 
     const passwordHash = authProvider === "EMAIL" && password ? await hashPassword(password) : null;
+    const roleRecord = await prisma.role.upsert({
+      where: { code: role },
+      update: { label: role === UserRole.PRO ? "Tasker" : "Cliente" },
+      create: { code: role, label: role === UserRole.PRO ? "Tasker" : "Cliente" }
+    });
 
-    const user = await prisma.user.create({
+    let user:
+      | {
+          id: string;
+          fullName: string;
+          email: string;
+          role: UserRole;
+          emailVerifiedAt?: Date | null;
+          roleAssignments?: Array<{ role: { code: UserRole } }>;
+        }
+      | null = null;
+
+    if (existingUser) {
+      if (authProvider === "EMAIL") {
+        if (existingUser.authProvider !== "EMAIL" || !existingUser.passwordHash || !password) {
+          return NextResponse.json(
+            { error: "Ese correo ya existe. Ingresa con ese acceso para usar también tu cuenta cliente." },
+            { status: 409 }
+          );
+        }
+
+        const passwordMatches = await verifyPassword(password, existingUser.passwordHash);
+        if (!passwordMatches) {
+          return NextResponse.json(
+            { error: "Ese correo ya existe. Usa la misma contraseña de tu cuenta actual para activar cliente." },
+            { status: 409 }
+          );
+        }
+      }
+
+      if (!hasAssignedRole(existingUser, role)) {
+        await prisma.userRoleAssignment.upsert({
+          where: {
+            userId_roleId: {
+              userId: existingUser.id,
+              roleId: roleRecord.id
+            }
+          },
+          update: {},
+          create: {
+            userId: existingUser.id,
+            roleId: roleRecord.id
+          }
+        });
+      }
+
+      user = await prisma.user.update({
+        where: { id: existingUser.id },
+        data: {
+          fullName,
+          phone: body.phone?.trim() || existingUser.phone || null,
+          termsAcceptedAt: new Date()
+        },
+        select: {
+          id: true,
+          fullName: true,
+          email: true,
+          role: true,
+          emailVerifiedAt: true,
+          roleAssignments: { select: { role: { select: { code: true } } } }
+        }
+      });
+    } else {
+      user = await prisma.user.create({
       data: {
         fullName,
         email,
@@ -113,10 +192,7 @@ export async function POST(req: NextRequest) {
         roleAssignments: {
           create: {
             role: {
-              connectOrCreate: {
-                where: { code: role },
-                create: { code: role, label: role === UserRole.PRO ? "Tasker" : "Cliente" }
-              }
+              connect: { id: roleRecord.id }
             }
           }
         },
@@ -152,12 +228,22 @@ export async function POST(req: NextRequest) {
               }
             : undefined
       },
-      select: { id: true, fullName: true, email: true, role: true }
-    });
+      select: {
+        id: true,
+        fullName: true,
+        email: true,
+        role: true,
+        emailVerifiedAt: true,
+        roleAssignments: { select: { role: { select: { code: true } } } }
+      }
+      });
+    }
 
     let emailVerificationToken: string | null = null;
     let emailDeliveryConfigured = true;
-    if (authProvider === "EMAIL") {
+    const requiresEmailVerification = authProvider === "EMAIL" && !user.emailVerifiedAt;
+
+    if (requiresEmailVerification) {
       const appUrl = resolvePublicAppUrl(req);
       emailVerificationToken = createEmailVerificationCode();
       await prisma.emailVerificationToken.create({
@@ -192,7 +278,8 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const shouldCreateSession = authProvider !== "EMAIL";
+    const shouldCreateSession = !requiresEmailVerification;
+    const sessionRole = resolveLoginRole(user, role);
     const response = NextResponse.json(
       {
         session: shouldCreateSession
@@ -200,10 +287,10 @@ export async function POST(req: NextRequest) {
               userId: user.id,
               fullName: user.fullName,
               email: user.email,
-              role: user.role
+              role: sessionRole
             }
           : null,
-        emailVerificationRequired: authProvider === "EMAIL",
+        emailVerificationRequired: requiresEmailVerification,
         emailDeliveryConfigured,
         verificationTokenPreview:
           process.env.NODE_ENV !== "production" && emailVerificationToken ? emailVerificationToken : undefined
@@ -214,7 +301,7 @@ export async function POST(req: NextRequest) {
     if (shouldCreateSession) {
       response.cookies.set({
         name: SESSION_COOKIE_NAME,
-        value: encodeSessionCookie({ userId: user.id, role: user.role, email: user.email, fullName: user.fullName }),
+        value: encodeSessionCookie({ userId: user.id, role: sessionRole, email: user.email, fullName: user.fullName }),
         path: "/",
         httpOnly: true,
         sameSite: "lax",

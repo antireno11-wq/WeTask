@@ -8,6 +8,7 @@ import {
   ensureMercadoPagoCustomer
 } from "@/lib/payments/providers/mercadopago";
 import { prisma } from "@/lib/prisma";
+import { hasAssignedRole } from "@/lib/user-roles";
 
 export const dynamic = "force-dynamic";
 
@@ -47,6 +48,7 @@ async function ensureCustomerUser(userId: string) {
       fullName: true,
       role: true,
       mercadoPagoCustomerId: true,
+      roleAssignments: { select: { role: { select: { code: true } } } },
       paymentMethods: {
         orderBy: [{ isDefault: "desc" }, { createdAt: "asc" }],
         select: {
@@ -67,7 +69,7 @@ async function ensureCustomerUser(userId: string) {
     }
   });
 
-  if (!user || user.role !== UserRole.CUSTOMER) {
+  if (!user || !hasAssignedRole(user, UserRole.CUSTOMER)) {
     throw new Error("Cliente no válido");
   }
 
