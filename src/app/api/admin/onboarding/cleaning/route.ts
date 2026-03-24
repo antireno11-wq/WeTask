@@ -200,6 +200,7 @@ export async function GET(req: NextRequest) {
   if (!admin.ok) return admin.response;
 
   const status = req.nextUrl.searchParams.get("status") ?? undefined;
+  const order = req.nextUrl.searchParams.get("order") === "asc" ? "asc" : "desc";
 
   const items = await prisma.cleaningOnboarding.findMany({
     where:
@@ -213,7 +214,7 @@ export async function GET(req: NextRequest) {
       ].includes(status as CleaningOnboardingStatus)
         ? { status: status as CleaningOnboardingStatus }
         : undefined,
-    orderBy: [{ submittedAt: "desc" }, { createdAt: "desc" }],
+    orderBy: [{ submittedAt: order }, { createdAt: order }],
     take: 300,
     include: {
       user: {

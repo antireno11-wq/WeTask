@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useState } from "react";
 import { AdminHeroShell } from "@/components/admin-hero-shell";
 
@@ -8,6 +7,7 @@ type CleaningOnboardingItem = {
   id: string;
   status: "BORRADOR" | "PENDIENTE_REVISION" | "REQUIERE_CORRECCION" | "APROBADO" | "ACTIVO";
   currentStep: number;
+  createdAt: string;
   baseCommune: string | null;
   referenceAddress: string | null;
   hourlyRateClp: number | null;
@@ -59,6 +59,7 @@ function formatDate(value: string | null) {
 export default function AdminCleaningOnboardingPage() {
   const [rows, setRows] = useState<CleaningOnboardingItem[]>([]);
   const [statusFilter, setStatusFilter] = useState<string>("");
+  const [dateOrder, setDateOrder] = useState<"desc" | "asc">("desc");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [feedback, setFeedback] = useState("");
@@ -70,7 +71,10 @@ export default function AdminCleaningOnboardingPage() {
     setLoading(true);
     setError("");
     try {
-      const query = statusFilter ? `?status=${encodeURIComponent(statusFilter)}` : "";
+      const search = new URLSearchParams();
+      if (statusFilter) search.set("status", statusFilter);
+      search.set("order", dateOrder);
+      const query = search.toString() ? `?${search.toString()}` : "";
       const response = await fetch(`/api/admin/onboarding/cleaning${query}`);
       const data = (await response.json()) as { items?: CleaningOnboardingItem[]; error?: string; detail?: string };
       if (!response.ok || !data.items) throw new Error(data.detail || data.error || "No se pudo cargar onboarding");
@@ -88,7 +92,9 @@ export default function AdminCleaningOnboardingPage() {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    setStatusFilter(new URLSearchParams(window.location.search).get("status") ?? "");
+    const params = new URLSearchParams(window.location.search);
+    setStatusFilter(params.get("status") ?? "");
+    setDateOrder(params.get("order") === "asc" ? "asc" : "desc");
   }, []);
 
   const runAction = async (onboardingId: string, action: ActionType) => {
@@ -129,13 +135,10 @@ export default function AdminCleaningOnboardingPage() {
     <AdminHeroShell>
       <div className="panel-head admin-page-head">
         <div>
-          <span className="eyebrow">Validación de profesionales</span>
+          <span className="eyebrow">Validación de taskers</span>
           <h2>Cola de revisión manual</h2>
           <p>Revisa documentos, pide correcciones, aprueba perfiles y activa taskers desde un solo flujo interno.</p>
         </div>
-        <Link href="/admin/team" className="cta">
-          Crear otro administrador
-        </Link>
       </div>
 
       <div className="cta-row admin-filter-bar">
@@ -150,6 +153,13 @@ export default function AdminCleaningOnboardingPage() {
             <option value="ACTIVO">Activo</option>
           </select>
         </label>
+        <button
+          type="button"
+          className="cta ghost small"
+          onClick={() => setDateOrder((current) => (current === "desc" ? "asc" : "desc"))}
+        >
+          {dateOrder === "desc" ? "Más recientes primero" : "Más antiguas primero"}
+        </button>
         <button type="button" className="cta ghost small admin-clear-button" onClick={() => void runAction("", "clear_all")}>
           Borrar inscripciones anteriores
         </button>
@@ -178,7 +188,7 @@ export default function AdminCleaningOnboardingPage() {
               <strong>Mínimo:</strong> {row.minBookingHours ?? "-"} h · <strong>Paso:</strong> {row.currentStep}
             </p>
             <p>
-              <strong>Enviado:</strong> {formatDate(row.submittedAt)} · <strong>Revisado:</strong> {formatDate(row.reviewedAt)} ·{" "}
+              <strong>Inscrito:</strong> {formatDate(row.submittedAt ?? row.createdAt)} · <strong>Revisado:</strong> {formatDate(row.reviewedAt)} ·{" "}
               <strong>Activado:</strong> {formatDate(row.activatedAt)}
             </p>
             <p>
