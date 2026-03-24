@@ -56,7 +56,7 @@ export function MarketNav() {
   const role = session?.role ?? null;
   const roleLabel = role === "PRO" ? "Tasker" : role === "ADMIN" ? "Admin" : role === "CUSTOMER" ? "Cliente" : role;
   const accountHref = role === "PRO" ? "/pro" : "/cliente";
-  const notificationHref = role === "PRO" ? "/pro?tab=notificaciones" : "/cliente?tab=notificaciones";
+  const notificationHref = "/notificaciones";
   const showNotificationBell = role === "PRO" || role === "CUSTOMER";
   const isAdminArea = pathname.startsWith("/admin");
   const primaryLinks = isAdminArea
