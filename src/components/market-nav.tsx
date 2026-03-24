@@ -9,6 +9,7 @@ export function MarketNav() {
   const router = useRouter();
   const pathname = usePathname();
   const [session, setSession] = useState<{ fullName?: string | null; role?: string | null } | null>(null);
+  const [notificationCount, setNotificationCount] = useState(0);
 
   useEffect(() => {
     const loadSession = async () => {
@@ -23,6 +24,28 @@ export function MarketNav() {
     void loadSession();
   }, [pathname]);
 
+  useEffect(() => {
+    const loadNotifications = async () => {
+      if (!session?.role || (session.role !== "CUSTOMER" && session.role !== "PRO")) {
+        setNotificationCount(0);
+        return;
+      }
+
+      try {
+        const response = await fetch("/api/marketplace/notifications");
+        const data = (await response.json()) as { notifications?: Array<{ id: string }> };
+        if (!response.ok) {
+          setNotificationCount(0);
+          return;
+        }
+        setNotificationCount(data.notifications?.length ?? 0);
+      } catch {
+        setNotificationCount(0);
+      }
+    };
+    void loadNotifications();
+  }, [session?.role, pathname]);
+
   const logout = async () => {
     await fetch("/api/auth/logout", { method: "POST" });
     setSession(null);
@@ -33,6 +56,8 @@ export function MarketNav() {
   const role = session?.role ?? null;
   const roleLabel = role === "PRO" ? "Tasker" : role === "ADMIN" ? "Admin" : role === "CUSTOMER" ? "Cliente" : role;
   const accountHref = role === "PRO" ? "/pro" : "/cliente";
+  const notificationHref = role === "PRO" ? "/pro?tab=notificaciones" : "/cliente?tab=notificaciones";
+  const showNotificationBell = role === "PRO" || role === "CUSTOMER";
   const isAdminArea = pathname.startsWith("/admin");
   const primaryLinks = isAdminArea
     ? []
@@ -65,6 +90,23 @@ export function MarketNav() {
           {session?.role ? <span className="auth-badge">{session.fullName ?? "Usuario"} · {roleLabel}</span> : null}
           {session?.role ? (
             <>
+              {showNotificationBell ? (
+                <Link href={notificationHref} className="nav-link auth-btn nav-bell-link" aria-label="Ver notificaciones">
+                  <span className="nav-bell-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none">
+                      <path
+                        d="M12 4a4 4 0 0 0-4 4v1.2c0 .9-.27 1.77-.78 2.5L5.7 13.9c-.54.78.02 1.85.97 1.85h10.66c.95 0 1.51-1.07.97-1.85l-1.52-2.2A4.36 4.36 0 0 1 16 9.2V8a4 4 0 0 0-4-4Z"
+                        stroke="currentColor"
+                        strokeWidth="1.8"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                      <path d="M9.75 18a2.25 2.25 0 0 0 4.5 0" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                    </svg>
+                  </span>
+                  {notificationCount > 0 ? <span className="nav-bell-count">{notificationCount > 99 ? "99+" : notificationCount}</span> : null}
+                </Link>
+              ) : null}
               <Link href={accountHref} className="nav-link auth-btn">
                 Mi cuenta
               </Link>

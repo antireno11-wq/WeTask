@@ -239,6 +239,7 @@ export default function ProPage() {
   const [manualCoveragePoint, setManualCoveragePoint] = useState(false);
   const [serviceRadiusKm, setServiceRadiusKm] = useState(8);
   const [hourlyRateFromClp, setHourlyRateFromClp] = useState(12000);
+  const [activeView, setActiveView] = useState<ProView>("resumen");
   const [serviceCommunes, setServiceCommunes] = useState<string[]>([]);
   const hourlyRateInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -249,7 +250,20 @@ export default function ProPage() {
 
   const [feedback, setFeedback] = useState("");
   const [error, setError] = useState("");
-  const [activeView, setActiveView] = useState<ProView>("resumen");
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const requestedTab = new URLSearchParams(window.location.search).get("tab");
+    if (
+      requestedTab === "perfil" ||
+      requestedTab === "agenda" ||
+      requestedTab === "reservas" ||
+      requestedTab === "resenas" ||
+      requestedTab === "notificaciones" ||
+      requestedTab === "resumen"
+    ) {
+      setActiveView(requestedTab);
+    }
+  }, []);
   const [addressSuggestions, setAddressSuggestions] = useState<string[]>([]);
   const [autocompleteLoading, setAutocompleteLoading] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);

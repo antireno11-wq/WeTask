@@ -177,6 +177,14 @@ export default function ClientePage() {
   const upcomingBookings = sortedBookings.filter((item) => new Date(item.scheduledAt).getTime() >= Date.now());
   const historyBookings = sortedBookings.filter((item) => new Date(item.scheduledAt).getTime() < Date.now());
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const requestedTab = new URLSearchParams(window.location.search).get("tab");
+    if (requestedTab === "perfil" || requestedTab === "pagos" || requestedTab === "reservas" || requestedTab === "notificaciones" || requestedTab === "resumen") {
+      setActiveView(requestedTab);
+    }
+  }, []);
+
   const fetchBookings = async () => {
     const response = await fetch("/api/marketplace/client/bookings");
     const data = (await response.json()) as { bookings?: Booking[]; error?: string; detail?: string };
