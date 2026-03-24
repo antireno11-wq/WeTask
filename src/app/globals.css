@@ -5145,11 +5145,34 @@ textarea {
 }
 
 .client-dashboard-copy {
-  max-width: 560px;
+  width: 100%;
+  max-width: none;
+  display: grid;
+  justify-items: center;
 }
 
 .pro-dashboard-copy {
   max-width: 760px;
+}
+
+.client-dashboard-copy .auth-flow-kicker,
+.client-dashboard-copy h1,
+.client-dashboard-copy > p {
+  width: min(100%, 560px);
+  text-align: center;
+}
+
+.client-dashboard-copy .client-dashboard-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(210px, 1fr));
+  width: min(100%, 860px);
+  max-width: 860px;
+  margin-inline: auto;
+}
+
+.client-dashboard-copy .auth-flow-actions {
+  width: min(100%, 860px);
+  justify-content: center;
 }
 
 .pro-dashboard-copy .client-dashboard-summary {

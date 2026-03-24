@@ -90,6 +90,9 @@ export function MarketNav() {
           {session?.role ? <span className="auth-badge">{session.fullName ?? "Usuario"} · {roleLabel}</span> : null}
           {session?.role ? (
             <>
+              <Link href={accountHref} className="nav-link auth-btn">
+                Mi cuenta
+              </Link>
               {showNotificationBell ? (
                 <Link href={notificationHref} className="nav-link auth-btn nav-bell-link" aria-label="Ver notificaciones">
                   <span className="nav-bell-icon" aria-hidden="true">
@@ -107,9 +110,6 @@ export function MarketNav() {
                   {notificationCount > 0 ? <span className="nav-bell-count">{notificationCount > 99 ? "99+" : notificationCount}</span> : null}
                 </Link>
               ) : null}
-              <Link href={accountHref} className="nav-link auth-btn">
-                Mi cuenta
-              </Link>
               <button type="button" className="nav-link auth-btn" onClick={logout}>
                 Salir
               </button>
