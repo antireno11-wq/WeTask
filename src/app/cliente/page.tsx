@@ -143,6 +143,7 @@ export default function ClientePage() {
   const [paymentMethodError, setPaymentMethodError] = useState("");
   const [cardholderName, setCardholderName] = useState("");
   const [payerEmail, setPayerEmail] = useState("");
+  const [showPaymentSecurityCode, setShowPaymentSecurityCode] = useState(false);
   const [paymentExpiryMonth, setPaymentExpiryMonth] = useState("");
   const [paymentExpiryYear, setPaymentExpiryYear] = useState("");
   const [feedback, setFeedback] = useState("");
@@ -893,11 +894,20 @@ export default function ClientePage() {
                           </select>
                           <input id="client-payment-expiration-year" type="hidden" value={paymentExpiryYear} readOnly />
                         </label>
-                        <label className="payment-small-field">
-                          CVV
+                        <label className="payment-small-field payment-small-field-cvv">
+                          <span className="payment-field-head">
+                            <span>CVV</span>
+                            <button
+                              type="button"
+                              className="payment-inline-toggle"
+                              onClick={() => setShowPaymentSecurityCode((current) => !current)}
+                            >
+                              {showPaymentSecurityCode ? "Ocultar CVV" : "Ver CVV"}
+                            </button>
+                          </span>
                           <input
                             id="client-payment-security-code"
-                            type="text"
+                            type={showPaymentSecurityCode ? "text" : "password"}
                             inputMode="numeric"
                             autoComplete="cc-csc"
                             placeholder="123"

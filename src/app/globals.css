@@ -5523,6 +5523,32 @@ textarea {
   min-width: 0;
 }
 
+.payment-small-field-cvv {
+  gap: 8px;
+}
+
+.payment-field-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.payment-inline-toggle {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  color: #1656b0;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.payment-inline-toggle:hover {
+  color: #0f458b;
+}
+
 .payment-small-field-wide {
   grid-column: span 2;
 }
