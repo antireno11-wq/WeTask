@@ -370,7 +370,7 @@
 .musicale-contact-cta {
   display: flex;
   justify-content: space-between;
-  align-items: end;
+  align-items: flex-end;
   gap: 24px;
 }
 
@@ -2024,7 +2024,7 @@ textarea {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr)) auto;
   gap: 10px;
-  align-items: end;
+  align-items: flex-end;
 }
 
 .query-single {
@@ -2052,7 +2052,7 @@ textarea {
   display: grid;
   grid-template-columns: minmax(180px, 0.42fr) minmax(170px, 0.34fr) minmax(0, 1fr) auto;
   gap: 10px;
-  align-items: end;
+  align-items: flex-end;
 }
 
 .service-search-row .cta {
@@ -2359,7 +2359,7 @@ textarea {
   display: grid;
   grid-template-columns: 1.2fr repeat(3, auto);
   gap: 8px;
-  align-items: end;
+  align-items: flex-end;
 }
 
 .action-grid {
@@ -2367,7 +2367,7 @@ textarea {
   display: grid;
   grid-template-columns: 1fr 1fr auto;
   gap: 10px;
-  align-items: end;
+  align-items: flex-end;
 }
 
 .chat-box {
@@ -5404,7 +5404,7 @@ textarea {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 0.9rem;
-  align-items: end;
+  align-items: flex-end;
 }
 
 .admin-team-row-actions {
@@ -6885,7 +6885,7 @@ textarea {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 10px;
-  align-items: end;
+  align-items: flex-end;
 }
 
 .onboarding-panel {
