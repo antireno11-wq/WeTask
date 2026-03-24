@@ -15,7 +15,14 @@ const messageSchema = z.object({
 });
 
 async function canAccessBooking(identityUserId: string | null, role: UserRole | null, bookingId: string) {
-  const booking = await prisma.booking.findUnique({ where: { id: bookingId } });
+  const booking = await prisma.booking.findUnique({
+    where: { id: bookingId },
+    include: {
+      customer: { select: { id: true, fullName: true } },
+      pro: { select: { id: true, fullName: true } },
+      service: { select: { name: true } }
+    }
+  });
   if (!booking) return { ok: false, booking: null };
   if (role === UserRole.ADMIN) return { ok: true, booking };
   if (role === UserRole.CUSTOMER && identityUserId === booking.customerId) return { ok: true, booking };
@@ -78,6 +85,24 @@ export async function POST(req: NextRequest, context: { params: { bookingId: str
       },
       include: { sender: { select: { id: true, fullName: true, role: true } } }
     });
+
+    const recipientId =
+      identity.userId === access.booking.customerId
+        ? access.booking.proId
+        : identity.userId === access.booking.proId
+        ? access.booking.customerId
+        : null;
+
+    if (recipientId) {
+      await prisma.notification.create({
+        data: {
+          userId: recipientId,
+          bookingId: context.params.bookingId,
+          title: "Nuevo mensaje en tu reserva",
+          body: `${message.sender.fullName} te escribió sobre ${access.booking.service?.name ?? "tu servicio"}.`
+        }
+      });
+    }
 
     return NextResponse.json({ message }, { status: 201 });
   } catch (error) {

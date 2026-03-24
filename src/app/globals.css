@@ -6144,6 +6144,129 @@ textarea {
   max-height: 320px;
 }
 
+.booking-chat-shell {
+  display: grid;
+  gap: 14px;
+}
+
+.booking-chat-thread {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  overflow-y: auto;
+}
+
+.booking-chat-empty {
+  margin: 0;
+}
+
+.booking-chat-message {
+  display: flex;
+}
+
+.booking-chat-message.mine {
+  justify-content: flex-end;
+}
+
+.booking-chat-message.theirs {
+  justify-content: flex-start;
+}
+
+.booking-chat-bubble {
+  max-width: min(100%, 560px);
+  display: grid;
+  gap: 8px;
+  padding: 14px 16px;
+  border-radius: 18px;
+  border: 1px solid #d6e7f5;
+  background: #f7fbff;
+  box-shadow: 0 16px 30px -28px rgba(13, 37, 63, 0.35);
+}
+
+.booking-chat-message.mine .booking-chat-bubble {
+  border-color: rgba(23, 59, 95, 0.18);
+  background: linear-gradient(180deg, rgba(23, 59, 95, 0.12) 0%, rgba(230, 242, 255, 0.95) 100%);
+}
+
+.booking-chat-message.theirs .booking-chat-bubble {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(243, 248, 255, 0.98) 100%);
+}
+
+.booking-chat-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 0.82rem;
+  color: #5b748e;
+}
+
+.booking-chat-meta strong {
+  color: #173b5f;
+}
+
+.booking-chat-bubble p {
+  margin: 0;
+  color: #173b5f;
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
+.booking-chat-attachment {
+  color: #173b5f;
+  font-weight: 700;
+  text-decoration: underline;
+}
+
+.booking-chat-composer {
+  display: grid;
+  gap: 12px;
+}
+
+.booking-chat-input {
+  display: grid;
+  gap: 8px;
+}
+
+.booking-chat-input span {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #173b5f;
+}
+
+.booking-chat-input textarea {
+  min-height: 112px;
+  resize: vertical;
+  border-radius: 16px;
+  border: 1px solid #cfe2f3;
+  background: #fbfdff;
+  padding: 12px 14px;
+  font: inherit;
+}
+
+.booking-chat-actions {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.booking-chat-helper {
+  margin: 0;
+  font-size: 0.88rem;
+  color: #5b748e;
+  line-height: 1.5;
+}
+
+.tasker-booking-actions-card {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+  border-radius: 20px;
+  border: 1px solid #d6e7f5;
+  background: linear-gradient(180deg, #fbfdff 0%, #f2f8ff 100%);
+}
+
 .client-booking-actions-grid {
   grid-template-columns: 1fr 1fr auto;
 }
@@ -7699,6 +7822,11 @@ textarea {
 
   .dashboard-switcher {
     gap: 8px;
+  }
+
+  .booking-chat-actions {
+    flex-direction: column;
+    align-items: stretch;
   }
 
   .dashboard-switch {

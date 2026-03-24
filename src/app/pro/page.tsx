@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, MouseEvent, useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { MarketNav } from "@/components/market-nav";
 import { ACTIVE_MVP_COMMUNES, inferCommuneFromAddress, normalizeCommune, normalizeCommuneList } from "@/lib/communes";
 import { geocodeAddress } from "@/lib/geo";
@@ -1523,6 +1524,9 @@ export default function ProPage() {
                       <button className="cta ghost small" type="button" onClick={() => completeBooking(booking.id)}>
                         Finalizar
                       </button>
+                      <Link className="cta ghost small" href={`/pro/reservas/${booking.id}`}>
+                        Ver detalle
+                      </Link>
                     </div>
                   </article>
                 ))
@@ -1608,6 +1612,9 @@ export default function ProPage() {
                           <button className="cta small" type="button" onClick={() => requestPayout(booking.id)} disabled={booking.status === "DISPUTE"}>
                             {booking.status === "DISPUTE" ? "Payout bloqueado" : "Solicitar payout"}
                           </button>
+                          <Link className="cta ghost small" href={`/pro/reservas/${booking.id}`}>
+                            Ver detalle
+                          </Link>
                         </div>
                       </div>
                     <div className="client-booking-note">

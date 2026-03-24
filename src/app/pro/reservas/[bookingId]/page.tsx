@@ -11,7 +11,7 @@ import {
   PRE_CONFIRMATION_CHAT_BLOCK_MESSAGE
 } from "@/lib/chat-safety";
 
-type BookingDetail = {
+type TaskerBookingDetail = {
   id: string;
   status: string;
   paymentStatus: string;
@@ -19,9 +19,6 @@ type BookingDetail = {
   hours: number;
   slotMinutes: number;
   notes: string | null;
-  subtotalClp: number;
-  extrasTotalClp: number;
-  platformFeeClp: number;
   totalPriceClp: number;
   service: { name: string };
   customer: { id: string; fullName: string; email: string };
@@ -30,13 +27,13 @@ type BookingDetail = {
   addressLine1: string;
   comuna: string;
   city: string | null;
-  postalCode: string | null;
-  review: { id: string; rating: number; comment: string | null } | null;
-  extras: Array<{ id: string; label: string; priceClp: number }>;
+  payout: { status: string } | null;
   disputes?: Array<{ id: string; status: string; category: string | null; createdAt: string }>;
 };
 
-type BookingDetailView = "resumen" | "chat" | "acciones";
+type TaskerBookingView = "resumen" | "chat" | "acciones";
+
+const TASKER_STATUS_OPTIONS = ["ACCEPTED", "IN_PROGRESS", "COMPLETED", "CANCELLED"];
 
 const STATUS_LABELS: Record<string, string> = {
   PENDING: "Pendiente",
@@ -57,7 +54,8 @@ const PAYMENT_LABELS: Record<string, string> = {
   PAID: "Pagado",
   FAILED: "Fallido",
   REFUNDED: "Reembolsado",
-  PARTIAL_REFUNDED: "Reembolso parcial"
+  PARTIAL_REFUNDED: "Reembolso parcial",
+  AUTHORIZED: "Autorizado"
 };
 
 function clp(value: number) {
@@ -78,18 +76,20 @@ function formatTime(value: Date) {
   return value.toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" });
 }
 
-export default function ClienteBookingActionsPage() {
+export default function ProBookingDetailPage() {
   const params = useParams<{ bookingId: string }>();
   const bookingId = params?.bookingId ?? "";
 
-  const [customerId, setCustomerId] = useState("");
-  const [booking, setBooking] = useState<BookingDetail | null>(null);
+  const [taskerId, setTaskerId] = useState("");
+  const [booking, setBooking] = useState<TaskerBookingDetail | null>(null);
   const [messages, setMessages] = useState<BookingChatMessage[]>([]);
   const [chatBody, setChatBody] = useState("");
   const [feedback, setFeedback] = useState("");
   const [error, setError] = useState("");
-  const [isSendingMessage, setIsSendingMessage] = useState(false);
-  const [activeView, setActiveView] = useState<BookingDetailView>("resumen");
+  const [sending, setSending] = useState(false);
+  const [savingStatus, setSavingStatus] = useState(false);
+  const [activeView, setActiveView] = useState<TaskerBookingView>("resumen");
+  const [statusValue, setStatusValue] = useState("ACCEPTED");
 
   const bookingEnd = useMemo(() => {
     if (!booking) return null;
@@ -104,7 +104,7 @@ export default function ClienteBookingActionsPage() {
         if (!sessionRes.ok || !sessionData.session?.userId) {
           throw new Error(sessionData.detail || sessionData.error || "No se pudo cargar sesión");
         }
-        setCustomerId(sessionData.session.userId);
+        setTaskerId(sessionData.session.userId);
 
         if (bookingId) {
           const [bookingResponse, messagesResponse] = await Promise.all([
@@ -112,7 +112,7 @@ export default function ClienteBookingActionsPage() {
             fetch(`/api/marketplace/bookings/${bookingId}/messages`)
           ]);
 
-          const bookingData = (await bookingResponse.json()) as { booking?: BookingDetail; error?: string; detail?: string };
+          const bookingData = (await bookingResponse.json()) as { booking?: TaskerBookingDetail; error?: string; detail?: string };
           const messagesData = (await messagesResponse.json()) as { messages?: BookingChatMessage[]; error?: string; detail?: string };
 
           if (!bookingResponse.ok || !bookingData.booking) {
@@ -123,6 +123,7 @@ export default function ClienteBookingActionsPage() {
           }
 
           setBooking(bookingData.booking);
+          setStatusValue(bookingData.booking.status);
           setMessages(messagesData.messages);
         }
       } catch (e) {
@@ -139,9 +140,7 @@ export default function ClienteBookingActionsPage() {
       try {
         const response = await fetch(`/api/marketplace/bookings/${bookingId}/messages`, { cache: "no-store" });
         const data = (await response.json()) as { messages?: BookingChatMessage[] };
-        if (response.ok && data.messages) {
-          setMessages(data.messages);
-        }
+        if (response.ok && data.messages) setMessages(data.messages);
       } catch {
         // Silent polling refresh
       }
@@ -150,7 +149,7 @@ export default function ClienteBookingActionsPage() {
     return () => window.clearInterval(interval);
   }, [activeView, bookingId]);
 
-  const sendMessage = async (event: FormEvent) => {
+  const sendMessage = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!bookingId || !chatBody.trim()) return;
     setError("");
@@ -162,7 +161,7 @@ export default function ClienteBookingActionsPage() {
     }
 
     try {
-      setIsSendingMessage(true);
+      setSending(true);
       const response = await fetch(`/api/marketplace/bookings/${bookingId}/messages`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -170,31 +169,57 @@ export default function ClienteBookingActionsPage() {
       });
       const data = (await response.json()) as { message?: BookingChatMessage; error?: string; detail?: string };
       if (!response.ok || !data.message) throw new Error(data.detail || data.error || "No se pudo enviar mensaje");
-      const nextMessage = data.message;
-      setMessages((prev) => [...prev, nextMessage]);
+      setMessages((prev) => [...prev, data.message!]);
       setChatBody("");
-      setFeedback("Mensaje enviado.");
+      setFeedback("Mensaje enviado al cliente.");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error inesperado");
     } finally {
-      setIsSendingMessage(false);
+      setSending(false);
     }
   };
 
-  const confirmService = async () => {
-    if (!bookingId || !customerId) return;
+  const updateStatus = async () => {
+    if (!bookingId) return;
     setError("");
     setFeedback("");
     try {
-      const response = await fetch(`/api/marketplace/bookings/${bookingId}/customer-confirm`, { method: "POST" });
-      const data = (await response.json()) as { booking?: BookingDetail; ok?: boolean; error?: string; detail?: string };
-      if (!response.ok || (!data.booking && !data.ok)) throw new Error(data.detail || data.error || "No se pudo confirmar el servicio");
-      if (data.booking) {
-        setBooking(data.booking);
-      }
-      setFeedback("Servicio confirmado. El pago quedó programado para el próximo ciclo automático.");
+      setSavingStatus(true);
+      const response = await fetch(`/api/marketplace/bookings/${bookingId}/status`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: statusValue })
+      });
+      const data = (await response.json()) as { booking?: { status: string }; error?: string; detail?: string };
+      if (!response.ok || !data.booking) throw new Error(data.detail || data.error || "No se pudo actualizar estado");
+      setBooking((current) => (current ? { ...current, status: data.booking!.status } : current));
+      setStatusValue(data.booking.status);
+      setFeedback(`Estado actualizado a ${STATUS_LABELS[data.booking.status] ?? data.booking.status}.`);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error inesperado");
+    } finally {
+      setSavingStatus(false);
+    }
+  };
+
+  const completeBooking = async () => {
+    if (!bookingId) return;
+    setError("");
+    setFeedback("");
+    try {
+      setSavingStatus(true);
+      const response = await fetch(`/api/marketplace/bookings/${bookingId}/complete`, {
+        method: "POST"
+      });
+      const data = (await response.json()) as { booking?: { status: string }; error?: string; detail?: string };
+      if (!response.ok || !data.booking) throw new Error(data.detail || data.error || "No se pudo finalizar reserva");
+      setBooking((current) => (current ? { ...current, status: data.booking!.status } : current));
+      setStatusValue(data.booking.status);
+      setFeedback("Servicio marcado como realizado.");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Error inesperado");
+    } finally {
+      setSavingStatus(false);
     }
   };
 
@@ -207,9 +232,9 @@ export default function ClienteBookingActionsPage() {
 
         <section className="auth-flow-shell auth-flow-shell-wide client-dashboard-hero">
           <div className="auth-flow-copy client-dashboard-copy">
-            <p className="auth-flow-kicker">Detalle de reserva</p>
+            <p className="auth-flow-kicker">Detalle de reserva tasker</p>
             <h1>{booking?.service.name ?? "Tu servicio en WeTask"}</h1>
-            <p>Revisa el costo, la dirección, el horario acordado con el profesional y todas las acciones disponibles desde un solo lugar.</p>
+            <p>Revisa los datos del servicio, conversa con el cliente y actualiza el estado de la reserva desde un solo lugar.</p>
           </div>
 
           <section className="auth-flow-panel auth-flow-panel-wide client-dashboard-profile-panel">
@@ -231,7 +256,7 @@ export default function ClienteBookingActionsPage() {
                 <article className="module-card client-dashboard-metric">
                   <h3>Pago</h3>
                   <p>{PAYMENT_LABELS[booking.paymentStatus] ?? booking.paymentStatus}</p>
-                  <small>Dinero protegido hasta confirmar el servicio o hasta que venza el plazo sin reclamo.</small>
+                  <small>{booking.payout?.status ? `Payout: ${booking.payout.status}` : "Pago retenido hasta cierre o confirmación."}</small>
                 </article>
               </div>
             ) : (
@@ -305,48 +330,44 @@ export default function ClienteBookingActionsPage() {
                     </article>
 
                     <article className="booking-card client-dashboard-card client-booking-summary-card">
-                      <h3>Tasker asignado</h3>
+                      <h3>Cliente</h3>
                       <p>
-                        <strong>Nombre:</strong> {booking.pro?.fullName ?? "Pendiente de asignación"}
+                        <strong>Nombre:</strong> {booking.customer.fullName}
                       </p>
                       <p>
-                        <strong>Email:</strong> {booking.pro?.email ?? "Aún no disponible"}
+                        <strong>Email:</strong> {booking.customer.email}
                       </p>
                       <p>
-                        <strong>Estado de la visita:</strong> {STATUS_LABELS[booking.status] ?? booking.status}
+                        <strong>Estado del servicio:</strong> {STATUS_LABELS[booking.status] ?? booking.status}
                       </p>
                     </article>
 
                     <article className="booking-card client-dashboard-card client-booking-summary-card">
-                      <h3>Desglose de costo</h3>
+                      <h3>Pago y cierre</h3>
                       <p>
-                        <strong>Subtotal:</strong> {clp(booking.subtotalClp)}
+                        <strong>Total reservado:</strong> {clp(booking.totalPriceClp)}
                       </p>
                       <p>
-                        <strong>Extras:</strong> {clp(booking.extrasTotalClp)}
+                        <strong>Pago:</strong> {PAYMENT_LABELS[booking.paymentStatus] ?? booking.paymentStatus}
                       </p>
                       <p>
-                        <strong>Comisión plataforma:</strong> {clp(booking.platformFeeClp)}
-                      </p>
-                      <p className="client-booking-total-line">
-                        <strong>Total pagado:</strong> {clp(booking.totalPriceClp)}
+                        <strong>Payout:</strong> {booking.payout?.status ?? "Aún no solicitado"}
                       </p>
                     </article>
                   </div>
 
                   {booking.notes ? (
                     <div className="client-booking-note">
-                      <strong>Indicaciones del servicio</strong>
+                      <strong>Indicaciones del cliente</strong>
                       <p>{booking.notes}</p>
                     </div>
                   ) : null}
 
                   <div className="client-booking-note">
-                    <strong>Cómo funciona el pago protegido</strong>
+                    <strong>Cómo funciona este servicio</strong>
                     <p>
-                      Pagaste al reservar y WeTask mantiene ese dinero retenido. Cuando el servicio termine, podrás confirmar si todo salió
-                      bien o reportar un problema. Si no reclamas dentro del plazo, el pago entra automáticamente al próximo ciclo de pago
-                      del profesional.
+                      Puedes usar el chat para resolver dudas del servicio y mantener todo dentro de WeTask. Cuando termines la visita,
+                      actualiza el estado y luego marca el servicio como realizado para que siga el flujo de confirmación y pago.
                     </p>
                   </div>
                 </section>
@@ -355,8 +376,8 @@ export default function ClienteBookingActionsPage() {
               {activeView === "chat" ? (
                 <section className="auth-flow-panel client-dashboard-section">
                   <div className="panel-head client-dashboard-panel-head">
-                    <h2>Chat y seguimiento</h2>
-                    <p>Habla con tu tasker o deja constancia si necesitas soporte.</p>
+                    <h2>Chat con el cliente</h2>
+                    <p>Deja todo por escrito dentro de la reserva para que el seguimiento sea claro.</p>
                   </div>
 
                   {booking && !canShareContactDetails(booking.status) ? (
@@ -368,11 +389,11 @@ export default function ClienteBookingActionsPage() {
 
                   <BookingChatPanel
                     messages={messages}
-                    currentUserId={customerId}
+                    currentUserId={taskerId}
                     chatBody={chatBody}
-                    sending={isSendingMessage}
-                    inputPlaceholder="Escribe al tasker"
-                    helperText="Te avisaremos en notificaciones si el tasker responde en esta reserva."
+                    sending={sending}
+                    inputPlaceholder="Escribe al cliente"
+                    helperText="El cliente recibirá una notificación cuando le escribas desde esta reserva."
                     onChatBodyChange={setChatBody}
                     onSubmit={sendMessage}
                   />
@@ -383,35 +404,54 @@ export default function ClienteBookingActionsPage() {
                 <section className="auth-flow-panel client-dashboard-section">
                   <div className="panel-head client-dashboard-panel-head">
                     <h2>Acciones del servicio</h2>
-                    <p>Cuando termine la visita, confirma que todo salió bien o reporta el problema desde aquí.</p>
+                    <p>Actualiza el estado del servicio y cierra la visita cuando corresponda.</p>
                   </div>
 
-                  <div className="booking-actions">
-                    <button className="cta" type="button" onClick={confirmService}>
-                      Confirmar servicio
-                    </button>
-                    <Link className="cta ghost" href={`/cliente/reservas/${bookingId}/problema`}>
-                      Reportar problema
-                    </Link>
-                  </div>
+                  <div className="tasker-booking-actions-card">
+                    <label>
+                      Estado actual
+                      <select value={statusValue} onChange={(event) => setStatusValue(event.target.value)}>
+                        {TASKER_STATUS_OPTIONS.map((status) => (
+                          <option key={status} value={status}>
+                            {STATUS_LABELS[status] ?? status}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
 
-                  <div className="client-booking-note">
-                    <strong>Plazo de revisión</strong>
-                    <p>
-                      Cuando el tasker marca el trabajo como realizado, tu pago sigue retenido. Puedes confirmar el servicio o reportar un
-                      problema. Si no reclamas dentro del plazo definido por WeTask, el pago entra al siguiente ciclo automático.
-                    </p>
+                    <div className="booking-actions">
+                      <button className="cta" type="button" onClick={updateStatus} disabled={savingStatus}>
+                        Guardar estado
+                      </button>
+                      <button className="cta ghost" type="button" onClick={completeBooking} disabled={savingStatus}>
+                        Marcar servicio realizado
+                      </button>
+                    </div>
                   </div>
 
                   {booking.disputes && booking.disputes.length > 0 ? (
                     <div className="client-booking-note">
-                      <strong>Reporte abierto</strong>
+                      <strong>Hay un problema abierto en esta reserva</strong>
                       <p>
-                        Ya existe al menos un reporte para este servicio. Puedes revisar el detalle o enviar información adicional desde
-                        la pantalla de problema.
+                        El cliente ya abrió un reporte en WeTask. Revisa el chat y espera la resolución antes de seguir con payout o
+                        cierre manual.
                       </p>
                     </div>
                   ) : null}
+
+                  <div className="client-booking-note">
+                    <strong>Siguiente paso sugerido</strong>
+                    <p>
+                      Usa <em>Guardar estado</em> cuando estés coordinando o realizando la visita. Usa <em>Marcar servicio realizado</em>
+                      cuando termines para que el cliente pueda confirmar o reportar un problema.
+                    </p>
+                  </div>
+
+                  <div className="cta-row">
+                    <Link className="cta ghost small" href="/pro?tab=reservas">
+                      Volver a reservas
+                    </Link>
+                  </div>
                 </section>
               ) : null}
             </>
