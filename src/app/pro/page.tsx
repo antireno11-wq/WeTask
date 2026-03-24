@@ -539,17 +539,6 @@ export default function ProPage() {
     void bootstrap();
   }, []);
 
-  const reloadData = async () => {
-    setFeedback("");
-    setError("");
-    try {
-      await loadAll(proId);
-      setFeedback("Panel actualizado.");
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Error inesperado");
-    }
-  };
-
   const openHourlyRateEditor = () => {
     setIsEditingProfile(true);
     window.setTimeout(() => {
@@ -842,8 +831,8 @@ export default function ProPage() {
         <MarketNav />
 
         <section className="auth-flow-shell auth-flow-shell-wide client-dashboard-hero">
-          <div className="auth-flow-copy client-dashboard-copy">
-            <p className="auth-flow-kicker">Panel profesional</p>
+          <div className="auth-flow-copy client-dashboard-copy pro-dashboard-copy">
+            <p className="auth-flow-kicker">Panel tasker</p>
             <h1>Gestiona tu operación diaria con el look nuevo de WeTask.</h1>
             <p>Controla tu perfil, cobertura, agenda, reservas y pagos desde un panel más claro y más fácil de usar. Aquí verás cuándo una reserva ya está pagada, cuándo sigue retenida y cuándo entra al próximo payout.</p>
 
@@ -862,11 +851,6 @@ export default function ProPage() {
               </div>
             </div>
 
-            <div className="auth-flow-actions">
-              <button className="cta ghost" type="button" onClick={() => void reloadData()} disabled={!proId}>
-                Actualizar panel
-              </button>
-            </div>
           </div>
 
           <section className="auth-flow-panel auth-flow-panel-wide client-dashboard-profile-panel">

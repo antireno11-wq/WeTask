@@ -5148,6 +5148,24 @@ textarea {
   max-width: 560px;
 }
 
+.pro-dashboard-copy {
+  max-width: 760px;
+}
+
+.pro-dashboard-copy .client-dashboard-summary {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  width: min(100%, 760px);
+  max-width: none;
+  margin-inline: auto;
+}
+
+.pro-dashboard-copy .auth-flow-meta-card {
+  flex: 1 1 210px;
+  max-width: 240px;
+}
+
 .client-dashboard-summary {
   grid-template-columns: repeat(3, minmax(210px, 1fr));
   gap: 14px;
@@ -7825,6 +7843,15 @@ textarea {
   .client-dashboard-summary {
     max-width: none;
     gap: 12px;
+  }
+
+  .pro-dashboard-copy .client-dashboard-summary {
+    display: grid;
+    width: 100%;
+  }
+
+  .pro-dashboard-copy .auth-flow-meta-card {
+    max-width: none;
   }
 
   .auth-flow-meta-card {
