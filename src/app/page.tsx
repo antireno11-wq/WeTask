@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { AuthHeroNav } from "@/components/auth-hero-nav";
+import { HomeServiceLink } from "@/components/home-service-link";
 import { CORE_SERVICES } from "@/lib/core-services";
 
 const howItWorks = [
@@ -59,16 +60,17 @@ export default function HomePage() {
               </div>
             </div>
 
-            <div className="home-hero-categories mvp-category-top-row" aria-label="Categorías principales">
+              <div className="home-hero-categories mvp-category-top-row" aria-label="Categorías principales">
               {CORE_SERVICES.map((item) => (
-                <Link
+                <HomeServiceLink
                   key={item.slug}
-                  href={`/services/${item.categorySlug}?source=home_category_${item.slug}`}
+                  categorySlug={item.categorySlug}
+                  source={`home_category_${item.slug}`}
                   className="mvp-category-top-pill"
                 >
                   <span aria-hidden>{item.icon}</span>
                   {item.label}
-                </Link>
+                </HomeServiceLink>
               ))}
             </div>
           </section>
@@ -99,7 +101,12 @@ export default function HomePage() {
 
         <div className="mvp-service-gallery">
           {CORE_SERVICES.map((service) => (
-            <Link key={service.slug} href={`/services/${service.categorySlug}`} className="mvp-service-media-card">
+            <HomeServiceLink
+              key={service.slug}
+              categorySlug={service.categorySlug}
+              source={`home_gallery_${service.slug}`}
+              className="mvp-service-media-card"
+            >
               <div className="mvp-service-media" style={{ backgroundImage: `url("${service.image}")` }} aria-hidden />
               <div className="mvp-service-copy">
                 <strong>
@@ -107,7 +114,7 @@ export default function HomePage() {
                 </strong>
                 <span>{service.taskerDescription}</span>
               </div>
-            </Link>
+            </HomeServiceLink>
           ))}
         </div>
       </section>
