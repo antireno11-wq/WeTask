@@ -5716,18 +5716,14 @@ textarea {
 }
 
 .booking-flow-page .auth-flow-backdrop {
-  background:
-    linear-gradient(
-      180deg,
-      rgba(11, 32, 67, 0.78) 0%,
-      rgba(22, 86, 176, 0.34) 36%,
-      rgba(52, 143, 171, 0.2) 64%,
-      rgba(234, 196, 159, 0.18) 84%,
-      rgba(255, 173, 120, 0.22) 100%
-    ),
-    url("/services/limpieza-opt.jpg");
-  background-position: center 58%;
-  background-size: cover;
+  background: linear-gradient(
+    180deg,
+    #0d2446 0%,
+    #1656b0 28%,
+    #1c8fc8 54%,
+    #63c8bf 78%,
+    #d7f2df 100%
+  );
 }
 
 .booking-flow-hero {
@@ -6394,27 +6390,23 @@ textarea {
 .auth-flow-backdrop {
   position: absolute;
   inset: 0;
-  background:
-    linear-gradient(
-      180deg,
-      rgba(11, 32, 67, 0.68) 0%,
-      rgba(18, 86, 176, 0.3) 34%,
-      rgba(56, 149, 179, 0.18) 62%,
-      rgba(233, 194, 154, 0.16) 84%,
-      rgba(255, 174, 121, 0.2) 100%
-    ),
-    url("/hero-webel-reference.webp");
-  background-position: center 60%;
-  background-size: cover;
-  filter: blur(16px) saturate(1.02);
-  transform: scale(1.08);
+  background: linear-gradient(
+    180deg,
+    #0d2446 0%,
+    #154f9f 26%,
+    #1d7db8 48%,
+    #4fb3c0 72%,
+    #d8f1df 100%
+  );
+  filter: blur(8px) saturate(1.01);
+  transform: scale(1.04);
 }
 
 .auth-flow-backdrop::after {
   content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.04) 0%, rgba(13, 36, 70, 0.06) 100%);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.03) 0%, rgba(13, 36, 70, 0.04) 100%);
 }
 
 .auth-flow-shell {
