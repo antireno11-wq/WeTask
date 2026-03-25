@@ -346,12 +346,20 @@ export async function PATCH(req: NextRequest) {
           return NextResponse.json({ error: "Ese correo ya tiene acceso administrador." }, { status: 409 });
         }
 
-        await prisma.userRoleAssignment.create({
-          data: {
-            userId: existing.id,
-            roleId: roleAdmin.id
-          }
-        });
+        await prisma.$transaction([
+          prisma.userRoleAssignment.create({
+            data: {
+              userId: existing.id,
+              roleId: roleAdmin.id
+            }
+          }),
+          prisma.user.update({
+            where: { id: existing.id },
+            data: {
+              emailVerifiedAt: new Date()
+            }
+          })
+        ]);
 
         return NextResponse.json(
           {

@@ -54,6 +54,7 @@ export async function POST(req: NextRequest) {
 
     const requestedRole = body.role ?? user.role;
     const canLoginAsRequestedRole = hasAssignedRole(user, requestedRole);
+    const canBypassEmailVerification = canLoginAsRequestedRole && requestedRole === UserRole.ADMIN;
 
     if (body.role && !canLoginAsRequestedRole) {
       return NextResponse.json({ error: "El rol no coincide con el usuario" }, { status: 400 });
@@ -70,7 +71,7 @@ export async function POST(req: NextRequest) {
         }
       }
 
-      if (!user.emailVerifiedAt) {
+      if (!user.emailVerifiedAt && !canBypassEmailVerification) {
         return NextResponse.json({ error: "Debes verificar tu correo antes de ingresar" }, { status: 403 });
       }
     }
