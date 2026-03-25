@@ -5147,18 +5147,13 @@ textarea {
 }
 
 .client-home-hero .client-dashboard-copy {
-  max-width: 1120px;
+  max-width: 880px;
 }
 
 .client-home-hero .client-dashboard-copy .auth-flow-kicker,
 .client-home-hero .client-dashboard-copy h1,
 .client-home-hero .client-dashboard-copy > p {
-  width: min(100%, 780px);
-}
-
-.client-home-hero .client-dashboard-copy .client-dashboard-summary {
-  width: min(100%, 1120px);
-  max-width: 1120px;
+  width: min(100%, 720px);
 }
 
 .client-home-hero .client-dashboard-profile-panel {
@@ -5194,6 +5189,21 @@ textarea {
 
 .client-dashboard-copy .auth-flow-actions {
   width: min(100%, 860px);
+  justify-content: center;
+}
+
+.client-dashboard-top-actions {
+  display: grid;
+  gap: 16px;
+  justify-items: center;
+  margin-bottom: 18px;
+}
+
+.client-dashboard-top-actions .client-dashboard-summary {
+  width: min(100%, 860px);
+}
+
+.client-dashboard-top-actions .auth-flow-actions {
   justify-content: center;
 }
 

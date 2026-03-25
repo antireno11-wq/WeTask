@@ -642,27 +642,6 @@ export default function ClientePage() {
             <p className="auth-flow-kicker">Panel cliente</p>
             <h1>Gestiona tus reservas y tu cuenta en un solo lugar.</h1>
             <p>Revisa tus próximas reservas, tu historial, tus medios de pago y las notificaciones importantes desde un panel simple y claro.</p>
-
-            <div className="auth-flow-copy-list client-dashboard-summary">
-              <div className="auth-flow-meta-card">
-                <strong>Próximas reservas</strong>
-                <span>{upcomingBookings.length} servicio(s) programado(s).</span>
-              </div>
-              <div className="auth-flow-meta-card">
-                <strong>Historial</strong>
-                <span>{historyBookings.length} servicio(s) completados o pasados.</span>
-              </div>
-              <div className="auth-flow-meta-card">
-                <strong>Notificaciones</strong>
-                <span>{notifications.length} aviso(s) disponible(s) para revisar.</span>
-              </div>
-            </div>
-
-            <div className="auth-flow-actions">
-              <Link href={servicesHref} className="cta">
-                Buscar servicios
-              </Link>
-            </div>
           </div>
 
           <section className="auth-flow-panel auth-flow-panel-wide client-dashboard-profile-panel">
@@ -691,6 +670,29 @@ export default function ClientePage() {
         <div className="page client-dashboard-sections">
           {feedback ? <p className="feedback ok">{feedback}</p> : null}
           {error ? <p className="feedback error">{error}</p> : null}
+
+          <section className="client-dashboard-top-actions">
+            <div className="auth-flow-copy-list client-dashboard-summary">
+              <div className="auth-flow-meta-card">
+                <strong>Próximas reservas</strong>
+                <span>{upcomingBookings.length} servicio(s) programado(s).</span>
+              </div>
+              <div className="auth-flow-meta-card">
+                <strong>Historial</strong>
+                <span>{historyBookings.length} servicio(s) completados o pasados.</span>
+              </div>
+              <div className="auth-flow-meta-card">
+                <strong>Notificaciones</strong>
+                <span>{notifications.length} aviso(s) disponible(s) para revisar.</span>
+              </div>
+            </div>
+
+            <div className="auth-flow-actions">
+              <Link href={servicesHref} className="cta">
+                Buscar servicios
+              </Link>
+            </div>
+          </section>
 
           <div className="dashboard-switcher">
             {[
