@@ -359,6 +359,33 @@ const cleaningAvailabilityBlockSchema = z
     message: "El bloque horario debe tener hora de término mayor que inicio"
   });
 
+function hasOverlappingAvailabilityBlocks(
+  blocks: Array<{
+    day: string;
+    start: string;
+    end: string;
+  }>
+) {
+  const grouped = new Map<string, Array<{ start: string; end: string }>>();
+
+  for (const block of blocks) {
+    const dayBlocks = grouped.get(block.day) ?? [];
+    dayBlocks.push({ start: block.start, end: block.end });
+    grouped.set(block.day, dayBlocks);
+  }
+
+  for (const [, dayBlocks] of grouped) {
+    const sorted = [...dayBlocks].sort((a, b) => a.start.localeCompare(b.start));
+    for (let index = 1; index < sorted.length; index += 1) {
+      if (sorted[index].start < sorted[index - 1].end) {
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
+
 export const cleaningOnboardingStartSchema = z.object({
   fullName: z.string().min(3).max(120),
   phone: chileanMobilePhoneSchema,
@@ -577,10 +604,20 @@ export const taskerOnboardingStep7Schema = z.object({
   bringsOwnTools: z.boolean().optional().nullable()
 });
 
-export const taskerOnboardingStep8Schema = z.object({
-  availabilityMode: z.enum(["FIJA", "VARIABLE"]).default("FIJA"),
-  availabilityBlocks: z.array(cleaningAvailabilityBlockSchema).min(1).max(21)
-});
+export const taskerOnboardingStep8Schema = z
+  .object({
+    availabilityMode: z.enum(["FIJA", "VARIABLE"]).default("FIJA"),
+    availabilityBlocks: z.array(cleaningAvailabilityBlockSchema).min(1).max(21)
+  })
+  .superRefine((value, ctx) => {
+    if (hasOverlappingAvailabilityBlocks(value.availabilityBlocks)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "No puedes cruzar dos bloques horarios en el mismo día.",
+        path: ["availabilityBlocks"]
+      });
+    }
+  });
 
 const taskerServiceRateSchema = z.object({
   serviceSlug: z.string().min(1),

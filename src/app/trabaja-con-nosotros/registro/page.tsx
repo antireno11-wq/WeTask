@@ -687,6 +687,17 @@ function splitReferenceAddress(referenceAddress: string | null | undefined) {
   };
 }
 
+function blocksOverlap(a: AvailabilityBlock, b: AvailabilityBlock) {
+  if (a.day !== b.day) return false;
+  return a.start < b.end && b.start < a.end;
+}
+
+function hasAvailabilityOverlap(blocks: AvailabilityBlock[]) {
+  return blocks.some((block, index) =>
+    blocks.some((candidate, candidateIndex) => candidateIndex !== index && blocksOverlap(block, candidate))
+  );
+}
+
 function stripBinaryFieldsForStorage(draft: DraftState) {
   const nextDraft = { ...draft };
   for (const key of STORAGE_BINARY_FIELDS) {
@@ -2288,6 +2299,10 @@ function CleaningOnboardingPageContent() {
       setError("Configura al menos un bloque horario válido.");
       return;
     }
+    if (hasAvailabilityOverlap(validBlocks)) {
+      setError("No puedes cruzar dos bloques horarios en el mismo día.");
+      return;
+    }
     setSaving(true);
     setError("");
     try {
@@ -2487,10 +2502,18 @@ function CleaningOnboardingPageContent() {
   };
 
   const updateAvailabilityBlock = (index: number, patch: Partial<AvailabilityBlock>) => {
-    setDraft((current) => ({
-      ...current,
-      availabilityBlocks: current.availabilityBlocks.map((block, blockIndex) => (blockIndex === index ? { ...block, ...patch } : block))
-    }));
+    setDraft((current) => {
+      const nextBlocks = current.availabilityBlocks.map((block, blockIndex) => (blockIndex === index ? { ...block, ...patch } : block));
+      if (hasAvailabilityOverlap(nextBlocks)) {
+        setError("No puedes cruzar dos bloques horarios en el mismo día.");
+        return current;
+      }
+      setError("");
+      return {
+        ...current,
+        availabilityBlocks: nextBlocks
+      };
+    });
   };
 
   const addAvailabilityBlock = (days: DayKey[]) => {
@@ -2505,19 +2528,26 @@ function CleaningOnboardingPageContent() {
       setError("Define un rango horario válido para crear el bloque.");
       return;
     }
-    setError("");
+    const candidateBlocks = uniqueDays.map((day) => ({ day, start, end }));
     setSelectedAvailabilityDay(uniqueDays[0]);
-    setDraft((current) => ({
-      ...current,
-      availabilityBlocks: [
-        ...current.availabilityBlocks,
-        ...uniqueDays
-          .filter(
-            (day) => !current.availabilityBlocks.some((block) => block.day === day && block.start === start && block.end === end)
+    setDraft((current) => {
+      const dedupedCandidates = candidateBlocks.filter(
+        (candidate) =>
+          !current.availabilityBlocks.some(
+            (block) => block.day === candidate.day && block.start === candidate.start && block.end === candidate.end
           )
-          .map((day) => ({ day, start, end }))
-      ]
-    }));
+      );
+      const nextBlocks = [...current.availabilityBlocks, ...dedupedCandidates];
+      if (hasAvailabilityOverlap(nextBlocks)) {
+        setError("No puedes cruzar dos bloques horarios en el mismo día.");
+        return current;
+      }
+      setError("");
+      return {
+        ...current,
+        availabilityBlocks: nextBlocks
+      };
+    });
     revealAvailabilityDetail(true);
   };
 
