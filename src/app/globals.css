@@ -12,6 +12,8 @@
   --ok: #177245;
   --err: #b00020;
   --site-footer-space: 230px;
+  --background-tail-green: #a8dfbe;
+  --background-mid-green: #63c8bf;
 }
 
 .musicale-landing {
@@ -480,8 +482,8 @@ body {
   padding: 0;
   color: var(--ink);
   background:
-    radial-gradient(circle at 12% -8%, #bfefff 0%, #f2f6fb 38%),
-    linear-gradient(180deg, #fbfdff 0%, #ebf3fb 100%);
+    radial-gradient(circle at 12% -8%, rgba(191, 239, 255, 0.42) 0%, rgba(242, 246, 251, 0.08) 34%),
+    linear-gradient(180deg, #0d2446 0%, #154f9f 28%, #1e85be 56%, var(--background-mid-green) 79%, var(--background-tail-green) 100%);
   font-family: "Manrope", "Avenir Next", "Segoe UI", sans-serif;
 }
 
@@ -4772,7 +4774,14 @@ textarea {
 .login-backdrop {
   position: absolute;
   inset: 0;
-  background: linear-gradient(180deg, #0d2446 0%, #154f9f 28%, #1e85be 56%, #63c8bf 80%, #d8f1df 100%);
+  background: linear-gradient(
+    180deg,
+    #0d2446 0%,
+    #154f9f 28%,
+    #1e85be 56%,
+    var(--background-mid-green) 80%,
+    var(--background-tail-green) 100%
+  );
   filter: blur(8px) saturate(1.01);
   transform: scale(1.04);
 }
@@ -6575,7 +6584,7 @@ textarea {
     #154f9f 26%,
     #1d7db8 48%,
     #4fb3c0 72%,
-    #d8f1df 100%
+    var(--background-tail-green) 100%
   );
   filter: blur(8px) saturate(1.01);
   transform: scale(1.04);
