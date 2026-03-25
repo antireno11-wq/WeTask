@@ -4905,6 +4905,11 @@ function CleaningOnboardingPageContent() {
                   <input type="checkbox" checked={draft.acceptedTerms} onChange={(event) => updateDraft("acceptedTerms", event.target.checked)} />
                   <span>Acepto los términos y condiciones de WeTask</span>
                 </label>
+                <div className="auth-flow-inline-links">
+                  <Link href="/legal" target="_blank" rel="noreferrer">
+                    Leer términos y condiciones
+                  </Link>
+                </div>
                 <div className="auth-flow-actions">
                   <button type="button" className="cta ghost" onClick={previousStep}>
                     Volver
