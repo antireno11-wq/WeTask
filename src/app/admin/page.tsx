@@ -273,6 +273,12 @@ export default async function AdminPage() {
             {customerDaily.detail} · {customerDaily.trend}
           </span>
         </article>
+        <Link href="/admin/users" className="module-card module-link admin-metric-card">
+          <span className="metric-label">Usuarios de la plataforma</span>
+          <strong>{taskersTotal + customersTotal}</strong>
+          <p>Revisa taskers y clientes por separado para seguir actividad y limpiar cuentas internas.</p>
+          <span className="module-meta">Taskers + clientes activos</span>
+        </Link>
       </div>
 
       <div className="module-grid">
@@ -294,11 +300,6 @@ export default async function AdminPage() {
           <span className="module-meta">Acceso para aprobaciones</span>
         </Link>
 
-        <Link href="/admin/users" className="module-card module-link">
-          <h3>Usuarios de la plataforma</h3>
-          <p>Revisa taskers y clientes por separado para seguir actividad y limpiar cuentas internas.</p>
-          <span className="module-meta">{taskersTotal + customersTotal} cuenta(s) activas</span>
-        </Link>
       </div>
 
       <div className="admin-dashboard-grid">
