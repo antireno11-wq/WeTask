@@ -2255,7 +2255,7 @@ function CleaningOnboardingPageContent() {
         minBookingHours: Number(draft.minimumHours),
         weekendSurchargePct: draft.hasWeekendSurcharge ? Number(draft.weekendSurchargePct || 0) : 0,
         holidaySurchargePct: draft.hasHolidaySurcharge ? Number(draft.holidaySurchargePct || 0) : 0,
-        remoteCommuneSurchargeClp: chicureoSelected ? 5000 : 0
+        remoteCommuneSurchargeClp: onboarding?.remoteCommuneSurchargeClp ?? 0
       });
       setActiveStep(10);
     } catch (eventualError) {
