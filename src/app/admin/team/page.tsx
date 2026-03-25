@@ -72,6 +72,26 @@ export default function AdminTeamPage() {
     }
   };
 
+  const sendResetEmail = async (userId: string) => {
+    setBusyId(userId);
+    setError("");
+    setFeedback("");
+    try {
+      const response = await fetch("/api/admin/team", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "send_reset", userId })
+      });
+      const payload = (await response.json()) as { ok?: boolean; error?: string; detail?: string; message?: string };
+      if (!response.ok || !payload.ok) throw new Error(payload.detail || payload.error || "No se pudo enviar el correo de restablecimiento");
+      setFeedback(payload.message || "Correo de restablecimiento enviado.");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Error inesperado");
+    } finally {
+      setBusyId("");
+    }
+  };
+
   return (
     <AdminHeroShell>
       <div className="panel-head admin-page-head">
@@ -114,6 +134,14 @@ export default function AdminTeamPage() {
 
               <div className="cta-row">
                 {user.id === data.currentAdminId ? <span className="status status-approved">Tu sesión</span> : null}
+                <button
+                  type="button"
+                  className="cta ghost small"
+                  disabled={busyId === user.id}
+                  onClick={() => void sendResetEmail(user.id)}
+                >
+                  Restablecer contraseña
+                </button>
                 <button
                   type="button"
                   className="cta ghost small"

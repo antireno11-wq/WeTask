@@ -2,13 +2,15 @@ import { AuthProvider, UserRole } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { requireAdminRequest } from "@/lib/admin-access";
+import { buildPasswordResetEmailTemplate, getEmailDeliveryConfig, sendPlatformEmail } from "@/lib/notifications";
 import { prisma } from "@/lib/prisma";
-import { hashPassword } from "@/lib/security";
+import { resolvePublicAppUrl } from "@/lib/public-app-url";
+import { hashPassword, randomToken, sha256 } from "@/lib/security";
 
 export const dynamic = "force-dynamic";
 
 const teamActionSchema = z.object({
-  action: z.enum(["grant", "revoke", "delete_user", "create_admin"]),
+  action: z.enum(["grant", "revoke", "delete_user", "create_admin", "send_reset"]),
   userId: z.string().trim().min(1).optional(),
   email: z.string().trim().email().optional(),
   fullName: z.string().trim().min(3).optional(),
@@ -266,6 +268,7 @@ export async function PATCH(req: NextRequest) {
         id: true,
         fullName: true,
         email: true,
+        authProvider: true,
         role: true,
         roleAssignments: {
           select: {
@@ -398,6 +401,59 @@ export async function PATCH(req: NextRequest) {
     }
 
     const targetHasAdmin = hasAdminAssignment(target.roleAssignments);
+
+    if (input.action === "send_reset") {
+      if (!targetHasAdmin) {
+        return NextResponse.json({ error: "Esta acción está disponible solo para administradores." }, { status: 409 });
+      }
+
+      if (target.authProvider !== AuthProvider.EMAIL) {
+        return NextResponse.json({ error: "Este admin entra con Google o Apple. No se le puede enviar recuperación por contraseña." }, { status: 409 });
+      }
+
+      const emailConfig = getEmailDeliveryConfig();
+      if (!emailConfig.configured) {
+        return NextResponse.json(
+          { error: `El correo no está configurado todavía. Faltan: ${emailConfig.missing.join(", ")}` },
+          { status: 409 }
+        );
+      }
+
+      const token = randomToken(24);
+      await prisma.passwordResetToken.create({
+        data: {
+          userId: target.id,
+          tokenHash: sha256(token),
+          expiresAt: new Date(Date.now() + 1000 * 60 * 30)
+        }
+      });
+
+      const appUrl = resolvePublicAppUrl(req);
+      const resetUrl = `${appUrl}/restablecer-contrasena?token=${encodeURIComponent(token)}`;
+
+      await sendPlatformEmail({
+        to: target.email,
+        subject: "Restablece tu contraseña de administrador en WeTask",
+        text:
+          `Hola ${target.fullName}.\n\n` +
+          `Desde el backoffice de WeTask se solicitó el restablecimiento de tu contraseña.\n\n` +
+          `Usa este enlace para crear una nueva clave:\n${resetUrl}\n\n` +
+          `Este enlace vence en 30 minutos.\n\nEquipo WeTask`,
+        html: buildPasswordResetEmailTemplate({
+          fullName: target.fullName,
+          resetUrl,
+          appUrl
+        })
+      });
+
+      return NextResponse.json(
+        {
+          ok: true,
+          message: `Le enviamos un correo de restablecimiento a ${target.email}.`
+        },
+        { status: 200 }
+      );
+    }
 
     if (input.action === "delete_user") {
       const primaryAdminEmail = process.env.PRIMARY_ADMIN_EMAIL?.trim().toLowerCase() ?? null;
