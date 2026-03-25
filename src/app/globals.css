@@ -5060,6 +5060,12 @@ textarea {
   color: #0f468e;
 }
 
+.login-inline-help {
+  display: flex;
+  justify-content: center;
+  margin-top: 6px;
+}
+
 .login-legal-copy {
   margin: 0;
   color: #687f97;

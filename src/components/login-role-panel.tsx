@@ -46,6 +46,7 @@ export function LoginRolePanel({
   const [loading, setLoading] = useState(false);
   const [feedback, setFeedback] = useState("");
   const [error, setError] = useState("");
+  const [showResendVerification, setShowResendVerification] = useState(false);
   const demoPassword = "WetaskDemo2026!";
 
   const roleTitle = isAdmin ? "Ingreso equipo WeTask" : "Acceder";
@@ -89,6 +90,7 @@ export function LoginRolePanel({
     setLoading(true);
     setError("");
     setFeedback("");
+    setShowResendVerification(false);
     try {
       const response = await fetch("/api/auth/login", {
         method: "POST",
@@ -108,7 +110,9 @@ export function LoginRolePanel({
       const safeNext = nextPath && nextPath.startsWith("/") && !nextPath.startsWith("//") ? nextPath : null;
       window.location.assign(safeNext ?? profileRoute);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Error inesperado");
+      const message = e instanceof Error ? e.message : "Error inesperado";
+      setError(message);
+      setShowResendVerification(message.includes("Debes verificar tu correo antes de ingresar"));
     } finally {
       setLoading(false);
     }
@@ -125,6 +129,7 @@ export function LoginRolePanel({
     setLoading(true);
     setError("");
     setFeedback("");
+    setShowResendVerification(false);
     try {
       const response = await fetch("/api/auth/password/forgot", {
         method: "POST",
@@ -148,6 +153,48 @@ export function LoginRolePanel({
             : "Este ambiente no tiene correo configurado todavía para recuperación de contraseña."
         );
       }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Error inesperado");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const resendVerificationEmail = async () => {
+    if (!email.trim()) {
+      setError("Escribe tu correo para reenviar la validación.");
+      return;
+    }
+    setLoading(true);
+    setError("");
+    setFeedback("");
+    try {
+      const response = await fetch("/api/auth/verify/request", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim() })
+      });
+      const data = (await response.json()) as {
+        ok?: boolean;
+        alreadyVerified?: boolean;
+        codePreview?: string;
+        error?: string;
+        detail?: string;
+      };
+      if (!response.ok || !data.ok) {
+        throw new Error(data.detail || data.error || "No se pudo reenviar el correo de validación.");
+      }
+      if (data.alreadyVerified) {
+        setFeedback("Ese correo ya está verificado. Ya puedes iniciar sesión.");
+        setShowResendVerification(false);
+        return;
+      }
+      setFeedback(
+        data.codePreview
+          ? `Te reenviamos el correo de validación. Código de prueba: ${data.codePreview}`
+          : "Te reenviamos el correo de validación. Revisa tu bandeja de entrada."
+      );
+      setShowResendVerification(false);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error inesperado");
     } finally {
@@ -244,6 +291,13 @@ export function LoginRolePanel({
 
       {feedback ? <p className="feedback ok">{feedback}</p> : null}
       {error ? <p className="feedback error">{error}</p> : null}
+      {showResendVerification ? (
+        <div className="login-inline-help">
+          <button type="button" className="login-link-button" onClick={() => void resendVerificationEmail()} disabled={loading}>
+            {loading ? "Reenviando..." : "Reenviar correo de validación"}
+          </button>
+        </div>
+      ) : null}
     </section>
   );
 }
