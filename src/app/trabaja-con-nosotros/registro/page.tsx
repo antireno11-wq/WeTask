@@ -3868,17 +3868,10 @@ function CleaningOnboardingPageContent() {
 
                 {draft.category === "chef" ? (
                   <div className="grid-form auth-flow-form">
-                    <div className="full onboarding-scope-progress">
-                      <span className={chefScopeScreen >= 1 ? "active" : ""}>Servicios</span>
-                      <span className={chefScopeScreen >= 2 ? "active" : ""}>Sí realiza</span>
-                      <span className={chefScopeScreen >= 3 ? "active" : ""}>No realiza</span>
-                      <span className={chefScopeScreen >= 4 ? "active" : ""}>Condiciones</span>
-                      <span className={chefScopeScreen >= 5 ? "active" : ""}>Revisión</span>
-                    </div>
-
                     {chefScopeScreen === 1 ? (
                       <div className="full">
                         <p className="field-label">¿Qué tipos de servicio ofreces?</p>
+                        <p className="input-hint">Esto define en qué búsquedas vas a aparecer. El detalle del alcance lo completas en los pasos siguientes.</p>
                         <div className="auth-service-grid auth-service-grid-cleaning">
                           {CHEF_SERVICE_DEFINITIONS.map((service) => (
                             <label
@@ -3901,14 +3894,9 @@ function CleaningOnboardingPageContent() {
                                 }}
                               />
                               <strong>{service.name}</strong>
-                              <span>{service.description}</span>
-                              <span>{service.forClients}</span>
+                              <span>{service.description} {service.forClients}</span>
                             </label>
                           ))}
-                        </div>
-                        <div className="auth-flow-note-card" style={{ marginTop: 16 }}>
-                          <strong>Cocina en casa del cliente</strong>
-                          <span>En WeTask, chef se considera siempre un servicio realizado en casa del cliente.</span>
                         </div>
                       </div>
                     ) : null}
@@ -3916,13 +3904,17 @@ function CleaningOnboardingPageContent() {
                     {chefScopeScreen === 2 ? (
                       <div className="full">
                         <p className="field-label">¿Qué tareas sí realizas?</p>
+                        <p className="input-hint">Esto se mostrará en tu perfil y se usará para filtrar reservas con necesidades específicas.</p>
                         <div className="onboarding-task-checklist">
+                          <div className="onboarding-task-checklist-head">
+                            <span>Lista de tareas</span>
+                            <span>Sí realizo</span>
+                          </div>
                           {CHEF_TASK_INCLUDED_OPTIONS.map((task) => (
                             <label key={task.value} className={`onboarding-task-checklist-row ${draft.chefScope.tasks_included.includes(task.value) ? "checked" : ""}`}>
-                              <div>
-                                <strong>{task.label}</strong>
-                              </div>
+                              <span className="onboarding-task-checklist-label">{task.label}</span>
                               <span className="onboarding-task-checklist-control">
+                                <span className="onboarding-task-checklist-box" aria-hidden />
                                 <input
                                   type="checkbox"
                                   checked={draft.chefScope.tasks_included.includes(task.value)}
@@ -3938,7 +3930,6 @@ function CleaningOnboardingPageContent() {
                                     }));
                                   }}
                                 />
-                                <span className="onboarding-task-checklist-box" aria-hidden />
                               </span>
                             </label>
                           ))}
@@ -3949,16 +3940,20 @@ function CleaningOnboardingPageContent() {
                     {chefScopeScreen === 3 ? (
                       <div className="full">
                         <p className="field-label">¿Qué tareas no realizas?</p>
+                        <p className="input-hint">Así evitamos malos entendidos con clientes antes de reservar.</p>
                         <div className="onboarding-task-checklist">
+                          <div className="onboarding-task-checklist-head onboarding-task-checklist-head-warning">
+                            <span>Lista de tareas</span>
+                            <span>No realizo</span>
+                          </div>
                           {CHEF_TASK_EXCLUDED_OPTIONS.map((task) => (
                             <label
                               key={task.value}
                               className={`onboarding-task-checklist-row onboarding-task-checklist-row-warning ${draft.chefScope.tasks_excluded.includes(task.value) ? "checked" : ""}`}
                             >
-                              <div>
-                                <strong>{task.label}</strong>
-                              </div>
+                              <span className="onboarding-task-checklist-label">{task.label}</span>
                               <span className="onboarding-task-checklist-control">
+                                <span className="onboarding-task-checklist-box" aria-hidden />
                                 <input
                                   type="checkbox"
                                   checked={draft.chefScope.tasks_excluded.includes(task.value)}
@@ -3974,7 +3969,6 @@ function CleaningOnboardingPageContent() {
                                     }));
                                   }}
                                 />
-                                <span className="onboarding-task-checklist-box" aria-hidden />
                               </span>
                             </label>
                           ))}
