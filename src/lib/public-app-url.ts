@@ -7,9 +7,6 @@ function sanitizeBaseUrl(value: string | null | undefined) {
 }
 
 export function resolvePublicAppUrl(req?: NextRequest) {
-  const envUrl = sanitizeBaseUrl(process.env.NEXT_PUBLIC_APP_URL) || sanitizeBaseUrl(process.env.APP_URL);
-  if (envUrl) return envUrl;
-
   if (req) {
     const forwardedHost = sanitizeBaseUrl(req.headers.get("x-forwarded-host"));
     const forwardedProto = sanitizeBaseUrl(req.headers.get("x-forwarded-proto")) || "https";
@@ -21,6 +18,9 @@ export function resolvePublicAppUrl(req?: NextRequest) {
       return `${proto}://${host}`;
     }
   }
+
+  const envUrl = sanitizeBaseUrl(process.env.NEXT_PUBLIC_APP_URL) || sanitizeBaseUrl(process.env.APP_URL);
+  if (envUrl) return envUrl;
 
   return "https://wetask.cl";
 }

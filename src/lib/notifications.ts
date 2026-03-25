@@ -90,6 +90,15 @@ type PasswordResetEmailTemplatePayload = {
   appUrl: string;
 };
 
+function buildEmailBrandHeader(logoUrl: string) {
+  return `
+    <div style="padding:36px 36px 18px;background:linear-gradient(135deg,#173e73 0%,#1d7fc6 100%);text-align:center;">
+      <img src="${logoUrl}" alt="WeTask" style="width:180px;max-width:100%;height:auto;display:block;margin:0 auto;" />
+      <div style="margin-top:10px;font-size:14px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#d8ecff;">WeTask</div>
+    </div>
+  `;
+}
+
 export function buildVerificationEmailTemplate(payload: VerificationEmailTemplatePayload) {
   const safeAppUrl = payload.appUrl.replace(/\/+$/, "");
   const logoUrl = `${safeAppUrl}/logo-wetask-cropped.png`;
@@ -97,9 +106,7 @@ export function buildVerificationEmailTemplate(payload: VerificationEmailTemplat
   return `
     <div style="margin:0;padding:32px 16px;background:#eef4fb;font-family:Arial,sans-serif;color:#17324d;">
       <div style="max-width:620px;margin:0 auto;background:#ffffff;border-radius:28px;overflow:hidden;box-shadow:0 18px 46px rgba(21,58,97,0.14);border:1px solid rgba(34,97,160,0.12);">
-        <div style="padding:36px 36px 18px;background:linear-gradient(135deg,#173e73 0%,#1d7fc6 100%);text-align:center;">
-          <img src="${logoUrl}" alt="WeTask" style="width:180px;max-width:100%;height:auto;display:inline-block;" />
-        </div>
+        ${buildEmailBrandHeader(logoUrl)}
         <div style="padding:32px 36px 36px;">
           <p style="margin:0 0 14px;font-size:14px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#1d7fc6;">Verificación de cuenta</p>
           <h1 style="margin:0 0 16px;font-size:28px;line-height:1.12;color:#17324d;">Confirma tu correo en WeTask</h1>
@@ -127,9 +134,7 @@ export function buildPasswordResetEmailTemplate(payload: PasswordResetEmailTempl
   return `
     <div style="margin:0;padding:32px 16px;background:#eef4fb;font-family:Arial,sans-serif;color:#17324d;">
       <div style="max-width:620px;margin:0 auto;background:#ffffff;border-radius:28px;overflow:hidden;box-shadow:0 18px 46px rgba(21,58,97,0.14);border:1px solid rgba(34,97,160,0.12);">
-        <div style="padding:36px 36px 18px;background:linear-gradient(135deg,#173e73 0%,#1d7fc6 100%);text-align:center;">
-          <img src="${logoUrl}" alt="WeTask" style="width:180px;max-width:100%;height:auto;display:inline-block;" />
-        </div>
+        ${buildEmailBrandHeader(logoUrl)}
         <div style="padding:32px 36px 36px;">
           <p style="margin:0 0 14px;font-size:14px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#1d7fc6;">Recuperación de contraseña</p>
           <h1 style="margin:0 0 16px;font-size:28px;line-height:1.12;color:#17324d;">Cambia tu contraseña en WeTask</h1>
