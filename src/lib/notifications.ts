@@ -51,6 +51,12 @@ type VerificationEmailTemplatePayload = {
   appUrl: string;
 };
 
+type PasswordResetEmailTemplatePayload = {
+  fullName: string;
+  resetUrl: string;
+  appUrl: string;
+};
+
 export function buildVerificationEmailTemplate(payload: VerificationEmailTemplatePayload) {
   const safeAppUrl = payload.appUrl.replace(/\/+$/, "");
   const logoUrl = `${safeAppUrl}/logo-wetask.png`;
@@ -75,6 +81,31 @@ export function buildVerificationEmailTemplate(payload: VerificationEmailTemplat
           </div>
           <p style="margin:0 0 10px;font-size:13px;line-height:1.6;color:#5f7691;">Si el botón no funciona, copia y pega este enlace en tu navegador:</p>
           <p style="margin:0;font-size:13px;line-height:1.6;word-break:break-all;color:#1d7fc6;">${payload.verifyUrl}</p>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+export function buildPasswordResetEmailTemplate(payload: PasswordResetEmailTemplatePayload) {
+  const safeAppUrl = payload.appUrl.replace(/\/+$/, "");
+  const logoUrl = `${safeAppUrl}/logo-wetask.png`;
+
+  return `
+    <div style="margin:0;padding:32px 16px;background:#eef4fb;font-family:Arial,sans-serif;color:#17324d;">
+      <div style="max-width:620px;margin:0 auto;background:#ffffff;border-radius:28px;overflow:hidden;box-shadow:0 18px 46px rgba(21,58,97,0.14);border:1px solid rgba(34,97,160,0.12);">
+        <div style="padding:36px 36px 18px;background:linear-gradient(135deg,#173e73 0%,#1d7fc6 100%);text-align:center;">
+          <img src="${logoUrl}" alt="WeTask" style="width:180px;max-width:100%;height:auto;display:inline-block;" />
+        </div>
+        <div style="padding:32px 36px 36px;">
+          <p style="margin:0 0 14px;font-size:14px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#1d7fc6;">Recuperación de contraseña</p>
+          <h1 style="margin:0 0 16px;font-size:28px;line-height:1.12;color:#17324d;">Cambia tu contraseña en WeTask</h1>
+          <p style="margin:0 0 16px;font-size:16px;line-height:1.6;color:#48627d;">Hola ${payload.fullName}, recibimos una solicitud para restablecer tu contraseña. Usa el botón de abajo para crear una nueva clave.</p>
+          <div style="text-align:center;margin:24px 0;">
+            <a href="${payload.resetUrl}" style="display:inline-block;padding:14px 24px;border-radius:999px;background:linear-gradient(135deg,#173e73 0%,#1d7fc6 100%);color:#ffffff;text-decoration:none;font-weight:800;">Restablecer contraseña</a>
+          </div>
+          <p style="margin:0 0 10px;font-size:13px;line-height:1.6;color:#5f7691;">Este enlace vence en 30 minutos. Si no pediste este cambio, puedes ignorar este correo.</p>
+          <p style="margin:0;font-size:13px;line-height:1.6;word-break:break-all;color:#1d7fc6;">${payload.resetUrl}</p>
         </div>
       </div>
     </div>

@@ -130,9 +130,23 @@ export function LoginRolePanel({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: email.trim() })
       });
-      const data = (await response.json()) as { ok?: boolean; error?: string; detail?: string };
+      const data = (await response.json()) as {
+        ok?: boolean;
+        emailConfigured?: boolean;
+        tokenPreview?: string;
+        error?: string;
+        detail?: string;
+      };
       if (!response.ok || !data.ok) throw new Error(data.detail || data.error || "No se pudo iniciar recuperación");
-      setFeedback("Revisa tu correo para recuperar contraseña.");
+      if (data.emailConfigured) {
+        setFeedback("Si tu cuenta existe, te enviamos un correo para restablecer tu contraseña.");
+      } else {
+        setFeedback(
+          data.tokenPreview
+            ? `Este ambiente no tiene correo configurado todavía. Token de prueba: ${data.tokenPreview}`
+            : "Este ambiente no tiene correo configurado todavía para recuperación de contraseña."
+        );
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error inesperado");
     } finally {
