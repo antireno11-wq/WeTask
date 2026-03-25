@@ -1112,7 +1112,7 @@ export default function ProDetailPage() {
 
                   {activeView === "perfil" ? (
                     <>
-                  <article className="auth-flow-panel client-dashboard-section">
+                  <article className="auth-flow-panel client-dashboard-section tasker-profile-section">
                     <h2>Perfil del tasker</h2>
                     <p>{summaryDescription}</p>
                     <div className="we-trust-grid">
@@ -1131,7 +1131,7 @@ export default function ProDetailPage() {
                         </div>
                       </div>
                     </div>
-                    <div className="we-info-grid we-profile-quick-grid">
+                    <div className="we-info-grid we-profile-quick-grid tasker-profile-detail-grid tasker-profile-detail-grid-compact">
                       <div>
                         <h3>Experiencia</h3>
                         <p>{experienceYears} años</p>
@@ -1153,7 +1153,7 @@ export default function ProDetailPage() {
                         <p>{languages.join(", ")}</p>
                       </div>
                     </div>
-                    <div className="we-pro-tags">
+                    <div className="we-pro-tags tasker-profile-service-tags">
                       {(servicePriceTags.length > 0 ? servicePriceTags : offeredServices.map((service) => ({ key: service, label: service }))).map((service) => (
                         <span key={service.key} className="we-tag">
                           {service.label}
@@ -1162,9 +1162,9 @@ export default function ProDetailPage() {
                     </div>
                   </article>
 
-                  <article className="auth-flow-panel client-dashboard-section">
+                  <article className="auth-flow-panel client-dashboard-section tasker-profile-section">
                     <h2>Sobre mi</h2>
-                    <p>{expandedAbout ? aboutText : aboutPreview}</p>
+                    <p className="tasker-profile-body-copy">{expandedAbout ? aboutText : aboutPreview}</p>
                     {aboutText.length > 340 ? (
                       <button type="button" className="we-text-link" onClick={() => setExpandedAbout((prev) => !prev)}>
                         {expandedAbout ? "Ver menos" : "Ver mas"}
@@ -1172,9 +1172,9 @@ export default function ProDetailPage() {
                     ) : null}
                   </article>
 
-                  <article className="auth-flow-panel client-dashboard-section">
+                  <article className="auth-flow-panel client-dashboard-section tasker-profile-section">
                     <h2>Informacion de interes</h2>
-                    <div className="we-info-grid">
+                    <div className="we-info-grid tasker-profile-detail-grid">
                       <div>
                         <h3>¿Cuánta experiencia tiene?</h3>
                         <p>{experienceYears} años trabajando en servicios a domicilio.</p>
@@ -1194,7 +1194,7 @@ export default function ProDetailPage() {
                     </div>
                   </article>
 
-                  <article className="auth-flow-panel client-dashboard-section">
+                  <article className="auth-flow-panel client-dashboard-section tasker-profile-section">
                     <h2>Cobertura</h2>
                     <p className="coverage-meta">Estas son las comunas activas que el tasker tiene configuradas hoy.</p>
                     {activeCommunes.length > 0 ? (
@@ -1211,9 +1211,9 @@ export default function ProDetailPage() {
                   </article>
 
                   {normalizedPrimaryCategorySlug === "limpieza" ? (
-                    <article className="auth-flow-panel client-dashboard-section">
+                    <article className="auth-flow-panel client-dashboard-section tasker-profile-section">
                       <h2>Alcance del servicio</h2>
-                      <div className="we-info-grid">
+                      <div className="we-info-grid tasker-profile-detail-grid">
                         <div>
                           <h3>Tipos de limpieza que acepta</h3>
                           <p>{cleaningScopeServices.length > 0 ? cleaningScopeServices.join(", ") : "Aún no informado."}</p>
@@ -1236,9 +1236,9 @@ export default function ProDetailPage() {
                   ) : null}
 
                   {normalizedPrimaryCategorySlug === "mascotas" ? (
-                    <article className="auth-flow-panel client-dashboard-section">
+                    <article className="auth-flow-panel client-dashboard-section tasker-profile-section">
                       <h2>Alcance del servicio</h2>
-                      <div className="we-info-grid">
+                      <div className="we-info-grid tasker-profile-detail-grid">
                         <div>
                           <h3>Servicios de mascotas que ofrece</h3>
                           <p>{petScopeServices.length > 0 ? petScopeServices.join(", ") : "Aún no informado."}</p>
@@ -1269,9 +1269,9 @@ export default function ProDetailPage() {
                   ) : null}
 
                   {normalizedPrimaryCategorySlug === "maquillaje" ? (
-                    <article className="auth-flow-panel client-dashboard-section">
+                    <article className="auth-flow-panel client-dashboard-section tasker-profile-section">
                       <h2>Alcance del servicio</h2>
-                      <div className="we-info-grid">
+                      <div className="we-info-grid tasker-profile-detail-grid">
                         <div>
                           <h3>Tipos de maquillaje</h3>
                           <p>{makeupScopeServices.length > 0 ? makeupScopeServices.join(", ") : "Aún no informado."}</p>
@@ -1298,9 +1298,9 @@ export default function ProDetailPage() {
                   ) : null}
 
                   {normalizedPrimaryCategorySlug === "planchado" ? (
-                    <article className="auth-flow-panel client-dashboard-section">
+                    <article className="auth-flow-panel client-dashboard-section tasker-profile-section">
                       <h2>Alcance del servicio</h2>
-                      <div className="we-info-grid">
+                      <div className="we-info-grid tasker-profile-detail-grid">
                         <div>
                           <h3>Modalidades de planchado</h3>
                           <p>{ironingScopeServices.length > 0 ? ironingScopeServices.join(", ") : "Aún no informado."}</p>
@@ -1327,9 +1327,9 @@ export default function ProDetailPage() {
                   ) : null}
 
                   {normalizedPrimaryCategorySlug === "babysitter" ? (
-                    <article className="auth-flow-panel client-dashboard-section">
+                    <article className="auth-flow-panel client-dashboard-section tasker-profile-section">
                       <h2>Alcance del servicio</h2>
-                      <div className="we-info-grid">
+                      <div className="we-info-grid tasker-profile-detail-grid">
                         <div>
                           <h3>Servicios de babysitter que ofrece</h3>
                           <p>{babysitterScopeServices.length > 0 ? babysitterScopeServices.join(", ") : "Aún no informado."}</p>
@@ -1364,9 +1364,9 @@ export default function ProDetailPage() {
                   ) : null}
 
                   {normalizedPrimaryCategorySlug === "chef" ? (
-                    <article className="auth-flow-panel client-dashboard-section">
+                    <article className="auth-flow-panel client-dashboard-section tasker-profile-section">
                       <h2>Alcance del servicio</h2>
-                      <div className="we-info-grid">
+                      <div className="we-info-grid tasker-profile-detail-grid">
                         <div>
                           <h3>Servicios de chef que ofrece</h3>
                           <p>{chefScopeServices.length > 0 ? chefScopeServices.join(", ") : "Aún no informado."}</p>
@@ -1389,9 +1389,9 @@ export default function ProDetailPage() {
                   ) : null}
 
                   {normalizedPrimaryCategorySlug === "personal-trainer" ? (
-                    <article className="auth-flow-panel client-dashboard-section">
+                    <article className="auth-flow-panel client-dashboard-section tasker-profile-section">
                       <h2>Alcance del servicio</h2>
-                      <div className="we-info-grid">
+                      <div className="we-info-grid tasker-profile-detail-grid">
                         <div>
                           <h3>Tipos de entrenamiento</h3>
                           <p>{trainerScopeServices.length > 0 ? trainerScopeServices.join(", ") : "Aún no informado."}</p>
@@ -1422,9 +1422,9 @@ export default function ProDetailPage() {
                   ) : null}
 
                   {normalizedPrimaryCategorySlug === "profesor-particular" ? (
-                    <article className="auth-flow-panel client-dashboard-section">
+                    <article className="auth-flow-panel client-dashboard-section tasker-profile-section">
                       <h2>Alcance del servicio</h2>
-                      <div className="we-info-grid">
+                      <div className="we-info-grid tasker-profile-detail-grid">
                         <div>
                           <h3>Asignaturas que ofrece</h3>
                           <p>{teacherScopeServices.length > 0 ? teacherScopeServices.join(", ") : "Aún no informado."}</p>
@@ -1454,7 +1454,7 @@ export default function ProDetailPage() {
                     </article>
                   ) : null}
 
-                  <article className="auth-flow-panel client-dashboard-section">
+                  <article className="auth-flow-panel client-dashboard-section tasker-profile-section">
                     <h2>Garantía WeTask</h2>
                     <p>Hasta confirmar que el servicio fue correcto, el pago permanece protegido en plataforma.</p>
                     <ul className="we-check-list">
@@ -1464,7 +1464,7 @@ export default function ProDetailPage() {
                     </ul>
                   </article>
 
-                  <article className="auth-flow-panel client-dashboard-section">
+                  <article className="auth-flow-panel client-dashboard-section tasker-profile-section">
                     <h2>Preguntas frecuentes</h2>
                     <div className="we-faq-list">
                       {faqItems.map((item) => (
@@ -1476,7 +1476,7 @@ export default function ProDetailPage() {
                     </div>
                   </article>
 
-                  <article className="auth-flow-panel client-dashboard-section">
+                  <article className="auth-flow-panel client-dashboard-section tasker-profile-section">
                     <h2>Política de cancelación</h2>
                     <div className="we-cancel-table">
                       <div>

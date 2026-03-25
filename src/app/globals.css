@@ -3478,6 +3478,102 @@ textarea {
   margin-top: 12px;
 }
 
+.tasker-profile-section {
+  gap: 18px;
+}
+
+.tasker-profile-section > h2 {
+  margin: 0;
+  color: #173b5f;
+  font-size: 1.5rem;
+  line-height: 1.08;
+  letter-spacing: -0.03em;
+}
+
+.tasker-profile-section > p:not(.coverage-meta):not(.minimal-note):not(.tasker-profile-body-copy) {
+  margin: 8px 0 0;
+  color: #647c96;
+  font-size: 0.98rem;
+  line-height: 1.65;
+}
+
+.tasker-profile-body-copy {
+  margin: 10px 0 0;
+  color: #173b5f;
+  font-size: 1.05rem;
+  line-height: 1.82;
+}
+
+.tasker-profile-detail-grid {
+  margin-top: 14px;
+  gap: 14px;
+}
+
+.tasker-profile-detail-grid > div {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  min-height: 116px;
+  padding: 18px 18px 16px;
+  border: 1px solid #d6e7f5;
+  border-radius: 20px;
+  background: linear-gradient(180deg, #ffffff 0%, #f6fbff 100%);
+}
+
+.tasker-profile-detail-grid h3 {
+  margin: 0;
+  color: #7088a3;
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  line-height: 1.45;
+  text-transform: uppercase;
+}
+
+.tasker-profile-detail-grid p {
+  margin: 0;
+  color: #173b5f;
+  font-size: 1.02rem;
+  line-height: 1.68;
+  font-weight: 700;
+}
+
+.tasker-profile-detail-grid-compact > div {
+  min-height: 104px;
+}
+
+.tasker-profile-service-tags {
+  margin-top: 16px;
+}
+
+.tasker-profile-section .we-trust-card {
+  padding: 16px 18px;
+}
+
+.tasker-profile-section .we-trust-card strong {
+  display: block;
+  color: #7088a3;
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  line-height: 1.45;
+  text-transform: uppercase;
+}
+
+.tasker-profile-section .we-trust-card p {
+  margin: 6px 0 0;
+  color: #173b5f;
+  font-size: 0.98rem;
+  line-height: 1.6;
+  font-weight: 700;
+}
+
+.tasker-profile-section .coverage-meta,
+.tasker-profile-section .minimal-note {
+  font-size: 0.95rem;
+  line-height: 1.65;
+}
+
 .we-trust-grid {
   margin-top: 14px;
   display: grid;
