@@ -882,6 +882,10 @@ export default function ProPage() {
                 <strong className="client-profile-address">{clp(hourlyRateFromClp)}/hora</strong>
                 <p>Trabajos realizados</p>
                 <strong className="client-profile-address">{completedBookings.length} servicio(s) completado(s)</strong>
+                <p>Servicios activos</p>
+                <strong className="client-profile-address">
+                  {services.length > 0 ? services.map((service) => service.name).join(", ") : "Aún no tienes servicios asignados."}
+                </strong>
                 <div className="client-profile-actions">
                   <span className={`status ${profile?.isVerified ? "status-completed" : "status-pending"}`}>
                     {profile?.isVerified ? "Verificado" : "Pendiente de verificación"}
@@ -998,6 +1002,10 @@ export default function ProPage() {
                   <article className="module-card client-dashboard-card">
                     <h3>Trabajos realizados</h3>
                     <p>{completedBookings.length} servicio(s) completado(s) en WeTask.</p>
+                  </article>
+                  <article className="module-card client-dashboard-card">
+                    <h3>Servicios que haces</h3>
+                    <p>{services.length > 0 ? services.map((service) => service.name).join(", ") : "Todavía no tienes servicios activos cargados."}</p>
                   </article>
                 </div>
 
