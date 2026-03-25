@@ -5156,6 +5156,11 @@ textarea {
   width: min(100%, 720px);
 }
 
+.client-home-hero .client-dashboard-copy .auth-flow-kicker {
+  width: auto;
+  justify-self: center;
+}
+
 .client-home-hero .client-dashboard-profile-panel {
   width: min(100%, 1120px);
   max-width: 1120px;
@@ -5601,6 +5606,10 @@ textarea {
 
 .client-dashboard-sections .feedback {
   margin: 0 0 18px;
+  display: inline-flex;
+  align-items: center;
+  width: auto;
+  max-width: min(100%, 720px);
 }
 
 .client-payment-methods-list {
