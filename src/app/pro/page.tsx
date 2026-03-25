@@ -876,6 +876,8 @@ export default function ProPage() {
                 </strong>
                 <p>Tarifa desde</p>
                 <strong className="client-profile-address">{clp(hourlyRateFromClp)}/hora</strong>
+                <p>Trabajos realizados</p>
+                <strong className="client-profile-address">{completedBookings.length} servicio(s) completado(s)</strong>
                 <div className="client-profile-actions">
                   <span className={`status ${profile?.isVerified ? "status-completed" : "status-pending"}`}>
                     {profile?.isVerified ? "Verificado" : "Pendiente de verificación"}
@@ -988,6 +990,10 @@ export default function ProPage() {
                   <article className="module-card client-dashboard-card">
                     <h3>Comunas activas</h3>
                     <p>{selectedCommunes.length > 0 ? selectedCommunes.join(", ") : "Aún no defines comunas de trabajo."}</p>
+                  </article>
+                  <article className="module-card client-dashboard-card">
+                    <h3>Trabajos realizados</h3>
+                    <p>{completedBookings.length} servicio(s) completado(s) en WeTask.</p>
                   </article>
                 </div>
 
