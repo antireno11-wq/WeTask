@@ -26,7 +26,7 @@ export async function PATCH(req: NextRequest, context: { params: { bookingId: st
       return NextResponse.json({ error: "Solo puedes actualizar tus propias reservas" }, { status: 403 });
     }
 
-    const allowedTransitionsByPro = new Set(["ACCEPTED", "IN_PROGRESS", "COMPLETED", "CANCELLED"]);
+    const allowedTransitionsByPro = new Set(["ACCEPTED", "IN_PROGRESS", "AWAITING_CUSTOMER_CONFIRMATION", "CANCELLED"]);
     if (identity.role === UserRole.PRO && !allowedTransitionsByPro.has(input.status)) {
       return NextResponse.json({ error: "Estado no permitido para taskers" }, { status: 400 });
     }

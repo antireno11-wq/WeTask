@@ -61,7 +61,12 @@ const STATUS_LABELS: Record<string, string> = {
   ASSIGNED: "Tasker asignado",
   CONFIRMED: "Reserva confirmada",
   IN_PROGRESS: "Servicio en curso",
-  COMPLETED: "Servicio cerrado",
+  AWAITING_CUSTOMER_CONFIRMATION: "Esperando tu confirmación",
+  COMPLETED: "Trabajo realizado",
+  PAYOUT_SCHEDULED: "Pago programado",
+  PAID_OUT: "Pago realizado",
+  DISPUTE_OPEN: "Disputa abierta",
+  DISPUTE: "Disputa abierta",
   CANCELLED: "Cancelado",
   REFUNDED: "Reembolsado",
   PAYMENT_FAILED: "Pago fallido"

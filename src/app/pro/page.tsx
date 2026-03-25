@@ -6,7 +6,7 @@ import { MarketNav } from "@/components/market-nav";
 import { ACTIVE_MVP_COMMUNES, inferCommuneFromAddress, normalizeCommune, normalizeCommuneList } from "@/lib/communes";
 import { geocodeAddress } from "@/lib/geo";
 
-const statusOptions = ["ACCEPTED", "IN_PROGRESS", "COMPLETED", "CANCELLED"];
+const statusOptions = ["ACCEPTED", "IN_PROGRESS", "AWAITING_CUSTOMER_CONFIRMATION", "CANCELLED"];
 const SANTIAGO_BOUNDS = {
   minLat: -33.62,
   maxLat: -33.3,
@@ -17,12 +17,16 @@ const CHILE_CITIES = ["Santiago", "Valparaiso", "Vina del Mar", "Concepcion", "L
 const TASKER_WIZARD_STORAGE_KEY = "wetask_tasker_wizard_v2";
 const PRO_STATUS_LABELS: Record<string, string> = {
   ACCEPTED: "Aceptado",
-  IN_PROGRESS: "En curso",
-  COMPLETED: "Servicio informado como terminado",
+  IN_PROGRESS: "Servicio en curso",
+  COMPLETED: "Trabajo realizado",
+  AWAITING_CUSTOMER_CONFIRMATION: "Esperando confirmación del cliente",
+  PAYOUT_SCHEDULED: "Pago programado",
+  PAID_OUT: "Pago realizado",
   CANCELLED: "Cancelado",
   CONFIRMED: "Reserva confirmada",
   ASSIGNED: "Asignado",
   PENDING: "Pendiente",
+  DISPUTE_OPEN: "Disputa abierta",
   DISPUTE: "Disputa abierta"
 };
 const COMMUNE_MAP_POSITIONS: Record<string, { top: string; left: string }> = {
@@ -1508,7 +1512,7 @@ export default function ProPage() {
                       <strong>Total:</strong> {clp(booking.totalPriceClp)}
                     </p>
                     <p>
-                      <strong>Estado del pago:</strong> {booking.status === "DISPUTE" ? "Retenido por disputa abierta" : booking.status === "COMPLETED" ? booking.payout?.status ?? "Pendiente de programación" : booking.status === "IN_PROGRESS" ? "Retenido hasta terminar el servicio" : booking.status === "CONFIRMED" || booking.status === "ACCEPTED" || booking.status === "ASSIGNED" ? "Pago reservado por WeTask" : booking.payout?.status ?? "Aún no aplica"}
+                      <strong>Estado del pago:</strong> {booking.status === "DISPUTE_OPEN" || booking.status === "DISPUTE" ? "Retenido por disputa abierta" : booking.payout || booking.status === "PAYOUT_SCHEDULED" ? "Payout ya programado" : booking.status === "AWAITING_CUSTOMER_CONFIRMATION" || booking.status === "COMPLETED" ? "Esperando confirmación del cliente" : booking.status === "IN_PROGRESS" ? "Retenido hasta terminar el servicio" : booking.status === "CONFIRMED" || booking.status === "ACCEPTED" || booking.status === "ASSIGNED" ? "Pago reservado por WeTask" : booking.payout?.status ?? "Aún no aplica"}
                     </p>
                     <div className="status-editor">
                       <label>
@@ -1615,8 +1619,8 @@ export default function ProPage() {
                           <button className="cta ghost small" type="button" onClick={() => submitClientReview(booking.id)}>
                             Guardar reseña
                           </button>
-                          <button className="cta small" type="button" onClick={() => requestPayout(booking.id)} disabled={booking.status === "DISPUTE"}>
-                            {booking.status === "DISPUTE" ? "Payout bloqueado" : "Solicitar payout"}
+                          <button className="cta small" type="button" onClick={() => requestPayout(booking.id)} disabled={booking.status === "DISPUTE" || Boolean(booking.payout)}>
+                            {booking.status === "DISPUTE" ? "Payout bloqueado" : booking.payout ? "Payout ya programado" : "Solicitar payout"}
                           </button>
                           <Link className="cta ghost small" href={`/pro/reservas/${booking.id}`}>
                             Ver detalle
@@ -1626,6 +1630,7 @@ export default function ProPage() {
                     <div className="client-booking-note">
                       <strong>Lógica de cobro</strong>
                       <p>El cliente paga al reservar. WeTask retiene ese dinero y tu pago entra al próximo ciclo cuando el cliente confirma o cuando vence el plazo sin reclamo.</p>
+                      {booking.payout ? <p><strong>Ya programado:</strong> este servicio ya entró al próximo ciclo automático de pago.</p> : null}
                       {booking.status === "DISPUTE" ? <p><strong>Disputa abierta:</strong> el payout queda congelado hasta que WeTask resuelva el caso.</p> : null}
                     </div>
                     </article>

@@ -27,8 +27,8 @@ export async function POST(req: NextRequest, context: { params: { bookingId: str
       return NextResponse.json({ error: "No autorizado" }, { status: 403 });
     }
 
-    if (booking.status !== "COMPLETED") {
-      return NextResponse.json({ error: "Solo puedes confirmar servicios marcados como realizados." }, { status: 400 });
+    if (booking.status !== "AWAITING_CUSTOMER_CONFIRMATION") {
+      return NextResponse.json({ error: "Solo puedes confirmar servicios que estén esperando tu confirmación." }, { status: 400 });
     }
 
     const hasBlockingDispute = await prisma.disputeTicket.findFirst({
@@ -53,6 +53,11 @@ export async function POST(req: NextRequest, context: { params: { bookingId: str
             status: "PENDING"
           }
         }));
+
+      await tx.booking.update({
+        where: { id: booking.id },
+        data: { status: "PAYOUT_SCHEDULED" }
+      });
 
       await tx.notification.create({
         data: {

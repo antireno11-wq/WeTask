@@ -23,7 +23,7 @@ export async function POST(req: NextRequest, context: { params: { bookingId: str
 
     const updated = await prisma.booking.update({
       where: { id: booking.id },
-      data: { status: "COMPLETED" }
+      data: { status: "AWAITING_CUSTOMER_CONFIRMATION" }
     });
 
     if (booking.customerId) {

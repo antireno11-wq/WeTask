@@ -19,8 +19,8 @@ export async function POST(req: NextRequest, context: { params: { bookingId: str
       return NextResponse.json({ error: "No autorizado" }, { status: 403 });
     }
 
-    if (booking.status !== "COMPLETED") {
-      return NextResponse.json({ error: "El payout se programa solo para reservas marcadas como realizadas" }, { status: 400 });
+    if (booking.status !== "AWAITING_CUSTOMER_CONFIRMATION" && booking.status !== "PAYOUT_SCHEDULED") {
+      return NextResponse.json({ error: "El payout solo se programa cuando el servicio espera confirmación o ya está programado." }, { status: 400 });
     }
 
     const hasBlockingDispute = await prisma.disputeTicket.findFirst({
