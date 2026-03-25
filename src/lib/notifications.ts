@@ -5,14 +5,37 @@ type EmailPayload = {
   html?: string;
 };
 
-export async function sendPlatformEmail(payload: EmailPayload): Promise<void> {
-  const apiKey = process.env.RESEND_API_KEY;
-  const from = process.env.RESEND_FROM_EMAIL;
+type EmailDeliveryConfig = {
+  configured: boolean;
+  apiKey?: string;
+  from?: string;
+  missing: string[];
+};
 
-  if (!apiKey || !from) {
-    console.warn("Email skipped: RESEND_API_KEY or RESEND_FROM_EMAIL not configured", {
+export function getEmailDeliveryConfig(): EmailDeliveryConfig {
+  const apiKey = process.env.RESEND_API_KEY?.trim();
+  const from = process.env.RESEND_FROM_EMAIL?.trim();
+  const missing = [
+    !apiKey ? "RESEND_API_KEY" : null,
+    !from ? "RESEND_FROM_EMAIL" : null
+  ].filter((item): item is string => Boolean(item));
+
+  return {
+    configured: missing.length === 0,
+    apiKey,
+    from,
+    missing
+  };
+}
+
+export async function sendPlatformEmail(payload: EmailPayload): Promise<void> {
+  const config = getEmailDeliveryConfig();
+
+  if (!config.configured || !config.apiKey || !config.from) {
+    console.warn("[email] skipped: resend not configured", {
       to: payload.to,
-      subject: payload.subject
+      subject: payload.subject,
+      missing: config.missing
     });
     return;
   }
@@ -20,11 +43,11 @@ export async function sendPlatformEmail(payload: EmailPayload): Promise<void> {
   const response = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${apiKey}`,
+      Authorization: `Bearer ${config.apiKey}`,
       "Content-Type": "application/json"
     },
     body: JSON.stringify({
-      from,
+      from: config.from,
       to: [payload.to],
       subject: payload.subject,
       text: payload.text,
@@ -34,14 +57,24 @@ export async function sendPlatformEmail(payload: EmailPayload): Promise<void> {
 
   if (!response.ok) {
     const detail = await response.text().catch(() => "");
+    const cleanDetail = detail.replace(/\s+/g, " ").trim();
     console.error("[email] resend delivery failed", {
       to: payload.to,
       subject: payload.subject,
       status: response.status,
-      detail
+      from: config.from,
+      detail: cleanDetail
     });
-    throw new Error(`No se pudo enviar correo (${response.status})`);
+    throw new Error(cleanDetail ? `No se pudo enviar correo (${response.status}): ${cleanDetail}` : `No se pudo enviar correo (${response.status})`);
   }
+
+  const data = (await response.json().catch(() => null)) as { id?: string } | null;
+  console.info("[email] sent", {
+    to: payload.to,
+    subject: payload.subject,
+    from: config.from,
+    emailId: data?.id ?? null
+  });
 }
 
 type VerificationEmailTemplatePayload = {
