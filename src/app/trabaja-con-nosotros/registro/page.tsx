@@ -4402,7 +4402,7 @@ function CleaningOnboardingPageContent() {
                     <div className="availability-task-panel" ref={availabilityTaskPanelRef} tabIndex={-1}>
                       <div className="availability-task-head">
                         <div>
-                          <p className="availability-eyebrow">Paso 2</p>
+                          <p className="availability-eyebrow">Paso 3</p>
                           <h4>{selectedDayConfig?.label ?? "Sin día seleccionado"}</h4>
                         </div>
                         <span className="availability-selected-pill">{selectedDayConfig?.blocks.length ?? 0} bloque(s)</span>
@@ -4454,7 +4454,7 @@ function CleaningOnboardingPageContent() {
                     <div className="availability-composer-card">
                       <div className="availability-composer-head">
                         <div>
-                          <p className="availability-eyebrow">Paso 3</p>
+                          <p className="availability-eyebrow">Paso 2</p>
                           <h3>{bulkAvailabilityDays.length > 1 ? `${bulkAvailabilityDays.length} días seleccionados` : selectedDayConfig?.label ?? "Selecciona un día"}</h3>
                         </div>
                         <span className="availability-selected-pill">Se repite cada semana</span>
