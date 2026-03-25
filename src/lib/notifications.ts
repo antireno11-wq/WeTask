@@ -92,7 +92,7 @@ type PasswordResetEmailTemplatePayload = {
 
 export function buildVerificationEmailTemplate(payload: VerificationEmailTemplatePayload) {
   const safeAppUrl = payload.appUrl.replace(/\/+$/, "");
-  const logoUrl = `${safeAppUrl}/logo-wetask.png`;
+  const logoUrl = `${safeAppUrl}/logo-wetask-cropped.png`;
 
   return `
     <div style="margin:0;padding:32px 16px;background:#eef4fb;font-family:Arial,sans-serif;color:#17324d;">
@@ -122,7 +122,7 @@ export function buildVerificationEmailTemplate(payload: VerificationEmailTemplat
 
 export function buildPasswordResetEmailTemplate(payload: PasswordResetEmailTemplatePayload) {
   const safeAppUrl = payload.appUrl.replace(/\/+$/, "");
-  const logoUrl = `${safeAppUrl}/logo-wetask.png`;
+  const logoUrl = `${safeAppUrl}/logo-wetask-cropped.png`;
 
   return `
     <div style="margin:0;padding:32px 16px;background:#eef4fb;font-family:Arial,sans-serif;color:#17324d;">

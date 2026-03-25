@@ -4,15 +4,15 @@ import { ResetPasswordClient } from "./reset-password-client";
 
 export default function ResetPasswordPage() {
   return (
-    <main className="login-screen">
-      <div className="login-backdrop" aria-hidden />
+    <main className="auth-flow-screen auth-flow-screen-scroll">
+      <div className="auth-flow-backdrop" aria-hidden />
       <div className="login-screen-content">
         <AuthHeroNav />
 
-        <section className="login-stage login-stage-single">
-          <div className="login-stage-copy">
-            <p className="login-stage-kicker">Seguridad de cuenta</p>
-            <h2>Elige una nueva contraseña para tu cuenta WeTask.</h2>
+        <section className="auth-flow-shell auth-flow-shell-wide">
+          <div className="auth-flow-copy">
+            <p className="auth-flow-kicker">Seguridad de cuenta</p>
+            <h1>Elige una nueva contraseña para tu cuenta WeTask.</h1>
             <p>Usa el enlace que te llegó por correo y define una clave nueva para volver a entrar con normalidad.</p>
           </div>
 
