@@ -41,6 +41,7 @@ export function LoginRolePanel({
   const [demoPayload, setDemoPayload] = useState<DemoPayload | null>(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [nextPath, setNextPath] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [feedback, setFeedback] = useState("");
@@ -207,7 +208,12 @@ export function LoginRolePanel({
         </label>
         <label>
           Contraseña
-          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="********" />
+          <div className="password-field">
+            <input type={showPassword ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="********" />
+            <button type="button" className="password-toggle" onClick={() => setShowPassword((current) => !current)}>
+              {showPassword ? "Ocultar" : "Mostrar"}
+            </button>
+          </div>
         </label>
         <div className="login-primary-actions">
           <button className="cta small" type="submit" disabled={loading}>

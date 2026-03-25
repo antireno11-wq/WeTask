@@ -14,6 +14,7 @@ export default function AdminCreatePage() {
   const [existingEmail, setExistingEmail] = useState("");
   const [fullName, setFullName] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
   const runAction = async (
     action: "grant" | "create_admin",
@@ -95,12 +96,17 @@ export default function AdminCreatePage() {
           </label>
           <label>
             Contraseña inicial
-            <input
-              type="password"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              placeholder="Mínimo 8 caracteres"
-            />
+            <div className="password-field">
+              <input
+                type={showPassword ? "text" : "password"}
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                placeholder="Mínimo 8 caracteres"
+              />
+              <button type="button" className="password-toggle" onClick={() => setShowPassword((current) => !current)}>
+                {showPassword ? "Ocultar" : "Mostrar"}
+              </button>
+            </div>
           </label>
           <button
             type="button"

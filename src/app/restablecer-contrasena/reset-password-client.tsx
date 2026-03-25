@@ -9,6 +9,7 @@ export function ResetPasswordClient() {
 
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPasswords, setShowPasswords] = useState(false);
   const [loading, setLoading] = useState(false);
   const [feedback, setFeedback] = useState("");
   const [error, setError] = useState("");
@@ -65,11 +66,26 @@ export function ResetPasswordClient() {
       <form className="login-form-shell" onSubmit={submit}>
         <label>
           Nueva contraseña
-          <input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="Mínimo 8 caracteres" />
+          <div className="password-field">
+            <input type={showPasswords ? "text" : "password"} value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="Mínimo 8 caracteres" />
+            <button type="button" className="password-toggle" onClick={() => setShowPasswords((current) => !current)}>
+              {showPasswords ? "Ocultar" : "Mostrar"}
+            </button>
+          </div>
         </label>
         <label>
           Repite la contraseña
-          <input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="Repite tu nueva contraseña" />
+          <div className="password-field">
+            <input
+              type={showPasswords ? "text" : "password"}
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              placeholder="Repite tu nueva contraseña"
+            />
+            <button type="button" className="password-toggle" onClick={() => setShowPasswords((current) => !current)}>
+              {showPasswords ? "Ocultar" : "Mostrar"}
+            </button>
+          </div>
         </label>
         <div className="login-primary-actions">
           <button className="cta small" type="submit" disabled={loading || !canSubmit}>

@@ -11,6 +11,7 @@ export default function RegistroPage() {
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [phoneDigits, setPhoneDigits] = useState("");
   const [acceptTerms, setAcceptTerms] = useState(false);
 
@@ -216,7 +217,12 @@ export default function RegistroPage() {
 
                   <label>
                     Contraseña
-                    <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} minLength={8} required />
+                    <div className="password-field">
+                      <input type={showPassword ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)} minLength={8} required />
+                      <button type="button" className="password-toggle" onClick={() => setShowPassword((current) => !current)}>
+                        {showPassword ? "Ocultar" : "Mostrar"}
+                      </button>
+                    </div>
                   </label>
 
                   <label>
