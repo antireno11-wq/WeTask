@@ -1512,7 +1512,18 @@ export default function ProPage() {
                       <strong>Total:</strong> {clp(booking.totalPriceClp)}
                     </p>
                     <p>
-                      <strong>Estado del pago:</strong> {booking.status === "DISPUTE_OPEN" || booking.status === "DISPUTE" ? "Retenido por disputa abierta" : booking.payout || booking.status === "PAYOUT_SCHEDULED" ? "Payout ya programado" : booking.status === "AWAITING_CUSTOMER_CONFIRMATION" || booking.status === "COMPLETED" ? "Esperando confirmación del cliente" : booking.status === "IN_PROGRESS" ? "Retenido hasta terminar el servicio" : booking.status === "CONFIRMED" || booking.status === "ACCEPTED" || booking.status === "ASSIGNED" ? "Pago reservado por WeTask" : booking.payout?.status ?? "Aún no aplica"}
+                      <strong>Estado del pago:</strong>{" "}
+                      {booking.status === "DISPUTE_OPEN" || booking.status === "DISPUTE"
+                        ? "Retenido por disputa abierta"
+                        : booking.status === "PAYOUT_SCHEDULED" || booking.payout
+                          ? "Payout ya programado"
+                          : booking.status === "AWAITING_CUSTOMER_CONFIRMATION" || booking.status === "COMPLETED"
+                            ? "Esperando confirmación del cliente"
+                            : booking.status === "IN_PROGRESS"
+                              ? "Retenido hasta terminar el servicio"
+                              : booking.status === "CONFIRMED" || booking.status === "ACCEPTED" || booking.status === "ASSIGNED"
+                                ? "Pago reservado por WeTask"
+                                : "Aún no aplica"}
                     </p>
                     <div className="status-editor">
                       <label>

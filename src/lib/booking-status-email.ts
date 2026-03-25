@@ -19,8 +19,12 @@ const STATUS_LABELS: Record<BookingStatus, string> = {
   ACCEPTED: "Aceptada",
   IN_PROGRESS: "En curso",
   COMPLETED: "Completada",
+  AWAITING_CUSTOMER_CONFIRMATION: "Esperando confirmación del cliente",
+  PAYOUT_SCHEDULED: "Pago programado",
+  PAID_OUT: "Pago realizado",
   CANCELLED: "Cancelada",
   DISPUTE: "En revisión",
+  DISPUTE_OPEN: "Disputa abierta",
   REFUNDED: "Reembolsada"
 };
 
@@ -73,6 +77,30 @@ function statusCopy(status: BookingStatus, serviceName: string, taskerName: stri
         subject: `Tu servicio de ${serviceName} fue marcado como completado`,
         title: "Tu servicio fue marcado como completado",
         body: "Revisa el detalle de la reserva para confirmar que todo salió bien o reportar un problema si lo necesitas."
+      };
+    case "AWAITING_CUSTOMER_CONFIRMATION":
+      return {
+        subject: `Confirma tu servicio de ${serviceName}`,
+        title: "Tu servicio espera tu confirmación",
+        body: "El tasker marcó el trabajo como realizado. Confirma si todo salió bien o abre un reclamo desde el detalle de tu reserva."
+      };
+    case "PAYOUT_SCHEDULED":
+      return {
+        subject: `El pago del servicio ${serviceName} quedó programado`,
+        title: "Pago del profesional programado",
+        body: "Tu servicio fue confirmado y el pago del profesional quedó programado para el próximo ciclo automático de WeTask."
+      };
+    case "PAID_OUT":
+      return {
+        subject: `El pago del servicio ${serviceName} fue realizado`,
+        title: "Pago del profesional realizado",
+        body: "El pago asociado a esta reserva ya fue ejecutado correctamente."
+      };
+    case "DISPUTE_OPEN":
+      return {
+        subject: `Abrimos un reclamo para tu reserva de ${serviceName}`,
+        title: "Tu reserva tiene una disputa abierta",
+        body: "Se abrió un reclamo sobre esta reserva. Nuestro equipo revisará lo ocurrido antes de liberar cualquier pago."
       };
     case "CANCELLED":
       return {
