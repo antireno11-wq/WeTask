@@ -306,6 +306,13 @@ type MissingFieldItem = {
 const TOTAL_STEPS = 12;
 const STORAGE_KEY = "wetask_tasker_wizard_v2";
 const CHILE_MOBILE_PREFIX = "+569";
+const MAX_UPLOAD_BYTES = 6 * 1024 * 1024;
+const STORAGE_BINARY_FIELDS = [
+  "profilePhotoUrl",
+  "identityDocumentFrontFile",
+  "identityDocumentBackFile",
+  "criminalRecordFile"
+] as const;
 const COMMUNE_OPTIONS: ActiveMvpCommune[] = [
   "Vitacura",
   "Lo Barnechea",
@@ -657,6 +664,14 @@ function fileToDataUrl(file: File): Promise<string> {
   });
 }
 
+function stripBinaryFieldsForStorage(draft: DraftState) {
+  const nextDraft = { ...draft };
+  for (const key of STORAGE_BINARY_FIELDS) {
+    nextDraft[key] = "";
+  }
+  return nextDraft;
+}
+
 function normalizeRut(rawRut: string) {
   return rawRut.replace(/\./g, "").replace(/-/g, "").toUpperCase();
 }
@@ -919,7 +934,18 @@ function CleaningOnboardingPageContent() {
   }, []);
 
   useEffect(() => {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...draft, activeStep }));
+    try {
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...draft, activeStep }));
+    } catch {
+      try {
+        window.localStorage.setItem(
+          STORAGE_KEY,
+          JSON.stringify({ ...stripBinaryFieldsForStorage(draft), activeStep })
+        );
+      } catch {
+        // noop
+      }
+    }
   }, [draft, activeStep]);
 
   useEffect(() => {
@@ -1595,6 +1621,25 @@ function CleaningOnboardingPageContent() {
 
   const updateDraft = <K extends keyof DraftState>(key: K, value: DraftState[K]) => {
     setDraft((current) => ({ ...current, [key]: value }));
+  };
+
+  const handleDraftFileUpload = async (
+    field: "profilePhotoUrl" | "identityDocumentFrontFile" | "identityDocumentBackFile" | "criminalRecordFile",
+    file: File | null,
+    label: string
+  ) => {
+    if (!file) return;
+    if (file.size > MAX_UPLOAD_BYTES) {
+      setError(`${label}: el archivo supera los 6 MB. Súbelo más liviano para continuar.`);
+      return;
+    }
+    try {
+      setError("");
+      const content = await fileToDataUrl(file);
+      updateDraft(field, content);
+    } catch (eventualError) {
+      setError(eventualError instanceof Error ? eventualError.message : `No se pudo cargar ${label.toLowerCase()}.`);
+    }
   };
 
   const selectAddressSuggestion = (suggestion: string) => {
@@ -2681,10 +2726,7 @@ function CleaningOnboardingPageContent() {
                       type="file"
                       accept="image/png,image/jpeg"
                       onChange={async (event) => {
-                        const file = event.target.files?.[0];
-                        if (!file) return;
-                        const content = await fileToDataUrl(file);
-                        updateDraft("profilePhotoUrl", content);
+                        await handleDraftFileUpload("profilePhotoUrl", event.target.files?.[0] ?? null, "Foto de perfil");
                       }}
                     />
                   </label>
@@ -4698,10 +4740,11 @@ function CleaningOnboardingPageContent() {
                       type="file"
                       accept="image/png,image/jpeg"
                       onChange={async (event) => {
-                        const file = event.target.files?.[0];
-                        if (!file) return;
-                        const content = await fileToDataUrl(file);
-                        updateDraft("identityDocumentFrontFile", content);
+                        await handleDraftFileUpload(
+                          "identityDocumentFrontFile",
+                          event.target.files?.[0] ?? null,
+                          "Carnet por delante"
+                        );
                       }}
                     />
                     {draft.identityDocumentFrontFile ? <p className="input-hint">Archivo cargado correctamente.</p> : null}
@@ -4712,10 +4755,11 @@ function CleaningOnboardingPageContent() {
                       type="file"
                       accept="image/png,image/jpeg"
                       onChange={async (event) => {
-                        const file = event.target.files?.[0];
-                        if (!file) return;
-                        const content = await fileToDataUrl(file);
-                        updateDraft("identityDocumentBackFile", content);
+                        await handleDraftFileUpload(
+                          "identityDocumentBackFile",
+                          event.target.files?.[0] ?? null,
+                          "Carnet por atrás"
+                        );
                       }}
                     />
                     {draft.identityDocumentBackFile ? <p className="input-hint">Archivo cargado correctamente.</p> : null}
@@ -4726,10 +4770,11 @@ function CleaningOnboardingPageContent() {
                       type="file"
                       accept=".pdf,image/png,image/jpeg"
                       onChange={async (event) => {
-                        const file = event.target.files?.[0];
-                        if (!file) return;
-                        const content = await fileToDataUrl(file);
-                        updateDraft("criminalRecordFile", content);
+                        await handleDraftFileUpload(
+                          "criminalRecordFile",
+                          event.target.files?.[0] ?? null,
+                          "Certificado de antecedentes"
+                        );
                       }}
                     />
                     {draft.criminalRecordFile ? <p className="input-hint">Archivo cargado correctamente.</p> : null}
