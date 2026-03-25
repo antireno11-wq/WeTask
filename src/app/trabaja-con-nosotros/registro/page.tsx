@@ -1749,6 +1749,25 @@ function CleaningOnboardingPageContent() {
       throw new Error(data.detail || data.error || "No se pudo guardar el paso");
     }
     setOnboarding(data.onboarding);
+    if (data.onboarding.phoneValidatedAt) {
+      setDraft((current) => ({ ...current, phoneVerified: true }));
+    }
+  };
+
+  const ensurePhoneVerificationLinked = async () => {
+    if (!draft.phoneVerified || onboarding?.phoneValidatedAt || !session || (session.role !== "PRO" && session.role !== "ADMIN")) {
+      return onboarding;
+    }
+
+    const claimResponse = await fetch("/api/onboarding/cleaning/phone/claim", { method: "POST" });
+    const claimData = (await claimResponse.json()) as { ok?: boolean; onboarding?: OnboardingPayload; error?: string; detail?: string };
+    if (!claimResponse.ok || !claimData.ok || !claimData.onboarding) {
+      throw new Error(claimData.detail || claimData.error || "No pudimos asociar la verificación del teléfono.");
+    }
+
+    setOnboarding(claimData.onboarding);
+    setDraft((current) => ({ ...current, phoneVerified: true }));
+    return claimData.onboarding;
   };
 
   const phoneVerificationBasePath =
@@ -2376,10 +2395,29 @@ function CleaningOnboardingPageContent() {
     setFeedback("");
     setSubmitMissingFields([]);
     try {
+      await ensurePhoneVerificationLinked();
       await persistServerStep(11, { acceptTerms: true });
       const response = await fetch("/api/onboarding/cleaning/submit", { method: "POST" });
       const data = (await response.json()) as { ok?: boolean; onboarding?: OnboardingPayload; error?: string; detail?: string; missingFields?: string[] };
       if (!response.ok || !data.ok || !data.onboarding) {
+        if (Array.isArray(data.missingFields) && data.missingFields.includes("phoneValidatedAt") && draft.phoneVerified) {
+          await ensurePhoneVerificationLinked();
+          const retryResponse = await fetch("/api/onboarding/cleaning/submit", { method: "POST" });
+          const retryData = (await retryResponse.json()) as {
+            ok?: boolean;
+            onboarding?: OnboardingPayload;
+            error?: string;
+            detail?: string;
+            missingFields?: string[];
+          };
+          if (retryResponse.ok && retryData.ok && retryData.onboarding) {
+            setOnboarding(retryData.onboarding);
+            setActiveStep(12);
+            setFeedback("Registro completado. Tu perfil será revisado antes de activarse.");
+            window.localStorage.removeItem(STORAGE_KEY);
+            return;
+          }
+        }
         if (Array.isArray(data.missingFields) && data.missingFields.length > 0) {
           setSubmitMissingFields(
             data.missingFields.map((field) => ({
