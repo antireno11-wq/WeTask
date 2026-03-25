@@ -11,6 +11,9 @@ export async function POST(req: NextRequest) {
     const body = (await req.json()) as { email?: string };
     const email = body.email?.trim().toLowerCase();
     if (!email) return NextResponse.json({ error: "Email requerido" }, { status: 400 });
+    if (!/^\S+@\S+\.\S+$/.test(email)) {
+      return NextResponse.json({ error: "Error en el correo" }, { status: 400 });
+    }
 
     const emailConfigured = Boolean(process.env.RESEND_API_KEY && process.env.RESEND_FROM_EMAIL);
 

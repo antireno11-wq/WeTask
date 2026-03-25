@@ -25,6 +25,21 @@ export default function RegistroPage() {
   const [verificationPreview, setVerificationPreview] = useState("");
   const [emailDeliveryConfigured, setEmailDeliveryConfigured] = useState(true);
 
+  const normalizeEmailError = (message: string) => {
+    const normalized = message.toLowerCase();
+    if (
+      normalized.includes("invalid email") ||
+      normalized.includes("email inválido") ||
+      normalized.includes("error en el correo") ||
+      (normalized.includes("invalid_string") && normalized.includes("email")) ||
+      normalized.includes("\"path\": [ \"email\" ]") ||
+      normalized.includes("\"path\":[\"email\"]")
+    ) {
+      return "Error en el correo";
+    }
+    return message;
+  };
+
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     setLoading(true);
@@ -79,7 +94,7 @@ export default function RegistroPage() {
       router.push("/cliente");
       router.refresh();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Error inesperado");
+      setError(normalizeEmailError(e instanceof Error ? e.message : "Error inesperado"));
     } finally {
       setLoading(false);
     }
@@ -107,7 +122,7 @@ export default function RegistroPage() {
       setFeedback("Correo verificado. Ahora ya puedes iniciar sesión.");
       router.push("/ingresar/cliente");
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Error inesperado");
+      setError(normalizeEmailError(e instanceof Error ? e.message : "Error inesperado"));
     } finally {
       setVerifyingCode(false);
     }
@@ -147,7 +162,7 @@ export default function RegistroPage() {
       setVerificationPreview(data.codePreview ?? "");
       setFeedback(`Te enviamos un nuevo código.${data.codePreview ? ` Código dev: ${data.codePreview}` : ""}`);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Error inesperado");
+      setError(normalizeEmailError(e instanceof Error ? e.message : "Error inesperado"));
     } finally {
       setResendingCode(false);
     }

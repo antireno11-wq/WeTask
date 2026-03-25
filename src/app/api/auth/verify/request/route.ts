@@ -11,6 +11,9 @@ export async function POST(req: NextRequest) {
     const body = (await req.json()) as { email?: string };
     const email = body.email?.trim().toLowerCase();
     if (!email) return NextResponse.json({ error: "Email requerido" }, { status: 400 });
+    if (!/^\S+@\S+\.\S+$/.test(email)) {
+      return NextResponse.json({ error: "Error en el correo" }, { status: 400 });
+    }
 
     const user = await prisma.user.findUnique({ where: { email }, select: { id: true, authProvider: true, emailVerifiedAt: true } });
     if (!user) return NextResponse.json({ ok: true }, { status: 200 });

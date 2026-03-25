@@ -49,6 +49,20 @@ export function LoginRolePanel({
   const [showResendVerification, setShowResendVerification] = useState(false);
   const demoPassword = "WetaskDemo2026!";
 
+  const normalizeEmailError = (message: string) => {
+    const normalized = message.toLowerCase();
+    if (
+      normalized.includes("invalid email") ||
+      normalized.includes("email inválido") ||
+      normalized.includes("error en el correo") ||
+      (normalized.includes("invalid_string") && normalized.includes("email")) ||
+      (normalized.includes("\"path\": [ \"email\" ]") || normalized.includes("\"path\":[\"email\"]"))
+    ) {
+      return "Error en el correo";
+    }
+    return message;
+  };
+
   const roleTitle = isAdmin ? "Ingreso equipo WeTask" : "Acceder";
   const roleDescription = isAdmin
     ? "Accede con tu cuenta interna para revisar validaciones, usuarios y operación del backoffice."
@@ -110,7 +124,7 @@ export function LoginRolePanel({
       const safeNext = nextPath && nextPath.startsWith("/") && !nextPath.startsWith("//") ? nextPath : null;
       window.location.assign(safeNext ?? profileRoute);
     } catch (e) {
-      const message = e instanceof Error ? e.message : "Error inesperado";
+      const message = normalizeEmailError(e instanceof Error ? e.message : "Error inesperado");
       setError(message);
       setShowResendVerification(message.includes("Debes verificar tu correo antes de ingresar"));
     } finally {
@@ -154,7 +168,7 @@ export function LoginRolePanel({
         );
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Error inesperado");
+      setError(normalizeEmailError(e instanceof Error ? e.message : "Error inesperado"));
     } finally {
       setLoading(false);
     }
@@ -196,7 +210,7 @@ export function LoginRolePanel({
       );
       setShowResendVerification(false);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Error inesperado");
+      setError(normalizeEmailError(e instanceof Error ? e.message : "Error inesperado"));
     } finally {
       setLoading(false);
     }
