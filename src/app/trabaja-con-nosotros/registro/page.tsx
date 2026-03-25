@@ -840,7 +840,6 @@ function CleaningOnboardingPageContent() {
   const addressValidationRequestRef = useRef(0);
   const availabilityTaskPanelRef = useRef<HTMLDivElement | null>(null);
 
-  const chicureoSelected = draft.homeCommune === "Chicureo" || draft.coverageCommunes.includes("Chicureo");
   const selectedCategoryLabel = CATEGORY_OPTIONS.find((option) => option.slug === draft.category)?.label ?? "Limpieza";
   const cleaningScopeServicesPreview = draft.cleaningScope.services_offered.map(getCleaningScopeServiceLabel);
   const cleaningScopeIncludedPreview = draft.cleaningScope.tasks_included.map(getCleaningIncludedTaskLabel);
@@ -2692,7 +2691,6 @@ function CleaningOnboardingPageContent() {
                 </div>
                 {addressValidationMessage ? <p className="feedback ok">{addressValidationMessage}</p> : null}
                 {addressValidationError ? <p className="feedback error">{addressValidationError}</p> : null}
-                {draft.homeCommune === "Chicureo" ? <p className="onboarding-warning">Chicureo puede tener recargo por distancia.</p> : null}
                 <div className="auth-flow-actions">
                   <button type="button" className="cta ghost" onClick={previousStep}>
                     Volver
@@ -2724,7 +2722,6 @@ function CleaningOnboardingPageContent() {
                     </label>
                   ))}
                 </div>
-                {chicureoSelected ? <p className="onboarding-warning">Chicureo puede tener recargo por distancia.</p> : null}
                 <div className="auth-flow-actions">
                   <button type="button" className="cta ghost" onClick={previousStep}>
                     Volver
@@ -4645,7 +4642,6 @@ function CleaningOnboardingPageContent() {
                     </label>
                   ) : null}
                 </div>
-                {chicureoSelected ? <p className="onboarding-warning">Se aplicará un recargo fijo sugerido para Chicureo.</p> : null}
                 <div className="auth-flow-actions">
                   <button type="button" className="cta ghost" onClick={previousStep}>
                     Volver
