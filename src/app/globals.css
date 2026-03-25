@@ -1815,6 +1815,12 @@ textarea {
   position: relative;
 }
 
+.address-autocomplete-shell input {
+  min-height: 58px;
+  padding: 14px 18px;
+  font-size: 1rem;
+}
+
 .address-suggestions {
   position: absolute;
   top: calc(100% + 6px);
