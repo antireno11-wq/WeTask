@@ -234,6 +234,7 @@ type DraftState = {
   email: string;
   rut: string;
   address: string;
+  apartment: string;
   homeCommune: ActiveMvpCommune;
   profilePhotoUrl: string;
   coverageCommunes: ActiveMvpCommune[];
@@ -583,6 +584,7 @@ function createInitialDraft(): DraftState {
     email: "",
     rut: "",
     address: "",
+    apartment: "",
     homeCommune: "Las Condes",
     profilePhotoUrl: "",
     coverageCommunes: ["Las Condes"],
@@ -662,6 +664,27 @@ function fileToDataUrl(file: File): Promise<string> {
     reader.onerror = () => reject(new Error("No se pudo leer el archivo"));
     reader.readAsDataURL(file);
   });
+}
+
+function composeReferenceAddress(address: string, apartment: string) {
+  const cleanAddress = address.trim();
+  const cleanApartment = apartment.trim();
+  if (!cleanApartment) return cleanAddress;
+  return `${cleanAddress} · Depto ${cleanApartment}`;
+}
+
+function splitReferenceAddress(referenceAddress: string | null | undefined) {
+  const raw = referenceAddress?.trim() ?? "";
+  if (!raw) return { address: "", apartment: "" };
+  const separator = " · Depto ";
+  if (!raw.includes(separator)) {
+    return { address: raw, apartment: "" };
+  }
+  const [address, apartment] = raw.split(separator);
+  return {
+    address: address?.trim() ?? raw,
+    apartment: apartment?.trim() ?? ""
+  };
 }
 
 function stripBinaryFieldsForStorage(draft: DraftState) {
@@ -1288,6 +1311,7 @@ function CleaningOnboardingPageContent() {
 
   const hydrateFromServer = (nextOnboarding: OnboardingPayload, user?: { fullName?: string | null; email?: string | null; phone?: string | null }) => {
     const { firstName, lastName } = splitFullName(user?.fullName ?? session?.fullName ?? "");
+    const parsedReferenceAddress = splitReferenceAddress(nextOnboarding.referenceAddress);
     setOnboarding(nextOnboarding);
     setDraft((current) => ({
       ...current,
@@ -1297,7 +1321,8 @@ function CleaningOnboardingPageContent() {
       lastName: lastName || current.lastName,
       email: user?.email ?? current.email,
       rut: formatRutInput(nextOnboarding.documentId ?? current.rut),
-      address: nextOnboarding.referenceAddress ?? current.address,
+      address: parsedReferenceAddress.address || current.address,
+      apartment: parsedReferenceAddress.apartment || current.apartment,
       homeCommune: (nextOnboarding.baseCommune as ActiveMvpCommune) ?? current.homeCommune,
       profilePhotoUrl: nextOnboarding.profilePhotoUrl ?? current.profilePhotoUrl,
       coverageCommunes:
@@ -1874,7 +1899,7 @@ function CleaningOnboardingPageContent() {
           email: draft.email.trim().toLowerCase(),
           phone: draft.phone.trim(),
           documentId: draft.rut.trim(),
-          referenceAddress: draft.address.trim(),
+          referenceAddress: composeReferenceAddress(draft.address, draft.apartment),
           baseCommune: draft.homeCommune,
           profilePhotoUrl: draft.profilePhotoUrl
         });
@@ -1888,7 +1913,7 @@ function CleaningOnboardingPageContent() {
             phone: draft.phone.trim(),
             categorySlug: draft.category,
             baseCommune: draft.homeCommune,
-            referenceAddress: draft.address.trim(),
+            referenceAddress: composeReferenceAddress(draft.address, draft.apartment),
             documentId: draft.rut.trim(),
             profilePhotoUrl: draft.profilePhotoUrl
           })
@@ -2719,6 +2744,15 @@ function CleaningOnboardingPageContent() {
                         ? "Estamos corroborando esta dirección con Google automáticamente."
                         : "La comuna se detecta automáticamente a partir de la dirección que ingreses."}
                     </p>
+                  </label>
+                  <label>
+                    Departamento
+                    <input
+                      value={draft.apartment}
+                      onChange={(event) => updateDraft("apartment", event.target.value)}
+                      placeholder="Ej: 504, Torre B, Oficina 12"
+                    />
+                    <p className="input-hint">Opcional. Lo guardaremos junto a la dirección para futuras reservas.</p>
                   </label>
                   <label>
                     Foto de perfil
