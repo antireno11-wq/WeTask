@@ -664,6 +664,20 @@ export default function ClientePage() {
                 <p>Dirección por defecto</p>
                 <strong className="client-profile-address">{displayedAddress}</strong>
                 <div className="client-profile-actions">
+                  <button
+                    className="cta ghost small"
+                    type="button"
+                    onClick={() => {
+                      setActiveView("perfil");
+                      setEditingAddress(true);
+                      setAddressDraft(displayedAddress);
+                      setShowSuggestions(false);
+                    }}
+                  >
+                    Editar dirección
+                  </button>
+                </div>
+                <div className="client-profile-actions">
                   <span className="status status-accepted">{paymentMethods.length} medio(s) de pago</span>
                   <span className="status status-completed">{upcomingBookings.length} reserva(s) próxima(s)</span>
                 </div>
