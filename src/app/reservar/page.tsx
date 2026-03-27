@@ -162,12 +162,13 @@ export default function ReservarPage() {
   const [loadingSavedPaymentMethods, setLoadingSavedPaymentMethods] = useState(false);
   const [preferredStartsAt, setPreferredStartsAt] = useState("");
   const [quickCheckoutEnabled, setQuickCheckoutEnabled] = useState(false);
+  const [pinnedTaskerMode, setPinnedTaskerMode] = useState(false);
   const mercadoPagoPublicKey = process.env.NEXT_PUBLIC_MERCADOPAGO_PUBLIC_KEY ?? "";
 
   const selectedPro = useMemo(() => matches.find((pro) => pro.userId === selectedProId) ?? null, [matches, selectedProId]);
   const selectedService = useMemo(() => services.find((service) => service.id === filters.serviceId) ?? null, [services, filters.serviceId]);
   const isChefService = Boolean(selectedService?.slug?.startsWith("cocina-") || selectedService?.slug === "reposteria" || selectedService?.slug === "cumpleanos");
-  const quickCheckoutMode = quickCheckoutEnabled && !createdBooking;
+  const quickCheckoutMode = quickCheckoutEnabled && !createdBooking && !pinnedTaskerMode;
 
   const dayGroups = useMemo(() => {
     if (!selectedPro) return [] as Array<[string, Slot[]]>;
@@ -270,16 +271,20 @@ export default function ReservarPage() {
     const commune = params.get("commune") ?? params.get("comuna");
     const postalCode = params.get("postalCode");
     const hasBookingAddress = Boolean(addressLine || city || commune || postalCode);
+    const hasPinnedTasker = Boolean(proId);
 
     if (serviceId) setFilters((prev) => ({ ...prev, serviceId }));
     if (proId) setSelectedProId(proId);
     if (startsAt) {
       setPreferredStartsAt(startsAt);
-      setQuickCheckoutEnabled(hasBookingAddress);
+      setQuickCheckoutEnabled(hasBookingAddress && !hasPinnedTasker);
       const derivedDate = startsAt.slice(0, 10);
       if (derivedDate) {
         setFilters((prev) => ({ ...prev, date: derivedDate }));
       }
+    }
+    if (hasPinnedTasker) {
+      setPinnedTaskerMode(true);
     }
     if (suggestedHours) {
       setRecommendedHours(suggestedHours);
@@ -497,13 +502,13 @@ export default function ReservarPage() {
   };
 
   useEffect(() => {
-    if (!quickCheckoutEnabled || !selectedProId || !preferredStartsAt || services.length === 0) return;
+    if ((!quickCheckoutEnabled && !pinnedTaskerMode) || !selectedProId || !services.length) return;
     void loadProfessionals({
       preferredProId: selectedProId,
       preferredStartsAt,
       silent: true
     });
-  }, [filters.serviceId, preferredStartsAt, quickCheckoutEnabled, selectedProId, services.length]);
+  }, [filters.serviceId, pinnedTaskerMode, preferredStartsAt, quickCheckoutEnabled, selectedProId, services.length]);
 
   useEffect(() => {
     setCardFormReady(false);
@@ -672,10 +677,14 @@ export default function ReservarPage() {
         <MarketNav />
 
         <section className="auth-flow-shell auth-flow-shell-wide client-dashboard-hero booking-flow-hero">
-          <div className="auth-flow-copy client-dashboard-copy">
+          <div className="auth-flow-copy client-dashboard-copy booking-flow-hero-copy">
             <p className="auth-flow-kicker">Reserva protegida</p>
-            <h1>Agenda, compara y paga en un solo flujo.</h1>
-            <p>Elige el servicio, encuentra profesionales disponibles en tu zona y confirma tu reserva con pago seguro dentro de WeTask. Tu dinero queda retenido hasta que confirmes o venza el plazo sin reclamo.</p>
+            <h1>{pinnedTaskerMode ? "Revisa la agenda y reserva con tu tasker." : "Agenda, compara y paga en un solo flujo."}</h1>
+            <p>
+              {pinnedTaskerMode
+                ? "Ya vienes con un tasker elegido. Selecciona un bloque disponible, revisa los detalles del servicio y confirma tu reserva con pago protegido dentro de WeTask."
+                : "Elige el servicio, encuentra profesionales disponibles en tu zona y confirma tu reserva con pago seguro dentro de WeTask. Tu dinero queda retenido hasta que confirmes o venza el plazo sin reclamo."}
+            </p>
 
             <div className="auth-flow-copy-list client-dashboard-summary">
               <div className="auth-flow-meta-card">
@@ -690,6 +699,12 @@ export default function ReservarPage() {
                 <strong>Total estimado</strong>
                 <span>{selectedPro ? clp(total) : "Busca profesionales para calcularlo"}</span>
               </div>
+              {pinnedTaskerMode ? (
+                <div className="auth-flow-meta-card">
+                  <strong>Tasker</strong>
+                  <span>{selectedPro?.fullName ?? "Cargando tasker elegido"}</span>
+                </div>
+              ) : null}
             </div>
           </div>
 
@@ -698,13 +713,15 @@ export default function ReservarPage() {
               <strong>Estado de tu reserva</strong>
               <div className="booking-summary-list">
                 <span className={filters.serviceId ? "is-complete" : ""}>1. Servicio seleccionado</span>
-                <span className={matches.length > 0 ? "is-complete" : ""}>2. Profesionales encontrados</span>
-                <span className={selectedSlot ? "is-complete" : ""}>3. Horario elegido</span>
+                <span className={(pinnedTaskerMode ? Boolean(selectedPro) : matches.length > 0) ? "is-complete" : ""}>
+                  {pinnedTaskerMode ? "2. Tasker cargado" : "2. Taskers encontrados"}
+                </span>
+                <span className={selectedSlot ? "is-complete" : ""}>{pinnedTaskerMode ? "3. Bloque elegido" : "3. Horario elegido"}</span>
                 <span className={checkoutState === "approved" ? "is-complete" : ""}>4. Pago retenido y protegido</span>
               </div>
               <div className="auth-flow-note-card">
                 <strong>Resumen rápido</strong>
-                <span>{selectedPro ? `${selectedPro.fullName} · ${selectedSlot ? new Date(selectedSlot.startsAt).toLocaleString("es-CL") : "falta horario"}` : "Aún no eliges profesional."}</span>
+                <span>{selectedPro ? `${selectedPro.fullName} · ${selectedSlot ? new Date(selectedSlot.startsAt).toLocaleString("es-CL") : "falta horario"}` : pinnedTaskerMode ? "Cargando tasker elegido." : "Aún no eliges profesional."}</span>
               </div>
               <div className="auth-flow-note-card">
                 <strong>¿Qué pasa con tu pago?</strong>
@@ -744,11 +761,33 @@ export default function ReservarPage() {
                   </button>
                 </div>
               </>
+            ) : pinnedTaskerMode ? (
+              <>
+                <div className="panel-head auth-flow-panel-head">
+                  <h2>Tasker y dirección de la reserva</h2>
+                  <p>Ya vienes con el tasker elegido. Revisa tu dirección y sigue directo a la agenda para escoger el horario.</p>
+                </div>
+
+                <div className="booking-checkout-summary">
+                  <p>
+                    Tasker: <strong>{selectedPro?.fullName ?? "Cargando tasker"}</strong>
+                  </p>
+                  <p>
+                    Servicio: <strong>{selectedService?.name ?? "Servicio seleccionado"}</strong>
+                  </p>
+                  <p>
+                    Dirección: <strong>{address.street}, {address.commune}, {address.city}</strong>
+                  </p>
+                  <p>
+                    Estado: <strong>{selectedSlot ? "Bloque elegido" : "Falta elegir horario"}</strong>
+                  </p>
+                </div>
+              </>
             ) : (
               <>
                 <div className="panel-head auth-flow-panel-head">
                   <h2>Busca tu servicio</h2>
-                  <p>Completa la ubicación, elige la fecha deseada y encuentra profesionales disponibles en tiempo real.</p>
+                  <p>Completa la ubicación, elige la fecha deseada y encuentra taskers disponibles en tiempo real.</p>
                 </div>
 
                 <form className="grid-form auth-flow-form" onSubmit={searchPros}>
@@ -802,11 +841,11 @@ export default function ReservarPage() {
             )}
           </section>
 
-          <div className={`booking-flow-grid ${quickCheckoutMode ? "booking-flow-grid-compact" : ""}`}>
-            {!quickCheckoutMode ? (
+          <div className={`booking-flow-grid ${quickCheckoutMode ? "booking-flow-grid-compact" : ""} ${pinnedTaskerMode ? "booking-flow-grid-pinned" : ""}`}>
+            {!quickCheckoutMode && !pinnedTaskerMode ? (
               <section className="auth-flow-panel client-dashboard-section">
                 <div className="panel-head auth-flow-panel-head">
-                  <h2>Profesionales disponibles</h2>
+                  <h2>Taskers disponibles</h2>
                   <p>Ordenados por distancia, disponibilidad, valoración y precio estimado por hora.</p>
                 </div>
 
@@ -825,9 +864,6 @@ export default function ReservarPage() {
                       </p>
                       <p>
                         <strong>Próxima hora:</strong> {pro.nextAvailableAt ? new Date(pro.nextAvailableAt).toLocaleString("es-ES") : "Sin slots"}
-                      </p>
-                      <p>
-                        <strong>Cobertura:</strong> hasta {pro.serviceRadiusKm} km
                       </p>
                       <button
                         className="cta small"
