@@ -174,7 +174,7 @@ export default function AdminUsersPage() {
           <div className="admin-team-list">
             {taskers?.recentUsers.map((user) => (
               <article key={user.id} className="admin-team-row">
-                <div>
+                <Link href={`/admin/users/${user.id}`} className="admin-team-row-main">
                   <h4>{user.fullName}</h4>
                   <p>{user.email}</p>
                   <p>{assignmentLabelList(user.roleAssignments, user.role)}</p>
@@ -185,8 +185,11 @@ export default function AdminUsersPage() {
                   <p>
                     Última actividad: {user.latestActivityLabel} · {dateLabel(user.latestActivityAt)}
                   </p>
-                </div>
+                </Link>
                 <div className="cta-row admin-team-row-actions">
+                  <Link href={`/admin/users/${user.id}`} className="cta ghost small">
+                    Ver perfil
+                  </Link>
                   {!user.roleAssignments.some((role) => role.code === "ADMIN") ? (
                     <button
                       type="button"
@@ -234,7 +237,7 @@ export default function AdminUsersPage() {
           <div className="admin-team-list">
             {customers?.recentUsers.map((user) => (
               <article key={user.id} className="admin-team-row">
-                <div>
+                <Link href={`/admin/users/${user.id}`} className="admin-team-row-main">
                   <h4>{user.fullName}</h4>
                   <p>{user.email}</p>
                   <p>{assignmentLabelList(user.roleAssignments, user.role)}</p>
@@ -242,8 +245,11 @@ export default function AdminUsersPage() {
                   <p>
                     Última actividad: {user.latestActivityLabel} · {dateLabel(user.latestActivityAt)}
                   </p>
-                </div>
+                </Link>
                 <div className="cta-row admin-team-row-actions">
+                  <Link href={`/admin/users/${user.id}`} className="cta ghost small">
+                    Ver perfil
+                  </Link>
                   {!user.roleAssignments.some((role) => role.code === "ADMIN") ? (
                     <button
                       type="button"

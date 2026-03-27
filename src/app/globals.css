@@ -5560,6 +5560,18 @@ textarea {
   background: rgba(255, 255, 255, 0.82);
 }
 
+.admin-team-row-main {
+  flex: 1;
+  text-decoration: none;
+  color: inherit;
+  display: grid;
+  gap: 0.12rem;
+}
+
+.admin-team-row-main:hover h4 {
+  text-decoration: underline;
+}
+
 .admin-section-head .cta,
 .admin-section-head .cta.ghost,
 .admin-queue-row .cta,
@@ -5597,6 +5609,16 @@ textarea {
 .admin-team-row-actions {
   flex-shrink: 0;
   justify-content: flex-end;
+}
+
+.admin-user-facts {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.admin-user-facts p {
+  margin: 0;
+  color: rgba(36, 60, 95, 0.82);
 }
 
 .admin-pagination {
