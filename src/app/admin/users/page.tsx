@@ -29,8 +29,18 @@ type UserListPayload = {
   page: number;
   totalPages: number;
   totalRecentUsers: number;
+  sortBy?: UserSort;
   recentUsers: TeamUserRow[];
 };
+
+type UserSort = "newest" | "oldest" | "activity" | "name";
+
+const USER_SORT_OPTIONS: Array<{ value: UserSort; label: string }> = [
+  { value: "newest", label: "Más nuevos" },
+  { value: "oldest", label: "Más antiguos" },
+  { value: "activity", label: "Última actividad" },
+  { value: "name", label: "A-Z" }
+];
 
 function assignmentLabelList(roleAssignments: Array<{ code: "CUSTOMER" | "PRO" | "ADMIN"; label: string }>, fallbackRole: TeamUserRow["role"]) {
   if (roleAssignments.length > 0) return roleAssignments.map((role) => role.label).join(", ");
@@ -49,19 +59,26 @@ export default function AdminUsersPage() {
   const [customers, setCustomers] = useState<UserListPayload | null>(null);
   const [taskerPage, setTaskerPage] = useState(1);
   const [customerPage, setCustomerPage] = useState(1);
+  const [taskerSort, setTaskerSort] = useState<UserSort>("newest");
+  const [customerSort, setCustomerSort] = useState<UserSort>("newest");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [feedback, setFeedback] = useState("");
   const [deleteEmail, setDeleteEmail] = useState("");
   const [busyId, setBusyId] = useState("");
 
-  const load = async (nextTaskerPage = taskerPage, nextCustomerPage = customerPage) => {
+  const load = async (
+    nextTaskerPage = taskerPage,
+    nextCustomerPage = customerPage,
+    nextTaskerSort = taskerSort,
+    nextCustomerSort = customerSort
+  ) => {
     setLoading(true);
     setError("");
     try {
       const [taskersResponse, customersResponse] = await Promise.all([
-        fetch(`/api/admin/team?page=${nextTaskerPage}&pageSize=5&roleFilter=taskers`),
-        fetch(`/api/admin/team?page=${nextCustomerPage}&pageSize=5&roleFilter=customers`)
+        fetch(`/api/admin/team?page=${nextTaskerPage}&pageSize=5&roleFilter=taskers&sortBy=${nextTaskerSort}`),
+        fetch(`/api/admin/team?page=${nextCustomerPage}&pageSize=5&roleFilter=customers&sortBy=${nextCustomerSort}`)
       ]);
 
       const taskersPayload = (await taskersResponse.json()) as UserListPayload & { error?: string; detail?: string };
@@ -74,6 +91,8 @@ export default function AdminUsersPage() {
       setCustomers(customersPayload);
       setTaskerPage(taskersPayload.page);
       setCustomerPage(customersPayload.page);
+      setTaskerSort((taskersPayload.sortBy as UserSort) ?? nextTaskerSort);
+      setCustomerSort((customersPayload.sortBy as UserSort) ?? nextCustomerSort);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error inesperado");
     } finally {
@@ -171,6 +190,20 @@ export default function AdminUsersPage() {
             <span className="status status-approved">{taskers?.totalRecentUsers ?? 0} taskers</span>
           </div>
 
+          <div className="admin-sort-row" aria-label="Orden taskers">
+            {USER_SORT_OPTIONS.map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                className={`dashboard-switch ${taskerSort === option.value ? "active" : ""}`}
+                disabled={loading}
+                onClick={() => void load(1, customerPage, option.value, customerSort)}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+
           <div className="admin-team-list">
             {taskers?.recentUsers.map((user) => (
               <article key={user.id} className="admin-team-row">
@@ -232,6 +265,20 @@ export default function AdminUsersPage() {
               <p>Cuentas cliente con actividad reciente dentro de la plataforma.</p>
             </div>
             <span className="status status-approved">{customers?.totalRecentUsers ?? 0} clientes</span>
+          </div>
+
+          <div className="admin-sort-row" aria-label="Orden clientes">
+            {USER_SORT_OPTIONS.map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                className={`dashboard-switch ${customerSort === option.value ? "active" : ""}`}
+                disabled={loading}
+                onClick={() => void load(taskerPage, 1, taskerSort, option.value)}
+              >
+                {option.label}
+              </button>
+            ))}
           </div>
 
           <div className="admin-team-list">

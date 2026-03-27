@@ -5611,6 +5611,17 @@ textarea {
   justify-content: flex-end;
 }
 
+.admin-sort-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  margin-bottom: 0.95rem;
+}
+
+.admin-sort-row .dashboard-switch {
+  box-shadow: none;
+}
+
 .admin-user-facts {
   display: grid;
   gap: 0.55rem;
