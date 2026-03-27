@@ -502,17 +502,6 @@ body {
   z-index: 4;
   margin-top: 18px;
   padding: 0 18px 28px;
-  overflow: hidden;
-}
-
-.site-footer-wrap::before {
-  content: "";
-  position: absolute;
-  inset: -36px 0 0;
-  z-index: -1;
-  background:
-    radial-gradient(circle at 18% 0%, rgba(191, 239, 255, 0.22) 0%, rgba(191, 239, 255, 0) 30%),
-    linear-gradient(180deg, rgba(30, 133, 190, 0.24) 0%, rgba(99, 200, 191, 0.34) 46%, rgba(168, 223, 190, 0.92) 100%);
 }
 
 .site-footer-panel {
@@ -1278,8 +1267,10 @@ body {
   margin-top: 14px;
   display: grid;
   gap: 18px;
-  background: linear-gradient(180deg, rgba(236, 243, 251, 0.82) 0%, rgba(225, 235, 246, 0.72) 100%);
-  backdrop-filter: blur(14px);
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
 }
 
 .home-footer-grid {
