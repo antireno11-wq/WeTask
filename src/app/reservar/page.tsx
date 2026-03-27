@@ -46,18 +46,6 @@ type BookingResponse = {
   totalPriceClp: number;
 };
 
-type SavedPaymentMethod = {
-  id: string;
-  brand: string | null;
-  last4: string;
-  expirationMonth: number | null;
-  expirationYear: number | null;
-  cardholderName: string | null;
-  payerEmail: string | null;
-  paymentMethodId: string | null;
-  isDefault: boolean;
-};
-
 type CardFormData = {
   token?: string;
   paymentMethodId?: string;
@@ -98,15 +86,6 @@ function initials(name: string) {
     .slice(0, 2)
     .map((chunk) => chunk[0]?.toUpperCase() ?? "")
     .join("");
-}
-
-function paymentMethodLabel(paymentMethod: SavedPaymentMethod) {
-  const base = paymentMethod.brand?.trim() || paymentMethod.paymentMethodId?.trim() || "Tarjeta";
-  const expiry =
-    paymentMethod.expirationMonth && paymentMethod.expirationYear
-      ? ` · ${String(paymentMethod.expirationMonth).padStart(2, "0")}/${String(paymentMethod.expirationYear).slice(-2)}`
-      : "";
-  return `${base} terminada en ${paymentMethod.last4}${expiry}`;
 }
 
 export default function ReservarPage() {
@@ -150,16 +129,11 @@ export default function ReservarPage() {
   const [hours, setHours] = useState(2);
   const [recommendedHours, setRecommendedHours] = useState<number | null>(null);
   const [estimatedHoursRange, setEstimatedHoursRange] = useState("");
-  const [materials, setMaterials] = useState(false);
-  const [urgency, setUrgency] = useState(false);
-  const [travelFeeClp, setTravelFeeClp] = useState(0);
   const [details, setDetails] = useState("");
   const [dietaryFlags, setDietaryFlags] = useState<string[]>([]);
   const [dietaryNotes, setDietaryNotes] = useState("");
 
   const [createdBooking, setCreatedBooking] = useState<BookingResponse | null>(null);
-  const [savedPaymentMethods, setSavedPaymentMethods] = useState<SavedPaymentMethod[]>([]);
-  const [loadingSavedPaymentMethods, setLoadingSavedPaymentMethods] = useState(false);
   const [preferredStartsAt, setPreferredStartsAt] = useState("");
   const [quickCheckoutEnabled, setQuickCheckoutEnabled] = useState(false);
   const [pinnedTaskerMode, setPinnedTaskerMode] = useState(false);
@@ -219,10 +193,9 @@ export default function ReservarPage() {
   }, [details, dietaryFlags, dietaryNotes, isChefService]);
 
   const baseHourly = selectedPro?.hourlyRateFromClp ?? services.find((s) => s.id === filters.serviceId)?.basePriceClp ?? 0;
-  const extrasTotal = (materials ? 5000 : 0) + (urgency ? 9000 : 0) + travelFeeClp;
   const subtotal = baseHourly * hours;
   const commission = Math.round(subtotal * 0.12);
-  const total = subtotal + extrasTotal + commission;
+  const total = subtotal + commission;
 
   const loadServices = async () => {
     try {
@@ -318,32 +291,20 @@ export default function ReservarPage() {
   }, []);
 
   useEffect(() => {
-    if (!customerId) return;
-    const loadSavedPaymentMethods = async () => {
-      try {
-        setLoadingSavedPaymentMethods(true);
-        const response = await fetch("/api/marketplace/client/payment-methods");
-        const data = (await response.json()) as { paymentMethods?: SavedPaymentMethod[] };
-        if (response.ok) {
-          setSavedPaymentMethods(data.paymentMethods ?? []);
-        }
-      } catch {
-        // noop
-      } finally {
-        setLoadingSavedPaymentMethods(false);
-      }
-    };
-
-    void loadSavedPaymentMethods();
-  }, [customerId]);
-
-  useEffect(() => {
     const nextKey =
       typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
         ? `wtk_checkout_${crypto.randomUUID()}`
         : `wtk_checkout_${Date.now()}_${Math.random().toString(16).slice(2)}`;
     setCheckoutIdempotencyKey(nextKey);
-  }, [customerId, selectedSlotId, filters.serviceId, hours, travelFeeClp, materials, urgency, address.street, address.commune]);
+  }, [customerId, selectedSlotId, filters.serviceId, hours, address.street, address.commune]);
+
+  useEffect(() => {
+    if (!selectedSlot) return;
+    const start = new Date(selectedSlot.startsAt).getTime();
+    const end = new Date(selectedSlot.endsAt).getTime();
+    const diffHours = Math.max(0.5, Math.round(((end - start) / 36e5) * 2) / 2);
+    setHours(diffHours);
+  }, [selectedSlot]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -615,9 +576,9 @@ export default function ReservarPage() {
           },
           details: bookingDetails,
           extras: {
-            materials,
-            urgency,
-            travelFeeClp
+            materials: false,
+            urgency: false,
+            travelFeeClp: 0
           },
           payment: {
             token: cardData.token,
@@ -722,10 +683,6 @@ export default function ReservarPage() {
               <div className="auth-flow-note-card">
                 <strong>Resumen rápido</strong>
                 <span>{selectedPro ? `${selectedPro.fullName} · ${selectedSlot ? new Date(selectedSlot.startsAt).toLocaleString("es-CL") : "falta horario"}` : pinnedTaskerMode ? "Cargando tasker elegido." : "Aún no eliges profesional."}</span>
-              </div>
-              <div className="auth-flow-note-card">
-                <strong>¿Qué pasa con tu pago?</strong>
-                <span>WeTask retiene el dinero. El tasker entra a pago cuando confirmas que todo salió bien o cuando vence el plazo sin reclamo.</span>
               </div>
             </div>
           </section>
@@ -912,14 +869,6 @@ export default function ReservarPage() {
                         <span>Próximo bloque</span>
                         <strong>{selectedPro.nextAvailableAt ? new Date(selectedPro.nextAvailableAt).toLocaleString("es-CL") : "Sin bloques"}</strong>
                       </article>
-                      <article>
-                        <span>Distancia</span>
-                        <strong>{selectedPro.distanceKm} km</strong>
-                      </article>
-                      <article>
-                        <span>Cobertura</span>
-                        <strong>{selectedPro.coverageCity ?? "Santiago"} · {selectedPro.serviceRadiusKm} km</strong>
-                      </article>
                     </div>
 
                     <div className="booking-pro-meta">
@@ -965,25 +914,16 @@ export default function ReservarPage() {
 
                   <div className="grid-form auth-flow-form booking-agenda-form">
                     <label>
-                      Horas (1-8)
-                      <input type="number" min={1} max={8} value={hours} onChange={(e) => setHours(Number(e.target.value) || 1)} />
+                      Duración del bloque
+                      <select value={String(hours)} disabled>
+                        <option value={String(hours)}>{hours} hora(s)</option>
+                      </select>
                       {recommendedHours ? (
                         <small className="input-hint">
                           Recomendación WeTask: {estimatedHoursRange ? `${estimatedHoursRange} · ` : ""}
                           reserva sugerida {recommendedHours} hora(s).
                         </small>
                       ) : null}
-                    </label>
-                    <label>
-                      Desplazamiento (CLP)
-                      <input type="number" min={0} value={travelFeeClp} onChange={(e) => setTravelFeeClp(Number(e.target.value) || 0)} />
-                    </label>
-                    <label>
-                      <span>Extras</span>
-                      <div className="inline-checks">
-                        <label><input type="checkbox" checked={materials} onChange={(e) => setMaterials(e.target.checked)} /> Materiales</label>
-                        <label><input type="checkbox" checked={urgency} onChange={(e) => setUrgency(e.target.checked)} /> Urgencia</label>
-                      </div>
                     </label>
                     <label className="full">
                       Detalles del trabajo
@@ -1020,7 +960,7 @@ export default function ReservarPage() {
                   </div>
 
                   <div className="price-box booking-price-box">
-                    Resumen en vivo: ({clp(baseHourly)} x {hours}h) + extras {clp(extrasTotal)} + comisión {clp(commission)} = <strong>{clp(total)}</strong>
+                    Resumen en vivo: ({clp(baseHourly)} x {hours}h) + comisión {clp(commission)} = <strong>{clp(total)}</strong>
                   </div>
                   {recommendedHours ? (
                     <p className="minimal-note">
@@ -1065,36 +1005,6 @@ export default function ReservarPage() {
               {!mercadoPagoPublicKey ? (
                 <p className="feedback error">Configura `NEXT_PUBLIC_MERCADOPAGO_PUBLIC_KEY` para habilitar pagos.</p>
               ) : null}
-
-              <div className="booking-checkout-saved-methods">
-                <div className="panel-head auth-flow-panel-head">
-                  <h3>Tus tarjetas guardadas</h3>
-                  <p>Guárdalas en tu panel cliente para acelerar futuras reservas con Mercado Pago.</p>
-                </div>
-
-                {loadingSavedPaymentMethods ? (
-                  <p className="minimal-note">Cargando tarjetas guardadas...</p>
-                ) : savedPaymentMethods.length === 0 ? (
-                  <p className="minimal-note">Aún no tienes tarjetas guardadas. Puedes agregarlas desde tu panel cliente.</p>
-                ) : (
-                  <div className="client-payment-methods-list compact">
-                    {savedPaymentMethods.map((paymentMethod) => (
-                      <article key={paymentMethod.id} className="client-payment-method-card compact">
-                        <div>
-                          <strong>{paymentMethodLabel(paymentMethod)}</strong>
-                          <p>{paymentMethod.isDefault ? "Tarjeta principal" : "Tarjeta guardada"}</p>
-                        </div>
-                      </article>
-                    ))}
-                  </div>
-                )}
-
-                <div className="cta-row">
-                  <Link className="cta ghost small" href="/cliente">
-                    Gestionar tarjetas
-                  </Link>
-                </div>
-              </div>
 
               <form id="mp-card-form" className="grid-form auth-flow-form" onSubmit={(event) => event.preventDefault()}>
                 <label>
