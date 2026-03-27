@@ -766,32 +766,34 @@ export default function ClientePage() {
                   <strong className="client-profile-address">{displayedAddress}</strong>
                   {editingAddress ? (
                     <div className="client-address-editor">
-                      <input
-                        ref={addressInputRef}
-                        value={addressDraft}
-                        onChange={(event) => {
-                          setAddressDraft(event.target.value);
-                          setSelectedFromAutocomplete(false);
-                          setShowSuggestions(true);
-                        }}
-                        onFocus={() => setShowSuggestions(addressSuggestions.length > 0)}
-                        placeholder="Ingresa tu dirección"
-                      />
+                      <div className="address-autocomplete-shell">
+                        <input
+                          ref={addressInputRef}
+                          value={addressDraft}
+                          onChange={(event) => {
+                            setAddressDraft(event.target.value);
+                            setSelectedFromAutocomplete(false);
+                            setShowSuggestions(true);
+                          }}
+                          onFocus={() => setShowSuggestions(addressSuggestions.length > 0)}
+                          placeholder="Ingresa tu dirección"
+                        />
+                        {showSuggestions && addressSuggestions.length > 0 ? (
+                          <div className="address-suggestions">
+                            {addressSuggestions.map((suggestion) => (
+                              <button
+                                key={suggestion}
+                                type="button"
+                                className="address-suggestion-btn"
+                                onClick={() => selectAddressSuggestion(suggestion)}
+                              >
+                                {suggestion}
+                              </button>
+                            ))}
+                          </div>
+                        ) : null}
+                      </div>
                       {autocompleteLoading ? <p className="input-hint">Buscando direcciones en Google...</p> : null}
-                      {showSuggestions && addressSuggestions.length > 0 ? (
-                        <div className="address-suggestions">
-                          {addressSuggestions.map((suggestion) => (
-                            <button
-                              key={suggestion}
-                              type="button"
-                              className="address-suggestion-btn"
-                              onClick={() => selectAddressSuggestion(suggestion)}
-                            >
-                              {suggestion}
-                            </button>
-                          ))}
-                        </div>
-                      ) : null}
                       <p className="input-hint">Guardaremos la dirección validada con Google para evitar errores al reservar.</p>
                       <div className="client-profile-actions">
                         <button className="cta small" type="button" onClick={() => void saveAddress()} disabled={savingAddress}>
