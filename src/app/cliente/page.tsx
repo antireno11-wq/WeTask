@@ -123,6 +123,8 @@ function getCardTokenFromData(cardData: CardFormData & { token?: string | { id?:
 
 export default function ClientePage() {
   const addPaymentFormRef = useRef<any>(null);
+  const profileSectionRef = useRef<HTMLElement | null>(null);
+  const addressInputRef = useRef<HTMLInputElement | null>(null);
 
   const [sessionUserId, setSessionUserId] = useState("");
   const [customerName, setCustomerName] = useState("Cliente");
@@ -470,6 +472,15 @@ export default function ClientePage() {
     };
   }, [addressDraft, editingAddress, selectedFromAutocomplete]);
 
+  useEffect(() => {
+    if (activeView !== "perfil" || !editingAddress) return;
+    const timer = window.setTimeout(() => {
+      profileSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      addressInputRef.current?.focus();
+    }, 120);
+    return () => window.clearTimeout(timer);
+  }, [activeView, editingAddress]);
+
   const handlePhotoChange = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -672,6 +683,8 @@ export default function ClientePage() {
                       setEditingAddress(true);
                       setAddressDraft(displayedAddress);
                       setShowSuggestions(false);
+                      setAddressSuggestions([]);
+                      setSelectedFromAutocomplete(false);
                     }}
                   >
                     Editar dirección
@@ -733,7 +746,7 @@ export default function ClientePage() {
           </div>
 
           {activeView === "perfil" ? (
-            <section className="auth-flow-panel client-dashboard-section">
+            <section className="auth-flow-panel client-dashboard-section" ref={profileSectionRef}>
               <div className="panel-head client-dashboard-panel-head">
                 <h2>Perfil</h2>
                 <p>Edita tu foto y tu dirección guardada sin mezclarlo con el resto del panel.</p>
@@ -754,6 +767,7 @@ export default function ClientePage() {
                   {editingAddress ? (
                     <div className="client-address-editor">
                       <input
+                        ref={addressInputRef}
                         value={addressDraft}
                         onChange={(event) => {
                           setAddressDraft(event.target.value);
