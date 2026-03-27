@@ -3204,6 +3204,8 @@ textarea {
   background: linear-gradient(150deg, #eaf4ff 0%, #ffffff 100%);
   display: grid;
   place-items: center;
+  overflow: hidden;
+  flex-shrink: 0;
   font-weight: 900;
   color: #173c63;
 }
@@ -3217,7 +3219,9 @@ textarea {
 .we-pro-avatar-image {
   width: 100%;
   height: 100%;
+  display: block;
   object-fit: cover;
+  object-position: center;
   border-radius: inherit;
 }
 
