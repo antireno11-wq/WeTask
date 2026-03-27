@@ -16,6 +16,21 @@ import { marketplaceSearchProsSchema } from "@/lib/validators";
 
 export const dynamic = "force-dynamic";
 
+function normalizeCategorySlug(value: string | null | undefined) {
+  switch (value) {
+    case "paseo-cuidado-mascotas":
+      return "mascotas";
+    case "babysitter-por-horas":
+      return "babysitter";
+    case "chef-a-domicilio":
+      return "chef";
+    case "maquillaje-a-domicilio":
+      return "maquillaje";
+    default:
+      return value ?? null;
+  }
+}
+
 function supportsRequestedTasksByCategory(
   categorySlug: string | null | undefined,
   scopes: {
@@ -94,6 +109,23 @@ export async function GET(req: NextRequest) {
             street: input.street,
             commune: clientCommune
           });
+
+    const [requestedService, requestedCategory] = await Promise.all([
+      input.serviceId
+        ? prisma.service.findUnique({
+            where: { id: input.serviceId },
+            select: { id: true, category: { select: { slug: true } } }
+          })
+        : null,
+      input.categoryId
+        ? prisma.category.findUnique({
+            where: { id: input.categoryId },
+            select: { id: true, slug: true }
+          })
+        : null
+    ]);
+
+    const requestedCategorySlug = normalizeCategorySlug(requestedService?.category?.slug ?? requestedCategory?.slug ?? null);
 
     const startDate = input.date ?? new Date();
 
@@ -187,6 +219,12 @@ export async function GET(req: NextRequest) {
           });
 
           if (!publication.canAppearInSearch) {
+            filterStats.notPublishable += 1;
+            return null;
+          }
+
+          const onboardingCategorySlug = normalizeCategorySlug(profile.user.cleaningOnboarding?.categorySlug);
+          if (requestedCategorySlug && onboardingCategorySlug && requestedCategorySlug !== onboardingCategorySlug) {
             filterStats.notPublishable += 1;
             return null;
           }

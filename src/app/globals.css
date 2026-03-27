@@ -5290,6 +5290,42 @@ textarea {
   align-items: start;
 }
 
+.public-tasker-hero {
+  grid-template-columns: minmax(0, 1.08fr) minmax(340px, 480px);
+  gap: 28px;
+  align-items: start;
+}
+
+.public-tasker-hero-copy {
+  justify-items: start;
+}
+
+.public-tasker-hero-copy .auth-flow-kicker,
+.public-tasker-hero-copy h1,
+.public-tasker-hero-copy > p {
+  width: min(100%, 680px);
+  text-align: left;
+}
+
+.public-tasker-hero-copy .auth-flow-kicker {
+  justify-self: start;
+}
+
+.public-tasker-hero-copy .client-dashboard-summary {
+  width: min(100%, 760px);
+  max-width: 760px;
+  justify-self: start;
+  margin-inline: 0;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+.public-tasker-hero-card {
+  width: 100%;
+  max-width: 480px;
+  justify-self: end;
+  position: static;
+}
+
 .client-home-hero {
   grid-template-columns: minmax(0, 1fr);
   gap: 26px;
@@ -8020,6 +8056,25 @@ textarea {
 
   .auth-flow-copy {
     max-width: none;
+  }
+
+  .public-tasker-hero-copy,
+  .public-tasker-hero-copy .auth-flow-kicker,
+  .public-tasker-hero-copy h1,
+  .public-tasker-hero-copy > p,
+  .public-tasker-hero-copy .client-dashboard-summary {
+    justify-self: center;
+    text-align: center;
+    margin-inline: auto;
+  }
+
+  .public-tasker-hero-copy .auth-flow-kicker {
+    justify-self: center;
+  }
+
+  .public-tasker-hero-card {
+    max-width: 100%;
+    justify-self: stretch;
   }
 
   .auth-flow-panel {

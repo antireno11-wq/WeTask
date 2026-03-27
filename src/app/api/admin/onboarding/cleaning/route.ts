@@ -117,7 +117,15 @@ async function ensureCleaningTaskerService(userId: string) {
     }
   });
 
-  const selectedCoreService = CORE_SERVICES.find((service) => service.categorySlug === onboarding.categorySlug) ?? CORE_SERVICES[0];
+  const normalizedOnboardingCategory = onboarding.categorySlug?.trim().toLowerCase() ?? "";
+  const selectedCoreService =
+    CORE_SERVICES.find(
+      (service) =>
+        service.slug === normalizedOnboardingCategory ||
+        service.categorySlug === normalizedOnboardingCategory
+    ) ??
+    CORE_SERVICES.find((service) => service.slug === "limpieza") ??
+    CORE_SERVICES[0];
 
   const category = await prisma.category.findFirst({
     where: {
@@ -127,6 +135,17 @@ async function ensureCleaningTaskerService(userId: string) {
     orderBy: [{ slug: "asc" }]
   });
   if (!category) return;
+
+  await prisma.taskerService.updateMany({
+    where: {
+      professionalProfileId: profile.id,
+      isActive: true,
+      categoryId: { not: category.id }
+    },
+    data: {
+      isActive: false
+    }
+  });
 
   const selectedOnboardingServices =
     Array.isArray(onboarding.offeredServices) && onboarding.categorySlug === "limpieza"

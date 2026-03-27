@@ -902,14 +902,27 @@ export default function ProDetailPage() {
     }
     return Array.from(bySlug.values());
   }, [data?.taskerServices]);
+  const normalizedOnboardingCategorySlug = normalizeCategorySlug(onboarding?.categorySlug ?? null);
+  const relevantServiceCategories = useMemo(() => {
+    if (!normalizedOnboardingCategorySlug) return serviceCategories;
+    const filtered = serviceCategories.filter(
+      (category) => normalizeCategorySlug(category.slug) === normalizedOnboardingCategorySlug
+    );
+    return filtered.length > 0 ? filtered : serviceCategories;
+  }, [normalizedOnboardingCategorySlug, serviceCategories]);
   const servicePriceTags = useMemo(() => {
     return (data?.taskerServices ?? [])
+      .filter((item) =>
+        normalizedOnboardingCategorySlug
+          ? normalizeCategorySlug(item.category?.slug) === normalizedOnboardingCategorySlug
+          : true
+      )
       .filter((item) => item.service?.name)
       .map((item) => ({
         key: `${item.service?.id ?? item.service?.name}`,
         label: `${item.service?.name} · ${item.priceClp ? clp(item.priceClp) : "Por definir"}/h`
       }));
-  }, [data?.taskerServices]);
+  }, [data?.taskerServices, normalizedOnboardingCategorySlug]);
   const profilePhotoUrl = onboarding?.profilePhotoUrl?.trim() || data?.avatarUrl?.trim() || "";
   const activeCommunes = useMemo(() => {
     const raw = Array.isArray(onboarding?.serviceCommunes) ? onboarding.serviceCommunes : [];
@@ -931,9 +944,9 @@ export default function ProDetailPage() {
   const experienceTypes = toLabelList(onboarding?.experienceTypes, demoExperienceTypes);
   const languages = toLabelList(onboarding?.languages, demoLanguages);
   const workModeLabel = onboarding?.workMode === "EQUIPO" ? "Trabajo en equipo" : "Trabajo individual";
-  const primaryCategorySlug = serviceCategories[0]?.slug ?? onboarding?.categorySlug ?? null;
+  const primaryCategorySlug = onboarding?.categorySlug ?? relevantServiceCategories[0]?.slug ?? null;
   const normalizedPrimaryCategorySlug = normalizeCategorySlug(primaryCategorySlug);
-  const categoryName = serviceCategories[0]?.name ?? categoryLabel(primaryCategorySlug);
+  const categoryName = relevantServiceCategories[0]?.name ?? categoryLabel(primaryCategorySlug);
   const taskerRole = taskerRoleLabel(primaryCategorySlug);
   const faqItems = faqItemsForCategory(primaryCategorySlug);
   const cleaningScopeServices = cleaningScope.services_offered.map(getCleaningScopeServiceLabel);
@@ -965,7 +978,12 @@ export default function ProDetailPage() {
   const teacherScopeModes = teacherScope.modes.map(getTeacherModeLabel);
   const teacherScopeIncludedTasks = teacherScope.tasks_included.map(getTeacherIncludedTaskLabel);
   const teacherScopeExcludedTasks = teacherScope.tasks_excluded.map(getTeacherExcludedTaskLabel);
-  const defaultReserveServiceId = requestedServiceId || data?.taskerServices?.[0]?.service?.id || "";
+  const defaultReserveServiceId =
+    requestedServiceId ||
+    (data?.taskerServices ?? []).find((item) =>
+      normalizedPrimaryCategorySlug ? normalizeCategorySlug(item.category?.slug) === normalizedPrimaryCategorySlug : true
+    )?.service?.id ||
+    "";
   const buildReserveHref = (options?: { startsAt?: string; serviceId?: string | null }) => {
     const qs = new URLSearchParams();
     qs.set("proId", data?.userId ?? params.proId);
@@ -1000,8 +1018,8 @@ export default function ProDetailPage() {
 
         {data ? (
           <>
-            <section className="auth-flow-shell auth-flow-shell-wide client-dashboard-hero">
-              <div className="auth-flow-copy client-dashboard-copy">
+            <section className="auth-flow-shell auth-flow-shell-wide client-dashboard-hero public-tasker-hero">
+              <div className="auth-flow-copy client-dashboard-copy public-tasker-hero-copy">
                 <p className="auth-flow-kicker">Tasker verificado</p>
                 <h1>{data.user.fullName}</h1>
                 <p
@@ -1044,7 +1062,7 @@ export default function ProDetailPage() {
                 </div>
               </div>
 
-              <section className="auth-flow-panel auth-flow-panel-wide client-dashboard-profile-panel we-pro-sticky-card">
+              <section className="auth-flow-panel auth-flow-panel-wide client-dashboard-profile-panel public-tasker-hero-card">
                 <div className="we-sticky-head">
                   <div className="we-pro-avatar large" aria-hidden>
                     {profilePhotoUrl ? <img src={profilePhotoUrl} alt="" className="we-pro-avatar-image" /> : initials(data.user.fullName)}
