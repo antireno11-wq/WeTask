@@ -6022,8 +6022,8 @@ textarea {
 .booking-summary-panel {
   display: grid;
   width: 100%;
-  max-width: 760px;
-  justify-self: start;
+  max-width: 860px;
+  margin: 0 auto;
 }
 
 .booking-summary-card {

@@ -668,24 +668,24 @@ export default function ReservarPage() {
               ) : null}
             </div>
           </div>
+        </section>
 
-          <section className="auth-flow-panel auth-flow-panel-wide booking-summary-panel">
-            <div className="booking-summary-card">
-              <strong>Estado de tu reserva</strong>
-              <div className="booking-summary-list">
-                <span className={filters.serviceId ? "is-complete" : ""}>1. Servicio seleccionado</span>
-                <span className={(pinnedTaskerMode ? Boolean(selectedPro) : matches.length > 0) ? "is-complete" : ""}>
-                  {pinnedTaskerMode ? "2. Tasker cargado" : "2. Taskers encontrados"}
-                </span>
-                <span className={selectedSlot ? "is-complete" : ""}>{pinnedTaskerMode ? "3. Bloque elegido" : "3. Horario elegido"}</span>
-                <span className={checkoutState === "approved" ? "is-complete" : ""}>4. Pago retenido y protegido</span>
-              </div>
-              <div className="auth-flow-note-card">
-                <strong>Resumen rápido</strong>
-                <span>{selectedPro ? `${selectedPro.fullName} · ${selectedSlot ? new Date(selectedSlot.startsAt).toLocaleString("es-CL") : "falta horario"}` : pinnedTaskerMode ? "Cargando tasker elegido." : "Aún no eliges profesional."}</span>
-              </div>
+        <section className="auth-flow-panel auth-flow-panel-wide booking-summary-panel">
+          <div className="booking-summary-card">
+            <strong>Estado de tu reserva</strong>
+            <div className="booking-summary-list">
+              <span className={filters.serviceId ? "is-complete" : ""}>1. Servicio seleccionado</span>
+              <span className={(pinnedTaskerMode ? Boolean(selectedPro) : matches.length > 0) ? "is-complete" : ""}>
+                {pinnedTaskerMode ? "2. Tasker cargado" : "2. Taskers encontrados"}
+              </span>
+              <span className={selectedSlot ? "is-complete" : ""}>{pinnedTaskerMode ? "3. Bloque elegido" : "3. Horario elegido"}</span>
+              <span className={checkoutState === "approved" ? "is-complete" : ""}>4. Pago retenido y protegido</span>
             </div>
-          </section>
+            <div className="auth-flow-note-card">
+              <strong>Resumen rápido</strong>
+              <span>{selectedPro ? `${selectedPro.fullName} · ${selectedSlot ? new Date(selectedSlot.startsAt).toLocaleString("es-CL") : "falta horario"}` : pinnedTaskerMode ? "Cargando tasker elegido." : "Aún no eliges profesional."}</span>
+            </div>
+          </div>
         </section>
 
         <div className="page client-dashboard-sections booking-flow-sections">
