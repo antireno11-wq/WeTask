@@ -273,7 +273,7 @@ export default function ReservarPage() {
     const start = new Date(selectedBookingStartAt);
     const end = new Date(selectedSlot.endsAt);
     const diffHours = Math.floor((end.getTime() - start.getTime()) / (60 * 60 * 1000));
-    return Array.from({ length: Math.max(0, diffHours) }, (_, index) => index + 1);
+    return Array.from({ length: Math.max(0, Math.min(8, diffHours)) }, (_, index) => index + 1);
   }, [selectedBookingStartAt, selectedSlot]);
 
   const selectedBookingEndsAt = useMemo(() => {
@@ -436,7 +436,7 @@ export default function ReservarPage() {
   useEffect(() => {
     if (!selectedSlot) return;
     setSelectedStartAt(selectedSlot.startsAt);
-    setHours(Math.max(1, Math.floor(durationHours(selectedSlot))));
+    setHours(Math.max(1, Math.min(8, Math.floor(durationHours(selectedSlot)))));
   }, [selectedSlot]);
 
   useEffect(() => {
