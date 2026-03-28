@@ -6,6 +6,7 @@ import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { MarketNav } from "@/components/market-nav";
 import { parseCleaningRecommendedHours } from "@/lib/cleaning-duration-estimator";
 import { COVERAGE_UNAVAILABLE_MESSAGE, inferCommuneFromAddress, normalizeCommune } from "@/lib/communes";
+import { formatPaymentRejectionReason } from "@/lib/payment-rejection";
 
 export const dynamic = "force-dynamic";
 
@@ -788,7 +789,7 @@ export default function ReservarPage() {
 
       const data = (await response.json()) as {
         booking?: BookingResponse;
-        payment?: { status?: string; providerStatus?: string };
+        payment?: { status?: string; providerStatus?: string; errorCode?: string | null; errorMessage?: string | null };
         error?: string;
         detail?: string;
       };
@@ -806,9 +807,18 @@ export default function ReservarPage() {
           router.push(`/booking/${data.booking!.id}`);
         }, 800);
       } else if (data.booking.status === "PAYMENT_FAILED" || paymentStatus === "FAILED") {
+        const paymentReason = formatPaymentRejectionReason({
+          errorCode: data.payment?.errorCode,
+          errorMessage: data.payment?.errorMessage,
+          providerStatus: data.payment?.providerStatus
+        });
         setCheckoutState("rejected");
         setCheckoutStatusText("Pago rechazado");
-        setError("El pago fue rechazado. Puedes intentar con otra tarjeta.");
+        setError(
+          paymentReason.friendly
+            ? `${paymentReason.friendly}${paymentReason.rawCode && paymentReason.rawCode !== paymentReason.friendly ? ` (${paymentReason.rawCode})` : ""}`
+            : "El pago fue rechazado. Puedes intentar con otra tarjeta."
+        );
       } else {
         setCheckoutState("processing");
         setCheckoutStatusText("Pago en proceso. Te avisaremos apenas se confirme.");
@@ -1350,7 +1360,7 @@ export default function ReservarPage() {
 
               {checkoutState === "processing" ? <p className="feedback ok">Procesando pago...</p> : null}
               {checkoutState === "approved" ? <p className="feedback ok">Pago aprobado. Redirigiendo a tu confirmación...</p> : null}
-              {checkoutState === "rejected" ? <p className="feedback error">Pago rechazado. Revisa los datos o prueba otra tarjeta.</p> : null}
+              {checkoutState === "rejected" ? <p className="feedback error">{error || "Pago rechazado. Revisa los datos o prueba otra tarjeta."}</p> : null}
               {checkoutState === "connection_error" ? <p className="feedback error">Error de conexión con el proveedor de pago.</p> : null}
               {checkoutStatusText ? <p className="minimal-note">Estado checkout: {checkoutStatusText}</p> : null}
               {createdBooking ? (
@@ -1362,7 +1372,7 @@ export default function ReservarPage() {
           ) : null}
 
           {message ? <p className="feedback ok">{message}</p> : null}
-          {error ? <p className="feedback error">{error}</p> : null}
+          {error && checkoutState !== "rejected" && checkoutState !== "connection_error" ? <p className="feedback error">{error}</p> : null}
         </div>
       </div>
     </main>

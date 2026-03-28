@@ -69,6 +69,14 @@ export async function GET(_req: NextRequest, { params }: { params: { userId: str
           scheduledAt: true,
           status: true,
           totalPriceClp: true,
+          paymentStatus: true,
+          payment: {
+            select: {
+              providerStatus: true,
+              errorCode: true,
+              errorMessage: true
+            }
+          },
           service: {
             select: {
               name: true
@@ -85,6 +93,14 @@ export async function GET(_req: NextRequest, { params }: { params: { userId: str
           scheduledAt: true,
           status: true,
           totalPriceClp: true,
+          paymentStatus: true,
+          payment: {
+            select: {
+              providerStatus: true,
+              errorCode: true,
+              errorMessage: true
+            }
+          },
           service: {
             select: {
               name: true

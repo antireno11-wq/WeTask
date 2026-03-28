@@ -420,7 +420,9 @@ export async function POST(req: NextRequest) {
             id: existing.id,
             status: existing.status,
             providerStatus: existing.providerStatus,
-            providerPaymentId: existing.providerPaymentId
+            providerPaymentId: existing.providerPaymentId,
+            errorCode: existing.errorCode,
+            errorMessage: existing.errorMessage
           },
           idempotentReplay: true
         },
@@ -642,7 +644,9 @@ export async function POST(req: NextRequest) {
           providerStatus: providerResult.providerStatus,
           status: nextState.paymentStatus,
           paymentMethod: providerResult.paymentMethod,
-          last4: providerResult.last4
+          last4: providerResult.last4,
+          errorCode: providerResult.errorCode ?? null,
+          errorMessage: providerResult.errorMessage ?? null
         }
       },
       { status: 200 }

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { AdminHeroShell } from "@/components/admin-hero-shell";
+import { formatPaymentRejectionReason } from "@/lib/payment-rejection";
 
 export const dynamic = "force-dynamic";
 
@@ -42,6 +43,12 @@ type UserDetailPayload = {
       scheduledAt: string;
       status: string;
       totalPriceClp: number;
+      paymentStatus: string;
+      payment: {
+        providerStatus: string | null;
+        errorCode: string | null;
+        errorMessage: string | null;
+      } | null;
       service: { name: string };
     }>;
     proBookings: Array<{
@@ -50,6 +57,12 @@ type UserDetailPayload = {
       scheduledAt: string;
       status: string;
       totalPriceClp: number;
+      paymentStatus: string;
+      payment: {
+        providerStatus: string | null;
+        errorCode: string | null;
+        errorMessage: string | null;
+      } | null;
       service: { name: string };
     }>;
     notifications: Array<{
@@ -334,6 +347,17 @@ export default function AdminUserProfilePage({ params }: { params: { userId: str
                         <p>Rol: {booking.kind}</p>
                         <p>Estado: {booking.status}</p>
                         <p>Fecha: {formatDate(booking.scheduledAt)}</p>
+                        {booking.paymentStatus === "FAILED" || booking.status === "PAYMENT_FAILED" ? (
+                          <p>
+                            <strong>Motivo rechazo:</strong>{" "}
+                            {formatPaymentRejectionReason({
+                              errorCode: booking.payment?.errorCode,
+                              errorMessage: booking.payment?.errorMessage,
+                              providerStatus: booking.payment?.providerStatus
+                            }).friendly || "Pago rechazado por el proveedor"}
+                            {booking.payment?.errorCode ? ` (${booking.payment.errorCode})` : ""}
+                          </p>
+                        ) : null}
                       </div>
                       <div className="admin-team-row-actions">
                         <span className="status status-approved">{clp(booking.totalPriceClp)}</span>

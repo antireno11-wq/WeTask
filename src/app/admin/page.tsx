@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { CleaningOnboardingStatus, PayoutStatus, TicketStatus, UserRole } from "@prisma/client";
 import { AdminHeroShell } from "@/components/admin-hero-shell";
+import { formatPaymentRejectionReason } from "@/lib/payment-rejection";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -202,7 +203,14 @@ export default async function AdminPage() {
         include: {
           customer: { select: { fullName: true } },
           pro: { select: { fullName: true } },
-          service: { select: { name: true } }
+          service: { select: { name: true } },
+          payment: {
+            select: {
+              providerStatus: true,
+              errorCode: true,
+              errorMessage: true
+            }
+          }
         }
       })
     ]);
@@ -355,6 +363,17 @@ export default async function AdminPage() {
                   <p>
                     {booking.comuna} · {new Date(booking.scheduledAt).toLocaleString("es-CL")}
                   </p>
+                  {booking.status === "PAYMENT_FAILED" ? (
+                    <p>
+                      Motivo rechazo:{" "}
+                      {formatPaymentRejectionReason({
+                        errorCode: booking.payment?.errorCode,
+                        errorMessage: booking.payment?.errorMessage,
+                        providerStatus: booking.payment?.providerStatus
+                      }).friendly || "Pago rechazado por el proveedor"}
+                      {booking.payment?.errorCode ? ` (${booking.payment.errorCode})` : ""}
+                    </p>
+                  ) : null}
                 </div>
                 <div className="admin-queue-meta">
                   <span className={`status ${bookingStatusClass(booking.status)}`}>{bookingStatusLabel(booking.status)}</span>
