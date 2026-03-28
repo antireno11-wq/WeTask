@@ -58,6 +58,40 @@ type SavedPaymentMethod = {
   isDefault: boolean;
 };
 
+function mergeContiguousSlots(slots: Slot[]) {
+  if (slots.length === 0) return [] as Slot[];
+
+  const sorted = [...slots].sort((a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime());
+  const merged: Slot[] = [];
+
+  for (const slot of sorted) {
+    const currentServiceId = slot.service?.id ?? null;
+    const previous = merged[merged.length - 1];
+    const previousServiceId = previous?.service?.id ?? null;
+
+    if (!previous) {
+      merged.push({ ...slot });
+      continue;
+    }
+
+    const previousEndsAt = new Date(previous.endsAt).getTime();
+    const currentStartsAt = new Date(slot.startsAt).getTime();
+    const currentEndsAt = new Date(slot.endsAt).getTime();
+    const canMerge = previousServiceId === currentServiceId && currentStartsAt <= previousEndsAt;
+
+    if (!canMerge) {
+      merged.push({ ...slot });
+      continue;
+    }
+
+    if (currentEndsAt > previousEndsAt) {
+      previous.endsAt = slot.endsAt;
+    }
+  }
+
+  return merged;
+}
+
 type CardFormData = {
   token?: string;
   paymentMethodId?: string;
@@ -210,17 +244,19 @@ export default function ReservarPage() {
     [savedPaymentMethods]
   );
 
+  const mergedSelectedProSlots = useMemo(() => mergeContiguousSlots(selectedPro?.slots ?? []), [selectedPro]);
+
   const dayGroups = useMemo(() => {
     if (!selectedPro) return [] as Array<[string, Slot[]]>;
     const map = new Map<string, Slot[]>();
-    for (const slot of selectedPro.slots) {
+    for (const slot of mergedSelectedProSlots) {
       const key = isoDay(slot.startsAt);
       const prev = map.get(key) ?? [];
       prev.push(slot);
       map.set(key, prev);
     }
     return Array.from(map.entries()).sort(([a], [b]) => a.localeCompare(b));
-  }, [selectedPro]);
+  }, [mergedSelectedProSlots, selectedPro]);
 
   const selectedSlots = useMemo(() => dayGroups.find(([day]) => day === selectedDay)?.[1] ?? [], [dayGroups, selectedDay]);
   const availableDays = useMemo(() => new Map(dayGroups.map(([day, slots]) => [day, slots])), [dayGroups]);
@@ -246,8 +282,8 @@ export default function ReservarPage() {
 
   const selectedSlot = useMemo(() => {
     if (!selectedPro || !selectedSlotId) return null;
-    return selectedPro.slots.find((slot) => slot.id === selectedSlotId) ?? null;
-  }, [selectedPro, selectedSlotId]);
+    return mergedSelectedProSlots.find((slot) => slot.id === selectedSlotId) ?? null;
+  }, [mergedSelectedProSlots, selectedPro, selectedSlotId]);
 
   const selectedStartOptions = useMemo(() => {
     if (!selectedSlot) return [] as Array<{ value: string; label: string }>;

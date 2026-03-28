@@ -50,6 +50,7 @@ async function reserveRequestedWindow(
   tx: Prisma.TransactionClient,
   params: {
     slotId: string;
+    serviceId: string;
     startsAt: Date;
     endsAt: Date;
   }
@@ -70,38 +71,92 @@ async function reserveRequestedWindow(
     throw new Error("El horario ya fue tomado por otro cliente");
   }
 
-  if (params.startsAt < slot.startsAt || params.endsAt > slot.endsAt || params.endsAt <= params.startsAt) {
+  if (params.startsAt < slot.startsAt || params.endsAt <= params.startsAt) {
     throw new Error("El horario solicitado ya no cabe dentro del bloque del tasker");
   }
 
-  const extraWindows = [];
-  if (slot.startsAt < params.startsAt) {
-    extraWindows.push({
+  const candidateSlots = await tx.availabilitySlot.findMany({
+    where: {
       professionalProfileId: slot.professionalProfileId,
-      serviceId: slot.serviceId,
-      startsAt: slot.startsAt,
-      endsAt: params.startsAt,
+      isAvailable: true,
+      startsAt: { lt: params.endsAt },
+      endsAt: { gt: params.startsAt },
+      OR: [{ serviceId: null }, { serviceId: params.serviceId }]
+    },
+    orderBy: [{ startsAt: "asc" }],
+    select: {
+      id: true,
+      professionalProfileId: true,
+      serviceId: true,
+      startsAt: true,
+      endsAt: true,
       isAvailable: true
-    });
-  }
-  if (params.endsAt < slot.endsAt) {
-    extraWindows.push({
-      professionalProfileId: slot.professionalProfileId,
-      serviceId: slot.serviceId,
-      startsAt: params.endsAt,
-      endsAt: slot.endsAt,
-      isAvailable: true
-    });
-  }
-
-  await tx.availabilitySlot.update({
-    where: { id: params.slotId },
-    data: {
-      startsAt: params.startsAt,
-      endsAt: params.endsAt,
-      isAvailable: false
     }
   });
+
+  const firstIndex = candidateSlots.findIndex((candidate) => candidate.id === params.slotId);
+  if (firstIndex < 0) {
+    throw new Error("El horario ya fue tomado por otro cliente");
+  }
+
+  const reservedChain = [candidateSlots[firstIndex]];
+  let coveredUntil = reservedChain[0].endsAt;
+
+  for (let index = firstIndex + 1; coveredUntil < params.endsAt && index < candidateSlots.length; index += 1) {
+    const nextSlot = candidateSlots[index];
+    if (nextSlot.startsAt > coveredUntil) break;
+    reservedChain.push(nextSlot);
+    if (nextSlot.endsAt > coveredUntil) {
+      coveredUntil = nextSlot.endsAt;
+    }
+  }
+
+  if (coveredUntil < params.endsAt) {
+    throw new Error("El horario solicitado ya no cabe dentro del bloque del tasker");
+  }
+
+  const extraWindows: Array<{
+    professionalProfileId: string;
+    serviceId: string | null;
+    startsAt: Date;
+    endsAt: Date;
+    isAvailable: true;
+  }> = [];
+
+  for (const reservedSlot of reservedChain) {
+    const reservationStart = reservedSlot.startsAt < params.startsAt ? params.startsAt : reservedSlot.startsAt;
+    const reservationEnd = reservedSlot.endsAt > params.endsAt ? params.endsAt : reservedSlot.endsAt;
+
+    if (reservationEnd <= reservationStart) continue;
+
+    if (reservedSlot.startsAt < reservationStart) {
+      extraWindows.push({
+        professionalProfileId: reservedSlot.professionalProfileId,
+        serviceId: reservedSlot.serviceId,
+        startsAt: reservedSlot.startsAt,
+        endsAt: reservationStart,
+        isAvailable: true
+      });
+    }
+    if (reservationEnd < reservedSlot.endsAt) {
+      extraWindows.push({
+        professionalProfileId: reservedSlot.professionalProfileId,
+        serviceId: reservedSlot.serviceId,
+        startsAt: reservationEnd,
+        endsAt: reservedSlot.endsAt,
+        isAvailable: true
+      });
+    }
+
+    await tx.availabilitySlot.update({
+      where: { id: reservedSlot.id },
+      data: {
+        startsAt: reservationStart,
+        endsAt: reservationEnd,
+        isAvailable: false
+      }
+    });
+  }
 
   if (extraWindows.length > 0) {
     await tx.availabilitySlot.createMany({ data: extraWindows });
@@ -194,8 +249,8 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: "Horario no disponible" }, { status: 409 });
       }
 
-      if (input.startsAt < selectedSlot.startsAt || requestedEndsAt > selectedSlot.endsAt || requestedEndsAt <= input.startsAt) {
-        return NextResponse.json({ error: "La hora elegida no cabe dentro del bloque disponible" }, { status: 400 });
+      if (input.startsAt < selectedSlot.startsAt || requestedEndsAt <= input.startsAt) {
+        return NextResponse.json({ error: "La hora elegida no cae dentro del bloque disponible" }, { status: 400 });
       }
 
       if (selectedSlot.serviceId && selectedSlot.serviceId !== input.serviceId) {
@@ -383,6 +438,7 @@ export async function POST(req: NextRequest) {
       if (selectedSlotId) {
         await reserveRequestedWindow(tx, {
           slotId: selectedSlotId,
+          serviceId: input.serviceId,
           startsAt: input.startsAt,
           endsAt: requestedEndsAt
         });
