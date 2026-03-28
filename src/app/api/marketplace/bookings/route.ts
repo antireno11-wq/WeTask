@@ -1,4 +1,4 @@
-import { UserRole } from "@prisma/client";
+import { Prisma, UserRole } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { getRequestIdentity, hasRole } from "@/lib/auth";
 import { COVERAGE_UNAVAILABLE_MESSAGE, inferCommuneFromAddress, normalizeCommune, taskerServesCommune } from "@/lib/communes";
@@ -39,6 +39,72 @@ export async function GET(req: NextRequest) {
       },
       { status: 400 }
     );
+  }
+}
+
+function requestedBookingEndsAt(startsAt: Date, hours: number) {
+  return new Date(startsAt.getTime() + hours * 60 * 60 * 1000);
+}
+
+async function reserveRequestedWindow(
+  tx: Prisma.TransactionClient,
+  params: {
+    slotId: string;
+    startsAt: Date;
+    endsAt: Date;
+  }
+) {
+  const slot = await tx.availabilitySlot.findUnique({
+    where: { id: params.slotId },
+    select: {
+      id: true,
+      professionalProfileId: true,
+      serviceId: true,
+      startsAt: true,
+      endsAt: true,
+      isAvailable: true
+    }
+  });
+
+  if (!slot || !slot.isAvailable) {
+    throw new Error("El horario ya fue tomado por otro cliente");
+  }
+
+  if (params.startsAt < slot.startsAt || params.endsAt > slot.endsAt || params.endsAt <= params.startsAt) {
+    throw new Error("El horario solicitado ya no cabe dentro del bloque del tasker");
+  }
+
+  const extraWindows = [];
+  if (slot.startsAt < params.startsAt) {
+    extraWindows.push({
+      professionalProfileId: slot.professionalProfileId,
+      serviceId: slot.serviceId,
+      startsAt: slot.startsAt,
+      endsAt: params.startsAt,
+      isAvailable: true
+    });
+  }
+  if (params.endsAt < slot.endsAt) {
+    extraWindows.push({
+      professionalProfileId: slot.professionalProfileId,
+      serviceId: slot.serviceId,
+      startsAt: params.endsAt,
+      endsAt: slot.endsAt,
+      isAvailable: true
+    });
+  }
+
+  await tx.availabilitySlot.update({
+    where: { id: params.slotId },
+    data: {
+      startsAt: params.startsAt,
+      endsAt: params.endsAt,
+      isAvailable: false
+    }
+  });
+
+  if (extraWindows.length > 0) {
+    await tx.availabilitySlot.createMany({ data: extraWindows });
   }
 }
 
@@ -89,6 +155,7 @@ export async function POST(req: NextRequest) {
     const requestedSlotMinutes = service.category.slotMinutes;
     const platformFeePct = Number(service.category.basePlatformFeePct);
     let baseRate = service.basePriceClp;
+    const requestedEndsAt = requestedBookingEndsAt(input.startsAt, input.hours);
 
     let assignedProId = input.proId ?? null;
     let selectedSlotId = input.slotId ?? null;
@@ -127,8 +194,8 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: "Horario no disponible" }, { status: 409 });
       }
 
-      if (selectedSlot.startsAt.getTime() !== input.startsAt.getTime()) {
-        return NextResponse.json({ error: "La hora seleccionada no coincide con el bloque" }, { status: 400 });
+      if (input.startsAt < selectedSlot.startsAt || requestedEndsAt > selectedSlot.endsAt || requestedEndsAt <= input.startsAt) {
+        return NextResponse.json({ error: "La hora elegida no cabe dentro del bloque disponible" }, { status: 400 });
       }
 
       if (selectedSlot.serviceId && selectedSlot.serviceId !== input.serviceId) {
@@ -312,54 +379,64 @@ export async function POST(req: NextRequest) {
       }
     });
 
-    const booking = await prisma.booking.create({
-      data: {
-        customerId: customer.id,
-        proId: assignedProId,
-        bookedSlotId: selectedSlotId,
-        serviceId: input.serviceId,
-        addressId: address.id,
-        status: assignedProId ? "ASSIGNED" : "CREATED",
-        scheduledAt: input.startsAt,
-        addressLine1: input.address.street,
-        comuna: clientCommune,
-        region: input.address.region ?? "N/A",
-        city: input.address.city,
-        postalCode: input.address.postalCode,
-        notes: input.details,
-        hours: input.hours,
-        slotMinutes: requestedSlotMinutes,
-        autoAssign: input.autoAssign,
-        hourlyPriceClp: price.hourlyRateClp,
-        subtotalClp: price.subtotalClp,
-        extrasTotalClp: price.extrasTotalClp,
-        platformFeeClp: price.platformFeeClp,
-        totalPriceClp: price.totalClp,
-        paymentStatus: "PENDING",
-        extras: {
-          create: price.extras.map((item) => ({
-            code: item.code,
-            name: item.name,
-            priceClp: item.priceClp,
-            quantity: 1
-          }))
-        },
-        payment: {
-          create: {
-            provider: "STRIPE",
-            amountClp: price.totalClp,
-            platformFeeClp: price.platformFeeClp,
-            status: "PENDING"
-          }
-        }
-      },
-      include: {
-        service: { select: { id: true, name: true } },
-        customer: { select: { id: true, fullName: true, email: true } },
-        pro: { select: { id: true, fullName: true } },
-        extras: true,
-        payment: true
+    const booking = await prisma.$transaction(async (tx) => {
+      if (selectedSlotId) {
+        await reserveRequestedWindow(tx, {
+          slotId: selectedSlotId,
+          startsAt: input.startsAt,
+          endsAt: requestedEndsAt
+        });
       }
+
+      return tx.booking.create({
+        data: {
+          customerId: customer.id,
+          proId: assignedProId,
+          bookedSlotId: selectedSlotId,
+          serviceId: input.serviceId,
+          addressId: address.id,
+          status: assignedProId ? "ASSIGNED" : "CREATED",
+          scheduledAt: input.startsAt,
+          addressLine1: input.address.street,
+          comuna: clientCommune,
+          region: input.address.region ?? "N/A",
+          city: input.address.city,
+          postalCode: input.address.postalCode,
+          notes: input.details,
+          hours: input.hours,
+          slotMinutes: requestedSlotMinutes,
+          autoAssign: input.autoAssign,
+          hourlyPriceClp: price.hourlyRateClp,
+          subtotalClp: price.subtotalClp,
+          extrasTotalClp: price.extrasTotalClp,
+          platformFeeClp: price.platformFeeClp,
+          totalPriceClp: price.totalClp,
+          paymentStatus: "PENDING",
+          extras: {
+            create: price.extras.map((item) => ({
+              code: item.code,
+              name: item.name,
+              priceClp: item.priceClp,
+              quantity: 1
+            }))
+          },
+          payment: {
+            create: {
+              provider: "STRIPE",
+              amountClp: price.totalClp,
+              platformFeeClp: price.platformFeeClp,
+              status: "PENDING"
+            }
+          }
+        },
+        include: {
+          service: { select: { id: true, name: true } },
+          customer: { select: { id: true, fullName: true, email: true } },
+          pro: { select: { id: true, fullName: true } },
+          extras: true,
+          payment: true
+        }
+      });
     });
 
     return NextResponse.json({ booking }, { status: 201 });

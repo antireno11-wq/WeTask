@@ -1083,9 +1083,7 @@ export default function ProDetailPage() {
                     >
                       {taskerRole}
                     </p>
-                    <p>
-                      <span className="we-star">★</span> {rating.toFixed(1)} ({data.ratingsCount} valoraciones)
-                    </p>
+                    <p>{data.ratingsCount > 0 ? <><span className="we-star">★</span> {rating.toFixed(1)} ({data.ratingsCount} valoraciones)</> : "0.0 (0 valoraciones)"}</p>
                   </div>
                 </div>
 
@@ -1681,7 +1679,7 @@ export default function ProDetailPage() {
                       <div className="public-rating-hero">
                         <div className="public-rating-hero-copy">
                           <span className="public-rating-stars public-rating-stars-large">{renderStars(rating)}</span>
-                          <strong>{ratingLabel(rating)}</strong>
+                          <strong>{data.ratingsCount > 0 ? ratingLabel(rating) : "Sin valoraciones aún"}</strong>
                           <p>
                             {rating.toFixed(1)} de 5 basado en {data.ratingsCount} valoraciones verificadas dentro de WeTask.
                           </p>

@@ -109,8 +109,20 @@ function durationHours(slot: Slot) {
 }
 
 function starsText(value: number) {
-  const rounded = Math.max(1, Math.min(5, Math.round(value || 0)));
+  const rounded = Math.max(0, Math.min(5, Math.round(value || 0)));
   return `${"★".repeat(rounded)}${"☆".repeat(5 - rounded)}`;
+}
+
+function addHours(dateValue: Date, hours: number) {
+  return new Date(dateValue.getTime() + hours * 60 * 60 * 1000);
+}
+
+function formatDateTime(value: string) {
+  return new Date(value).toLocaleString("es-CL");
+}
+
+function formatTime(value: string) {
+  return new Date(value).toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" });
 }
 
 function initials(name: string) {
@@ -168,6 +180,7 @@ export default function ReservarPage() {
   const [selectedProId, setSelectedProId] = useState("");
   const [selectedDay, setSelectedDay] = useState("");
   const [selectedSlotId, setSelectedSlotId] = useState("");
+  const [selectedStartAt, setSelectedStartAt] = useState("");
   const [calendarMonth, setCalendarMonth] = useState(() => firstOfMonth(new Date()));
 
   const [hours, setHours] = useState(2);
@@ -231,6 +244,42 @@ export default function ReservarPage() {
     if (!selectedPro || !selectedSlotId) return null;
     return selectedPro.slots.find((slot) => slot.id === selectedSlotId) ?? null;
   }, [selectedPro, selectedSlotId]);
+
+  const selectedStartOptions = useMemo(() => {
+    if (!selectedSlot) return [] as Array<{ value: string; label: string }>;
+    const options: Array<{ value: string; label: string }> = [];
+    const start = new Date(selectedSlot.startsAt);
+    const end = new Date(selectedSlot.endsAt);
+    const latestStart = new Date(end.getTime() - 60 * 60 * 1000);
+
+    for (let current = new Date(start); current <= latestStart; current = addHours(current, 1)) {
+      options.push({
+        value: current.toISOString(),
+        label: formatTime(current.toISOString())
+      });
+    }
+
+    return options;
+  }, [selectedSlot]);
+
+  const selectedBookingStartAt = useMemo(() => {
+    if (!selectedSlot) return "";
+    if (selectedStartAt && selectedStartOptions.some((option) => option.value === selectedStartAt)) return selectedStartAt;
+    return selectedSlot.startsAt;
+  }, [selectedSlot, selectedStartAt, selectedStartOptions]);
+
+  const selectedDurationOptions = useMemo(() => {
+    if (!selectedSlot || !selectedBookingStartAt) return [] as number[];
+    const start = new Date(selectedBookingStartAt);
+    const end = new Date(selectedSlot.endsAt);
+    const diffHours = Math.floor((end.getTime() - start.getTime()) / (60 * 60 * 1000));
+    return Array.from({ length: Math.max(0, diffHours) }, (_, index) => index + 1);
+  }, [selectedBookingStartAt, selectedSlot]);
+
+  const selectedBookingEndsAt = useMemo(() => {
+    if (!selectedBookingStartAt || !hours) return "";
+    return addHours(new Date(selectedBookingStartAt), hours).toISOString();
+  }, [selectedBookingStartAt, hours]);
 
   const resolveServiceIdForProfessional = (professional: MatchProfessional | null, slot?: Slot | null) => {
     return (
@@ -382,12 +431,27 @@ export default function ReservarPage() {
         ? `wtk_checkout_${crypto.randomUUID()}`
         : `wtk_checkout_${Date.now()}_${Math.random().toString(16).slice(2)}`;
     setCheckoutIdempotencyKey(nextKey);
-  }, [customerId, selectedSlotId, filters.serviceId, hours, address.street, address.commune]);
+  }, [customerId, selectedSlotId, selectedBookingStartAt, filters.serviceId, hours, address.street, address.commune]);
 
   useEffect(() => {
     if (!selectedSlot) return;
-    setHours(durationHours(selectedSlot));
+    setSelectedStartAt(selectedSlot.startsAt);
+    setHours(Math.max(1, Math.floor(durationHours(selectedSlot))));
   }, [selectedSlot]);
+
+  useEffect(() => {
+    if (!selectedStartOptions.length) return;
+    if (!selectedStartOptions.some((option) => option.value === selectedStartAt)) {
+      setSelectedStartAt(selectedStartOptions[0]?.value ?? "");
+    }
+  }, [selectedStartAt, selectedStartOptions]);
+
+  useEffect(() => {
+    if (!selectedDurationOptions.length) return;
+    if (!selectedDurationOptions.includes(hours)) {
+      setHours(selectedDurationOptions[0] ?? 1);
+    }
+  }, [hours, selectedDurationOptions]);
 
   useEffect(() => {
     if (!selectedDay) return;
@@ -611,7 +675,7 @@ export default function ReservarPage() {
   }, [selectedSavedPaymentMethod, selectedSlot, mpSdkReady, mercadoPagoPublicKey, total]);
 
   const submitCheckout = async () => {
-    if (!customerId || !selectedPro || !selectedSlot || !filters.serviceId) {
+    if (!customerId || !selectedPro || !selectedSlot || !filters.serviceId || !selectedBookingStartAt) {
       setError("Completa cliente, profesional, servicio y horario.");
       return;
     }
@@ -650,7 +714,7 @@ export default function ReservarPage() {
           serviceId: filters.serviceId,
           proId: selectedPro.userId,
           slotId: selectedSlot.id,
-          startsAt: selectedSlot.startsAt,
+          startsAt: selectedBookingStartAt,
           hours,
           address: {
             street: address.street,
@@ -754,24 +818,29 @@ export default function ReservarPage() {
               ) : null}
             </div>
           </div>
-        </section>
-
-        <section className="auth-flow-panel auth-flow-panel-wide booking-summary-panel">
-          <div className="booking-summary-card">
-            <strong>Estado de tu reserva</strong>
-            <div className="booking-summary-list">
-              <span className={filters.serviceId ? "is-complete" : ""}>1. Servicio seleccionado</span>
-              <span className={(pinnedTaskerMode ? Boolean(selectedPro) : matches.length > 0) ? "is-complete" : ""}>
-                {pinnedTaskerMode ? "2. Tasker cargado" : "2. Taskers encontrados"}
-              </span>
-              <span className={selectedSlot ? "is-complete" : ""}>{pinnedTaskerMode ? "3. Bloque elegido" : "3. Horario elegido"}</span>
-              <span className={checkoutState === "approved" ? "is-complete" : ""}>4. Pago retenido y protegido</span>
+          <aside className="auth-flow-panel booking-summary-panel booking-summary-panel-inline">
+            <div className="booking-summary-card">
+              <strong>Estado de tu reserva</strong>
+              <div className="booking-summary-list">
+                <span className={filters.serviceId ? "is-complete" : ""}>1. Servicio seleccionado</span>
+                <span className={(pinnedTaskerMode ? Boolean(selectedPro) : matches.length > 0) ? "is-complete" : ""}>
+                  {pinnedTaskerMode ? "2. Tasker cargado" : "2. Taskers encontrados"}
+                </span>
+                <span className={selectedSlot ? "is-complete" : ""}>{pinnedTaskerMode ? "3. Horario definido" : "3. Horario elegido"}</span>
+                <span className={checkoutState === "approved" ? "is-complete" : ""}>4. Pago retenido y protegido</span>
+              </div>
+              <div className="auth-flow-note-card">
+                <strong>Resumen rápido</strong>
+                <span>
+                  {selectedPro
+                    ? `${selectedPro.fullName} · ${selectedBookingStartAt ? formatDateTime(selectedBookingStartAt) : "falta horario"}`
+                    : pinnedTaskerMode
+                      ? "Cargando tasker elegido."
+                      : "Aún no eliges profesional."}
+                </span>
+              </div>
             </div>
-            <div className="auth-flow-note-card">
-              <strong>Resumen rápido</strong>
-              <span>{selectedPro ? `${selectedPro.fullName} · ${selectedSlot ? new Date(selectedSlot.startsAt).toLocaleString("es-CL") : "falta horario"}` : pinnedTaskerMode ? "Cargando tasker elegido." : "Aún no eliges profesional."}</span>
-            </div>
-          </div>
+          </aside>
         </section>
 
         <div className="page client-dashboard-sections booking-flow-sections">
@@ -791,7 +860,7 @@ export default function ReservarPage() {
                     Tasker: <strong>{selectedPro?.fullName ?? "Cargando profesional"}</strong>
                   </p>
                   <p>
-                    Fecha y hora: <strong>{selectedSlot ? new Date(selectedSlot.startsAt).toLocaleString("es-CL") : "Cargando horario"}</strong>
+                    Fecha y hora: <strong>{selectedBookingStartAt ? formatDateTime(selectedBookingStartAt) : "Cargando horario"}</strong>
                   </p>
                   <p>
                     Dirección: <strong>{address.street}, {address.commune}, {address.city}</strong>
@@ -822,7 +891,7 @@ export default function ReservarPage() {
                     Dirección: <strong>{address.street}, {address.commune}, {address.city}</strong>
                   </p>
                   <p>
-                    Estado: <strong>{selectedSlot ? "Bloque elegido" : "Falta elegir horario"}</strong>
+                    Estado: <strong>{selectedSlot ? "Horario definido dentro del bloque" : "Falta elegir horario"}</strong>
                   </p>
                 </div>
               </>
@@ -900,7 +969,8 @@ export default function ReservarPage() {
                         <span className="status status-completed">{pro.distanceKm} km</span>
                       </div>
                       <p>
-                        <strong>Rating:</strong> {starsText(pro.ratingAvg)} {pro.ratingAvg.toFixed(1)} ({pro.ratingsCount})
+                        <strong>Rating:</strong>{" "}
+                        {pro.ratingsCount > 0 ? `${starsText(pro.ratingAvg)} ${pro.ratingAvg.toFixed(1)} (${pro.ratingsCount})` : "0.0 (0 valoraciones)"}
                       </p>
                       <p>
                         <strong>Precio/hora:</strong> {pro.hourlyRateFromClp ? clp(pro.hourlyRateFromClp) : "Por definir"}
@@ -942,7 +1012,7 @@ export default function ReservarPage() {
                       </div>
                       <div>
                         <h3>{selectedPro.fullName}</h3>
-                        <p>{starsText(selectedPro.ratingAvg)} {selectedPro.ratingAvg.toFixed(1)} · {selectedPro.ratingsCount} reseñas</p>
+                        <p>{selectedPro.ratingsCount > 0 ? `${starsText(selectedPro.ratingAvg)} ${selectedPro.ratingAvg.toFixed(1)} · ${selectedPro.ratingsCount} reseñas` : "0.0 · 0 reseñas"}</p>
                       </div>
                     </div>
 
@@ -972,7 +1042,7 @@ export default function ReservarPage() {
                 <section className="auth-flow-panel client-dashboard-section booking-agenda-section">
                   <div className="panel-head auth-flow-panel-head">
                     <h2>Agenda y detalles de la reserva</h2>
-                    <p>Elige un día del calendario, selecciona un bloque activo y revisa abajo el detalle del cobro.</p>
+                    <p>Elige un día, selecciona un bloque del tasker y luego define tu hora de inicio y duración dentro de ese bloque.</p>
                   </div>
 
                   <div className="booking-month-calendar">
@@ -1023,8 +1093,8 @@ export default function ReservarPage() {
                         onClick={() => setSelectedSlotId(slot.id)}
                       >
                         <strong>{formatSlotRange(slot)}</strong>
-                        <span>{durationHours(slot)} hora(s) de servicio</span>
-                        <small>{selectedService?.name ?? "Servicio seleccionado"}</small>
+                        <span>{Math.floor(durationHours(slot))} hora(s) disponibles en este bloque</span>
+                        <small>Elige este bloque para definir inicio y duración abajo</small>
                       </button>
                     ))}
                   </div>
@@ -1033,9 +1103,31 @@ export default function ReservarPage() {
 
                   <div className="grid-form auth-flow-form booking-agenda-form">
                     <label>
-                      Duración del bloque
-                      <select value={String(hours)} disabled>
-                        <option value={String(hours)}>{hours} hora(s)</option>
+                      Hora de inicio
+                      <select value={selectedBookingStartAt} onChange={(e) => setSelectedStartAt(e.target.value)} disabled={!selectedSlot}>
+                        {selectedStartOptions.length === 0 ? (
+                          <option value="">Elige un bloque primero</option>
+                        ) : (
+                          selectedStartOptions.map((option) => (
+                            <option key={option.value} value={option.value}>
+                              {option.label}
+                            </option>
+                          ))
+                        )}
+                      </select>
+                    </label>
+                    <label>
+                      Duración del servicio
+                      <select value={String(hours)} onChange={(e) => setHours(Number(e.target.value))} disabled={!selectedSlot}>
+                        {selectedDurationOptions.length === 0 ? (
+                          <option value="">Elige un bloque primero</option>
+                        ) : (
+                          selectedDurationOptions.map((duration) => (
+                            <option key={duration} value={String(duration)}>
+                              {duration} hora(s)
+                            </option>
+                          ))
+                        )}
                       </select>
                       {recommendedHours ? (
                         <small className="input-hint">
@@ -1044,6 +1136,14 @@ export default function ReservarPage() {
                         </small>
                       ) : null}
                     </label>
+                    {selectedSlot && selectedBookingStartAt && selectedBookingEndsAt ? (
+                      <div className="full auth-flow-note-card auth-flow-note-card-compact booking-range-note">
+                        <strong>Horario elegido</strong>
+                        <span>
+                          {formatDateTime(selectedBookingStartAt)} a {formatTime(selectedBookingEndsAt)} dentro del bloque del tasker.
+                        </span>
+                      </div>
+                    ) : null}
                     <label className="full">
                       Detalles del trabajo
                       <textarea value={details} onChange={(e) => setDetails(e.target.value)} />
@@ -1125,7 +1225,7 @@ export default function ReservarPage() {
                   Servicio: <strong>{selectedService?.name ?? "Servicio seleccionado"}</strong>
                 </p>
                 <p>
-                  Fecha y hora: <strong>{selectedSlot ? new Date(selectedSlot.startsAt).toLocaleString("es-CL") : "Selecciona un horario"}</strong>
+                  Fecha y hora: <strong>{selectedBookingStartAt ? formatDateTime(selectedBookingStartAt) : "Selecciona un horario"}</strong>
                 </p>
                 <p>
                   Dirección: <strong>{address.street}, {address.commune}, {address.city}</strong>
@@ -1192,7 +1292,12 @@ export default function ReservarPage() {
               )}
 
               <div className="cta-row">
-                <button className="cta" type="button" onClick={submitCheckout} disabled={loadingCheckout || !selectedSlot || (!selectedSavedPaymentMethod && !cardFormReady)}>
+                <button
+                  className="cta"
+                  type="button"
+                  onClick={submitCheckout}
+                  disabled={loadingCheckout || !selectedSlot || !selectedBookingStartAt || (!selectedSavedPaymentMethod && !cardFormReady)}
+                >
                   {loadingCheckout ? "Procesando pago..." : "Pagar y confirmar reserva"}
                 </button>
                 <Link className="cta ghost" href="/cliente">

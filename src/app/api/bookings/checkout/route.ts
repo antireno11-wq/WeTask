@@ -1,4 +1,4 @@
-import { PaymentStatus, UserRole } from "@prisma/client";
+import { PaymentStatus, Prisma, UserRole } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { sendBookingStatusEmailToCustomer } from "@/lib/booking-status-email";
@@ -67,6 +67,73 @@ function paymentStateFromProviderStatus(status: "approved" | "failed" | "pending
   return { paymentStatus: PaymentStatus.FAILED, bookingStatus: "PAYMENT_FAILED" as const };
 }
 
+function requestedBookingEndsAt(startsAt: Date, hours: number) {
+  return new Date(startsAt.getTime() + hours * 60 * 60 * 1000);
+}
+
+async function reserveRequestedWindow(
+  tx: Prisma.TransactionClient,
+  params: {
+    slotId: string;
+    startsAt: Date;
+    endsAt: Date;
+  }
+) {
+  const slot = await tx.availabilitySlot.findUnique({
+    where: { id: params.slotId },
+    select: {
+      id: true,
+      professionalProfileId: true,
+      serviceId: true,
+      startsAt: true,
+      endsAt: true,
+      isAvailable: true
+    }
+  });
+
+  if (!slot || !slot.isAvailable) {
+    throw new Error("El horario ya fue tomado por otro cliente");
+  }
+
+  if (params.startsAt < slot.startsAt || params.endsAt > slot.endsAt || params.endsAt <= params.startsAt) {
+    throw new Error("El horario solicitado ya no cabe dentro del bloque del tasker");
+  }
+
+  const extraWindows = [];
+  if (slot.startsAt < params.startsAt) {
+    extraWindows.push({
+      professionalProfileId: slot.professionalProfileId,
+      serviceId: slot.serviceId,
+      startsAt: slot.startsAt,
+      endsAt: params.startsAt,
+      isAvailable: true
+    });
+  }
+
+  if (params.endsAt < slot.endsAt) {
+    extraWindows.push({
+      professionalProfileId: slot.professionalProfileId,
+      serviceId: slot.serviceId,
+      startsAt: params.endsAt,
+      endsAt: slot.endsAt,
+      isAvailable: true
+    });
+  }
+
+  await tx.availabilitySlot.update({
+    where: { id: params.slotId },
+    data: {
+      startsAt: params.startsAt,
+      endsAt: params.endsAt,
+      isAvailable: false
+    }
+  });
+
+  if (extraWindows.length > 0) {
+    await tx.availabilitySlot.createMany({ data: extraWindows });
+  }
+}
+
 export async function POST(req: NextRequest) {
   const identity = getRequestIdentity(req);
   if (!hasRole(identity.role, [UserRole.CUSTOMER, UserRole.ADMIN])) {
@@ -107,6 +174,7 @@ export async function POST(req: NextRequest) {
     let assignedProId = input.proId ?? null;
     let selectedSlotId = input.slotId ?? null;
     let hourlyRateClp = service.basePriceClp;
+    const requestedEndsAt = requestedBookingEndsAt(input.startsAt, input.hours);
     let savedPaymentMethod:
       | {
           providerCustomerId: string;
@@ -162,8 +230,8 @@ export async function POST(req: NextRequest) {
       if (!slot || !slot.isAvailable) {
         return NextResponse.json({ error: "Horario no disponible" }, { status: 409 });
       }
-      if (slot.startsAt.getTime() !== input.startsAt.getTime()) {
-        return NextResponse.json({ error: "El horario enviado no coincide con el slot" }, { status: 400 });
+      if (input.startsAt < slot.startsAt || requestedEndsAt > slot.endsAt || requestedEndsAt <= input.startsAt) {
+        return NextResponse.json({ error: "El horario elegido no cabe dentro del bloque disponible" }, { status: 400 });
       }
       if (slot.serviceId && slot.serviceId !== input.serviceId) {
         return NextResponse.json({ error: "El horario no pertenece al servicio elegido" }, { status: 400 });
@@ -302,13 +370,11 @@ export async function POST(req: NextRequest) {
 
     const created = await prisma.$transaction(async (tx) => {
       if (selectedSlotId) {
-        const lock = await tx.availabilitySlot.updateMany({
-          where: { id: selectedSlotId, isAvailable: true },
-          data: { isAvailable: false }
+        await reserveRequestedWindow(tx, {
+          slotId: selectedSlotId,
+          startsAt: input.startsAt,
+          endsAt: requestedEndsAt
         });
-        if (lock.count === 0) {
-          throw new Error("El horario ya fue tomado por otro cliente");
-        }
       }
 
       const address = await tx.address.create({
