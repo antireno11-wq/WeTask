@@ -1,6 +1,9 @@
 import { CleaningOnboardingStatus, Prisma } from "@prisma/client";
+import { isChefServiceSlug } from "@/lib/chef-service-types";
 import { CLEANING_WEEK_DAYS } from "@/lib/cleaning-onboarding";
+import { isCleaningServiceSlug } from "@/lib/cleaning-service-types";
 import { normalizeCommune, normalizeCommuneList } from "@/lib/communes";
+import { CORE_SERVICES } from "@/lib/core-services";
 import { prisma } from "@/lib/prisma";
 
 type AvailabilityBlock = {
@@ -123,6 +126,168 @@ export function getTaskerPublicationState(input: PublicationCheckInput) {
     hasRate,
     canAppearInSearch: missingRequirements.length === 0,
     missingRequirements
+  };
+}
+
+function getOnboardingServiceSlugs(value: Prisma.JsonValue | null): string[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter((item): item is string => typeof item === "string");
+}
+
+export async function syncTaskerMarketplaceServicesFromOnboarding(userId: string) {
+  const onboarding = await prisma.cleaningOnboarding.findUnique({
+    where: { userId },
+    select: {
+      userId: true,
+      categorySlug: true,
+      offeredServices: true,
+      hourlyRateClp: true,
+      minBookingHours: true,
+      profilePhotoUrl: true,
+      shortDescription: true,
+      referenceAddress: true,
+      baseCommune: true,
+      coverageLatitude: true,
+      coverageLongitude: true,
+      maxTravelKm: true
+    }
+  });
+
+  if (!onboarding?.categorySlug) {
+    return { updated: 0, reason: "missing_onboarding_category" as const };
+  }
+
+  const selectedCoreService = CORE_SERVICES.find(
+    (service) => service.slug === onboarding.categorySlug || service.categorySlug === onboarding.categorySlug
+  );
+  if (!selectedCoreService) {
+    return { updated: 0, reason: "missing_core_service" as const };
+  }
+
+  const category = await prisma.category.findFirst({
+    where: {
+      isActive: true,
+      slug: selectedCoreService.categorySlug
+    },
+    orderBy: [{ slug: "asc" }]
+  });
+  if (!category) {
+    return { updated: 0, reason: "missing_category" as const };
+  }
+
+  const profile = await prisma.professionalProfile.upsert({
+    where: { userId },
+    create: {
+      userId,
+      avatarUrl: onboarding.profilePhotoUrl,
+      bio: onboarding.shortDescription,
+      isVerified: true,
+      verificationStatus: "APPROVED",
+      coverageStreet: onboarding.referenceAddress,
+      coverageComuna: onboarding.baseCommune,
+      coverageCity: "Santiago",
+      coverageLatitude: onboarding.coverageLatitude,
+      coverageLongitude: onboarding.coverageLongitude,
+      serviceRadiusKm: onboarding.maxTravelKm ?? 8,
+      hourlyRateFromClp: onboarding.hourlyRateClp
+    },
+    update: {
+      avatarUrl: onboarding.profilePhotoUrl ?? undefined,
+      bio: onboarding.shortDescription,
+      isVerified: true,
+      verificationStatus: "APPROVED",
+      coverageStreet: onboarding.referenceAddress,
+      coverageComuna: onboarding.baseCommune,
+      coverageLatitude: onboarding.coverageLatitude ?? undefined,
+      coverageLongitude: onboarding.coverageLongitude ?? undefined,
+      serviceRadiusKm: onboarding.maxTravelKm ?? undefined,
+      hourlyRateFromClp: onboarding.hourlyRateClp
+    }
+  });
+
+  const selectedOnboardingServices =
+    Array.isArray(onboarding.offeredServices) && onboarding.categorySlug === "limpieza"
+      ? getOnboardingServiceSlugs(onboarding.offeredServices).filter((item) => isCleaningServiceSlug(item))
+      : Array.isArray(onboarding.offeredServices) && onboarding.categorySlug === "chef"
+        ? getOnboardingServiceSlugs(onboarding.offeredServices).filter((item) => isChefServiceSlug(item))
+        : [];
+
+  const services = selectedOnboardingServices.length
+    ? await prisma.service.findMany({
+        where: {
+          categoryId: category.id,
+          isActive: true,
+          slug: { in: selectedOnboardingServices }
+        },
+        orderBy: [{ basePriceClp: "asc" }]
+      })
+    : await prisma.service.findMany({
+        where: {
+          categoryId: category.id,
+          isActive: true,
+          OR: [
+            { slug: { contains: selectedCoreService.slug } },
+            { name: { contains: selectedCoreService.label, mode: "insensitive" } }
+          ]
+        },
+        orderBy: [{ basePriceClp: "asc" }]
+      });
+
+  if (services.length === 0) {
+    return { updated: 0, reason: "missing_services" as const, profileId: profile.id, categoryId: category.id };
+  }
+
+  await prisma.taskerService.updateMany({
+    where: {
+      professionalProfileId: profile.id,
+      isActive: true,
+      categoryId: { not: category.id }
+    },
+    data: { isActive: false }
+  });
+
+  let updated = 0;
+  for (const service of services) {
+    await prisma.taskerService.upsert({
+      where: {
+        professionalProfileId_serviceId: {
+          professionalProfileId: profile.id,
+          serviceId: service.id
+        }
+      },
+      create: {
+        professionalProfileId: profile.id,
+        categoryId: category.id,
+        serviceId: service.id,
+        priceClp: onboarding.hourlyRateClp ?? service.basePriceClp,
+        minBooking: onboarding.minBookingHours ?? category.minHours,
+        isActive: true
+      },
+      update: {
+        categoryId: category.id,
+        priceClp: onboarding.hourlyRateClp ?? service.basePriceClp,
+        minBooking: onboarding.minBookingHours ?? category.minHours,
+        isActive: true
+      }
+    });
+    updated += 1;
+  }
+
+  await prisma.taskerService.updateMany({
+    where: {
+      professionalProfileId: profile.id,
+      categoryId: category.id,
+      serviceId: { notIn: services.map((service) => service.id) }
+    },
+    data: { isActive: false }
+  });
+
+  return {
+    updated,
+    reason: "synced" as const,
+    profileId: profile.id,
+    categoryId: category.id,
+    serviceIds: services.map((service) => service.id)
   };
 }
 

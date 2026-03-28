@@ -1,13 +1,14 @@
 import { CleaningOnboardingStatus, Prisma } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdminRequest } from "@/lib/admin-access";
-import { isChefServiceSlug } from "@/lib/chef-service-types";
-import { isCleaningServiceSlug } from "@/lib/cleaning-service-types";
 import { normalizeCommuneList } from "@/lib/communes";
-import { CORE_SERVICES } from "@/lib/core-services";
 import { buildTaskerStatusEmailTemplate, sendPlatformEmail } from "@/lib/notifications";
 import { prisma } from "@/lib/prisma";
-import { getTaskerPublicationState, syncTaskerAvailabilitySlotsFromOnboarding } from "@/lib/tasker-publication";
+import {
+  getTaskerPublicationState,
+  syncTaskerAvailabilitySlotsFromOnboarding,
+  syncTaskerMarketplaceServicesFromOnboarding
+} from "@/lib/tasker-publication";
 import { cleaningOnboardingAdminActionSchema } from "@/lib/validators";
 
 export const dynamic = "force-dynamic";
@@ -77,141 +78,6 @@ async function deleteOnboardingAndProfessionalData(tx: Prisma.TransactionClient,
   await tx.cleaningOnboarding.deleteMany({
     where: { userId }
   });
-}
-
-async function ensureCleaningTaskerService(userId: string) {
-  const onboarding = await prisma.cleaningOnboarding.findUnique({ where: { userId } });
-  if (!onboarding) return;
-  const serviceCommunes = normalizeCommuneList(onboarding.serviceCommunes);
-  if (serviceCommunes.length === 0) {
-    throw new Error("El tasker no tiene comunas de servicio configuradas");
-  }
-
-  const profile = await prisma.professionalProfile.upsert({
-    where: { userId },
-    create: {
-      userId,
-      avatarUrl: onboarding.profilePhotoUrl,
-      bio: onboarding.shortDescription,
-      isVerified: true,
-      verificationStatus: "APPROVED",
-      coverageStreet: onboarding.referenceAddress,
-      coverageComuna: onboarding.baseCommune,
-      coverageCity: "Santiago",
-      coverageLatitude: onboarding.coverageLatitude,
-      coverageLongitude: onboarding.coverageLongitude,
-      serviceRadiusKm: onboarding.maxTravelKm ?? 8,
-      hourlyRateFromClp: onboarding.hourlyRateClp
-    },
-    update: {
-      avatarUrl: onboarding.profilePhotoUrl ?? undefined,
-      bio: onboarding.shortDescription,
-      isVerified: true,
-      verificationStatus: "APPROVED",
-      coverageStreet: onboarding.referenceAddress,
-      coverageComuna: onboarding.baseCommune,
-      coverageLatitude: onboarding.coverageLatitude ?? undefined,
-      coverageLongitude: onboarding.coverageLongitude ?? undefined,
-      serviceRadiusKm: onboarding.maxTravelKm ?? undefined,
-      hourlyRateFromClp: onboarding.hourlyRateClp
-    }
-  });
-
-  const normalizedOnboardingCategory = onboarding.categorySlug?.trim().toLowerCase() ?? "";
-  const selectedCoreService =
-    CORE_SERVICES.find(
-      (service) =>
-        service.slug === normalizedOnboardingCategory ||
-        service.categorySlug === normalizedOnboardingCategory
-    ) ??
-    CORE_SERVICES.find((service) => service.slug === "limpieza") ??
-    CORE_SERVICES[0];
-
-  const category = await prisma.category.findFirst({
-    where: {
-      isActive: true,
-      slug: selectedCoreService.categorySlug
-    },
-    orderBy: [{ slug: "asc" }]
-  });
-  if (!category) return;
-
-  await prisma.taskerService.updateMany({
-    where: {
-      professionalProfileId: profile.id,
-      isActive: true,
-      categoryId: { not: category.id }
-    },
-    data: {
-      isActive: false
-    }
-  });
-
-  const selectedOnboardingServices =
-    Array.isArray(onboarding.offeredServices) && onboarding.categorySlug === "limpieza"
-      ? onboarding.offeredServices.filter((item): item is string => typeof item === "string" && isCleaningServiceSlug(item))
-      : Array.isArray(onboarding.offeredServices) && onboarding.categorySlug === "chef"
-        ? onboarding.offeredServices.filter((item): item is string => typeof item === "string" && isChefServiceSlug(item))
-        : [];
-
-  const services = selectedOnboardingServices.length
-    ? await prisma.service.findMany({
-        where: {
-          categoryId: category.id,
-          isActive: true,
-          slug: { in: selectedOnboardingServices }
-        },
-        orderBy: [{ basePriceClp: "asc" }]
-      })
-    : await prisma.service.findMany({
-        where: {
-          categoryId: category.id,
-          isActive: true,
-          OR: [
-            { slug: { contains: selectedCoreService.slug } },
-            { name: { contains: selectedCoreService.label, mode: "insensitive" } }
-          ]
-        },
-        orderBy: [{ basePriceClp: "asc" }]
-      });
-
-  if (services.length === 0) return;
-
-  const existingTaskerServices = await prisma.taskerService.findMany({
-    where: {
-      professionalProfileId: profile.id,
-      serviceId: { in: services.map((service) => service.id) }
-    },
-    select: {
-      serviceId: true,
-      priceClp: true
-    }
-  });
-  const existingPriceMap = new Map(existingTaskerServices.map((item) => [item.serviceId, item.priceClp]));
-
-  for (const service of services) {
-    await prisma.taskerService.upsert({
-      where: {
-        professionalProfileId_serviceId: {
-          professionalProfileId: profile.id,
-          serviceId: service.id
-        }
-      },
-      create: {
-        professionalProfileId: profile.id,
-        categoryId: category.id,
-        serviceId: service.id,
-        priceClp: existingPriceMap.get(service.id) ?? onboarding.hourlyRateClp ?? service.basePriceClp,
-        minBooking: onboarding.minBookingHours ?? category.minHours,
-        isActive: true
-      },
-      update: {
-        priceClp: existingPriceMap.get(service.id) ?? onboarding.hourlyRateClp ?? service.basePriceClp,
-        minBooking: onboarding.minBookingHours ?? category.minHours,
-        isActive: true
-      }
-    });
-  }
 }
 
 export async function GET(req: NextRequest) {
@@ -398,7 +264,13 @@ export async function PATCH(req: NextRequest) {
       );
     }
 
-    await ensureCleaningTaskerService(onboarding.userId);
+    const marketplaceSync = await syncTaskerMarketplaceServicesFromOnboarding(onboarding.userId);
+    if (marketplaceSync.updated === 0 && marketplaceSync.reason !== "synced") {
+      return NextResponse.json(
+        { error: "No se pudo preparar el servicio marketplace del tasker.", reason: marketplaceSync.reason },
+        { status: 409 }
+      );
+    }
 
     const activationUser = await prisma.user.findUnique({
       where: { id: onboarding.userId },

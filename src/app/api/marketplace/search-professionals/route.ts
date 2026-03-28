@@ -9,7 +9,11 @@ import { COVERAGE_UNAVAILABLE_MESSAGE, inferCommuneFromAddress, normalizeCommune
 import { ensureMarketplaceDemoData } from "@/lib/marketplace-demo-data";
 import { supportsPetRequestedTasks } from "@/lib/pet-scope";
 import { prisma } from "@/lib/prisma";
-import { getTaskerPublicationState, syncTaskerAvailabilitySlotsFromOnboarding } from "@/lib/tasker-publication";
+import {
+  getTaskerPublicationState,
+  syncTaskerAvailabilitySlotsFromOnboarding,
+  syncTaskerMarketplaceServicesFromOnboarding
+} from "@/lib/tasker-publication";
 import { supportsTeacherRequestedTasks } from "@/lib/teacher-scope";
 import { supportsTrainerRequestedTasks } from "@/lib/trainer-scope";
 import { marketplaceSearchProsSchema } from "@/lib/validators";
@@ -132,17 +136,7 @@ export async function GET(req: NextRequest) {
     const profiles = await prisma.professionalProfile.findMany({
       where: {
         isVerified: true,
-        user: { role: "PRO" },
-        taskerServices:
-          input.serviceId || input.categoryId
-            ? {
-                some: {
-                  isActive: true,
-                  serviceId: input.serviceId ?? undefined,
-                  categoryId: input.categoryId ?? undefined
-                }
-              }
-            : undefined
+        user: { role: "PRO" }
       },
       include: {
         user: {
@@ -175,13 +169,12 @@ export async function GET(req: NextRequest) {
         },
         taskerServices: {
           where: {
-            isActive: true,
-            serviceId: input.serviceId ?? undefined,
-            categoryId: input.categoryId ?? undefined
+            isActive: true
           },
           select: {
             priceClp: true,
-            serviceId: true
+            serviceId: true,
+            categoryId: true
           }
         },
         slots: {
@@ -208,6 +201,39 @@ export async function GET(req: NextRequest) {
     const matched = (
       await Promise.all(
         profiles.map(async (profile) => {
+          let activeTaskerServices = profile.taskerServices;
+          const hasRequestedTaskerService =
+            !input.serviceId && !input.categoryId
+              ? activeTaskerServices.length > 0
+              : activeTaskerServices.some((taskerService) => {
+                  if (input.serviceId) return taskerService.serviceId === input.serviceId;
+                  if (input.categoryId) return taskerService.categoryId === input.categoryId;
+                  return true;
+                });
+
+          if (activeTaskerServices.length === 0 || !hasRequestedTaskerService) {
+            const serviceSync = await syncTaskerMarketplaceServicesFromOnboarding(profile.user.id);
+            if (serviceSync.updated > 0) {
+              console.info("[tasker-search] synced onboarding services", {
+                userId: profile.user.id,
+                updatedServices: serviceSync.updated,
+                reason: serviceSync.reason
+              });
+              activeTaskerServices = await prisma.taskerService.findMany({
+                where: {
+                  professionalProfileId: profile.id,
+                  isActive: true
+                },
+                select: {
+                  priceClp: true,
+                  serviceId: true,
+                  categoryId: true
+                }
+              });
+              profile.taskerServices = activeTaskerServices;
+            }
+          }
+
           const publication = getTaskerPublicationState({
             onboarding: profile.user.cleaningOnboarding,
             profile: {
@@ -215,7 +241,7 @@ export async function GET(req: NextRequest) {
               coverageComuna: profile.coverageComuna,
               hourlyRateFromClp: profile.hourlyRateFromClp
             },
-            activeTaskerServicesCount: profile.taskerServices.length
+            activeTaskerServicesCount: activeTaskerServices.length
           });
 
           if (!publication.canAppearInSearch) {
@@ -225,6 +251,16 @@ export async function GET(req: NextRequest) {
 
           const onboardingCategorySlug = normalizeCategorySlug(profile.user.cleaningOnboarding?.categorySlug);
           if (requestedCategorySlug && onboardingCategorySlug && requestedCategorySlug !== onboardingCategorySlug) {
+            filterStats.notPublishable += 1;
+            return null;
+          }
+
+          const matchedTaskerServices = activeTaskerServices.filter((taskerService) => {
+            if (input.serviceId) return taskerService.serviceId === input.serviceId;
+            if (input.categoryId) return taskerService.categoryId === input.categoryId;
+            return true;
+          });
+          if ((input.serviceId || input.categoryId) && matchedTaskerServices.length === 0) {
             filterStats.notPublishable += 1;
             return null;
           }
@@ -286,7 +322,8 @@ export async function GET(req: NextRequest) {
 
           return {
             ...profile,
-            hourlyRateFromClp: profile.taskerServices[0]?.priceClp ?? profile.hourlyRateFromClp,
+            taskerServices: matchedTaskerServices.length > 0 ? matchedTaskerServices : activeTaskerServices,
+            hourlyRateFromClp: matchedTaskerServices[0]?.priceClp ?? activeTaskerServices[0]?.priceClp ?? profile.hourlyRateFromClp,
             distanceKm: typeof distance === "number" ? Number(distance.toFixed(2)) : null,
             nextAvailableAt: profile.slots[0]?.startsAt ?? null
           };

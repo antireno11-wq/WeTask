@@ -4,6 +4,7 @@ import { getRequestIdentity, hasRole } from "@/lib/auth";
 import { COVERAGE_UNAVAILABLE_MESSAGE, inferCommuneFromAddress, normalizeCommune, taskerServesCommune } from "@/lib/communes";
 import { calculateMarketplacePrice } from "@/lib/marketplace-pricing";
 import { prisma } from "@/lib/prisma";
+import { syncTaskerMarketplaceServicesFromOnboarding } from "@/lib/tasker-publication";
 import { hasAssignedRole } from "@/lib/user-roles";
 import { marketplaceCreateBookingSchema } from "@/lib/validators";
 
@@ -134,7 +135,19 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: "El bloque no pertenece al servicio seleccionado" }, { status: 400 });
       }
       if (selectedSlot.professionalProfile.taskerServices.length === 0) {
-        return NextResponse.json({ error: "El tasker seleccionado no ofrece este servicio" }, { status: 400 });
+        await syncTaskerMarketplaceServicesFromOnboarding(selectedSlot.professionalProfile.userId);
+        const syncedTaskerService = await prisma.taskerService.findFirst({
+          where: {
+            professionalProfileId: selectedSlot.professionalProfileId,
+            serviceId: input.serviceId,
+            isActive: true
+          },
+          select: { id: true, priceClp: true }
+        });
+        if (!syncedTaskerService) {
+          return NextResponse.json({ error: "El tasker seleccionado no ofrece este servicio" }, { status: 400 });
+        }
+        selectedSlot.professionalProfile.taskerServices = [syncedTaskerService];
       }
 
       const slotTaskerCanServe = taskerServesCommune(
@@ -245,7 +258,22 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: "Profesional no válido" }, { status: 400 });
       }
       if (!pro.professionalProfile || pro.professionalProfile.taskerServices.length === 0) {
-        return NextResponse.json({ error: "El tasker seleccionado no ofrece este servicio" }, { status: 400 });
+        await syncTaskerMarketplaceServicesFromOnboarding(assignedProId);
+        const syncedProService = await prisma.taskerService.findFirst({
+          where: {
+            professionalProfile: { userId: assignedProId },
+            serviceId: input.serviceId,
+            isActive: true
+          },
+          select: { id: true, priceClp: true }
+        });
+        if (!syncedProService) {
+          return NextResponse.json({ error: "El tasker seleccionado no ofrece este servicio" }, { status: 400 });
+        }
+        if (!pro.professionalProfile) {
+          return NextResponse.json({ error: "El tasker seleccionado no tiene perfil activo" }, { status: 400 });
+        }
+        pro.professionalProfile.taskerServices = [syncedProService];
       }
 
       baseRate = pro.professionalProfile.taskerServices[0]?.priceClp ?? baseRate;

@@ -7,6 +7,7 @@ import { COVERAGE_UNAVAILABLE_MESSAGE, inferCommuneFromAddress, normalizeCommune
 import { calculateMarketplacePrice } from "@/lib/marketplace-pricing";
 import { createProviderPayment } from "@/lib/payments/provider-adapter";
 import { prisma } from "@/lib/prisma";
+import { syncTaskerMarketplaceServicesFromOnboarding } from "@/lib/tasker-publication";
 import { hasAssignedRole } from "@/lib/user-roles";
 
 export const dynamic = "force-dynamic";
@@ -168,7 +169,19 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: "El horario no pertenece al servicio elegido" }, { status: 400 });
       }
       if (slot.professionalProfile.taskerServices.length === 0) {
-        return NextResponse.json({ error: "El tasker no ofrece este servicio" }, { status: 400 });
+        await syncTaskerMarketplaceServicesFromOnboarding(slot.professionalProfile.userId);
+        const syncedTaskerService = await prisma.taskerService.findFirst({
+          where: {
+            professionalProfileId: slot.professionalProfileId,
+            serviceId: input.serviceId,
+            isActive: true
+          },
+          select: { id: true, priceClp: true }
+        });
+        if (!syncedTaskerService) {
+          return NextResponse.json({ error: "El tasker no ofrece este servicio" }, { status: 400 });
+        }
+        slot.professionalProfile.taskerServices = [syncedTaskerService];
       }
 
       const canServe = taskerServesCommune(
@@ -207,8 +220,24 @@ export async function POST(req: NextRequest) {
         }
       });
 
-      if (!pro || pro.role !== UserRole.PRO || !pro.professionalProfile || pro.professionalProfile.taskerServices.length === 0) {
+      if (!pro || pro.role !== UserRole.PRO || !pro.professionalProfile) {
         return NextResponse.json({ error: "Tasker inválido para este servicio" }, { status: 400 });
+      }
+
+      if (pro.professionalProfile.taskerServices.length === 0) {
+        await syncTaskerMarketplaceServicesFromOnboarding(assignedProId);
+        const syncedProService = await prisma.taskerService.findFirst({
+          where: {
+            professionalProfile: { userId: assignedProId },
+            serviceId: input.serviceId,
+            isActive: true
+          },
+          select: { id: true, priceClp: true }
+        });
+        if (!syncedProService) {
+          return NextResponse.json({ error: "Tasker inválido para este servicio" }, { status: 400 });
+        }
+        pro.professionalProfile.taskerServices = [syncedProService];
       }
 
       const canServe = taskerServesCommune(
