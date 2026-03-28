@@ -223,9 +223,9 @@ export default function ClientePage() {
   }, []);
 
   const loadDashboard = useCallback(async (targetName: string) => {
-    const count = await fetchBookings();
+    await fetchBookings();
     await fetchNotifications();
-    setFeedback(`Panel cargado para ${targetName} (${count} reservas).`);
+    setFeedback("");
   }, []);
 
   const submitPaymentMethod = useCallback(
@@ -696,6 +696,12 @@ export default function ClientePage() {
                 </div>
               </div>
             </div>
+
+            <div className="cta-row client-profile-primary-action">
+              <Link href={servicesHref} className="cta">
+                Buscar servicios
+              </Link>
+            </div>
           </section>
         </section>
 
@@ -719,11 +725,6 @@ export default function ClientePage() {
               </div>
             </div>
 
-            <div className="auth-flow-actions">
-              <Link href={servicesHref} className="cta">
-                Buscar servicios
-              </Link>
-            </div>
           </section>
 
           <div className="dashboard-switcher">

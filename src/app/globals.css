@@ -5394,6 +5394,11 @@ textarea {
   margin-bottom: 18px;
 }
 
+.client-profile-primary-action {
+  margin-top: 18px;
+  justify-content: flex-start;
+}
+
 .client-dashboard-top-actions .client-dashboard-summary {
   width: min(100%, 860px);
 }
