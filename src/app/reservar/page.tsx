@@ -231,6 +231,7 @@ export default function ReservarPage() {
 
   const [createdBooking, setCreatedBooking] = useState<BookingResponse | null>(null);
   const [savedPaymentMethods, setSavedPaymentMethods] = useState<SavedPaymentMethod[]>([]);
+  const [bookingStep, setBookingStep] = useState<1 | 2 | 3 | 4 | 5>(1);
   const [preferredStartsAt, setPreferredStartsAt] = useState("");
   const [quickCheckoutEnabled, setQuickCheckoutEnabled] = useState(false);
   const [pinnedTaskerMode, setPinnedTaskerMode] = useState(false);
@@ -355,6 +356,23 @@ export default function ReservarPage() {
   const subtotal = baseHourly * hours;
   const commission = Math.round(subtotal * 0.12);
   const total = subtotal + commission;
+  const bookingSteps = [
+    { id: 1 as const, label: "Servicio" },
+    { id: 2 as const, label: pinnedTaskerMode ? "Dirección" : "Ubicación" },
+    { id: 3 as const, label: pinnedTaskerMode ? "Horario" : "Tasker" },
+    { id: 4 as const, label: "Detalles" },
+    { id: 5 as const, label: "Pago" }
+  ];
+  const canGoToStep2 = Boolean(filters.serviceId);
+  const canGoToStep3 = pinnedTaskerMode ? Boolean(selectedPro) : matches.length > 0;
+  const canGoToStep4 = Boolean(selectedPro && selectedSlot);
+  const canGoToStep5 = Boolean(selectedPro && selectedSlot && selectedBookingStartAt);
+  const canAdvanceFromCurrent =
+    (bookingStep === 1 && canGoToStep2) ||
+    (bookingStep === 2 && canGoToStep3) ||
+    (bookingStep === 3 && canGoToStep4) ||
+    (bookingStep === 4 && canGoToStep5) ||
+    bookingStep === 5;
 
   const loadServices = async () => {
     try {
@@ -479,6 +497,7 @@ export default function ReservarPage() {
     if (!selectedSlot) return;
     setSelectedStartAt(selectedSlot.startsAt);
     setHours(Math.max(1, Math.min(8, Math.floor(durationHours(selectedSlot)))));
+    setBookingStep(4);
   }, [selectedSlot]);
 
   useEffect(() => {
@@ -1370,6 +1389,20 @@ export default function ReservarPage() {
               ) : null}
             </section>
           ) : null}
+
+          <div className="booking-mobile-footer">
+            <button className="cta ghost" type="button" onClick={() => setBookingStep((current) => Math.max(1, current - 1) as 1 | 2 | 3 | 4 | 5)} disabled={bookingStep === 1}>
+              Volver
+            </button>
+            <button
+              className="cta"
+              type="button"
+              disabled={!canAdvanceFromCurrent || bookingStep === 5}
+              onClick={() => setBookingStep((current) => Math.min(5, current + 1) as 1 | 2 | 3 | 4 | 5)}
+            >
+              {bookingStep === 4 ? "Ir a pago" : "Continuar"}
+            </button>
+          </div>
 
           {message ? <p className="feedback ok">{message}</p> : null}
           {error && checkoutState !== "rejected" && checkoutState !== "connection_error" ? <p className="feedback error">{error}</p> : null}
