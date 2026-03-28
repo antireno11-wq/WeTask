@@ -1021,6 +1021,10 @@ export default function ProDetailPage() {
             <section className="auth-flow-shell auth-flow-shell-wide client-dashboard-hero public-tasker-hero">
               <div className="auth-flow-copy client-dashboard-copy public-tasker-hero-copy">
                 <p className="auth-flow-kicker">Tasker verificado</p>
+                <div className="public-tasker-category-badge" aria-label={`Categoría principal ${categoryName}`}>
+                  <strong>{categoryName}</strong>
+                  <span>{taskerRole}</span>
+                </div>
                 <h1>{data.user.fullName}</h1>
                 <p
                   style={{
@@ -1068,6 +1072,7 @@ export default function ProDetailPage() {
                     {profilePhotoUrl ? <img src={profilePhotoUrl} alt="" className="we-pro-avatar-image" /> : initials(data.user.fullName)}
                   </div>
                   <div>
+                    <div className="public-tasker-category-inline">{categoryName}</div>
                     <h3>{data.user.fullName}</h3>
                     <p
                       style={{
