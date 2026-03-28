@@ -74,6 +74,28 @@ function isoDay(value: string): string {
   return value.slice(0, 10);
 }
 
+function firstOfMonth(value: Date) {
+  return new Date(value.getFullYear(), value.getMonth(), 1);
+}
+
+function addMonths(value: Date, amount: number) {
+  return new Date(value.getFullYear(), value.getMonth() + amount, 1);
+}
+
+function startOffsetMonday(value: Date) {
+  return (value.getDay() + 6) % 7;
+}
+
+function formatSlotRange(slot: Slot) {
+  return `${new Date(slot.startsAt).toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" })} - ${new Date(slot.endsAt).toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" })}`;
+}
+
+function durationHours(slot: Slot) {
+  const start = new Date(slot.startsAt).getTime();
+  const end = new Date(slot.endsAt).getTime();
+  return Math.max(0.5, Math.round(((end - start) / 36e5) * 2) / 2);
+}
+
 function starsText(value: number) {
   const rounded = Math.max(1, Math.min(5, Math.round(value || 0)));
   return `${"★".repeat(rounded)}${"☆".repeat(5 - rounded)}`;
@@ -125,6 +147,7 @@ export default function ReservarPage() {
   const [selectedProId, setSelectedProId] = useState("");
   const [selectedDay, setSelectedDay] = useState("");
   const [selectedSlotId, setSelectedSlotId] = useState("");
+  const [calendarMonth, setCalendarMonth] = useState(() => firstOfMonth(new Date()));
 
   const [hours, setHours] = useState(2);
   const [recommendedHours, setRecommendedHours] = useState<number | null>(null);
@@ -157,6 +180,26 @@ export default function ReservarPage() {
   }, [selectedPro]);
 
   const selectedSlots = useMemo(() => dayGroups.find(([day]) => day === selectedDay)?.[1] ?? [], [dayGroups, selectedDay]);
+  const availableDays = useMemo(() => new Map(dayGroups.map(([day, slots]) => [day, slots])), [dayGroups]);
+  const calendarCells = useMemo(() => {
+    const start = firstOfMonth(calendarMonth);
+    const offset = startOffsetMonday(start);
+    const daysInMonth = new Date(start.getFullYear(), start.getMonth() + 1, 0).getDate();
+    const totalCells = Math.ceil((offset + daysInMonth) / 7) * 7;
+    return Array.from({ length: totalCells }, (_, index) => {
+      const dayNumber = index - offset + 1;
+      if (dayNumber < 1 || dayNumber > daysInMonth) return null;
+      const date = new Date(start.getFullYear(), start.getMonth(), dayNumber);
+      const iso = date.toISOString().slice(0, 10);
+      const slots = availableDays.get(iso) ?? [];
+      return {
+        iso,
+        dayNumber,
+        slotsCount: slots.length,
+        hasAvailability: slots.length > 0
+      };
+    });
+  }, [availableDays, calendarMonth]);
 
   const selectedSlot = useMemo(() => {
     if (!selectedPro || !selectedSlotId) return null;
@@ -300,11 +343,13 @@ export default function ReservarPage() {
 
   useEffect(() => {
     if (!selectedSlot) return;
-    const start = new Date(selectedSlot.startsAt).getTime();
-    const end = new Date(selectedSlot.endsAt).getTime();
-    const diffHours = Math.max(0.5, Math.round(((end - start) / 36e5) * 2) / 2);
-    setHours(diffHours);
+    setHours(durationHours(selectedSlot));
   }, [selectedSlot]);
+
+  useEffect(() => {
+    if (!selectedDay) return;
+    setCalendarMonth(firstOfMonth(new Date(`${selectedDay}T00:00:00`)));
+  }, [selectedDay]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -886,26 +931,59 @@ export default function ReservarPage() {
                 <section className="auth-flow-panel client-dashboard-section booking-agenda-section">
                   <div className="panel-head auth-flow-panel-head">
                     <h2>Agenda y detalles de la reserva</h2>
-                    <p>Selecciona un día, elige un horario y completa abajo los detalles del servicio.</p>
+                    <p>Elige un día del calendario, selecciona un bloque activo y revisa abajo el detalle del cobro.</p>
                   </div>
 
-                  <div className="day-tabs">
-                    {dayGroups.map(([day]) => (
-                      <button key={day} type="button" className={`day-tab ${selectedDay === day ? "active" : ""}`} onClick={() => setSelectedDay(day)}>
-                        {new Date(`${day}T00:00:00`).toLocaleDateString("es-ES", { weekday: "short", day: "2-digit", month: "2-digit" })}
+                  <div className="booking-month-calendar">
+                    <div className="booking-month-calendar-head">
+                      <button type="button" className="day-tab" onClick={() => setCalendarMonth((current) => addMonths(current, -1))}>
+                        Mes anterior
                       </button>
-                    ))}
+                      <strong>{calendarMonth.toLocaleDateString("es-CL", { month: "long", year: "numeric" })}</strong>
+                      <button type="button" className="day-tab" onClick={() => setCalendarMonth((current) => addMonths(current, 1))}>
+                        Mes siguiente
+                      </button>
+                    </div>
+
+                    <div className="booking-month-weekdays">
+                      {["Lun", "Mar", "Mie", "Jue", "Vie", "Sab", "Dom"].map((label) => (
+                        <span key={label}>{label}</span>
+                      ))}
+                    </div>
+
+                    <div className="booking-month-grid">
+                      {calendarCells.map((cell, index) =>
+                        cell ? (
+                          <button
+                            key={cell.iso}
+                            type="button"
+                            className={`booking-month-day ${cell.hasAvailability ? "is-available" : ""} ${selectedDay === cell.iso ? "is-selected" : ""}`}
+                            onClick={() => {
+                              setSelectedDay(cell.iso);
+                              setSelectedSlotId("");
+                            }}
+                          >
+                            <strong>{cell.dayNumber}</strong>
+                            <span>{cell.hasAvailability ? `${cell.slotsCount} bloque(s)` : "Sin agenda"}</span>
+                          </button>
+                        ) : (
+                          <span key={`empty-${index}`} className="booking-month-day is-empty" aria-hidden />
+                        )
+                      )}
+                    </div>
                   </div>
 
-                  <div className="calendar-slot-grid">
+                  <div className="booking-slot-list">
                     {selectedSlots.map((slot) => (
                       <button
                         key={slot.id}
                         type="button"
-                        className={`slot-btn ${selectedSlotId === slot.id ? "slot-btn-active" : ""}`}
+                        className={`booking-slot-card ${selectedSlotId === slot.id ? "is-active" : ""}`}
                         onClick={() => setSelectedSlotId(slot.id)}
                       >
-                        {new Date(slot.startsAt).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" })}
+                        <strong>{formatSlotRange(slot)}</strong>
+                        <span>{durationHours(slot)} hora(s) de servicio</span>
+                        <small>{selectedService?.name ?? "Servicio seleccionado"}</small>
                       </button>
                     ))}
                   </div>
@@ -959,8 +1037,28 @@ export default function ReservarPage() {
                     ) : null}
                   </div>
 
-                  <div className="price-box booking-price-box">
-                    Resumen en vivo: ({clp(baseHourly)} x {hours}h) + comisión {clp(commission)} = <strong>{clp(total)}</strong>
+                  <div className="booking-invoice-card">
+                    <strong>Resumen del cobro</strong>
+                    <div className="booking-invoice-line">
+                      <span>Valor por hora</span>
+                      <span>{clp(baseHourly)}</span>
+                    </div>
+                    <div className="booking-invoice-line">
+                      <span>Duración del bloque</span>
+                      <span>{hours} h</span>
+                    </div>
+                    <div className="booking-invoice-line">
+                      <span>Subtotal servicio</span>
+                      <span>{clp(subtotal)}</span>
+                    </div>
+                    <div className="booking-invoice-line">
+                      <span>Comisión WeTask</span>
+                      <span>{clp(commission)}</span>
+                    </div>
+                    <div className="booking-invoice-line is-total">
+                      <span>Total estimado</span>
+                      <span>{clp(total)}</span>
+                    </div>
                   </div>
                   {recommendedHours ? (
                     <p className="minimal-note">
