@@ -6019,7 +6019,7 @@ textarea {
 }
 
 .booking-checkout-saved-methods {
-  margin: 16px 0 18px;
+  margin: 30px 0 18px;
   padding: 16px 18px;
   border: 1px solid rgba(139, 177, 235, 0.22);
   border-radius: 24px;
@@ -6372,6 +6372,7 @@ textarea {
   display: grid;
   gap: 6px;
   padding: 16px 18px;
+  margin-bottom: 22px;
   border: 1px solid #d6e7f5;
   border-radius: 20px;
   background: linear-gradient(180deg, #ffffff 0%, #f7fbff 100%);
