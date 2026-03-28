@@ -46,6 +46,18 @@ type BookingResponse = {
   totalPriceClp: number;
 };
 
+type SavedPaymentMethod = {
+  id: string;
+  brand: string | null;
+  last4: string;
+  expirationMonth: number | null;
+  expirationYear: number | null;
+  cardholderName: string | null;
+  payerEmail: string | null;
+  paymentMethodId: string | null;
+  isDefault: boolean;
+};
+
 type CardFormData = {
   token?: string;
   paymentMethodId?: string;
@@ -110,6 +122,15 @@ function initials(name: string) {
     .join("");
 }
 
+function paymentMethodLabel(paymentMethod: SavedPaymentMethod) {
+  const base = paymentMethod.brand?.trim() || paymentMethod.paymentMethodId?.trim() || "Tarjeta";
+  const expiry =
+    paymentMethod.expirationMonth && paymentMethod.expirationYear
+      ? ` · ${String(paymentMethod.expirationMonth).padStart(2, "0")}/${String(paymentMethod.expirationYear).slice(-2)}`
+      : "";
+  return `${base} terminada en ${paymentMethod.last4}${expiry}`;
+}
+
 export default function ReservarPage() {
   const router = useRouter();
   const checkoutFormRef = useRef<any>(null);
@@ -157,6 +178,7 @@ export default function ReservarPage() {
   const [dietaryNotes, setDietaryNotes] = useState("");
 
   const [createdBooking, setCreatedBooking] = useState<BookingResponse | null>(null);
+  const [savedPaymentMethods, setSavedPaymentMethods] = useState<SavedPaymentMethod[]>([]);
   const [preferredStartsAt, setPreferredStartsAt] = useState("");
   const [quickCheckoutEnabled, setQuickCheckoutEnabled] = useState(false);
   const [pinnedTaskerMode, setPinnedTaskerMode] = useState(false);
@@ -166,6 +188,10 @@ export default function ReservarPage() {
   const selectedService = useMemo(() => services.find((service) => service.id === filters.serviceId) ?? null, [services, filters.serviceId]);
   const isChefService = Boolean(selectedService?.slug?.startsWith("cocina-") || selectedService?.slug === "reposteria" || selectedService?.slug === "cumpleanos");
   const quickCheckoutMode = quickCheckoutEnabled && !createdBooking && !pinnedTaskerMode;
+  const selectedSavedPaymentMethod = useMemo(
+    () => savedPaymentMethods.find((item) => item.isDefault) ?? savedPaymentMethods[0] ?? null,
+    [savedPaymentMethods]
+  );
 
   const dayGroups = useMemo(() => {
     if (!selectedPro) return [] as Array<[string, Slot[]]>;
@@ -332,6 +358,23 @@ export default function ReservarPage() {
     };
     void bootstrapSession();
   }, []);
+
+  useEffect(() => {
+    if (!customerId) return;
+    const loadSavedPaymentMethods = async () => {
+      try {
+        const response = await fetch("/api/marketplace/client/payment-methods");
+        const data = (await response.json()) as { paymentMethods?: SavedPaymentMethod[] };
+        if (response.ok) {
+          setSavedPaymentMethods(data.paymentMethods ?? []);
+        }
+      } catch {
+        // noop
+      }
+    };
+
+    void loadSavedPaymentMethods();
+  }, [customerId]);
 
   useEffect(() => {
     const nextKey =
@@ -520,7 +563,7 @@ export default function ReservarPage() {
     setCardFormReady(false);
     setCheckoutState("idle");
     setCheckoutStatusText("");
-    if (!selectedSlot || !mpSdkReady || !mercadoPagoPublicKey) return;
+    if (!selectedSlot || !mpSdkReady || !mercadoPagoPublicKey || selectedSavedPaymentMethod) return;
     if (typeof window === "undefined") return;
     const MercadoPagoCtor = (window as any).MercadoPago;
     if (!MercadoPagoCtor) return;
@@ -565,14 +608,14 @@ export default function ReservarPage() {
         checkoutFormRef.current = null;
       }
     };
-  }, [selectedSlot, mpSdkReady, mercadoPagoPublicKey, total]);
+  }, [selectedSavedPaymentMethod, selectedSlot, mpSdkReady, mercadoPagoPublicKey, total]);
 
   const submitCheckout = async () => {
     if (!customerId || !selectedPro || !selectedSlot || !filters.serviceId) {
       setError("Completa cliente, profesional, servicio y horario.");
       return;
     }
-    if (!cardFormReady || !checkoutFormRef.current) {
+    if (!selectedSavedPaymentMethod && (!cardFormReady || !checkoutFormRef.current)) {
       setError("Formulario de pago aún cargando. Espera unos segundos.");
       return;
     }
@@ -592,15 +635,12 @@ export default function ReservarPage() {
         return;
       }
 
-      const cardData = (checkoutFormRef.current.getCardFormData?.() ?? {}) as CardFormData;
-      if (!cardData.token || !cardData.paymentMethodId) {
+      const cardData = selectedSavedPaymentMethod ? ({} as CardFormData) : ((checkoutFormRef.current.getCardFormData?.() ?? {}) as CardFormData);
+      if (!selectedSavedPaymentMethod && (!cardData.token || !cardData.paymentMethodId)) {
         throw new Error("No pudimos tokenizar tu tarjeta. Revisa los datos e inténtalo nuevamente.");
       }
 
-      const payerEmail = (cardData.cardholderEmail || "").trim();
-      if (!payerEmail) {
-        throw new Error("Ingresa un correo válido para procesar el pago.");
-      }
+      const payerEmail = (selectedSavedPaymentMethod?.payerEmail || cardData.cardholderEmail || "").trim();
 
       const response = await fetch("/api/bookings/checkout", {
         method: "POST",
@@ -627,12 +667,13 @@ export default function ReservarPage() {
           },
           payment: {
             token: cardData.token,
-            paymentMethodId: cardData.paymentMethodId,
+            paymentMethodId: selectedSavedPaymentMethod?.paymentMethodId ?? cardData.paymentMethodId,
             issuerId: cardData.issuerId,
             installments: Number(cardData.installments || 1),
-            payerEmail,
+            payerEmail: payerEmail || undefined,
             payerIdentificationType: cardData.identificationType,
-            payerIdentificationNumber: cardData.identificationNumber
+            payerIdentificationNumber: cardData.identificationNumber,
+            savedCardId: selectedSavedPaymentMethod?.id
           },
           idempotencyKey: checkoutIdempotencyKey
         })
@@ -1104,47 +1145,54 @@ export default function ReservarPage() {
                 <p className="feedback error">Configura `NEXT_PUBLIC_MERCADOPAGO_PUBLIC_KEY` para habilitar pagos.</p>
               ) : null}
 
-              <form id="mp-card-form" className="grid-form auth-flow-form" onSubmit={(event) => event.preventDefault()}>
-                <label>
-                  Nombre del titular
-                  <input id="mp-cardholder-name" type="text" placeholder="Como aparece en tu tarjeta" />
-                </label>
-                <label>
-                  Email pagador
-                  <input id="mp-cardholder-email" type="email" placeholder="correo@ejemplo.com" />
-                </label>
-                <label className="full">
-                  Número de tarjeta
-                  <div id="mp-card-number" className="mp-secure-field" />
-                </label>
-                <label>
-                  Vencimiento
-                  <div id="mp-expiration-date" className="mp-secure-field" />
-                </label>
-                <label>
-                  Código de seguridad
-                  <div id="mp-security-code" className="mp-secure-field" />
-                </label>
-                <label>
-                  Cuotas
-                  <select id="mp-installments" defaultValue="" />
-                </label>
-                <label>
-                  Banco emisor
-                  <select id="mp-issuer" defaultValue="" />
-                </label>
-                <label>
-                  Tipo de identificación
-                  <select id="mp-identification-type" defaultValue="" />
-                </label>
-                <label>
-                  Número de identificación
-                  <input id="mp-identification-number" type="text" placeholder="RUT / documento" />
-                </label>
-              </form>
+              {selectedSavedPaymentMethod ? (
+                <div className="auth-flow-note-card">
+                  <strong>Tarjeta usada para esta reserva</strong>
+                  <span>{paymentMethodLabel(selectedSavedPaymentMethod)}</span>
+                </div>
+              ) : (
+                <form id="mp-card-form" className="grid-form auth-flow-form" onSubmit={(event) => event.preventDefault()}>
+                  <label>
+                    Nombre del titular
+                    <input id="mp-cardholder-name" type="text" placeholder="Como aparece en tu tarjeta" />
+                  </label>
+                  <label>
+                    Email pagador
+                    <input id="mp-cardholder-email" type="email" placeholder="correo@ejemplo.com" />
+                  </label>
+                  <label className="full">
+                    Número de tarjeta
+                    <div id="mp-card-number" className="mp-secure-field" />
+                  </label>
+                  <label>
+                    Vencimiento
+                    <div id="mp-expiration-date" className="mp-secure-field" />
+                  </label>
+                  <label>
+                    Código de seguridad
+                    <div id="mp-security-code" className="mp-secure-field" />
+                  </label>
+                  <label>
+                    Cuotas
+                    <select id="mp-installments" defaultValue="" />
+                  </label>
+                  <label>
+                    Banco emisor
+                    <select id="mp-issuer" defaultValue="" />
+                  </label>
+                  <label>
+                    Tipo de identificación
+                    <select id="mp-identification-type" defaultValue="" />
+                  </label>
+                  <label>
+                    Número de identificación
+                    <input id="mp-identification-number" type="text" placeholder="RUT / documento" />
+                  </label>
+                </form>
+              )}
 
               <div className="cta-row">
-                <button className="cta" type="button" onClick={submitCheckout} disabled={loadingCheckout || !selectedSlot || !cardFormReady}>
+                <button className="cta" type="button" onClick={submitCheckout} disabled={loadingCheckout || !selectedSlot || (!selectedSavedPaymentMethod && !cardFormReady)}>
                   {loadingCheckout ? "Procesando pago..." : "Pagar y confirmar reserva"}
                 </button>
                 <Link className="cta ghost" href="/cliente">

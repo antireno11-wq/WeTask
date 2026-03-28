@@ -35,14 +35,22 @@ const checkoutSchema = z.object({
     .optional()
     .default({ materials: false, urgency: false, travelFeeClp: 0 }),
   payment: z.object({
-    token: z.string().min(6),
+    token: z.string().min(6).optional(),
     paymentMethodId: z.string().min(2).optional(),
     issuerId: z.string().optional(),
     installments: z.coerce.number().int().min(1).max(48).default(1),
-    payerEmail: z.string().email(),
+    payerEmail: z.string().email().optional(),
     payerIdentificationType: z.string().max(10).optional(),
     payerIdentificationNumber: z.string().max(32).optional(),
     savedCardId: z.string().min(1).optional()
+  }).superRefine((payment, ctx) => {
+    if (payment.savedCardId) return;
+    if (!payment.token) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Falta el token de la tarjeta", path: ["token"] });
+    }
+    if (!payment.payerEmail) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Falta el correo del pagador", path: ["payerEmail"] });
+    }
   }),
   idempotencyKey: z.string().min(8).max(120).optional()
 });
@@ -236,7 +244,7 @@ export async function POST(req: NextRequest) {
     if (!paymentMethodId) {
       return NextResponse.json({ error: "Falta el medio de pago seleccionado" }, { status: 400 });
     }
-    const normalizedPayerEmail = (savedPaymentMethod?.payerEmail ?? input.payment.payerEmail).trim().toLowerCase();
+    const normalizedPayerEmail = (savedPaymentMethod?.payerEmail ?? input.payment.payerEmail ?? customer.email).trim().toLowerCase();
 
     const existing = await prisma.payment.findUnique({
       where: { idempotencyKey },

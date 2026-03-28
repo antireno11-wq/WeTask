@@ -6,7 +6,7 @@ export type ProviderPaymentCreateInput = {
   description: string;
   externalReference: string;
   idempotencyKey: string;
-  token: string;
+  token?: string;
   paymentMethodId: string;
   issuerId?: string;
   installments: number;

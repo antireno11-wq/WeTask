@@ -85,6 +85,7 @@ export async function createMercadoPagoPayment(input: ProviderPaymentCreateInput
   const body = {
     transaction_amount: input.amount,
     token: input.token,
+    card_id: input.cardId,
     description: input.description,
     installments: input.installments,
     payment_method_id: input.paymentMethodId,
