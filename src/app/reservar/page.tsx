@@ -78,6 +78,10 @@ const DIETARY_OPTIONS = [
   "Otra alergia o indicación"
 ] as const;
 
+function clampBookingHours(value: number) {
+  return Math.min(8, Math.max(1, Math.floor(value || 1)));
+}
+
 function clp(value: number) {
   return new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP", maximumFractionDigits: 0 }).format(value);
 }
@@ -378,8 +382,9 @@ export default function ReservarPage() {
       setPinnedTaskerMode(true);
     }
     if (suggestedHours) {
-      setRecommendedHours(suggestedHours);
-      setHours(suggestedHours);
+      const safeSuggestedHours = clampBookingHours(suggestedHours);
+      setRecommendedHours(safeSuggestedHours);
+      setHours(safeSuggestedHours);
     }
     if (estimatedMinHours && estimatedMaxHours) {
       setEstimatedHoursRange(`${estimatedMinHours} a ${estimatedMaxHours} horas`);
@@ -706,6 +711,8 @@ export default function ReservarPage() {
 
       const payerEmail = (selectedSavedPaymentMethod?.payerEmail || cardData.cardholderEmail || "").trim();
 
+      const safeHours = clampBookingHours(hours);
+
       const response = await fetch("/api/bookings/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -715,7 +722,7 @@ export default function ReservarPage() {
           proId: selectedPro.userId,
           slotId: selectedSlot.id,
           startsAt: selectedBookingStartAt,
-          hours,
+          hours: safeHours,
           address: {
             street: address.street,
             commune: bookingCommune,
@@ -1118,7 +1125,7 @@ export default function ReservarPage() {
                     </label>
                     <label>
                       Duración del servicio
-                      <select value={String(hours)} onChange={(e) => setHours(Number(e.target.value))} disabled={!selectedSlot}>
+                      <select value={String(hours)} onChange={(e) => setHours(clampBookingHours(Number(e.target.value)))} disabled={!selectedSlot}>
                         {selectedDurationOptions.length === 0 ? (
                           <option value="">Elige un bloque primero</option>
                         ) : (
