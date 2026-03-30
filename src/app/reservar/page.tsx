@@ -1069,7 +1069,7 @@ export default function ReservarPage() {
               </section>
             ) : null}
 
-            {selectedPro ? (
+            {selectedPro && bookingStep >= 3 ? (
               <div className="booking-selection-column">
                 <section className="auth-flow-panel client-dashboard-section booking-pro-profile-panel">
                   <div className="panel-head auth-flow-panel-head">
