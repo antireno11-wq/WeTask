@@ -84,6 +84,7 @@ model User {
   email               String                @unique
   fullName            String
   phone               String?
+  birthDate           DateTime?
   mercadoPagoCustomerId String?
   role                UserRole              @default(CUSTOMER)
   authProvider        AuthProvider          @default(EMAIL)

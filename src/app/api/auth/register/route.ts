@@ -17,8 +17,11 @@ function createEmailVerificationCode() {
 
 type RegisterPayload = {
   fullName?: string;
+  firstName?: string;
+  lastName?: string;
   email?: string;
   password?: string;
+  birthDate?: string;
   phone?: string;
   role?: "CUSTOMER" | "PRO";
   authProvider?: "EMAIL" | "GOOGLE" | "APPLE";
@@ -45,12 +48,18 @@ export async function POST(req: NextRequest) {
   try {
     const body = (await req.json()) as RegisterPayload;
 
-    const fullName = body.fullName?.trim();
+    const firstName = body.firstName?.trim();
+    const lastName = body.lastName?.trim();
+    const fullName = body.fullName?.trim() || [firstName, lastName].filter(Boolean).join(" ").trim();
     const email = body.email?.trim().toLowerCase();
     const role = body.role === "PRO" ? UserRole.PRO : UserRole.CUSTOMER;
     const authProvider = body.authProvider === "GOOGLE" ? "GOOGLE" : body.authProvider === "APPLE" ? "APPLE" : "EMAIL";
     const password = body.password?.trim();
     const acceptTerms = body.acceptTerms === true;
+    const birthDate =
+      role === UserRole.CUSTOMER && body.birthDate?.trim()
+        ? new Date(`${body.birthDate.trim()}T00:00:00.000Z`)
+        : null;
     const normalizedCoverageCommune = role === UserRole.PRO ? normalizeCommune(body.coverageComuna) : null;
 
     if (!fullName || fullName.length < 3) {
@@ -59,6 +68,18 @@ export async function POST(req: NextRequest) {
 
     if (!email || !/^\S+@\S+\.\S+$/.test(email)) {
       return NextResponse.json({ error: "Email inválido" }, { status: 400 });
+    }
+
+    if (role === UserRole.CUSTOMER) {
+      if (!firstName || firstName.length < 2) {
+        return NextResponse.json({ error: "Nombre debe tener al menos 2 caracteres" }, { status: 400 });
+      }
+      if (!lastName || lastName.length < 2) {
+        return NextResponse.json({ error: "Apellido debe tener al menos 2 caracteres" }, { status: 400 });
+      }
+      if (!birthDate || Number.isNaN(birthDate.getTime()) || birthDate > new Date()) {
+        return NextResponse.json({ error: "Fecha de nacimiento inválida" }, { status: 400 });
+      }
     }
 
     if (!acceptTerms) {
@@ -184,6 +205,7 @@ export async function POST(req: NextRequest) {
         fullName,
         email,
         phone: body.phone?.trim() || null,
+        birthDate,
         role,
         authProvider,
         passwordHash,

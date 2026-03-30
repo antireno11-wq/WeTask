@@ -8,7 +8,9 @@ import { AuthHeroNav } from "@/components/auth-hero-nav";
 export default function RegistroPage() {
   const router = useRouter();
 
-  const [fullName, setFullName] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [birthDate, setBirthDate] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -52,9 +54,11 @@ export default function RegistroPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          fullName,
+          firstName,
+          lastName,
           email,
           password,
+          birthDate,
           phone: normalizedPhone,
           role: "CUSTOMER",
           acceptTerms
@@ -221,8 +225,18 @@ export default function RegistroPage() {
 
                 <form className="grid-form auth-flow-form" onSubmit={submit}>
                   <label>
-                    Nombre completo
-                    <input value={fullName} onChange={(e) => setFullName(e.target.value)} required minLength={3} />
+                    Nombre
+                    <input value={firstName} onChange={(e) => setFirstName(e.target.value)} required minLength={2} />
+                  </label>
+
+                  <label>
+                    Apellido
+                    <input value={lastName} onChange={(e) => setLastName(e.target.value)} required minLength={2} />
+                  </label>
+
+                  <label>
+                    Fecha de nacimiento
+                    <input type="date" value={birthDate} onChange={(e) => setBirthDate(e.target.value)} required max={new Date().toISOString().slice(0, 10)} />
                   </label>
 
                   <label>
