@@ -54,9 +54,11 @@ export async function POST(req: NextRequest) {
 
     const requestedRole = body.role ?? user.role;
     const canLoginAsRequestedRole = hasAssignedRole(user, requestedRole);
-    const canBypassEmailVerification = canLoginAsRequestedRole && requestedRole === UserRole.ADMIN;
+    const effectiveRequestedRole =
+      canLoginAsRequestedRole || requestedRole === UserRole.ADMIN ? requestedRole : user.role;
+    const canBypassEmailVerification = hasAssignedRole(user, effectiveRequestedRole) && effectiveRequestedRole === UserRole.ADMIN;
 
-    if (body.role && !canLoginAsRequestedRole) {
+    if (requestedRole === UserRole.ADMIN && !canLoginAsRequestedRole) {
       return NextResponse.json({ error: "El rol no coincide con el usuario" }, { status: 400 });
     }
 
@@ -76,7 +78,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const sessionRole = resolveLoginRole(user, requestedRole);
+    const sessionRole = resolveLoginRole(user, effectiveRequestedRole);
 
     const response = NextResponse.json(
       {
