@@ -867,7 +867,7 @@ export default function ProPage() {
             <div className="client-profile-box client-profile-box-auth pro-dashboard-profile-box">
               <div className="client-photo-frame pro-dashboard-badge" aria-hidden>
                 {profilePhotoUrl ? (
-                  <img src={profilePhotoUrl} alt="" className="client-photo-img" />
+                  <img src={profilePhotoUrl} alt="" className="client-photo-img pro-dashboard-photo-img" />
                 ) : (
                   <span>{initialsFromName(proName)}</span>
                 )}
