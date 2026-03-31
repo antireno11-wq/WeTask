@@ -13,7 +13,9 @@ export default function RegistroPage() {
   const [birthDate, setBirthDate] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [phoneDigits, setPhoneDigits] = useState("");
   const [acceptTerms, setAcceptTerms] = useState(false);
 
@@ -49,6 +51,9 @@ export default function RegistroPage() {
     setError("");
 
     try {
+      if (password !== confirmPassword) {
+        throw new Error("La confirmación de contraseña no coincide");
+      }
       const normalizedPhone = phoneDigits.trim() ? `+569${phoneDigits.trim()}` : undefined;
       const response = await fetch("/api/auth/register", {
         method: "POST",
@@ -250,6 +255,22 @@ export default function RegistroPage() {
                       <input type={showPassword ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)} minLength={8} required />
                       <button type="button" className="password-toggle" onClick={() => setShowPassword((current) => !current)}>
                         {showPassword ? "Ocultar" : "Mostrar"}
+                      </button>
+                    </div>
+                  </label>
+
+                  <label>
+                    Confirmar contraseña
+                    <div className="password-field">
+                      <input
+                        type={showConfirmPassword ? "text" : "password"}
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        minLength={8}
+                        required
+                      />
+                      <button type="button" className="password-toggle" onClick={() => setShowConfirmPassword((current) => !current)}>
+                        {showConfirmPassword ? "Ocultar" : "Mostrar"}
                       </button>
                     </div>
                   </label>
