@@ -70,6 +70,10 @@ export async function GET(_: Request, context: { params: { proId: string } }) {
             }
           }
         },
+        categoryProfiles: {
+          where: { isActive: true },
+          orderBy: [{ createdAt: "asc" }]
+        },
         slots: {
           where: { isAvailable: true, startsAt: { gte: new Date() } },
           orderBy: [{ startsAt: "asc" }],

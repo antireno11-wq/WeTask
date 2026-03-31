@@ -109,6 +109,17 @@ type ProfessionalDetail = {
     category: { slug: string; name: string } | null;
     service: { id: string; name: string } | null;
   }>;
+  categoryProfiles: Array<{
+    id: string;
+    categorySlug: string;
+    hourlyRateClp: number;
+    serviceCommunes: string[];
+    offeredServices: string[];
+    experienceTypes: string[];
+    scopeData: unknown;
+    isActive: boolean;
+    completedAt: string | null;
+  }>;
   user: {
     id: string;
     fullName: string;
@@ -478,6 +489,7 @@ function buildDemoProfessional(proId: string): ProfessionalDetail {
     coverageLongitude: -70.6693,
     serviceRadiusKm: 12,
     hourlyRateFromClp: 15000,
+    categoryProfiles: [],
     taskerServices: [
       {
         priceClp: 14000,
@@ -749,9 +761,35 @@ export default function ProDetailPage() {
     }
   };
   const onboarding = data?.user.cleaningOnboarding ?? null;
-  const cleaningScope = useMemo(() => normalizeCleaningScope(onboarding?.cleaningScope), [onboarding?.cleaningScope]);
+  const serviceCategories = useMemo(() => {
+    const bySlug = new Map<string, { slug: string; name: string }>();
+    for (const item of data?.taskerServices ?? []) {
+      const category = item.category;
+      if (!category?.slug) continue;
+      if (!bySlug.has(category.slug)) {
+        bySlug.set(category.slug, category);
+      }
+    }
+    return Array.from(bySlug.values());
+  }, [data?.taskerServices]);
+  const normalizedOnboardingCategorySlug = normalizeCategorySlug(onboarding?.categorySlug ?? null);
+  const requestedCategorySlug = useMemo(() => {
+    const requestedService = (data?.taskerServices ?? []).find((item) => item.service?.id === requestedServiceId);
+    return normalizeCategorySlug(requestedService?.category?.slug ?? null);
+  }, [data?.taskerServices, requestedServiceId]);
+  const primaryCategorySlug = requestedCategorySlug ?? onboarding?.categorySlug ?? serviceCategories[0]?.slug ?? null;
+  const normalizedPrimaryCategorySlug = normalizeCategorySlug(primaryCategorySlug);
+  const selectedCategoryProfile =
+    normalizedPrimaryCategorySlug && normalizedPrimaryCategorySlug !== normalizedOnboardingCategorySlug
+      ? data?.categoryProfiles.find((item) => normalizeCategorySlug(item.categorySlug) === normalizedPrimaryCategorySlug) ?? null
+      : null;
+  const selectedScopeSource = selectedCategoryProfile?.scopeData ?? null;
+  const cleaningScope = useMemo(
+    () => normalizeCleaningScope(normalizedPrimaryCategorySlug === "limpieza" && selectedScopeSource ? selectedScopeSource : onboarding?.cleaningScope),
+    [normalizedPrimaryCategorySlug, onboarding?.cleaningScope, selectedScopeSource]
+  );
   const petScope = useMemo(() => {
-    const normalized = normalizePetScope(onboarding?.petScope);
+    const normalized = normalizePetScope(normalizedPrimaryCategorySlug === "mascotas" && selectedScopeSource ? selectedScopeSource : onboarding?.petScope);
     if (normalized.services_offered.length > 0 || normalized.animals_accepted.length > 0 || normalized.tasks_included.length > 0) {
       return normalized;
     }
@@ -769,9 +807,9 @@ export default function ProDetailPage() {
         : [],
       accepts_large_pets: onboarding?.acceptsHomesWithPets ?? null
     };
-  }, [onboarding?.petScope, onboarding?.offeredServices, onboarding?.experienceTypes, onboarding?.acceptsHomesWithPets]);
+  }, [normalizedPrimaryCategorySlug, onboarding?.petScope, onboarding?.offeredServices, onboarding?.experienceTypes, onboarding?.acceptsHomesWithPets, selectedScopeSource]);
   const makeupScope = useMemo(() => {
-    const normalized = normalizeMakeupScope(onboarding?.makeupScope);
+    const normalized = normalizeMakeupScope(normalizedPrimaryCategorySlug === "maquillaje" && selectedScopeSource ? selectedScopeSource : onboarding?.makeupScope);
     if (normalized.services_offered.length > 0 || normalized.tasks_included.length > 0) {
       return normalized;
     }
@@ -785,9 +823,9 @@ export default function ProDetailPage() {
         : [],
       includes_kit: onboarding?.bringsOwnProducts ?? null
     };
-  }, [onboarding?.makeupScope, onboarding?.offeredServices, onboarding?.bringsOwnProducts]);
+  }, [normalizedPrimaryCategorySlug, onboarding?.makeupScope, onboarding?.offeredServices, onboarding?.bringsOwnProducts, selectedScopeSource]);
   const ironingScope = useMemo(() => {
-    const normalized = normalizeIroningScope(onboarding?.ironingScope);
+    const normalized = normalizeIroningScope(normalizedPrimaryCategorySlug === "planchado" && selectedScopeSource ? selectedScopeSource : onboarding?.ironingScope);
     if (normalized.services_offered.length > 0 || normalized.tasks_included.length > 0) {
       return normalized;
     }
@@ -801,9 +839,11 @@ export default function ProDetailPage() {
         : [],
       delicate_clothes: onboarding?.bringsOwnTools ?? null
     };
-  }, [onboarding?.ironingScope, onboarding?.offeredServices, onboarding?.bringsOwnTools]);
+  }, [normalizedPrimaryCategorySlug, onboarding?.ironingScope, onboarding?.offeredServices, onboarding?.bringsOwnTools, selectedScopeSource]);
   const babysitterScope = useMemo(() => {
-    const normalized = normalizeBabysitterScope(onboarding?.babysitterScope);
+    const normalized = normalizeBabysitterScope(
+      normalizedPrimaryCategorySlug === "babysitter" && selectedScopeSource ? selectedScopeSource : onboarding?.babysitterScope
+    );
     if (normalized.services_offered.length > 0 || normalized.age_ranges.length > 0 || normalized.tasks_included.length > 0) {
       return normalized;
     }
@@ -821,9 +861,9 @@ export default function ProDetailPage() {
       first_aid: onboarding?.bringsOwnTools ?? null,
       multi_child: onboarding?.acceptsHomesWithChildren ?? null
     };
-  }, [onboarding?.babysitterScope, onboarding?.offeredServices, onboarding?.experienceTypes, onboarding?.bringsOwnTools, onboarding?.acceptsHomesWithChildren]);
+  }, [normalizedPrimaryCategorySlug, onboarding?.babysitterScope, onboarding?.offeredServices, onboarding?.experienceTypes, onboarding?.bringsOwnTools, onboarding?.acceptsHomesWithChildren, selectedScopeSource]);
   const chefScope = useMemo(() => {
-    const normalized = normalizeChefScope(onboarding?.chefScope);
+    const normalized = normalizeChefScope(normalizedPrimaryCategorySlug === "chef" && selectedScopeSource ? selectedScopeSource : onboarding?.chefScope);
     if (normalized.services_offered.length > 0 || normalized.tasks_included.length > 0) {
       return normalized;
     }
@@ -841,9 +881,11 @@ export default function ProDetailPage() {
           )
         : []
     };
-  }, [onboarding?.chefScope, onboarding?.offeredServices]);
+  }, [normalizedPrimaryCategorySlug, onboarding?.chefScope, onboarding?.offeredServices, selectedScopeSource]);
   const trainerScope = useMemo(() => {
-    const normalized = normalizeTrainerScope(onboarding?.trainerScope);
+    const normalized = normalizeTrainerScope(
+      normalizedPrimaryCategorySlug === "personal-trainer" && selectedScopeSource ? selectedScopeSource : onboarding?.trainerScope
+    );
     if (normalized.services_offered.length > 0 || normalized.modes.length > 0 || normalized.tasks_included.length > 0) {
       return normalized;
     }
@@ -863,9 +905,11 @@ export default function ProDetailPage() {
         : [],
       brings_equipment: onboarding?.bringsOwnTools ?? null
     };
-  }, [onboarding?.trainerScope, onboarding?.offeredServices, onboarding?.experienceTypes, onboarding?.bringsOwnTools]);
+  }, [normalizedPrimaryCategorySlug, onboarding?.trainerScope, onboarding?.offeredServices, onboarding?.experienceTypes, onboarding?.bringsOwnTools, selectedScopeSource]);
   const teacherScope = useMemo(() => {
-    const normalized = normalizeTeacherScope(onboarding?.teacherScope);
+    const normalized = normalizeTeacherScope(
+      normalizedPrimaryCategorySlug === "profesor-particular" && selectedScopeSource ? selectedScopeSource : onboarding?.teacherScope
+    );
     if (normalized.services_offered.length > 0 || normalized.levels.length > 0 || normalized.modes.length > 0 || normalized.tasks_included.length > 0) {
       return normalized;
     }
@@ -890,31 +934,19 @@ export default function ProDetailPage() {
           )
         : []
     };
-  }, [onboarding?.teacherScope, onboarding?.offeredServices, onboarding?.experienceTypes]);
-  const serviceCategories = useMemo(() => {
-    const bySlug = new Map<string, { slug: string; name: string }>();
-    for (const item of data?.taskerServices ?? []) {
-      const category = item.category;
-      if (!category?.slug) continue;
-      if (!bySlug.has(category.slug)) {
-        bySlug.set(category.slug, category);
-      }
-    }
-    return Array.from(bySlug.values());
-  }, [data?.taskerServices]);
-  const normalizedOnboardingCategorySlug = normalizeCategorySlug(onboarding?.categorySlug ?? null);
+  }, [normalizedPrimaryCategorySlug, onboarding?.teacherScope, onboarding?.offeredServices, onboarding?.experienceTypes, selectedScopeSource]);
   const relevantServiceCategories = useMemo(() => {
-    if (!normalizedOnboardingCategorySlug) return serviceCategories;
+    if (!normalizedPrimaryCategorySlug) return serviceCategories;
     const filtered = serviceCategories.filter(
-      (category) => normalizeCategorySlug(category.slug) === normalizedOnboardingCategorySlug
+      (category) => normalizeCategorySlug(category.slug) === normalizedPrimaryCategorySlug
     );
     return filtered.length > 0 ? filtered : serviceCategories;
-  }, [normalizedOnboardingCategorySlug, serviceCategories]);
+  }, [normalizedPrimaryCategorySlug, serviceCategories]);
   const servicePriceTags = useMemo(() => {
     return (data?.taskerServices ?? [])
       .filter((item) =>
-        normalizedOnboardingCategorySlug
-          ? normalizeCategorySlug(item.category?.slug) === normalizedOnboardingCategorySlug
+        normalizedPrimaryCategorySlug
+          ? normalizeCategorySlug(item.category?.slug) === normalizedPrimaryCategorySlug
           : true
       )
       .filter((item) => item.service?.name)
@@ -922,10 +954,15 @@ export default function ProDetailPage() {
         key: `${item.service?.id ?? item.service?.name}`,
         label: `${item.service?.name} · ${item.priceClp ? clp(item.priceClp) : "Por definir"}/h`
       }));
-  }, [data?.taskerServices, normalizedOnboardingCategorySlug]);
+  }, [data?.taskerServices, normalizedPrimaryCategorySlug]);
   const profilePhotoUrl = onboarding?.profilePhotoUrl?.trim() || data?.avatarUrl?.trim() || "";
   const activeCommunes = useMemo(() => {
-    const raw = Array.isArray(onboarding?.serviceCommunes) ? onboarding.serviceCommunes : [];
+    const raw =
+      selectedCategoryProfile?.serviceCommunes && selectedCategoryProfile.serviceCommunes.length > 0
+        ? selectedCategoryProfile.serviceCommunes
+        : Array.isArray(onboarding?.serviceCommunes)
+          ? onboarding.serviceCommunes
+          : [];
     const cleaned = raw
       .filter((item): item is string => typeof item === "string" && item.trim().length > 0)
       .map(labelize);
@@ -933,19 +970,17 @@ export default function ProDetailPage() {
     if (cleaned.length > 0) return cleaned;
     if (onboarding?.baseCommune) return [labelize(onboarding.baseCommune)];
     return requestedCommune ? [labelize(requestedCommune)] : [];
-  }, [onboarding?.baseCommune, onboarding?.serviceCommunes, requestedCommune]);
+  }, [onboarding?.baseCommune, onboarding?.serviceCommunes, requestedCommune, selectedCategoryProfile?.serviceCommunes]);
   const summaryDescription =
     onboarding?.shortDescription?.trim() ||
     "Tasker con experiencia en servicios a domicilio, buena valoración y agenda activa durante la semana.";
   const experienceYears = onboarding?.yearsExperience ?? 6;
   const hasIdentityProof = Boolean(onboarding?.identityDocumentFrontFile && onboarding?.identityDocumentBackFile);
   const hasBackgroundCheck = Boolean(onboarding?.criminalRecordFile);
-  const offeredServices = toLabelList(onboarding?.offeredServices, demoOfferedServices);
-  const experienceTypes = toLabelList(onboarding?.experienceTypes, demoExperienceTypes);
+  const offeredServices = toLabelList(selectedCategoryProfile?.offeredServices ?? onboarding?.offeredServices, demoOfferedServices);
+  const experienceTypes = toLabelList(selectedCategoryProfile?.experienceTypes ?? onboarding?.experienceTypes, demoExperienceTypes);
   const languages = toLabelList(onboarding?.languages, demoLanguages);
   const workModeLabel = onboarding?.workMode === "EQUIPO" ? "Trabajo en equipo" : "Trabajo individual";
-  const primaryCategorySlug = onboarding?.categorySlug ?? relevantServiceCategories[0]?.slug ?? null;
-  const normalizedPrimaryCategorySlug = normalizeCategorySlug(primaryCategorySlug);
   const categoryName = relevantServiceCategories[0]?.name ?? categoryLabel(primaryCategorySlug);
   const taskerRole = taskerRoleLabel(primaryCategorySlug);
   const faqItems = faqItemsForCategory(primaryCategorySlug);

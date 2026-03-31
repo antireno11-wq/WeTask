@@ -46,7 +46,11 @@ export async function GET(req: NextRequest) {
             coverageLatitude: true,
             coverageLongitude: true,
             serviceRadiusKm: true,
-            hourlyRateFromClp: true
+            hourlyRateFromClp: true,
+            categoryProfiles: {
+              where: { isActive: true },
+              orderBy: [{ createdAt: "asc" }]
+            }
           }
         },
         cleaningOnboarding: {
@@ -94,6 +98,7 @@ export async function GET(req: NextRequest) {
         availabilityBlocks: user.cleaningOnboarding?.availabilityBlocks ?? [],
         serviceCommunes: normalizeCommuneList(user.cleaningOnboarding?.serviceCommunes),
         baseCommune: user.cleaningOnboarding?.baseCommune ?? user.professionalProfile?.coverageComuna ?? null,
+        additionalCategories: user.professionalProfile?.categoryProfiles ?? [],
         taskerServices: taskerServices.map((item) => item.service)
       },
       { status: 200 }

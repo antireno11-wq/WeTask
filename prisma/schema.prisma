@@ -250,6 +250,7 @@ model ProfessionalProfile {
   user              User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   slots             AvailabilitySlot[]
   taskerServices    TaskerService[]
+  categoryProfiles  TaskerCategoryProfile[]
 }
 
 model TaskerService {
@@ -270,6 +271,26 @@ model TaskerService {
   @@index([professionalProfileId, isActive])
   @@index([categoryId, isActive])
   @@index([serviceId, isActive])
+}
+
+model TaskerCategoryProfile {
+  id                    String              @id @default(cuid())
+  professionalProfileId String
+  categorySlug          String
+  hourlyRateClp         Int
+  minBookingHours       Int                 @default(1)
+  serviceCommunes       String[]            @default([])
+  offeredServices       String[]            @default([])
+  experienceTypes       String[]            @default([])
+  scopeData             Json?
+  isActive              Boolean             @default(true)
+  completedAt           DateTime?
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+  professionalProfile   ProfessionalProfile @relation(fields: [professionalProfileId], references: [id], onDelete: Cascade)
+
+  @@unique([professionalProfileId, categorySlug])
+  @@index([professionalProfileId, isActive])
 }
 
 model AvailabilitySlot {

@@ -10,6 +10,11 @@ import { ensureMarketplaceDemoData } from "@/lib/marketplace-demo-data";
 import { supportsPetRequestedTasks } from "@/lib/pet-scope";
 import { prisma } from "@/lib/prisma";
 import {
+  canPublishTaskerCategoryProfile,
+  normalizeTaskerCategorySlug,
+  supportsRequestedTasksForTaskerCategory
+} from "@/lib/tasker-category-profiles";
+import {
   getTaskerPublicationState,
   syncTaskerAvailabilitySlotsFromOnboarding,
   syncTaskerMarketplaceServicesFromOnboarding
@@ -19,21 +24,6 @@ import { supportsTrainerRequestedTasks } from "@/lib/trainer-scope";
 import { marketplaceSearchProsSchema } from "@/lib/validators";
 
 export const dynamic = "force-dynamic";
-
-function normalizeCategorySlug(value: string | null | undefined) {
-  switch (value) {
-    case "paseo-cuidado-mascotas":
-      return "mascotas";
-    case "babysitter-por-horas":
-      return "babysitter";
-    case "chef-a-domicilio":
-      return "chef";
-    case "maquillaje-a-domicilio":
-      return "maquillaje";
-    default:
-      return value ?? null;
-  }
-}
 
 function supportsRequestedTasksByCategory(
   categorySlug: string | null | undefined,
@@ -129,7 +119,7 @@ export async function GET(req: NextRequest) {
         : null
     ]);
 
-    const requestedCategorySlug = normalizeCategorySlug(requestedService?.category?.slug ?? requestedCategory?.slug ?? null);
+    const requestedCategorySlug = normalizeTaskerCategorySlug(requestedService?.category?.slug ?? requestedCategory?.slug ?? null);
 
     const startDate = input.date ?? new Date();
 
@@ -167,6 +157,10 @@ export async function GET(req: NextRequest) {
             }
           }
         },
+        categoryProfiles: {
+          where: { isActive: true },
+          orderBy: [{ createdAt: "asc" }]
+        },
         taskerServices: {
           where: {
             isActive: true
@@ -174,7 +168,12 @@ export async function GET(req: NextRequest) {
           select: {
             priceClp: true,
             serviceId: true,
-            categoryId: true
+            categoryId: true,
+            category: {
+              select: {
+                slug: true
+              }
+            }
           }
         },
         slots: {
@@ -227,7 +226,12 @@ export async function GET(req: NextRequest) {
                 select: {
                   priceClp: true,
                   serviceId: true,
-                  categoryId: true
+                  categoryId: true,
+                  category: {
+                    select: {
+                      slug: true
+                    }
+                  }
                 }
               });
               profile.taskerServices = activeTaskerServices;
@@ -249,12 +253,6 @@ export async function GET(req: NextRequest) {
             return null;
           }
 
-          const onboardingCategorySlug = normalizeCategorySlug(profile.user.cleaningOnboarding?.categorySlug);
-          if (requestedCategorySlug && onboardingCategorySlug && requestedCategorySlug !== onboardingCategorySlug) {
-            filterStats.notPublishable += 1;
-            return null;
-          }
-
           const matchedTaskerServices = activeTaskerServices.filter((taskerService) => {
             if (input.serviceId) return taskerService.serviceId === input.serviceId;
             if (input.categoryId) return taskerService.categoryId === input.categoryId;
@@ -263,6 +261,22 @@ export async function GET(req: NextRequest) {
           if ((input.serviceId || input.categoryId) && matchedTaskerServices.length === 0) {
             filterStats.notPublishable += 1;
             return null;
+          }
+
+          const onboardingCategorySlug = normalizeTaskerCategorySlug(profile.user.cleaningOnboarding?.categorySlug);
+          const selectedCategorySlug =
+            requestedCategorySlug ??
+            normalizeTaskerCategorySlug(matchedTaskerServices[0]?.category?.slug ?? activeTaskerServices[0]?.category?.slug ?? null);
+          const selectedAdditionalCategory =
+            selectedCategorySlug && selectedCategorySlug !== onboardingCategorySlug
+              ? profile.categoryProfiles.find((item) => normalizeTaskerCategorySlug(item.categorySlug) === selectedCategorySlug) ?? null
+              : null;
+
+          if (requestedCategorySlug && requestedCategorySlug !== onboardingCategorySlug) {
+            if (!selectedAdditionalCategory || !canPublishTaskerCategoryProfile(selectedAdditionalCategory)) {
+              filterStats.notPublishable += 1;
+              return null;
+            }
           }
 
           if (profile.slots.length === 0 && profile.user.cleaningOnboarding?.availabilityBlocks) {
@@ -287,10 +301,21 @@ export async function GET(req: NextRequest) {
             }
           }
 
+          const communeSource =
+            selectedAdditionalCategory && canPublishTaskerCategoryProfile(selectedAdditionalCategory)
+              ? {
+                  serviceCommunes: selectedAdditionalCategory.serviceCommunes,
+                  coverageComuna: profile.coverageComuna ?? profile.user.cleaningOnboarding?.baseCommune
+                }
+              : {
+                  serviceCommunes: profile.user.cleaningOnboarding?.serviceCommunes,
+                  coverageComuna: profile.coverageComuna ?? profile.user.cleaningOnboarding?.baseCommune
+                };
+
         const servesCommune = taskerServesCommune(
           {
-            serviceCommunes: profile.user.cleaningOnboarding?.serviceCommunes,
-            coverageComuna: profile.coverageComuna ?? profile.user.cleaningOnboarding?.baseCommune
+            serviceCommunes: communeSource.serviceCommunes,
+            coverageComuna: communeSource.coverageComuna
           },
           clientCommune
         );
@@ -301,7 +326,11 @@ export async function GET(req: NextRequest) {
 
           if (
             input.tasks.length > 0 &&
-            !supportsRequestedTasksByCategory(profile.user.cleaningOnboarding?.categorySlug, profile.user.cleaningOnboarding ?? {}, input.tasks)
+            !(
+              selectedAdditionalCategory && canPublishTaskerCategoryProfile(selectedAdditionalCategory)
+                ? supportsRequestedTasksForTaskerCategory(selectedAdditionalCategory.categorySlug, selectedAdditionalCategory.scopeData, input.tasks)
+                : supportsRequestedTasksByCategory(profile.user.cleaningOnboarding?.categorySlug, profile.user.cleaningOnboarding ?? {}, input.tasks)
+            )
           ) {
             filterStats.tasksMismatch += 1;
             return null;
@@ -323,9 +352,14 @@ export async function GET(req: NextRequest) {
           return {
             ...profile,
             taskerServices: matchedTaskerServices.length > 0 ? matchedTaskerServices : activeTaskerServices,
-            hourlyRateFromClp: matchedTaskerServices[0]?.priceClp ?? activeTaskerServices[0]?.priceClp ?? profile.hourlyRateFromClp,
+            hourlyRateFromClp:
+              matchedTaskerServices[0]?.priceClp ??
+              selectedAdditionalCategory?.hourlyRateClp ??
+              activeTaskerServices[0]?.priceClp ??
+              profile.hourlyRateFromClp,
             distanceKm: typeof distance === "number" ? Number(distance.toFixed(2)) : null,
-            nextAvailableAt: profile.slots[0]?.startsAt ?? null
+            nextAvailableAt: profile.slots[0]?.startsAt ?? null,
+            matchedCategorySlug: selectedCategorySlug
           };
         })
       )

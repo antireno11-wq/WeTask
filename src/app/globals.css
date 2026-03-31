@@ -6935,6 +6935,70 @@ textarea {
   pointer-events: none;
 }
 
+.tasker-extra-categories-card {
+  display: grid;
+  gap: 18px;
+  padding: 18px;
+  border-radius: 24px;
+  border: 1px solid rgba(31, 88, 150, 0.12);
+  background: linear-gradient(180deg, rgba(248, 252, 255, 0.96) 0%, rgba(240, 248, 255, 0.9) 100%);
+}
+
+.tasker-extra-categories-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.tasker-extra-categories-head h3 {
+  margin: 0;
+  color: #173b5f;
+}
+
+.tasker-extra-categories-head p {
+  margin: 6px 0 0;
+  color: #5b748e;
+}
+
+.tasker-extra-categories-list {
+  display: grid;
+  gap: 12px;
+}
+
+.tasker-category-pill-card {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  align-items: center;
+  padding: 14px 16px;
+  border-radius: 18px;
+  border: 1px solid #d6e7f5;
+  background: #ffffff;
+}
+
+.tasker-category-pill-card strong {
+  display: block;
+  color: #173b5f;
+}
+
+.tasker-category-pill-card span {
+  display: block;
+  margin-top: 4px;
+  color: #5b748e;
+}
+
+.tasker-category-pill-card.primary {
+  border-color: rgba(18, 89, 179, 0.22);
+  background: linear-gradient(180deg, rgba(230, 242, 255, 0.9) 0%, rgba(245, 250, 255, 0.92) 100%);
+}
+
+.tasker-extra-categories-editor {
+  display: grid;
+  gap: 16px;
+  padding-top: 4px;
+}
+
 .pro-dashboard-badge {
   border-style: solid;
   border-radius: 24px;
@@ -8521,6 +8585,16 @@ textarea {
   .pro-dashboard-profile-box .client-profile-address {
     font-size: 0.98rem;
     line-height: 1.4;
+  }
+
+  .tasker-extra-categories-head,
+  .tasker-category-pill-card {
+    grid-template-columns: 1fr;
+    display: grid;
+  }
+
+  .tasker-category-pill-card .cta-row {
+    justify-content: flex-start;
   }
 
   .onboarding-checkbox-grid,

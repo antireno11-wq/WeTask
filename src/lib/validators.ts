@@ -648,6 +648,23 @@ export const taskerOnboardingStep11Schema = z.object({
   acceptTerms: z.boolean().refine((v) => v, { message: "Debes aceptar los términos y condiciones" })
 });
 
+export const taskerAdditionalCategorySchema = z.object({
+  categorySlug: z.enum([
+    "limpieza",
+    "mascotas",
+    "babysitter",
+    "profesor-particular",
+    "personal-trainer",
+    "chef",
+    "maquillaje",
+    "planchado"
+  ]),
+  hourlyRateClp: z.coerce.number().int().min(5000).max(200000),
+  minBookingHours: z.coerce.number().int().min(1).max(12).optional(),
+  serviceCommunes: z.array(activeCommuneInputSchema).min(1),
+  scopeData: z.record(z.any())
+});
+
 export const cleaningOnboardingPhoneSendSchema = z.object({
   phone: chileanMobilePhoneSchema.optional()
 });

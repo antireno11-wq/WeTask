@@ -5,6 +5,13 @@ import Link from "next/link";
 import { MarketNav } from "@/components/market-nav";
 import { ACTIVE_MVP_COMMUNES, inferCommuneFromAddress, normalizeCommune, normalizeCommuneList } from "@/lib/communes";
 import { geocodeAddress } from "@/lib/geo";
+import {
+  emptyScopeForTaskerCategory,
+  getTaskerCategoryConfig,
+  getTaskerCategoryLabel,
+  normalizeScopeForTaskerCategory,
+  type SupportedTaskerCategorySlug
+} from "@/lib/tasker-category-profiles";
 
 const statusOptions = ["ACCEPTED", "IN_PROGRESS", "AWAITING_CUSTOMER_CONFIRMATION", "CANCELLED"];
 const SANTIAGO_BOUNDS = {
@@ -103,9 +110,31 @@ type ProProfileResponse = {
   availabilityMode?: "FIJA" | "VARIABLE" | null;
   availabilityBlocks?: unknown;
   taskerServices?: Service[];
+  additionalCategories?: AdditionalCategoryProfile[];
   serviceCommunes?: string[];
   error?: string;
   detail?: string;
+};
+
+type AdditionalCategoryProfile = {
+  id: string;
+  categorySlug: SupportedTaskerCategorySlug;
+  hourlyRateClp: number;
+  minBookingHours: number;
+  serviceCommunes: string[];
+  offeredServices: string[];
+  experienceTypes: string[];
+  scopeData: unknown;
+  isActive: boolean;
+  completedAt: string | null;
+};
+
+type AdditionalCategoryDraft = {
+  categorySlug: SupportedTaskerCategorySlug | "";
+  hourlyRateClp: number;
+  minBookingHours: number;
+  serviceCommunes: string[];
+  scopeData: Record<string, unknown>;
 };
 
 type AddressValidationResponse = {
@@ -218,6 +247,43 @@ function localDraftProfilePhoto() {
   }
 }
 
+function buildAdditionalCategoryDraft(
+  categorySlug: SupportedTaskerCategorySlug | "",
+  options?: {
+    profile?: AdditionalCategoryProfile | null;
+    defaultCommunes?: string[];
+    defaultHourlyRate?: number;
+  }
+): AdditionalCategoryDraft {
+  if (!categorySlug) {
+    return {
+      categorySlug: "",
+      hourlyRateClp: options?.defaultHourlyRate ?? 12000,
+      minBookingHours: 1,
+      serviceCommunes: options?.defaultCommunes ?? [],
+      scopeData: {}
+    };
+  }
+
+  if (options?.profile) {
+    return {
+      categorySlug,
+      hourlyRateClp: options.profile.hourlyRateClp,
+      minBookingHours: options.profile.minBookingHours,
+      serviceCommunes: options.profile.serviceCommunes,
+      scopeData: (normalizeScopeForTaskerCategory(categorySlug, options.profile.scopeData) as Record<string, unknown>) ?? {}
+    };
+  }
+
+  return {
+    categorySlug,
+    hourlyRateClp: options?.defaultHourlyRate ?? 12000,
+    minBookingHours: 1,
+    serviceCommunes: options?.defaultCommunes ?? [],
+    scopeData: emptyScopeForTaskerCategory(categorySlug) as Record<string, unknown>
+  };
+}
+
 export default function ProPage() {
   const [proId, setProId] = useState("");
   const [proName, setProName] = useState("");
@@ -246,7 +312,17 @@ export default function ProPage() {
   const [hourlyRateFromClp, setHourlyRateFromClp] = useState(12000);
   const [activeView, setActiveView] = useState<ProView>("resumen");
   const [serviceCommunes, setServiceCommunes] = useState<string[]>([]);
+  const [additionalCategories, setAdditionalCategories] = useState<AdditionalCategoryProfile[]>([]);
+  const [showCategoryEditor, setShowCategoryEditor] = useState(false);
+  const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
   const hourlyRateInputRef = useRef<HTMLInputElement | null>(null);
+  const [additionalCategoryDraft, setAdditionalCategoryDraft] = useState<AdditionalCategoryDraft>({
+    categorySlug: "",
+    hourlyRateClp: 12000,
+    minBookingHours: 1,
+    serviceCommunes: [],
+    scopeData: {}
+  });
 
   const [slotDate, setSlotDate] = useState(dateInputDefault());
   const [slotTime, setSlotTime] = useState("09:00");
@@ -408,6 +484,34 @@ export default function ProPage() {
       view: "agenda" as ProView
     }
   ];
+  const primaryTaskerCategorySlug = (categorySlug || "") as SupportedTaskerCategorySlug | "";
+  const additionalCategoryConfig = useMemo(
+    () => getTaskerCategoryConfig(additionalCategoryDraft.categorySlug || null),
+    [additionalCategoryDraft.categorySlug]
+  );
+  const additionalCategoryScope = useMemo(
+    () => normalizeScopeForTaskerCategory(additionalCategoryDraft.categorySlug || null, additionalCategoryDraft.scopeData) as Record<string, unknown>,
+    [additionalCategoryDraft.categorySlug, additionalCategoryDraft.scopeData]
+  );
+  const availableAdditionalCategoryOptions = useMemo(() => {
+    const taken = new Set(
+      additionalCategories
+        .filter((item) => item.isActive)
+        .map((item) => item.categorySlug)
+        .filter((item) => item !== additionalCategoryDraft.categorySlug)
+    );
+
+    return ([
+      "limpieza",
+      "mascotas",
+      "babysitter",
+      "profesor-particular",
+      "personal-trainer",
+      "chef",
+      "maquillaje",
+      "planchado"
+    ] as SupportedTaskerCategorySlug[]).filter((item) => item !== primaryTaskerCategorySlug && !taken.has(item));
+  }, [additionalCategories, additionalCategoryDraft.categorySlug, primaryTaskerCategorySlug]);
 
   const applyProfile = (nextProfile: ProProfile | null, nextServiceCommunes: string[] = []) => {
     setProfile(nextProfile);
@@ -524,8 +628,18 @@ export default function ProPage() {
     applyProfile(profileData.profile ?? null, profileData.serviceCommunes ?? []);
     setSlots(slotsData.slots);
     const nextServices = profileData.taskerServices ?? [];
+    const nextAdditionalCategories = profileData.additionalCategories ?? [];
+    setAdditionalCategories(nextAdditionalCategories);
     setServices(nextServices);
     setSlotServiceId((current) => (nextServices.some((service) => service.id === current) ? current : nextServices[0]?.id ?? ""));
+    setAdditionalCategoryDraft((current) =>
+      current.categorySlug
+        ? current
+        : buildAdditionalCategoryDraft("", {
+            defaultCommunes: profileData.serviceCommunes ?? [],
+            defaultHourlyRate: profileData.profile?.hourlyRateFromClp ?? 12000
+          })
+    );
   };
 
   useEffect(() => {
@@ -550,6 +664,126 @@ export default function ProPage() {
       hourlyRateInputRef.current?.focus();
       hourlyRateInputRef.current?.select();
     }, 40);
+  };
+
+  const startNewCategory = () => {
+    setEditingCategoryId(null);
+    setShowCategoryEditor(true);
+    setAdditionalCategoryDraft(
+      buildAdditionalCategoryDraft(availableAdditionalCategoryOptions[0] ?? "", {
+        defaultCommunes: selectedCommunes,
+        defaultHourlyRate: hourlyRateFromClp
+      })
+    );
+  };
+
+  const editAdditionalCategory = (category: AdditionalCategoryProfile) => {
+    setEditingCategoryId(category.id);
+    setShowCategoryEditor(true);
+    setAdditionalCategoryDraft(
+      buildAdditionalCategoryDraft(category.categorySlug, {
+        profile: category,
+        defaultCommunes: selectedCommunes,
+        defaultHourlyRate: hourlyRateFromClp
+      })
+    );
+  };
+
+  const cancelAdditionalCategoryEditor = () => {
+    setShowCategoryEditor(false);
+    setEditingCategoryId(null);
+    setAdditionalCategoryDraft(
+      buildAdditionalCategoryDraft("", {
+        defaultCommunes: selectedCommunes,
+        defaultHourlyRate: hourlyRateFromClp
+      })
+    );
+  };
+
+  const updateAdditionalCategoryArray = (key: string, value: string, checked: boolean) => {
+    setAdditionalCategoryDraft((current) => {
+      const currentValues = Array.isArray(current.scopeData[key]) ? (current.scopeData[key] as string[]) : [];
+      return {
+        ...current,
+        scopeData: {
+          ...current.scopeData,
+          [key]: checked ? Array.from(new Set([...currentValues, value])) : currentValues.filter((item) => item !== value)
+        }
+      };
+    });
+  };
+
+  const updateAdditionalCategoryToggle = (key: string, checked: boolean) => {
+    setAdditionalCategoryDraft((current) => ({
+      ...current,
+      scopeData: {
+        ...current.scopeData,
+        [key]: checked
+      }
+    }));
+  };
+
+  const saveAdditionalCategory = async () => {
+    if (!proId) return;
+
+    setError("");
+    setFeedback("");
+
+    try {
+      const response = await fetch(`/api/marketplace/pro/categories?proId=${proId}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          categorySlug: additionalCategoryDraft.categorySlug,
+          hourlyRateClp: additionalCategoryDraft.hourlyRateClp,
+          minBookingHours: additionalCategoryDraft.minBookingHours,
+          serviceCommunes: additionalCategoryDraft.serviceCommunes,
+          scopeData: additionalCategoryDraft.scopeData
+        })
+      });
+      const data = (await response.json()) as { error?: string; detail?: string };
+      if (!response.ok) {
+        throw new Error(data.detail || data.error || "No se pudo guardar la categoría");
+      }
+
+      await loadAll(proId);
+      setFeedback(
+        editingCategoryId
+          ? "Actualizamos esa categoría adicional en tu perfil."
+          : "La nueva categoría quedó agregada y publicada en tu perfil."
+      );
+      cancelAdditionalCategoryEditor();
+    } catch (eventualError) {
+      setError(eventualError instanceof Error ? eventualError.message : "No se pudo guardar la categoría");
+    }
+  };
+
+  const removeAdditionalCategory = async (categorySlugToRemove: SupportedTaskerCategorySlug) => {
+    if (!proId) return;
+
+    setError("");
+    setFeedback("");
+
+    try {
+      const response = await fetch(
+        `/api/marketplace/pro/categories?proId=${proId}&categorySlug=${encodeURIComponent(categorySlugToRemove)}`,
+        {
+          method: "DELETE"
+        }
+      );
+      const data = (await response.json()) as { error?: string; detail?: string };
+      if (!response.ok) {
+        throw new Error(data.detail || data.error || "No se pudo quitar la categoría");
+      }
+
+      await loadAll(proId);
+      setFeedback("Quitamos esa categoría adicional de tu perfil.");
+      if (additionalCategoryDraft.categorySlug === categorySlugToRemove) {
+        cancelAdditionalCategoryEditor();
+      }
+    } catch (eventualError) {
+      setError(eventualError instanceof Error ? eventualError.message : "No se pudo quitar la categoría");
+    }
   };
 
   const updateCoverageFromPointer = (clientX: number, clientY: number, rect: DOMRect) => {
@@ -1007,6 +1241,239 @@ export default function ProPage() {
                     <h3>Servicios que haces</h3>
                     <p>{services.length > 0 ? services.map((service) => service.name).join(", ") : "Todavía no tienes servicios activos cargados."}</p>
                   </article>
+                </div>
+
+                <div className="full tasker-extra-categories-card">
+                  <div className="tasker-extra-categories-head">
+                    <div>
+                      <h3>Categorías que ofreces</h3>
+                      <p>Tu servicio principal viene del onboarding. Aquí puedes sumar nuevas categorías desde tu panel.</p>
+                    </div>
+                    {!showCategoryEditor && availableAdditionalCategoryOptions.length > 0 ? (
+                      <button className="cta ghost small" type="button" onClick={startNewCategory}>
+                        Agregar categoría
+                      </button>
+                    ) : null}
+                  </div>
+
+                  <div className="tasker-extra-categories-list">
+                    <article className="tasker-category-pill-card primary">
+                      <strong>{getTaskerCategoryLabel(primaryTaskerCategorySlug || categorySlug)}</strong>
+                      <span>Categoría principal del onboarding</span>
+                    </article>
+                    {additionalCategories.map((item) => (
+                      <article key={item.id} className="tasker-category-pill-card">
+                        <div>
+                          <strong>{getTaskerCategoryLabel(item.categorySlug)}</strong>
+                          <span>{item.serviceCommunes.length} comuna(s) · {clp(item.hourlyRateClp)}/hora</span>
+                        </div>
+                        <div className="cta-row">
+                          <button className="cta ghost small" type="button" onClick={() => editAdditionalCategory(item)}>
+                            Editar
+                          </button>
+                          <button className="cta ghost small" type="button" onClick={() => void removeAdditionalCategory(item.categorySlug)}>
+                            Quitar
+                          </button>
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+
+                  {showCategoryEditor ? (
+                    <div className="tasker-extra-categories-editor">
+                      <div className="grid-form compact">
+                        <label>
+                          Categoría
+                          <select
+                            value={additionalCategoryDraft.categorySlug}
+                            onChange={(event) =>
+                              setAdditionalCategoryDraft(
+                                buildAdditionalCategoryDraft(event.target.value as SupportedTaskerCategorySlug, {
+                                  defaultCommunes: selectedCommunes,
+                                  defaultHourlyRate: hourlyRateFromClp
+                                })
+                              )
+                            }
+                            disabled={Boolean(editingCategoryId)}
+                          >
+                            <option value="">Selecciona una categoría</option>
+                            {availableAdditionalCategoryOptions.map((option) => (
+                              <option key={option} value={option}>
+                                {getTaskerCategoryLabel(option)}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                        <label>
+                          Tarifa por hora
+                          <input
+                            type="number"
+                            min={5000}
+                            value={additionalCategoryDraft.hourlyRateClp}
+                            onChange={(event) =>
+                              setAdditionalCategoryDraft((current) => ({
+                                ...current,
+                                hourlyRateClp: Number(event.target.value) || hourlyRateFromClp
+                              }))
+                            }
+                          />
+                        </label>
+                      </div>
+
+                      <div className="full">
+                        <p className="field-label">Comunas para esta categoría</p>
+                        <div className="inline-checks">
+                          {ACTIVE_MVP_COMMUNES.map((commune) => (
+                            <label key={`extra-${commune}`}>
+                              <input
+                                type="checkbox"
+                                checked={additionalCategoryDraft.serviceCommunes.includes(commune)}
+                                onChange={(event) =>
+                                  setAdditionalCategoryDraft((current) => ({
+                                    ...current,
+                                    serviceCommunes: event.target.checked
+                                      ? Array.from(new Set([...current.serviceCommunes, commune]))
+                                      : current.serviceCommunes.filter((item) => item !== commune)
+                                  }))
+                                }
+                              />
+                              {commune}
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+
+                      {additionalCategoryConfig ? (
+                        <>
+                          <div className="full">
+                            <p className="field-label">Servicios ofrecidos</p>
+                            <div className="onboarding-scope-grid">
+                              {additionalCategoryConfig.serviceOptions.map((option) => (
+                                <label
+                                  key={option.value}
+                                  className={`auth-service-card auth-service-card-scope ${
+                                    Array.isArray(additionalCategoryScope.services_offered) &&
+                                    (additionalCategoryScope.services_offered as string[]).includes(option.value)
+                                      ? "active"
+                                      : ""
+                                  }`}
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={
+                                      Array.isArray(additionalCategoryScope.services_offered) &&
+                                      (additionalCategoryScope.services_offered as string[]).includes(option.value)
+                                    }
+                                    onChange={(event) => updateAdditionalCategoryArray("services_offered", option.value, event.target.checked)}
+                                  />
+                                  <strong>{option.label}</strong>
+                                  {option.description ? <span>{option.description}</span> : null}
+                                </label>
+                              ))}
+                            </div>
+                          </div>
+
+                          {additionalCategoryConfig.extraGroups?.map((group) => (
+                            <div key={group.key} className="full">
+                              <p className="field-label">{group.label}</p>
+                              <div className="inline-checks">
+                                {group.options.map((option) => (
+                                  <label key={`${group.key}-${option.value}`}>
+                                    <input
+                                      type="checkbox"
+                                      checked={Array.isArray(additionalCategoryScope[group.key]) && (additionalCategoryScope[group.key] as string[]).includes(option.value)}
+                                      onChange={(event) => updateAdditionalCategoryArray(group.key, option.value, event.target.checked)}
+                                    />
+                                    {option.label}
+                                  </label>
+                                ))}
+                              </div>
+                            </div>
+                          ))}
+
+                          {additionalCategoryConfig.toggleFields?.length ? (
+                            <div className="full">
+                              <p className="field-label">Condiciones del servicio</p>
+                              <div className="inline-checks">
+                                {additionalCategoryConfig.toggleFields.map((field) => (
+                                  <label key={field.key}>
+                                    <input
+                                      type="checkbox"
+                                      checked={additionalCategoryScope[field.key] === true}
+                                      onChange={(event) => updateAdditionalCategoryToggle(field.key, event.target.checked)}
+                                    />
+                                    {field.label}
+                                  </label>
+                                ))}
+                              </div>
+                            </div>
+                          ) : null}
+
+                          {additionalCategoryConfig.includedTaskOptions.length > 0 ? (
+                            <div className="full">
+                              <p className="field-label">Tareas que sí realizas</p>
+                              <div className="onboarding-task-checklist">
+                                {additionalCategoryConfig.includedTaskOptions.map((option) => (
+                                  <label key={`included-${option.value}`} className="onboarding-task-checklist-row">
+                                    <span>{option.label}</span>
+                                    <input
+                                      type="checkbox"
+                                      checked={Array.isArray(additionalCategoryScope.tasks_included) && (additionalCategoryScope.tasks_included as string[]).includes(option.value)}
+                                      onChange={(event) => updateAdditionalCategoryArray("tasks_included", option.value, event.target.checked)}
+                                    />
+                                  </label>
+                                ))}
+                              </div>
+                            </div>
+                          ) : null}
+
+                          {additionalCategoryConfig.excludedTaskOptions.length > 0 ? (
+                            <div className="full">
+                              <p className="field-label">Tareas que no realizas</p>
+                              <div className="onboarding-task-checklist">
+                                {additionalCategoryConfig.excludedTaskOptions.map((option) => (
+                                  <label key={`excluded-${option.value}`} className="onboarding-task-checklist-row onboarding-task-checklist-row-warning">
+                                    <span>{option.label}</span>
+                                    <input
+                                      type="checkbox"
+                                      checked={Array.isArray(additionalCategoryScope.tasks_excluded) && (additionalCategoryScope.tasks_excluded as string[]).includes(option.value)}
+                                      onChange={(event) => updateAdditionalCategoryArray("tasks_excluded", option.value, event.target.checked)}
+                                    />
+                                  </label>
+                                ))}
+                              </div>
+                            </div>
+                          ) : null}
+
+                          <label className="full">
+                            Condiciones especiales
+                            <textarea
+                              value={typeof additionalCategoryScope.special_conditions === "string" ? additionalCategoryScope.special_conditions : ""}
+                              onChange={(event) =>
+                                setAdditionalCategoryDraft((current) => ({
+                                  ...current,
+                                  scopeData: {
+                                    ...current.scopeData,
+                                    special_conditions: event.target.value
+                                  }
+                                }))
+                              }
+                              placeholder="Cuéntale al cliente cualquier condición, límite o forma de trabajo importante."
+                            />
+                          </label>
+                        </>
+                      ) : null}
+
+                      <div className="cta-row">
+                        <button className="cta ghost small" type="button" onClick={cancelAdditionalCategoryEditor}>
+                          Cancelar
+                        </button>
+                        <button className="cta small" type="button" onClick={() => void saveAdditionalCategory()}>
+                          {editingCategoryId ? "Guardar categoría" : "Agregar categoría"}
+                        </button>
+                      </div>
+                    </div>
+                  ) : null}
                 </div>
 
                 <div className="full coverage-map-card pro-profile-map-preview">
