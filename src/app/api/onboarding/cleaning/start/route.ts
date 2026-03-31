@@ -22,6 +22,9 @@ export async function POST(req: NextRequest) {
     }
 
     const provider: AuthProvider = input.authProvider;
+    if (provider === "EMAIL" && (!input.password || input.password.trim().length < 8)) {
+      return NextResponse.json({ error: "Debes crear una contraseña de al menos 8 caracteres." }, { status: 400 });
+    }
     const passwordHash = provider === "EMAIL" ? await hashPassword(input.password ?? randomToken(12)) : null;
     const verifiedPhone = decodeVerifiedPhone(req.cookies.get(PUBLIC_ONBOARDING_PHONE_VERIFIED_COOKIE)?.value);
     const phone = input.phone.trim();

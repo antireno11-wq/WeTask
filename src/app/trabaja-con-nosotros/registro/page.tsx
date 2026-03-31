@@ -232,6 +232,8 @@ type DraftState = {
   firstName: string;
   lastName: string;
   email: string;
+  password: string;
+  confirmPassword: string;
   rut: string;
   address: string;
   apartment: string;
@@ -582,6 +584,8 @@ function createInitialDraft(): DraftState {
     firstName: "",
     lastName: "",
     email: "",
+    password: "",
+    confirmPassword: "",
     rut: "",
     address: "",
     apartment: "",
@@ -866,6 +870,8 @@ function CleaningOnboardingPageContent() {
   const [error, setError] = useState("");
   const [feedback, setFeedback] = useState("");
   const [submitMissingFields, setSubmitMissingFields] = useState<MissingFieldItem[]>([]);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [smsPreview, setSmsPreview] = useState("");
   const [cleaningScopeScreen, setCleaningScopeScreen] = useState<CleaningScopeScreen>(1);
   const [petScopeScreen, setPetScopeScreen] = useState<PetScopeScreen>(1);
@@ -1915,6 +1921,16 @@ function CleaningOnboardingPageContent() {
       setError("La foto de perfil es obligatoria.");
       return;
     }
+    if (session?.role !== "PRO" && session?.role !== "ADMIN") {
+      if (!draft.password.trim() || draft.password.trim().length < 8) {
+        setError("Crea una contraseña de al menos 8 caracteres.");
+        return;
+      }
+      if (draft.confirmPassword !== draft.password) {
+        setError("La confirmación de contraseña no coincide.");
+        return;
+      }
+    }
 
     setSaving(true);
     setError("");
@@ -1941,6 +1957,7 @@ function CleaningOnboardingPageContent() {
             fullName: `${draft.firstName.trim()} ${draft.lastName.trim()}`,
             email: draft.email.trim().toLowerCase(),
             phone: draft.phone.trim(),
+            password: draft.password.trim(),
             categorySlug: draft.category,
             baseCommune: draft.homeCommune,
             referenceAddress: composeReferenceAddress(draft.address, draft.apartment),
@@ -2769,6 +2786,44 @@ function CleaningOnboardingPageContent() {
                     Email
                     <input type="email" value={draft.email} onChange={(event) => updateDraft("email", event.target.value)} />
                   </label>
+                  {session?.role !== "PRO" && session?.role !== "ADMIN" ? (
+                    <>
+                      <label>
+                        Contraseña
+                        <div className="password-field">
+                          <input
+                            type={showPassword ? "text" : "password"}
+                            value={draft.password}
+                            onChange={(event) => updateDraft("password", event.target.value)}
+                            minLength={8}
+                            placeholder="Mínimo 8 caracteres"
+                          />
+                          <button type="button" className="password-toggle" onClick={() => setShowPassword((current) => !current)}>
+                            {showPassword ? "Ocultar" : "Mostrar"}
+                          </button>
+                        </div>
+                      </label>
+                      <label>
+                        Confirmar contraseña
+                        <div className="password-field">
+                          <input
+                            type={showConfirmPassword ? "text" : "password"}
+                            value={draft.confirmPassword}
+                            onChange={(event) => updateDraft("confirmPassword", event.target.value)}
+                            minLength={8}
+                            placeholder="Repite tu contraseña"
+                          />
+                          <button
+                            type="button"
+                            className="password-toggle"
+                            onClick={() => setShowConfirmPassword((current) => !current)}
+                          >
+                            {showConfirmPassword ? "Ocultar" : "Mostrar"}
+                          </button>
+                        </div>
+                      </label>
+                    </>
+                  ) : null}
                   <label>
                     RUT
                     <input
