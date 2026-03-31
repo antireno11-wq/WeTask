@@ -47,6 +47,7 @@ export function LoginRolePanel({
   const [feedback, setFeedback] = useState("");
   const [error, setError] = useState("");
   const [showResendVerification, setShowResendVerification] = useState(false);
+  const [showResetPasswordHint, setShowResetPasswordHint] = useState(false);
   const demoPassword = "WetaskDemo2026!";
 
   const normalizeEmailError = (message: string) => {
@@ -105,6 +106,7 @@ export function LoginRolePanel({
     setError("");
     setFeedback("");
     setShowResendVerification(false);
+    setShowResetPasswordHint(false);
     try {
       const response = await fetch("/api/auth/login", {
         method: "POST",
@@ -127,6 +129,11 @@ export function LoginRolePanel({
       const message = normalizeEmailError(e instanceof Error ? e.message : "Error inesperado");
       setError(message);
       setShowResendVerification(message.includes("Debes verificar tu correo antes de ingresar"));
+      setShowResetPasswordHint(
+        message.includes("Olvidé mi contraseña") ||
+          message.includes("contraseña no coincide") ||
+          message.includes("Credenciales inválidas")
+      );
     } finally {
       setLoading(false);
     }
@@ -144,6 +151,7 @@ export function LoginRolePanel({
     setError("");
     setFeedback("");
     setShowResendVerification(false);
+    setShowResetPasswordHint(false);
     try {
       const response = await fetch("/api/auth/password/forgot", {
         method: "POST",
@@ -309,6 +317,13 @@ export function LoginRolePanel({
         <div className="login-inline-help">
           <button type="button" className="login-link-button" onClick={() => void resendVerificationEmail()} disabled={loading}>
             {loading ? "Reenviando..." : "Reenviar correo de validación"}
+          </button>
+        </div>
+      ) : null}
+      {showResetPasswordHint ? (
+        <div className="login-inline-help">
+          <button type="button" className="login-link-button" onClick={() => void forgotPassword()} disabled={loading}>
+            {loading ? "Enviando..." : "Restablecer contraseña"}
           </button>
         </div>
       ) : null}

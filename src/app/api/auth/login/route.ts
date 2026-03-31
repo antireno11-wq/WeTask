@@ -69,7 +69,15 @@ export async function POST(req: NextRequest) {
         }
         const ok = await verifyPassword(body.password, user.passwordHash);
         if (!ok) {
-          return NextResponse.json({ error: "Credenciales inválidas" }, { status: 401 });
+          const isTaskerAccount = hasAssignedRole(user, UserRole.PRO);
+          return NextResponse.json(
+            {
+              error: isTaskerAccount
+                ? "La contraseña no coincide. Si tu cuenta tasker fue creada antes, usa 'Olvidé mi contraseña' para crear una nueva."
+                : "Credenciales inválidas"
+            },
+            { status: 401 }
+          );
         }
       }
 
