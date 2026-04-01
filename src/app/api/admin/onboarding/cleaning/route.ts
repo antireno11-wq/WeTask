@@ -95,16 +95,29 @@ export async function GET(req: NextRequest) {
     CleaningOnboardingStatus.APROBADO,
     CleaningOnboardingStatus.ACTIVO
   ];
+  const normalizedStatusFilter = status && validStatuses.includes(status as CleaningOnboardingStatus) ? (status as CleaningOnboardingStatus) : null;
 
-  const where =
-    status && validStatuses.includes(status as CleaningOnboardingStatus)
-      ? { status: status as CleaningOnboardingStatus }
-      : view === "validated"
-        ? { status: { in: [CleaningOnboardingStatus.APROBADO, CleaningOnboardingStatus.ACTIVO] } }
-        : { status: { in: [CleaningOnboardingStatus.BORRADOR, CleaningOnboardingStatus.PENDIENTE_REVISION, CleaningOnboardingStatus.REQUIERE_CORRECCION] } };
+  const queueWhere = normalizedStatusFilter
+    ? { status: normalizedStatusFilter }
+    : {
+        status: {
+          in: [
+            CleaningOnboardingStatus.BORRADOR,
+            CleaningOnboardingStatus.PENDIENTE_REVISION,
+            CleaningOnboardingStatus.REQUIERE_CORRECCION
+          ]
+        }
+      };
+
+  const validatedWhere = {
+    OR: [
+      { status: { in: [CleaningOnboardingStatus.APROBADO, CleaningOnboardingStatus.ACTIVO] } },
+      { user: { professionalProfile: { is: { isVerified: true } } } }
+    ]
+  } satisfies Prisma.CleaningOnboardingWhereInput;
 
   const items = await prisma.cleaningOnboarding.findMany({
-    where,
+    where: view === "validated" ? validatedWhere : queueWhere,
     orderBy: [{ submittedAt: order }, { createdAt: order }],
     take: 300,
     include: {
@@ -116,8 +129,11 @@ export async function GET(req: NextRequest) {
           phone: true,
           professionalProfile: {
             select: {
+              id: true,
               isVerified: true,
-              verificationStatus: true
+              verificationStatus: true,
+              coverageComuna: true,
+              hourlyRateFromClp: true
             }
           }
         }
@@ -125,7 +141,77 @@ export async function GET(req: NextRequest) {
     }
   });
 
-  return NextResponse.json({ items, view }, { status: 200 });
+  const professionalProfileIds = items
+    .map((item) => item.user.professionalProfile?.id)
+    .filter((value): value is string => Boolean(value));
+
+  const activeServicesByProfile = professionalProfileIds.length
+    ? await prisma.taskerService.groupBy({
+        by: ["professionalProfileId"],
+        where: {
+          professionalProfileId: { in: professionalProfileIds },
+          isActive: true
+        },
+        _count: {
+          _all: true
+        }
+      })
+    : [];
+
+  const activeServicesCountMap = new Map(
+    activeServicesByProfile.map((item) => [item.professionalProfileId, item._count._all])
+  );
+
+  const normalizedItems = items
+    .map((item) => {
+      const activeTaskerServicesCount = item.user.professionalProfile?.id
+        ? activeServicesCountMap.get(item.user.professionalProfile.id) ?? 0
+        : 0;
+      const publication = getTaskerPublicationState({
+        onboarding: {
+          status: item.status,
+          currentStep: item.currentStep,
+          submittedAt: item.submittedAt,
+          categorySlug: item.categorySlug,
+          baseCommune: item.baseCommune,
+          serviceCommunes: item.serviceCommunes,
+          hourlyRateClp: item.hourlyRateClp
+        },
+        profile: item.user.professionalProfile
+          ? {
+              isVerified: item.user.professionalProfile.isVerified,
+              coverageComuna: item.user.professionalProfile.coverageComuna,
+              hourlyRateFromClp: item.user.professionalProfile.hourlyRateFromClp
+            }
+          : null,
+        activeTaskerServicesCount
+      });
+
+      const normalizedStatus =
+        view === "validated" && item.user.professionalProfile?.isVerified
+          ? publication.canAppearInSearch || item.activatedAt
+            ? CleaningOnboardingStatus.ACTIVO
+            : CleaningOnboardingStatus.APROBADO
+          : item.status;
+
+      return {
+        ...item,
+        status: normalizedStatus
+      };
+    })
+    .filter((item) => {
+      if (!normalizedStatusFilter) return true;
+      if (
+        view === "validated" &&
+        normalizedStatusFilter !== CleaningOnboardingStatus.APROBADO &&
+        normalizedStatusFilter !== CleaningOnboardingStatus.ACTIVO
+      ) {
+        return true;
+      }
+      return item.status === normalizedStatusFilter;
+    });
+
+  return NextResponse.json({ items: normalizedItems, view }, { status: 200 });
 }
 
 export async function PATCH(req: NextRequest) {
