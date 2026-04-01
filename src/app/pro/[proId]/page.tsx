@@ -1084,6 +1084,28 @@ export default function ProDetailPage() {
                     <p className="public-tasker-summary-role">{taskerRole}</p>
                     <p className="tasker-profile-body-copy public-tasker-summary-copy">{summaryDescription}</p>
 
+                    <div className="public-tasker-summary-feature">
+                      <div className="public-tasker-summary-feature-main">
+                        <div className="we-pro-avatar large public-tasker-summary-avatar" aria-hidden>
+                          {profilePhotoUrl ? <img src={profilePhotoUrl} alt="" className="we-pro-avatar-image" style={{ objectPosition: profilePhotoObjectPosition }} /> : initials(data.user.fullName)}
+                        </div>
+                        <div className="public-tasker-summary-feature-copy">
+                          <strong>{data.user.fullName}</strong>
+                          <span>{data.ratingsCount > 0 ? `${rating.toFixed(1)} (${data.ratingsCount} valoraciones)` : "0 valoraciones aún"}</span>
+                        </div>
+                      </div>
+
+                      <div className="public-tasker-summary-feature-side">
+                        <p className="public-tasker-summary-price">{data.hourlyRateFromClp ? clp(data.hourlyRateFromClp) : "Por definir"}/h</p>
+                        <p className="public-tasker-summary-meta">{data.coverageCity ?? "Santiago"} · {workModeLabel}</p>
+                        <div className="cta-row public-tasker-summary-cta">
+                          <Link className="cta small" href={buildReserveHref()}>
+                            Ver disponibilidad
+                          </Link>
+                        </div>
+                      </div>
+                    </div>
+
                     <div className="tasker-profile-detail-grid tasker-profile-detail-grid-compact public-tasker-summary-grid">
                       <div>
                         <h3>Servicios que realiza</h3>
@@ -1721,32 +1743,6 @@ export default function ProDetailPage() {
                   ) : null}
                   </div>
                 </div>
-
-                <aside className="public-tasker-side-column">
-                  <section className="auth-flow-panel auth-flow-panel-wide client-dashboard-profile-panel we-pro-sticky-card public-tasker-booking-card">
-                    <div className="we-sticky-head public-tasker-booking-head">
-                      <div className="we-pro-avatar large" aria-hidden>
-                        {profilePhotoUrl ? <img src={profilePhotoUrl} alt="" className="we-pro-avatar-image" style={{ objectPosition: profilePhotoObjectPosition }} /> : initials(data.user.fullName)}
-                      </div>
-                      <div>
-                        <h3>{data.user.fullName}</h3>
-                        <p className="public-tasker-booking-role">{taskerRole}</p>
-                        <p>{data.ratingsCount > 0 ? <><span className="we-star">★</span> {rating.toFixed(1)} ({data.ratingsCount} valoraciones)</> : "0 valoraciones aún"}</p>
-                      </div>
-                    </div>
-
-                    <p className="we-sticky-price">{data.hourlyRateFromClp ? clp(data.hourlyRateFromClp) : "Por definir"}/h</p>
-                    <p className="we-sticky-meta">{data.coverageCity ?? "Santiago"} · {workModeLabel}</p>
-
-                    <div className="cta-row">
-                      <Link className="cta small" href={buildReserveHref()}>
-                        Ver disponibilidad
-                      </Link>
-                    </div>
-
-                    <p className="minimal-note">Para protegerte, usa siempre WeTask para contratar y comunicarte.</p>
-                  </section>
-                </aside>
               </section>
             </div>
           </>

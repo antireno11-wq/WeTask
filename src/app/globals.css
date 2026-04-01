@@ -3365,8 +3365,8 @@ textarea {
 
 .public-tasker-market-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(320px, 380px);
-  gap: 24px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 20px;
   align-items: start;
 }
 
@@ -3422,6 +3422,75 @@ textarea {
 
 .public-tasker-market-switcher {
   justify-content: flex-start;
+}
+
+.public-tasker-summary-feature {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 18px;
+  align-items: center;
+  padding: 18px 20px;
+  border: 1px solid #d6e7f5;
+  border-radius: 24px;
+  background: linear-gradient(180deg, #ffffff 0%, #f7fbff 100%);
+}
+
+.public-tasker-summary-feature-main {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+
+.public-tasker-summary-avatar {
+  flex-shrink: 0;
+}
+
+.public-tasker-summary-feature-copy {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.public-tasker-summary-feature-copy strong {
+  color: #173b5f;
+  font-size: 1.16rem;
+  line-height: 1.2;
+}
+
+.public-tasker-summary-feature-copy span {
+  color: #5a7290;
+  font-weight: 700;
+}
+
+.public-tasker-summary-feature-side {
+  display: grid;
+  justify-items: end;
+  gap: 8px;
+}
+
+.public-tasker-summary-price {
+  margin: 0;
+  color: #173b5f;
+  font-size: clamp(2rem, 4vw, 3rem);
+  font-weight: 900;
+  line-height: 1;
+}
+
+.public-tasker-summary-meta {
+  margin: 0;
+  color: #5a7290;
+  font-weight: 700;
+  text-align: right;
+}
+
+.public-tasker-summary-cta {
+  margin-top: 2px;
+}
+
+.public-tasker-summary-cta .cta.small {
+  min-width: 220px;
+  justify-content: center;
 }
 
 .public-profile-switcher {
@@ -3504,48 +3573,6 @@ textarea {
   margin: 6px 0 0;
   color: #4f6786;
   font-weight: 700;
-}
-
-.public-tasker-booking-card {
-  display: grid;
-  gap: 16px;
-}
-
-.public-tasker-booking-head {
-  justify-content: flex-start;
-  text-align: left;
-}
-
-.public-tasker-booking-role {
-  color: #264d7a !important;
-  font-weight: 800;
-}
-
-.public-tasker-booking-card .we-sticky-head h3 {
-  font-size: 1.5rem;
-}
-
-.public-tasker-booking-card .we-sticky-price {
-  margin-top: 0;
-  font-size: 3.2rem;
-}
-
-.public-tasker-booking-card .we-sticky-meta {
-  text-align: left;
-}
-
-.public-tasker-booking-card .cta-row {
-  justify-content: stretch;
-  margin-top: 4px;
-}
-
-.public-tasker-booking-card .cta.small {
-  width: 100%;
-  justify-content: center;
-}
-
-.public-tasker-booking-card .minimal-note {
-  margin: 0;
 }
 
 .public-tasker-hero-card .cta-row {
@@ -4504,6 +4531,24 @@ textarea {
     grid-template-columns: 1fr;
   }
 
+  .public-tasker-summary-feature {
+    grid-template-columns: 1fr;
+    justify-items: stretch;
+  }
+
+  .public-tasker-summary-feature-side {
+    justify-items: stretch;
+  }
+
+  .public-tasker-summary-meta {
+    text-align: left;
+  }
+
+  .public-tasker-summary-cta .cta.small {
+    width: 100%;
+    min-width: 0;
+  }
+
   .public-tasker-market-switcher {
     justify-content: stretch;
   }
@@ -4547,10 +4592,6 @@ textarea {
 
   .public-profile-switch {
     flex: 1 1 160px;
-  }
-
-  .public-tasker-booking-card .we-sticky-head {
-    text-align: left;
   }
 
   .public-rating-summary-grid,
