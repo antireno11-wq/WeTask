@@ -3363,10 +3363,11 @@ textarea {
   align-items: center;
   gap: 10px;
   flex-wrap: wrap;
+  justify-content: center;
 }
 
 .public-profile-switcher-wide {
-  margin-bottom: 2px;
+  margin-bottom: 6px;
 }
 
 .public-profile-switch {
@@ -3405,6 +3406,8 @@ textarea {
   display: flex;
   gap: 10px;
   align-items: center;
+  justify-content: center;
+  text-align: center;
 }
 
 .public-tasker-role-line {
@@ -3419,7 +3422,7 @@ textarea {
   display: inline-flex;
   align-items: center;
   min-height: 30px;
-  margin-bottom: 8px;
+  margin: 0 auto 10px;
   padding: 0 12px;
   border-radius: 999px;
   background: linear-gradient(135deg, #eef6ff 0%, #ddeeff 100%);
@@ -3437,9 +3440,14 @@ textarea {
   font-weight: 700;
 }
 
+.public-tasker-hero-card .cta-row {
+  justify-content: center;
+  margin-top: 18px;
+}
+
 .we-sticky-head h3 {
   margin: 0;
-  font-size: 1.95rem;
+  font-size: 1.75rem;
 }
 
 .we-sticky-head p {
@@ -3459,6 +3467,7 @@ textarea {
   margin: 6px 0 0;
   color: #4f5f75;
   font-weight: 700;
+  text-align: center;
 }
 
 .we-section-head {
@@ -5343,38 +5352,41 @@ textarea {
 }
 
 .public-tasker-hero {
-  grid-template-columns: minmax(0, 1.08fr) minmax(340px, 480px);
-  gap: 28px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 22px;
   align-items: start;
+  justify-items: center;
 }
 
 .public-tasker-hero-copy {
-  justify-items: start;
-}
-
-.public-tasker-hero-copy .auth-flow-kicker,
-.public-tasker-hero-copy h1,
-.public-tasker-hero-copy > p {
-  width: min(100%, 680px);
-  text-align: left;
+  width: min(100%, 920px);
+  justify-items: center;
 }
 
 .public-tasker-hero-copy .auth-flow-kicker {
-  justify-self: start;
+  width: auto;
+  max-width: none;
+  justify-self: center;
+}
+
+.public-tasker-hero-copy h1,
+.public-tasker-hero-copy > p {
+  width: min(100%, 760px);
+  text-align: center;
 }
 
 .public-tasker-hero-copy .client-dashboard-summary {
-  width: min(100%, 760px);
-  max-width: 760px;
-  justify-self: start;
-  margin-inline: 0;
+  width: min(100%, 860px);
+  max-width: 860px;
+  justify-self: center;
+  margin-inline: auto;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
 }
 
 .public-tasker-hero-card {
-  width: 100%;
-  max-width: 480px;
-  justify-self: end;
+  width: min(100%, 620px);
+  max-width: 620px;
+  justify-self: center;
   position: static;
 }
 
