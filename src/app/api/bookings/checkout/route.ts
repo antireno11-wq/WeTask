@@ -330,6 +330,15 @@ export async function POST(req: NextRequest) {
         where: { id: assignedProId },
         select: {
           role: true,
+          roleAssignments: {
+            select: {
+              role: {
+                select: {
+                  code: true
+                }
+              }
+            }
+          },
           professionalProfile: {
             select: {
               coverageComuna: true,
@@ -348,7 +357,7 @@ export async function POST(req: NextRequest) {
         }
       });
 
-      if (!pro || pro.role !== UserRole.PRO || !pro.professionalProfile) {
+      if (!pro || !hasAssignedRole(pro, UserRole.PRO) || !pro.professionalProfile) {
         return NextResponse.json({ error: "Tasker inválido para este servicio" }, { status: 400 });
       }
 

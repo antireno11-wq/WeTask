@@ -22,6 +22,7 @@ import {
 } from "@/lib/tasker-publication";
 import { supportsTeacherRequestedTasks } from "@/lib/teacher-scope";
 import { supportsTrainerRequestedTasks } from "@/lib/trainer-scope";
+import { hasAssignedRole } from "@/lib/user-roles";
 import { marketplaceSearchProsSchema } from "@/lib/validators";
 
 export const dynamic = "force-dynamic";
@@ -152,7 +153,9 @@ export async function GET(req: NextRequest) {
     const profiles = await prisma.professionalProfile.findMany({
       where: {
         isVerified: true,
-        user: { role: "PRO" }
+        user: {
+          OR: [{ role: "PRO" }, { roleAssignments: { some: { role: { code: "PRO" } } } }]
+        }
       },
       include: {
         user: {
@@ -160,6 +163,16 @@ export async function GET(req: NextRequest) {
             id: true,
             fullName: true,
             email: true,
+            role: true,
+            roleAssignments: {
+              select: {
+                role: {
+                  select: {
+                    code: true
+                  }
+                }
+              }
+            },
             cleaningOnboarding: {
               select: {
                 categorySlug: true,
@@ -226,6 +239,11 @@ export async function GET(req: NextRequest) {
     const matched = (
       await Promise.all(
         profiles.map(async (profile) => {
+          if (!hasAssignedRole(profile.user, "PRO")) {
+            filterStats.notPublishable += 1;
+            return null;
+          }
+
           let activeTaskerServices = profile.taskerServices;
           const hasRequestedTaskerService =
             !input.serviceId && !input.categoryId

@@ -296,7 +296,9 @@ export async function POST(req: NextRequest) {
           OR: [{ serviceId: null }, { serviceId: input.serviceId }],
           professionalProfile: {
             isVerified: true,
-            user: { role: UserRole.PRO },
+            user: {
+              OR: [{ role: UserRole.PRO }, { roleAssignments: { some: { role: { code: UserRole.PRO } } } }]
+            },
             taskerServices: {
               some: {
                 serviceId: input.serviceId,
@@ -356,6 +358,15 @@ export async function POST(req: NextRequest) {
         select: {
           id: true,
           role: true,
+          roleAssignments: {
+            select: {
+              role: {
+                select: {
+                  code: true
+                }
+              }
+            }
+          },
           professionalProfile: {
             select: {
               coverageComuna: true,
@@ -376,7 +387,7 @@ export async function POST(req: NextRequest) {
           }
         }
       });
-      if (!pro || pro.role !== UserRole.PRO) {
+      if (!pro || !hasAssignedRole(pro, UserRole.PRO)) {
         return NextResponse.json({ error: "Profesional no válido" }, { status: 400 });
       }
       if (!pro.professionalProfile) {

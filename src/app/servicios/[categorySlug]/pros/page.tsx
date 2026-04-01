@@ -10,6 +10,7 @@ import { copyCleaningEstimateParams, parseCleaningRecommendedHours, parseCleanin
 import { CLEANING_TASK_INCLUDED_OPTIONS, getCleaningTaskOptionsForService } from "@/lib/cleaning-scope";
 import { MAKEUP_TASK_INCLUDED_OPTIONS } from "@/lib/makeup-scope";
 import { PET_TASK_INCLUDED_OPTIONS } from "@/lib/pet-scope";
+import { getMarketplaceCategorySlugForTaskerCategory, normalizeTaskerCategorySlug } from "@/lib/tasker-category-profiles";
 import { TEACHER_TASK_INCLUDED_OPTIONS } from "@/lib/teacher-scope";
 import { TRAINER_TASK_INCLUDED_OPTIONS } from "@/lib/trainer-scope";
 
@@ -104,6 +105,8 @@ export default function ServiceProsPage() {
   const params = useParams<{ categorySlug: string }>();
   const search = useSearchParams();
   const categorySlug = params?.categorySlug ?? "";
+  const normalizedRouteCategorySlug = normalizeTaskerCategorySlug(categorySlug);
+  const marketplaceRouteCategorySlug = getMarketplaceCategorySlugForTaskerCategory(categorySlug) ?? categorySlug;
 
   const [category, setCategory] = useState<Category | null>(null);
   const [allPros, setAllPros] = useState<Professional[]>([]);
@@ -181,7 +184,13 @@ export default function ServiceProsPage() {
           throw new Error(catalogData.detail || catalogData.error || "No se pudo cargar catálogo");
         }
 
-        const match = catalogData.categories.find((item) => item.slug === categorySlug) ?? null;
+        const match =
+          catalogData.categories.find(
+            (item) =>
+              item.slug === categorySlug ||
+              item.slug === marketplaceRouteCategorySlug ||
+              normalizeTaskerCategorySlug(item.slug) === normalizedRouteCategorySlug
+          ) ?? null;
         if (!match) throw new Error("Categoria no encontrada");
         setCategory(match);
 
@@ -230,7 +239,7 @@ export default function ServiceProsPage() {
     };
 
     if (categorySlug) void load();
-  }, [address, categorySlug, city, comuna, requestedIso, selectedServiceId, selectedTasks]);
+  }, [address, categorySlug, city, comuna, marketplaceRouteCategorySlug, normalizedRouteCategorySlug, requestedIso, selectedServiceId, selectedTasks]);
 
   const professionals = useMemo(() => {
     let filtered = [...allPros];

@@ -245,6 +245,9 @@ export async function syncTaskerMarketplaceServicesFromOnboarding(userId: string
     select: {
       cleaningOnboarding: {
         select: {
+          status: true,
+          currentStep: true,
+          submittedAt: true,
           categorySlug: true,
           offeredServices: true,
           hourlyRateClp: true,
@@ -260,7 +263,8 @@ export async function syncTaskerMarketplaceServicesFromOnboarding(userId: string
       },
       professionalProfile: {
         select: {
-          id: true
+          id: true,
+          isVerified: true
         }
       }
     }
@@ -269,6 +273,21 @@ export async function syncTaskerMarketplaceServicesFromOnboarding(userId: string
   const onboarding = user?.cleaningOnboarding;
   if (!onboarding?.categorySlug) {
     return { updated: 0, reason: "missing_onboarding_category" as const };
+  }
+
+  if (
+    user?.professionalProfile?.isVerified &&
+    onboarding.status === CleaningOnboardingStatus.APROBADO &&
+    onboarding.currentStep >= 12 &&
+    onboarding.submittedAt
+  ) {
+    await prisma.cleaningOnboarding.update({
+      where: { userId },
+      data: {
+        status: CleaningOnboardingStatus.ACTIVO
+      }
+    });
+    onboarding.status = CleaningOnboardingStatus.ACTIVO;
   }
 
   const profile = await prisma.professionalProfile.upsert({

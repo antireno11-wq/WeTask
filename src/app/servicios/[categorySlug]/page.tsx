@@ -25,6 +25,7 @@ import { COVERAGE_UNAVAILABLE_MESSAGE, inferCommuneFromAddress, normalizeCommune
 import { estimateIroningDuration } from "@/lib/ironing-duration-estimator";
 import { MAKEUP_TASK_INCLUDED_OPTIONS } from "@/lib/makeup-scope";
 import { PET_TASK_INCLUDED_OPTIONS } from "@/lib/pet-scope";
+import { getMarketplaceCategorySlugForTaskerCategory, normalizeTaskerCategorySlug } from "@/lib/tasker-category-profiles";
 import { TEACHER_TASK_INCLUDED_OPTIONS } from "@/lib/teacher-scope";
 import { TRAINER_TASK_INCLUDED_OPTIONS } from "@/lib/trainer-scope";
 
@@ -54,6 +55,8 @@ const TASK_FILTER_OPTIONS_BY_CATEGORY: Record<string, TaskFilterOption[]> = {
 export default function ServicioCategoriaPage() {
   const params = useParams<{ categorySlug: string }>();
   const categorySlug = params?.categorySlug ?? "";
+  const normalizedRouteCategorySlug = normalizeTaskerCategorySlug(categorySlug);
+  const marketplaceRouteCategorySlug = getMarketplaceCategorySlugForTaskerCategory(categorySlug) ?? categorySlug;
   const router = useRouter();
   const query = useSearchParams();
 
@@ -151,7 +154,13 @@ export default function ServicioCategoriaPage() {
           throw new Error(catalogData.detail || catalogData.error || "No se pudieron cargar las categorias");
         }
 
-        const match = catalogData.categories.find((item) => item.slug === categorySlug) ?? null;
+        const match =
+          catalogData.categories.find(
+            (item) =>
+              item.slug === categorySlug ||
+              item.slug === marketplaceRouteCategorySlug ||
+              normalizeTaskerCategorySlug(item.slug) === normalizedRouteCategorySlug
+          ) ?? null;
         if (!match) {
           throw new Error("Categoria no encontrada");
         }
@@ -164,7 +173,7 @@ export default function ServicioCategoriaPage() {
       }
     };
     if (categorySlug) void load();
-  }, [categorySlug]);
+  }, [categorySlug, marketplaceRouteCategorySlug, normalizedRouteCategorySlug]);
 
   useEffect(() => {
     const queryAddress = street.trim();
