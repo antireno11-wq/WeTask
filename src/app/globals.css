@@ -3381,7 +3381,10 @@ textarea {
 }
 
 .public-tasker-summary-card {
-  gap: 20px;
+  gap: 24px;
+  border-radius: 32px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(247, 251, 255, 0.96) 100%);
+  box-shadow: 0 24px 56px rgba(13, 36, 70, 0.1);
 }
 
 .public-tasker-summary-topline {
@@ -3455,20 +3458,20 @@ textarea {
 
 .public-tasker-summary-feature {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) minmax(250px, 320px);
   gap: 18px;
-  align-items: center;
-  padding: 18px 20px;
-  border: 1px solid #d6e7f5;
-  border-radius: 24px;
-  background: linear-gradient(180deg, #ffffff 0%, #f7fbff 100%);
+  align-items: stretch;
 }
 
 .public-tasker-summary-feature-main {
-  display: flex;
+  display: grid;
   align-items: center;
   gap: 12px;
   min-width: 0;
+  padding: 22px;
+  border: 1px solid #d6e7f5;
+  border-radius: 24px;
+  background: linear-gradient(180deg, #ffffff 0%, #f7fbff 100%);
 }
 
 .public-tasker-summary-avatar {
@@ -3479,26 +3482,46 @@ textarea {
 
 .public-tasker-summary-feature-copy {
   display: grid;
-  gap: 4px;
+  gap: 8px;
   min-width: 0;
   align-content: center;
 }
 
-.public-tasker-summary-feature-copy span {
+.public-tasker-summary-feature-copy strong {
   color: #173b5f;
-  font-size: 1.02rem;
-  font-weight: 800;
+  font-size: 1.12rem;
+  line-height: 1.25;
+}
+
+.public-tasker-summary-feature-copy span {
+  color: #5a7290;
+  font-size: 0.96rem;
+  font-weight: 700;
 }
 
 .public-tasker-summary-feature-side {
   display: grid;
-  justify-items: end;
-  gap: 8px;
+  align-content: start;
+  justify-items: start;
+  gap: 10px;
+  padding: 22px;
+  border-radius: 24px;
+  background: linear-gradient(180deg, #173b5f 0%, #245686 58%, #2b7c9c 100%);
+  box-shadow: 0 18px 36px rgba(23, 59, 95, 0.22);
+}
+
+.public-tasker-summary-side-label {
+  margin: 0;
+  color: rgba(234, 245, 255, 0.82);
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .public-tasker-summary-price {
   margin: 0;
-  color: #173b5f;
+  color: #ffffff;
   font-size: clamp(2rem, 4vw, 3rem);
   font-weight: 900;
   line-height: 1;
@@ -3506,18 +3529,29 @@ textarea {
 
 .public-tasker-summary-meta {
   margin: 0;
-  color: #5a7290;
+  color: rgba(234, 245, 255, 0.88);
   font-weight: 700;
-  text-align: right;
+  text-align: left;
 }
 
 .public-tasker-summary-cta {
-  margin-top: 2px;
+  margin-top: 6px;
 }
 
 .public-tasker-summary-cta .cta.small {
-  min-width: 220px;
+  width: 100%;
+  min-width: 0;
+  background: #ffffff;
+  color: #173b5f;
   justify-content: center;
+  box-shadow: none;
+}
+
+.public-tasker-summary-side-note {
+  margin: 4px 0 0;
+  color: rgba(234, 245, 255, 0.8);
+  font-size: 0.92rem;
+  line-height: 1.55;
 }
 
 .public-profile-switcher {

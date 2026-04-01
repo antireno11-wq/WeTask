@@ -1087,11 +1087,13 @@ export default function ProDetailPage() {
                     <div className="public-tasker-summary-feature">
                       <div className="public-tasker-summary-feature-main">
                         <div className="public-tasker-summary-feature-copy">
-                          <span>{data.ratingsCount > 0 ? `${rating.toFixed(1)} (${data.ratingsCount} valoraciones)` : "0 valoraciones aún"}</span>
+                          <strong>{data.ratingsCount > 0 ? `${rating.toFixed(1)} (${data.ratingsCount} valoraciones)` : "0 valoraciones aún"}</strong>
+                          <span>{daysWithSlotsCount} día(s) con agenda abierta para reserva.</span>
                         </div>
                       </div>
 
                       <div className="public-tasker-summary-feature-side">
+                        <p className="public-tasker-summary-side-label">Reserva protegida</p>
                         <p className="public-tasker-summary-price">{data.hourlyRateFromClp ? clp(data.hourlyRateFromClp) : "Por definir"}/h</p>
                         <p className="public-tasker-summary-meta">{data.coverageCity ?? "Santiago"} · {workModeLabel}</p>
                         <div className="cta-row public-tasker-summary-cta">
@@ -1099,6 +1101,7 @@ export default function ProDetailPage() {
                             Ver disponibilidad
                           </Link>
                         </div>
+                        <p className="public-tasker-summary-side-note">Reserva directamente en WeTask y mantiene tu pago protegido.</p>
                       </div>
                     </div>
 
