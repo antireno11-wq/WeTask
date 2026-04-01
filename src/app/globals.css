@@ -5353,7 +5353,7 @@ textarea {
 
 .public-tasker-hero {
   grid-template-columns: minmax(0, 1fr);
-  gap: 22px;
+  gap: 18px;
   align-items: start;
   justify-items: center;
 }
@@ -5361,6 +5361,7 @@ textarea {
 .public-tasker-hero-copy {
   width: min(100%, 920px);
   justify-items: center;
+  margin-bottom: 0;
 }
 
 .public-tasker-hero-copy .auth-flow-kicker {
@@ -5386,8 +5387,19 @@ textarea {
 .public-tasker-hero-card {
   width: min(100%, 620px);
   max-width: 620px;
-  justify-self: center;
+  margin: 0 auto;
   position: static;
+}
+
+.public-tasker-hero-card-shell {
+  display: flex;
+  justify-content: center;
+  padding-top: 0;
+  padding-bottom: 18px;
+}
+
+.public-tasker-hero-card-shell .public-tasker-hero-card {
+  width: min(100%, 620px);
 }
 
 .client-home-hero {

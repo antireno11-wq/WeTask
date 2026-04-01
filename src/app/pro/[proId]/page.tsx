@@ -1102,7 +1102,9 @@ export default function ProDetailPage() {
                   ) : null}
                 </div>
               </div>
+            </section>
 
+            <div className="page public-tasker-hero-card-shell">
               <section className="auth-flow-panel auth-flow-panel-wide client-dashboard-profile-panel public-tasker-hero-card">
                 <div className="we-sticky-head">
                   <div className="we-pro-avatar large" aria-hidden>
@@ -1139,7 +1141,7 @@ export default function ProDetailPage() {
 
                 <p className="minimal-note">Para protegerte, usa siempre WeTask para contratar y comunicarte.</p>
               </section>
-            </section>
+            </div>
 
             <div className="page client-dashboard-sections">
               {loading ? <p className="empty">Cargando perfil...</p> : null}
@@ -1148,18 +1150,6 @@ export default function ProDetailPage() {
 
               <section className="we-pro-detail-layout" id="public-tasker-view">
                 <div className="we-pro-detail-main">
-                  <div className="public-profile-switcher public-profile-switcher-wide">
-                    <button type="button" className={`public-profile-switch ${activeView === "perfil" ? "active" : ""}`} onClick={() => switchPublicView("perfil")}>
-                      Ver perfil
-                    </button>
-                    <button type="button" className={`public-profile-switch ${activeView === "valoraciones" ? "active" : ""}`} onClick={() => switchPublicView("valoraciones")}>
-                      Ver valoraciones
-                    </button>
-                    <button type="button" className={`public-profile-switch ${activeView === "agenda" ? "active" : ""}`} onClick={() => switchPublicView("agenda")}>
-                      Ver agenda
-                    </button>
-                  </div>
-
                   {activeView === "perfil" ? (
                     <>
                   <article className="auth-flow-panel client-dashboard-section tasker-profile-section">
