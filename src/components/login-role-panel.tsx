@@ -1,22 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import type { UserRole } from "@prisma/client";
 import { BrandLogo } from "@/components/brand-logo";
-
-type DemoUser = {
-  id: string;
-  fullName: string;
-  email: string;
-};
-
-type DemoPayload = {
-  customer?: DemoUser;
-  customers?: DemoUser[];
-  professionals?: DemoUser[];
-  admin?: DemoUser | null;
-};
 
 type LoginRole = "CUSTOMER" | "PRO" | "ADMIN";
 
@@ -38,7 +25,6 @@ export function LoginRolePanel({
   const isTasker = role === "PRO";
   const isAdmin = role === "ADMIN";
 
-  const [demoPayload, setDemoPayload] = useState<DemoPayload | null>(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -48,7 +34,6 @@ export function LoginRolePanel({
   const [error, setError] = useState("");
   const [showResendVerification, setShowResendVerification] = useState(false);
   const [showResetPasswordHint, setShowResetPasswordHint] = useState(false);
-  const demoPassword = "WetaskDemo2026!";
 
   const normalizeEmailError = (message: string) => {
     const normalized = message.toLowerCase();
@@ -72,33 +57,9 @@ export function LoginRolePanel({
   const createAccountHref = isTasker ? "/trabaja-con-nosotros" : "/registro?role=CUSTOMER";
   const createAccountLabel = isTasker ? "Crear cuenta tasker" : "Crear cuenta cliente";
 
-  const demoUser = useMemo(() => {
-    if (!demoPayload) return null;
-    if (isAdmin) return demoPayload.admin ?? null;
-    if (isTasker) return demoPayload.professionals?.[0] ?? null;
-    return demoPayload.customers?.[0] ?? demoPayload.customer ?? null;
-  }, [demoPayload, isAdmin, isTasker]);
-
   useEffect(() => {
     if (typeof window === "undefined") return;
     setNextPath(new URLSearchParams(window.location.search).get("next"));
-  }, []);
-
-  useEffect(() => {
-    if (isAdmin) {
-      setDemoPayload(null);
-      return;
-    }
-    const load = async () => {
-      try {
-        const response = await fetch("/api/marketplace/demo");
-        const data = (await response.json()) as DemoPayload;
-        setDemoPayload(data);
-      } catch {
-        setError("No se pudo cargar usuarios demo.");
-      }
-    };
-    void load();
   }, []);
 
   const login = async (payload: { userId?: string; email?: string; password?: string }) => {
@@ -255,20 +216,6 @@ export function LoginRolePanel({
           </div>
         ) : null}
       </div>
-
-      {demoUser && !isAdmin ? (
-        <div className="login-demo-card">
-          <div>
-            <strong>Modo demo</strong>
-            <span>
-              {demoUser.email} · {demoPassword}
-            </span>
-          </div>
-          <button className="login-demo-button" type="button" onClick={() => void login({ userId: demoUser.id })} disabled={loading}>
-            Probar demo
-          </button>
-        </div>
-      ) : null}
 
       <form id="wetask-login-form" className="login-form-shell" onSubmit={submitByEmail}>
         <label>
