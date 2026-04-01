@@ -974,6 +974,19 @@ export default function ProDetailPage() {
         label: `${item.service?.name} · ${item.priceClp ? clp(item.priceClp) : "Por definir"}/h`
       }));
   }, [data?.taskerServices, normalizedPrimaryCategorySlug]);
+  const registeredServiceNames = useMemo(() => {
+    const names = (data?.taskerServices ?? [])
+      .filter((item) =>
+        normalizedPrimaryCategorySlug
+          ? normalizeCategorySlug(item.category?.slug) === normalizedPrimaryCategorySlug
+          : true
+      )
+      .map((item) => item.service?.name?.trim())
+      .filter((item): item is string => Boolean(item));
+
+    const uniqueNames = Array.from(new Set(names));
+    return uniqueNames.length > 0 ? uniqueNames : [categoryLabel(primaryCategorySlug)];
+  }, [data?.taskerServices, normalizedPrimaryCategorySlug, primaryCategorySlug]);
   const profilePhotoUrl = data?.avatarUrl?.trim() || onboarding?.profilePhotoUrl?.trim() || "";
   const profilePhotoObjectPosition = avatarObjectPosition(
     data?.avatarPositionX ?? onboarding?.profilePhotoPositionX,
@@ -1096,7 +1109,7 @@ export default function ProDetailPage() {
                         <h1>{data.user.fullName}</h1>
                         <div className="public-tasker-services-block">
                           <small>Servicios que realiza</small>
-                          <span className="public-tasker-summary-category">{offeredServices.join(", ")}</span>
+                          <span className="public-tasker-summary-category">{registeredServiceNames.join(", ")}</span>
                         </div>
                       </div>
                     </div>
@@ -1151,7 +1164,7 @@ export default function ProDetailPage() {
                     <div className="tasker-profile-detail-grid tasker-profile-detail-grid-compact public-tasker-summary-grid">
                       <div>
                         <h3>Servicios que realiza</h3>
-                        <p>{offeredServices.join(", ")}</p>
+                        <p>{registeredServiceNames.join(", ")}</p>
                       </div>
                       <div>
                         <h3>Experiencia</h3>
