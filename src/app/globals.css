@@ -2708,10 +2708,25 @@ textarea {
   transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease, background 0.16s ease;
 }
 
+.availability-day-card.is-empty {
+  min-height: 96px;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  cursor: default;
+  padding: 0;
+}
+
 .availability-day-card:hover {
   transform: translateY(-2px);
   border-color: #bad3ea;
   box-shadow: 0 16px 24px rgba(19, 42, 87, 0.08);
+}
+
+.availability-day-card.is-empty:hover {
+  transform: none;
+  border-color: transparent;
+  box-shadow: none;
 }
 
 .availability-day-card.muted {

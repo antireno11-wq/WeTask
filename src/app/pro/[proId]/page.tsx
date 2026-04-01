@@ -707,17 +707,30 @@ export default function ProDetailPage() {
     [selectedDate]
   );
   const monthCalendarDays = useMemo(() => {
-    const start = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1);
-    const startWeekday = (start.getDay() + 6) % 7;
-    start.setDate(start.getDate() - startWeekday);
+    const year = selectedDate.getFullYear();
+    const month = selectedDate.getMonth();
+    const firstDay = new Date(year, month, 1);
+    const firstWeekday = (firstDay.getDay() + 6) % 7;
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const totalCells = Math.ceil((firstWeekday + daysInMonth) / 7) * 7;
 
-    return Array.from({ length: 35 }, (_, index) => {
-      const current = new Date(start);
-      current.setDate(start.getDate() + index);
+    return Array.from({ length: totalCells }, (_, index) => {
+      const dayNumber = index - firstWeekday + 1;
+      if (dayNumber < 1 || dayNumber > daysInMonth) {
+        return {
+          key: `empty-${year}-${month}-${index}`,
+          date: null,
+          isCurrentMonth: false,
+          isPlaceholder: true
+        };
+      }
+
+      const current = new Date(year, month, dayNumber);
       return {
         key: formatDayKey(current),
         date: current,
-        isCurrentMonth: current.getMonth() === selectedDate.getMonth()
+        isCurrentMonth: true,
+        isPlaceholder: false
       };
     });
   }, [selectedDate]);
@@ -1591,6 +1604,10 @@ export default function ProDetailPage() {
 
                           <div className="availability-month-grid">
                             {monthCalendarDays.map((day) => {
+                              if (day.isPlaceholder || !day.date) {
+                                return <div key={day.key} className="availability-day-card is-empty" aria-hidden />;
+                              }
+
                               const slotCount = slotsByDay.get(day.key)?.length ?? 0;
                               const isToday = day.key === todayKey;
                               const isSelected = day.key === selectedDay;
