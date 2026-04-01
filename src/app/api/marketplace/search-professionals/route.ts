@@ -28,6 +28,8 @@ import { marketplaceSearchProsSchema } from "@/lib/validators";
 
 export const dynamic = "force-dynamic";
 
+const LEGACY_SEARCH_PUBLICATION_REQUIREMENTS = new Set(["onboarding_completed", "published", "status_active"]);
+
 function buildSlotFiltersForCategory(categoryId?: string, serviceId?: string) {
   if (serviceId) {
     return [{ serviceId: null }, { serviceId }];
@@ -325,7 +327,13 @@ export async function GET(req: NextRequest) {
             activeTaskerServicesCount: activeTaskerServices.length
           });
 
-          if (!publication.canAppearInSearch) {
+          const canUseLegacyVerifiedFallback =
+            profile.isVerified &&
+            activeTaskerServices.length > 0 &&
+            publication.missingRequirements.length > 0 &&
+            publication.missingRequirements.every((requirement) => LEGACY_SEARCH_PUBLICATION_REQUIREMENTS.has(requirement));
+
+          if (!publication.canAppearInSearch && !canUseLegacyVerifiedFallback) {
             filterStats.notPublishable += 1;
             return null;
           }
