@@ -5672,6 +5672,34 @@ textarea {
   color: #173762;
 }
 
+.admin-team-row-copy {
+  display: grid;
+  gap: 0.38rem;
+  min-width: 0;
+}
+
+.admin-email-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.admin-email-chip {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  padding: 0.42rem 0.72rem;
+  border-radius: 999px;
+  background: rgba(25, 84, 162, 0.08);
+  border: 1px solid rgba(89, 142, 215, 0.32);
+  color: #153a68;
+  font-size: 0.94rem;
+  font-weight: 800;
+  line-height: 1.2;
+  word-break: break-all;
+}
+
 .admin-queue-row p,
 .admin-team-row p {
   margin: 0.12rem 0;

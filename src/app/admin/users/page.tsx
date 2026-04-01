@@ -73,6 +73,22 @@ export default function AdminUsersPage() {
     nextTaskerSort = taskerSort,
     nextCustomerSort = customerSort
   ) => {
+  const copyEmail = async (email: string) => {
+    try {
+      await navigator.clipboard.writeText(email);
+      setFeedback(`Correo copiado: ${email}`);
+      setError("");
+    } catch {
+      setError("No pudimos copiar el correo.");
+    }
+  };
+
+  const load = async (
+    nextTaskerPage = taskerPage,
+    nextCustomerPage = customerPage,
+    nextTaskerSort = taskerSort,
+    nextCustomerSort = customerSort
+  ) => {
     setLoading(true);
     setError("");
     try {
@@ -209,7 +225,19 @@ export default function AdminUsersPage() {
               <article key={user.id} className="admin-team-row">
                 <Link href={`/admin/users/${user.id}`} className="admin-team-row-main">
                   <h4>{user.fullName}</h4>
-                  <p>{user.email}</p>
+                  <div className="admin-email-row">
+                    <span className="admin-email-chip">{user.email}</span>
+                    <button
+                      type="button"
+                      className="cta ghost small"
+                      onClick={(event) => {
+                        event.preventDefault();
+                        void copyEmail(user.email);
+                      }}
+                    >
+                      Copiar correo
+                    </button>
+                  </div>
                   <p>{assignmentLabelList(user.roleAssignments, user.role)}</p>
                   <p>
                     {user.cleaningOnboarding ? `Onboarding: ${user.cleaningOnboarding.status.toLowerCase()}` : "Sin onboarding"} ·{" "}
@@ -286,7 +314,19 @@ export default function AdminUsersPage() {
               <article key={user.id} className="admin-team-row">
                 <Link href={`/admin/users/${user.id}`} className="admin-team-row-main">
                   <h4>{user.fullName}</h4>
-                  <p>{user.email}</p>
+                  <div className="admin-email-row">
+                    <span className="admin-email-chip">{user.email}</span>
+                    <button
+                      type="button"
+                      className="cta ghost small"
+                      onClick={(event) => {
+                        event.preventDefault();
+                        void copyEmail(user.email);
+                      }}
+                    >
+                      Copiar correo
+                    </button>
+                  </div>
                   <p>{assignmentLabelList(user.roleAssignments, user.role)}</p>
                   <p>{user.phone ? `Teléfono: ${user.phone}` : "Sin teléfono guardado"}</p>
                   <p>
