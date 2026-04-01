@@ -83,7 +83,7 @@ export function LoginRolePanel({
         throw new Error(data.detail || data.error || "No se pudo iniciar sesión");
       }
       setFeedback(`Sesión iniciada como ${data.session.fullName}`);
-      const profileRoute = data.session.role === "PRO" ? "/pro" : data.session.role === "ADMIN" ? "/admin" : "/cliente";
+      const profileRoute = data.session.role === "PRO" ? "/pro" : data.session.role === "ADMIN" ? "/admin" : "/servicios";
       const safeNext = nextPath && nextPath.startsWith("/") && !nextPath.startsWith("//") ? nextPath : null;
       window.location.assign(safeNext ?? profileRoute);
     } catch (e) {
