@@ -1080,7 +1080,10 @@ export default function ProDetailPage() {
                       </div>
                       <div className="public-tasker-heading-copy">
                         <h1>{data.user.fullName}</h1>
-                        <span className="public-tasker-summary-category">{categoryName}</span>
+                        <div className="public-tasker-services-block">
+                          <small>Servicios que realiza</small>
+                          <span className="public-tasker-summary-category">{offeredServices.join(", ")}</span>
+                        </div>
                       </div>
                     </div>
 
@@ -1098,10 +1101,6 @@ export default function ProDetailPage() {
 
                     <div className="public-tasker-summary-feature">
                       <div className="public-tasker-summary-feature-main">
-                        <div className="public-tasker-summary-feature-copy">
-                          <strong>Resumen rapido</strong>
-                          <span>Lo mas importante para reservar sin perderte entre datos repetidos.</span>
-                        </div>
                         <div className="public-tasker-summary-stats">
                           <div className="public-tasker-summary-stat">
                             <small>Valoraciones</small>
@@ -1112,8 +1111,8 @@ export default function ProDetailPage() {
                             <strong>{daysWithSlotsCount} dia(s)</strong>
                           </div>
                           <div className="public-tasker-summary-stat">
-                            <small>Servicios activos</small>
-                            <strong>{offeredServices.length}</strong>
+                            <small>{focusLabel}</small>
+                            <strong>{experienceTypes.join(", ")}</strong>
                           </div>
                           <div className="public-tasker-summary-stat">
                             <small>Idiomas</small>
@@ -1143,10 +1142,6 @@ export default function ProDetailPage() {
                       <div>
                         <h3>Experiencia</h3>
                         <p>{experienceYears} años en servicios a domicilio.</p>
-                      </div>
-                      <div>
-                        <h3>{focusLabel}</h3>
-                        <p>{experienceTypes.join(", ")}</p>
                       </div>
                       <div>
                         <h3>{requestedRecommendedHours ? "Tiempo sugerido" : "Modalidad"}</h3>
