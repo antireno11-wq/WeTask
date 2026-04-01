@@ -644,11 +644,6 @@ export default function ProDetailPage() {
         let resolvedSlots: AvailabilitySlot[] = [];
         if (!availabilityRes.ok || !availabilityBody.slots) {
           resolvedSlots = buildDemoSlots(date, params.proId);
-          setNotice((prev) =>
-            prev
-              ? `${prev} También cargamos una agenda de ejemplo.`
-              : "Mostrando una agenda referencial para que puedas ver los días disponibles."
-          );
         } else {
           resolvedSlots = availabilityBody.slots;
         }
