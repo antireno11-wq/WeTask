@@ -3358,6 +3358,72 @@ textarea {
   gap: 12px;
 }
 
+.public-tasker-market-page {
+  padding-top: 12px;
+  padding-bottom: 56px;
+}
+
+.public-tasker-market-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 380px);
+  gap: 24px;
+  align-items: start;
+}
+
+.public-tasker-main-column,
+.public-tasker-side-column {
+  min-width: 0;
+}
+
+.public-tasker-main-column {
+  display: grid;
+  gap: 16px;
+}
+
+.public-tasker-summary-card {
+  gap: 20px;
+}
+
+.public-tasker-summary-topline {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.public-tasker-summary-kicker {
+  margin: 0;
+  width: auto;
+  max-width: none;
+}
+
+.public-tasker-summary-card h1 {
+  margin: 0;
+  color: #173b5f;
+  font-size: clamp(2.4rem, 5vw, 4.5rem);
+  line-height: 0.98;
+  letter-spacing: -0.05em;
+}
+
+.public-tasker-summary-role {
+  margin: 8px 0 0;
+  color: #264d7a;
+  font-size: 1.08rem;
+  font-weight: 800;
+}
+
+.public-tasker-summary-copy {
+  width: min(100%, 760px);
+}
+
+.public-tasker-summary-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.public-tasker-market-switcher {
+  justify-content: flex-start;
+}
+
 .public-profile-switcher {
   display: flex;
   align-items: center;
@@ -3422,7 +3488,7 @@ textarea {
   display: inline-flex;
   align-items: center;
   min-height: 30px;
-  margin: 0 auto 10px;
+  margin: 0;
   padding: 0 12px;
   border-radius: 999px;
   background: linear-gradient(135deg, #eef6ff 0%, #ddeeff 100%);
@@ -3438,6 +3504,48 @@ textarea {
   margin: 6px 0 0;
   color: #4f6786;
   font-weight: 700;
+}
+
+.public-tasker-booking-card {
+  display: grid;
+  gap: 16px;
+}
+
+.public-tasker-booking-head {
+  justify-content: flex-start;
+  text-align: left;
+}
+
+.public-tasker-booking-role {
+  color: #264d7a !important;
+  font-weight: 800;
+}
+
+.public-tasker-booking-card .we-sticky-head h3 {
+  font-size: 1.5rem;
+}
+
+.public-tasker-booking-card .we-sticky-price {
+  margin-top: 0;
+  font-size: 3.2rem;
+}
+
+.public-tasker-booking-card .we-sticky-meta {
+  text-align: left;
+}
+
+.public-tasker-booking-card .cta-row {
+  justify-content: stretch;
+  margin-top: 4px;
+}
+
+.public-tasker-booking-card .cta.small {
+  width: 100%;
+  justify-content: center;
+}
+
+.public-tasker-booking-card .minimal-note {
+  margin: 0;
 }
 
 .public-tasker-hero-card .cta-row {
@@ -4388,6 +4496,18 @@ textarea {
     grid-template-columns: 1fr;
   }
 
+  .public-tasker-market-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .public-tasker-summary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .public-tasker-market-switcher {
+    justify-content: stretch;
+  }
+
   .we-pro-sticky-card {
     position: static;
   }
@@ -4427,6 +4547,10 @@ textarea {
 
   .public-profile-switch {
     flex: 1 1 160px;
+  }
+
+  .public-tasker-booking-card .we-sticky-head {
+    text-align: left;
   }
 
   .public-rating-summary-grid,

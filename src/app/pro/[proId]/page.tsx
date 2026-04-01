@@ -1067,89 +1067,60 @@ export default function ProDetailPage() {
 
         {data ? (
           <>
-            <section className="auth-flow-shell auth-flow-shell-wide client-dashboard-hero public-tasker-hero">
-              <div className="auth-flow-copy client-dashboard-copy public-tasker-hero-copy">
-                <p className="auth-flow-kicker">Tasker verificado</p>
-                <h1>{data.user.fullName}</h1>
-                <p className="public-tasker-role-line">
-                  {taskerRole} · {categoryName}
-                </p>
-                <p>{summaryDescription}</p>
-
-                <div className="auth-flow-copy-list client-dashboard-summary">
-                  <div className="auth-flow-meta-card">
-                    <strong>Servicios que realiza</strong>
-                    <span>{offeredServices.join(", ")}</span>
-                  </div>
-                  <div className="auth-flow-meta-card">
-                    <strong>Experiencia</strong>
-                    <span>{experienceYears} años de experiencia en servicios a domicilio.</span>
-                  </div>
-                  <div className="auth-flow-meta-card">
-                    <strong>Disponibilidad</strong>
-                    <span>{daysWithSlotsCount} día(s) con agenda visible para reserva.</span>
-                  </div>
-                  {requestedRecommendedHours ? (
-                    <div className="auth-flow-meta-card">
-                      <strong>Tiempo sugerido</strong>
-                      <span>
-                        {requestedEstimatedMinHours && requestedEstimatedMaxHours
-                          ? `${requestedEstimatedMinHours} a ${requestedEstimatedMaxHours} horas · `
-                          : ""}
-                        Recomendado: {requestedRecommendedHours} h
-                      </span>
-                    </div>
-                  ) : null}
-                </div>
-              </div>
-            </section>
-
-            <div className="page public-tasker-hero-card-shell">
-              <section className="auth-flow-panel auth-flow-panel-wide client-dashboard-profile-panel public-tasker-hero-card">
-                <div className="we-sticky-head">
-                  <div className="we-pro-avatar large" aria-hidden>
-                    {profilePhotoUrl ? <img src={profilePhotoUrl} alt="" className="we-pro-avatar-image" style={{ objectPosition: profilePhotoObjectPosition }} /> : initials(data.user.fullName)}
-                  </div>
-                  <div>
-                    <div className="public-tasker-category-inline">{categoryName}</div>
-                    <h3>Agenda y tarifa</h3>
-                    <p className="public-tasker-card-label">Reserva directamente con su disponibilidad visible.</p>
-                    <p>{data.ratingsCount > 0 ? <><span className="we-star">★</span> {rating.toFixed(1)} ({data.ratingsCount} valoraciones)</> : "0.0 (0 valoraciones)"}</p>
-                  </div>
-                </div>
-
-                <p className="we-sticky-price">{data.hourlyRateFromClp ? clp(data.hourlyRateFromClp) : "Por definir"}/h</p>
-                <p className="we-sticky-meta">{data.coverageCity ?? "Santiago"} · {workModeLabel}</p>
-
-                <div className="public-profile-switcher">
-                  <button type="button" className={`public-profile-switch ${activeView === "perfil" ? "active" : ""}`} onClick={() => switchPublicView("perfil")}>
-                    Perfil
-                  </button>
-                  <button type="button" className={`public-profile-switch ${activeView === "valoraciones" ? "active" : ""}`} onClick={() => switchPublicView("valoraciones")}>
-                    Valoraciones
-                  </button>
-                  <button type="button" className={`public-profile-switch ${activeView === "agenda" ? "active" : ""}`} onClick={() => switchPublicView("agenda")}>
-                    Agenda
-                  </button>
-                </div>
-
-                <div className="cta-row">
-                  <Link className="cta small" href={buildReserveHref()}>
-                    Reservar ahora
-                  </Link>
-                </div>
-
-                <p className="minimal-note">Para protegerte, usa siempre WeTask para contratar y comunicarte.</p>
-              </section>
-            </div>
-
-            <div className="page client-dashboard-sections">
+            <div className="page public-tasker-market-page">
               {loading ? <p className="empty">Cargando perfil...</p> : null}
               {notice ? <p className="feedback ok">{notice}</p> : null}
               {error ? <p className="feedback error">{error}</p> : null}
 
-              <section className="we-pro-detail-layout" id="public-tasker-view">
-                <div className="we-pro-detail-main">
+              <section className="public-tasker-market-layout" id="public-tasker-view">
+                <div className="public-tasker-main-column">
+                  <article className="auth-flow-panel client-dashboard-section tasker-profile-section public-tasker-summary-card">
+                    <div className="public-tasker-summary-topline">
+                      <p className="auth-flow-kicker public-tasker-summary-kicker">Tasker verificado</p>
+                      <span className="public-tasker-category-inline">{categoryName}</span>
+                    </div>
+
+                    <h1>{data.user.fullName}</h1>
+                    <p className="public-tasker-summary-role">{taskerRole}</p>
+                    <p className="tasker-profile-body-copy public-tasker-summary-copy">{summaryDescription}</p>
+
+                    <div className="tasker-profile-detail-grid tasker-profile-detail-grid-compact public-tasker-summary-grid">
+                      <div>
+                        <h3>Servicios que realiza</h3>
+                        <p>{offeredServices.join(", ")}</p>
+                      </div>
+                      <div>
+                        <h3>Experiencia</h3>
+                        <p>{experienceYears} años en servicios a domicilio.</p>
+                      </div>
+                      <div>
+                        <h3>Disponibilidad</h3>
+                        <p>{daysWithSlotsCount} día(s) con agenda visible para reserva.</p>
+                      </div>
+                      <div>
+                        <h3>{requestedRecommendedHours ? "Tiempo sugerido" : "Modalidad"}</h3>
+                        <p>
+                          {requestedRecommendedHours
+                            ? `${requestedEstimatedMinHours && requestedEstimatedMaxHours ? `${requestedEstimatedMinHours} a ${requestedEstimatedMaxHours} horas · ` : ""}Recomendado: ${requestedRecommendedHours} h`
+                            : workModeLabel}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="public-profile-switcher public-tasker-market-switcher">
+                      <button type="button" className={`public-profile-switch ${activeView === "perfil" ? "active" : ""}`} onClick={() => switchPublicView("perfil")}>
+                        Perfil
+                      </button>
+                      <button type="button" className={`public-profile-switch ${activeView === "valoraciones" ? "active" : ""}`} onClick={() => switchPublicView("valoraciones")}>
+                        Valoraciones
+                      </button>
+                      <button type="button" className={`public-profile-switch ${activeView === "agenda" ? "active" : ""}`} onClick={() => switchPublicView("agenda")}>
+                        Agenda
+                      </button>
+                    </div>
+                  </article>
+
+                  <div className="we-pro-detail-main">
                   {activeView === "perfil" ? (
                     <>
                   <article className="auth-flow-panel client-dashboard-section tasker-profile-section">
@@ -1748,7 +1719,34 @@ export default function ProDetailPage() {
                       </div>
                     </article>
                   ) : null}
+                  </div>
                 </div>
+
+                <aside className="public-tasker-side-column">
+                  <section className="auth-flow-panel auth-flow-panel-wide client-dashboard-profile-panel we-pro-sticky-card public-tasker-booking-card">
+                    <div className="we-sticky-head public-tasker-booking-head">
+                      <div className="we-pro-avatar large" aria-hidden>
+                        {profilePhotoUrl ? <img src={profilePhotoUrl} alt="" className="we-pro-avatar-image" style={{ objectPosition: profilePhotoObjectPosition }} /> : initials(data.user.fullName)}
+                      </div>
+                      <div>
+                        <h3>{data.user.fullName}</h3>
+                        <p className="public-tasker-booking-role">{taskerRole}</p>
+                        <p>{data.ratingsCount > 0 ? <><span className="we-star">★</span> {rating.toFixed(1)} ({data.ratingsCount} valoraciones)</> : "0 valoraciones aún"}</p>
+                      </div>
+                    </div>
+
+                    <p className="we-sticky-price">{data.hourlyRateFromClp ? clp(data.hourlyRateFromClp) : "Por definir"}/h</p>
+                    <p className="we-sticky-meta">{data.coverageCity ?? "Santiago"} · {workModeLabel}</p>
+
+                    <div className="cta-row">
+                      <Link className="cta small" href={buildReserveHref()}>
+                        Ver disponibilidad
+                      </Link>
+                    </div>
+
+                    <p className="minimal-note">Para protegerte, usa siempre WeTask para contratar y comunicarte.</p>
+                  </section>
+                </aside>
               </section>
             </div>
           </>
