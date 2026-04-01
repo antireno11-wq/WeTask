@@ -2112,6 +2112,12 @@ textarea {
   border: 1px solid #b8efcb;
 }
 
+.feedback.info {
+  color: #1d4f88;
+  background: #eef6ff;
+  border: 1px solid #c6dcf7;
+}
+
 .feedback.error {
   color: var(--err);
   background: #fff0f3;

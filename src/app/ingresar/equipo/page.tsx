@@ -46,8 +46,8 @@ export default function IngresarEquipoPage() {
             <p className="login-stage-kicker">Equipo WeTask</p>
             <h2>Ingresa al backoffice para validar profesionales y administrar la operación.</h2>
             <p>Este acceso es solo para administradores autorizados del equipo interno de WeTask.</p>
-            {checkingSession ? <p className="feedback ok">Preparando acceso del equipo...</p> : null}
-            {!checkingSession && notice ? <p className="feedback ok">{notice}</p> : null}
+            {checkingSession ? <p className="feedback info">Preparando acceso del equipo...</p> : null}
+            {!checkingSession && notice ? <p className="feedback info">{notice}</p> : null}
           </div>
 
           <LoginRolePanel role="ADMIN" allowCreateAccount={false} />
