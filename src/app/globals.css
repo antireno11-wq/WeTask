@@ -633,6 +633,7 @@ body {
   mix-blend-mode: normal;
   filter: none;
   display: block;
+  background: transparent;
 }
 
 .brand-logo-composite {
@@ -645,6 +646,7 @@ body {
   display: block;
   width: 100%;
   height: auto;
+  background: transparent;
 }
 
 .brand-logo-wordmark-mask {
@@ -4916,6 +4918,7 @@ textarea {
   width: clamp(170px, 40vw, 220px);
   height: auto;
   display: block;
+  background: transparent;
 }
 
 .login-panel-kicker {

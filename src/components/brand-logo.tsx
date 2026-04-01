@@ -3,6 +3,11 @@
 import { useEffect, useState } from "react";
 import { buildTransparentLogo, buildWhiteLogo } from "@/lib/logo-processing";
 
+const FALLBACK_LOGO_SRC = "/logo-wetask-cropped.png";
+
+let cachedTransparentLogoSrc: string | null = null;
+let cachedWhiteLogoSrc: string | null = null;
+
 type BrandLogoProps = {
   className?: string;
   width: number;
@@ -11,13 +16,28 @@ type BrandLogoProps = {
 };
 
 export function BrandLogo({ className, width, height, variant = "default" }: BrandLogoProps) {
-  const [baseLogoSrc, setBaseLogoSrc] = useState("/logo-wetask.png");
-  const [whiteLogoSrc, setWhiteLogoSrc] = useState("/logo-wetask.png");
+  const [baseLogoSrc, setBaseLogoSrc] = useState(cachedTransparentLogoSrc ?? FALLBACK_LOGO_SRC);
+  const [whiteLogoSrc, setWhiteLogoSrc] = useState(cachedWhiteLogoSrc ?? FALLBACK_LOGO_SRC);
 
   useEffect(() => {
-    buildTransparentLogo("/logo-wetask.png", setBaseLogoSrc);
+    if (cachedTransparentLogoSrc) {
+      setBaseLogoSrc(cachedTransparentLogoSrc);
+    } else {
+      buildTransparentLogo("/logo-wetask.png", (dataUrl) => {
+        cachedTransparentLogoSrc = dataUrl;
+        setBaseLogoSrc(dataUrl);
+      });
+    }
+
     if (variant === "white-wordmark") {
-      buildWhiteLogo("/logo-wetask.png", setWhiteLogoSrc);
+      if (cachedWhiteLogoSrc) {
+        setWhiteLogoSrc(cachedWhiteLogoSrc);
+      } else {
+        buildWhiteLogo("/logo-wetask.png", (dataUrl) => {
+          cachedWhiteLogoSrc = dataUrl;
+          setWhiteLogoSrc(dataUrl);
+        });
+      }
     }
   }, [variant]);
 
