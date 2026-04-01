@@ -1074,14 +1074,18 @@ export default function ProDetailPage() {
                       <p className="auth-flow-kicker public-tasker-summary-kicker">Tasker verificado</p>
                     </div>
 
-                    <h1>{data.user.fullName}</h1>
-                    <p className="public-tasker-summary-category">{categoryName}</p>
+                    <div className="public-tasker-heading-row">
+                      <div className="we-pro-avatar large public-tasker-summary-avatar" aria-hidden>
+                        {profilePhotoUrl ? <img src={profilePhotoUrl} alt="" className="we-pro-avatar-image" style={{ objectPosition: profilePhotoObjectPosition }} /> : initials(data.user.fullName)}
+                      </div>
+                      <div className="public-tasker-heading-copy">
+                        <h1>{data.user.fullName}</h1>
+                        <span className="public-tasker-summary-category">{categoryName}</span>
+                      </div>
+                    </div>
 
                     <div className="public-tasker-summary-feature">
                       <div className="public-tasker-summary-feature-main">
-                        <div className="we-pro-avatar large public-tasker-summary-avatar" aria-hidden>
-                          {profilePhotoUrl ? <img src={profilePhotoUrl} alt="" className="we-pro-avatar-image" style={{ objectPosition: profilePhotoObjectPosition }} /> : initials(data.user.fullName)}
-                        </div>
                         <div className="public-tasker-summary-feature-copy">
                           <span>{data.ratingsCount > 0 ? `${rating.toFixed(1)} (${data.ratingsCount} valoraciones)` : "0 valoraciones aún"}</span>
                         </div>

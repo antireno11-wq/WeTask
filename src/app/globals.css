@@ -3395,9 +3395,30 @@ textarea {
   margin: 0;
   width: auto;
   max-width: none;
+  padding: 11px 18px;
+  border-width: 1px;
+  border-style: solid;
+  border-radius: 16px;
   border-color: rgba(69, 155, 112, 0.34);
   background: linear-gradient(180deg, rgba(227, 247, 235, 0.98) 0%, rgba(212, 242, 224, 0.98) 100%);
   color: #1f714a;
+  font-size: 0.9rem;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.42);
+}
+
+.public-tasker-heading-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-width: 0;
+}
+
+.public-tasker-heading-copy {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
 }
 
 .public-tasker-summary-card h1 {
@@ -3409,10 +3430,19 @@ textarea {
 }
 
 .public-tasker-summary-category {
-  margin: 10px 0 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: fit-content;
+  min-height: 38px;
+  padding: 0 15px;
+  border-radius: 14px;
+  border: 1px solid #bfd6eb;
+  background: linear-gradient(180deg, #ffffff 0%, #eff7ff 100%);
   color: #264d7a;
-  font-size: 1.04rem;
-  font-weight: 800;
+  font-size: 1rem;
+  font-weight: 900;
+  letter-spacing: 0.03em;
 }
 
 .public-tasker-summary-grid {
@@ -3437,12 +3467,14 @@ textarea {
 .public-tasker-summary-feature-main {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 12px;
   min-width: 0;
 }
 
 .public-tasker-summary-avatar {
   flex-shrink: 0;
+  width: 92px;
+  height: 92px;
 }
 
 .public-tasker-summary-feature-copy {
@@ -4529,6 +4561,10 @@ textarea {
   .public-tasker-summary-feature {
     grid-template-columns: 1fr;
     justify-items: stretch;
+  }
+
+  .public-tasker-heading-row {
+    align-items: flex-start;
   }
 
   .public-tasker-summary-feature-side {
