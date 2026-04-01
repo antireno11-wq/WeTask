@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { AuthHeroNav } from "@/components/auth-hero-nav";
+import { MarketNav } from "@/components/market-nav";
 import { CORE_CATEGORY_SLUGS, CORE_SERVICES } from "@/lib/core-services";
 
 type Category = {
@@ -95,7 +95,7 @@ export default function ServiciosPage() {
     <main className="auth-flow-screen auth-flow-screen-scroll">
       <div className="auth-flow-backdrop" aria-hidden />
       <div className="login-screen-content">
-        <AuthHeroNav />
+        <MarketNav />
 
         <section className="auth-flow-shell auth-flow-shell-wide">
           <div className="auth-flow-copy">

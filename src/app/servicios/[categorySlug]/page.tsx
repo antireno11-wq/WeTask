@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { AuthHeroNav } from "@/components/auth-hero-nav";
+import { MarketNav } from "@/components/market-nav";
 import { BABYSITTER_TASK_INCLUDED_OPTIONS } from "@/lib/babysitter-scope";
 import { CHEF_TASK_INCLUDED_OPTIONS } from "@/lib/chef-scope";
 import { getChefServiceDefinition } from "@/lib/chef-service-types";
@@ -476,7 +476,7 @@ export default function ServicioCategoriaPage() {
     <main className="auth-flow-screen auth-flow-screen-scroll">
       <div className="auth-flow-backdrop" aria-hidden />
       <div className="login-screen-content">
-        <AuthHeroNav />
+        <MarketNav />
 
         <section className="auth-flow-shell auth-flow-shell-wide">
           <div className="auth-flow-copy">
