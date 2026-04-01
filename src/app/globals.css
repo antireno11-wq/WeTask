@@ -3395,6 +3395,9 @@ textarea {
   margin: 0;
   width: auto;
   max-width: none;
+  border-color: rgba(69, 155, 112, 0.34);
+  background: linear-gradient(180deg, rgba(227, 247, 235, 0.98) 0%, rgba(212, 242, 224, 0.98) 100%);
+  color: #1f714a;
 }
 
 .public-tasker-summary-card h1 {
@@ -3405,15 +3408,11 @@ textarea {
   letter-spacing: -0.05em;
 }
 
-.public-tasker-summary-role {
-  margin: 8px 0 0;
+.public-tasker-summary-category {
+  margin: 10px 0 0;
   color: #264d7a;
-  font-size: 1.08rem;
+  font-size: 1.04rem;
   font-weight: 800;
-}
-
-.public-tasker-summary-copy {
-  width: min(100%, 760px);
 }
 
 .public-tasker-summary-grid {
@@ -3450,17 +3449,13 @@ textarea {
   display: grid;
   gap: 4px;
   min-width: 0;
-}
-
-.public-tasker-summary-feature-copy strong {
-  color: #173b5f;
-  font-size: 1.16rem;
-  line-height: 1.2;
+  align-content: center;
 }
 
 .public-tasker-summary-feature-copy span {
-  color: #5a7290;
-  font-weight: 700;
+  color: #173b5f;
+  font-size: 1.02rem;
+  font-weight: 800;
 }
 
 .public-tasker-summary-feature-side {

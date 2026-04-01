@@ -1072,12 +1072,10 @@ export default function ProDetailPage() {
                   <article className="auth-flow-panel client-dashboard-section tasker-profile-section public-tasker-summary-card">
                     <div className="public-tasker-summary-topline">
                       <p className="auth-flow-kicker public-tasker-summary-kicker">Tasker verificado</p>
-                      <span className="public-tasker-category-inline">{categoryName}</span>
                     </div>
 
                     <h1>{data.user.fullName}</h1>
-                    <p className="public-tasker-summary-role">{taskerRole}</p>
-                    <p className="tasker-profile-body-copy public-tasker-summary-copy">{summaryDescription}</p>
+                    <p className="public-tasker-summary-category">{categoryName}</p>
 
                     <div className="public-tasker-summary-feature">
                       <div className="public-tasker-summary-feature-main">
@@ -1085,7 +1083,6 @@ export default function ProDetailPage() {
                           {profilePhotoUrl ? <img src={profilePhotoUrl} alt="" className="we-pro-avatar-image" style={{ objectPosition: profilePhotoObjectPosition }} /> : initials(data.user.fullName)}
                         </div>
                         <div className="public-tasker-summary-feature-copy">
-                          <strong>{data.user.fullName}</strong>
                           <span>{data.ratingsCount > 0 ? `${rating.toFixed(1)} (${data.ratingsCount} valoraciones)` : "0 valoraciones aún"}</span>
                         </div>
                       </div>
