@@ -1,3 +1,4 @@
+import { UserRole } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { supportsBabysitterRequestedTasks } from "@/lib/babysitter-scope";
 import { supportsChefRequestedTasks } from "@/lib/chef-scope";
@@ -154,8 +155,18 @@ export async function GET(req: NextRequest) {
       where: {
         isVerified: true,
         user: {
-          OR: [{ role: "PRO" }, { roleAssignments: { some: { role: { code: "PRO" } } } }]
-        }
+          OR: [{ role: UserRole.PRO }, { roleAssignments: { some: { role: { code: UserRole.PRO } } } }]
+        },
+        taskerServices:
+          input.serviceId || input.categoryId
+            ? {
+                some: {
+                  isActive: true,
+                  serviceId: input.serviceId ?? undefined,
+                  categoryId: input.categoryId ?? undefined
+                }
+              }
+            : undefined
       },
       include: {
         user: {
