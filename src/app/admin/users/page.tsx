@@ -67,12 +67,6 @@ export default function AdminUsersPage() {
   const [deleteEmail, setDeleteEmail] = useState("");
   const [busyId, setBusyId] = useState("");
 
-  const load = async (
-    nextTaskerPage = taskerPage,
-    nextCustomerPage = customerPage,
-    nextTaskerSort = taskerSort,
-    nextCustomerSort = customerSort
-  ) => {
   const copyEmail = async (email: string) => {
     try {
       await navigator.clipboard.writeText(email);
