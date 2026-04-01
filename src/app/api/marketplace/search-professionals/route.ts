@@ -28,6 +28,18 @@ import { marketplaceSearchProsSchema } from "@/lib/validators";
 
 export const dynamic = "force-dynamic";
 
+function buildSlotFiltersForCategory(categoryId?: string, serviceId?: string) {
+  if (serviceId) {
+    return [{ serviceId: null }, { serviceId }];
+  }
+
+  if (categoryId) {
+    return [{ serviceId: null }, { service: { categoryId } }];
+  }
+
+  return undefined;
+}
+
 function supportsRequestedTasksByCategory(
   categorySlug: string | null | undefined,
   scopes: {
@@ -125,6 +137,7 @@ export async function GET(req: NextRequest) {
     const requestedCategorySlug = normalizeTaskerCategorySlug(requestedService?.category?.slug ?? requestedCategory?.slug ?? null);
 
     const startDate = input.date ?? new Date();
+    const slotFilters = buildSlotFiltersForCategory(input.categoryId, input.serviceId);
 
     if (requestedCategorySlug) {
       const requestedCoreService = getCoreServiceForTaskerCategory(requestedCategorySlug);
@@ -157,6 +170,16 @@ export async function GET(req: NextRequest) {
         user: {
           OR: [{ role: UserRole.PRO }, { roleAssignments: { some: { role: { code: UserRole.PRO } } } }]
         },
+        slots:
+          input.categoryId && !input.serviceId
+            ? {
+                some: {
+                  isAvailable: true,
+                  startsAt: { gte: startDate },
+                  OR: slotFilters
+                }
+              }
+            : undefined,
         taskerServices:
           input.serviceId || input.categoryId
             ? {
@@ -230,8 +253,7 @@ export async function GET(req: NextRequest) {
           where: {
             isAvailable: true,
             startsAt: { gte: startDate },
-            OR: input.serviceId ? [{ serviceId: null }, { serviceId: input.serviceId }] : undefined,
-            service: input.categoryId && !input.serviceId ? { categoryId: input.categoryId } : undefined
+            OR: slotFilters
           },
           orderBy: [{ startsAt: "asc" }],
           take: 12,
@@ -346,8 +368,7 @@ export async function GET(req: NextRequest) {
                   professionalProfileId: profile.id,
                   isAvailable: true,
                   startsAt: { gte: startDate },
-                  OR: input.serviceId ? [{ serviceId: null }, { serviceId: input.serviceId }] : undefined,
-                  service: input.categoryId && !input.serviceId ? { categoryId: input.categoryId } : undefined
+                  OR: slotFilters
                 },
                 orderBy: [{ startsAt: "asc" }],
                 take: 12,

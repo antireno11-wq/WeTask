@@ -5,6 +5,18 @@ import { marketplaceListProsQuerySchema } from "@/lib/validators";
 
 export const dynamic = "force-dynamic";
 
+function buildSlotFiltersForCategory(categoryId?: string, serviceId?: string) {
+  if (serviceId) {
+    return [{ serviceId: null }, { serviceId }];
+  }
+
+  if (categoryId) {
+    return [{ serviceId: null }, { service: { categoryId } }];
+  }
+
+  return undefined;
+}
+
 export async function GET(req: NextRequest) {
   try {
     await ensureMarketplaceDemoData();
@@ -20,6 +32,8 @@ export async function GET(req: NextRequest) {
       limit: searchParams.get("limit") ?? undefined
     });
 
+    const slotFilters = buildSlotFiltersForCategory(input.categoryId, input.serviceId);
+
     const profiles = await prisma.professionalProfile.findMany({
       where: {
         isVerified: input.verified,
@@ -32,7 +46,7 @@ export async function GET(req: NextRequest) {
                 some: {
                   isAvailable: true,
                   startsAt: { gte: new Date() },
-                  service: { categoryId: input.categoryId }
+                  OR: slotFilters
                 }
               }
             : undefined,
@@ -56,8 +70,7 @@ export async function GET(req: NextRequest) {
           where: {
             isAvailable: true,
             startsAt: { gte: new Date() },
-            OR: input.serviceId ? [{ serviceId: null }, { serviceId: input.serviceId }] : undefined,
-            service: input.categoryId && !input.serviceId ? { categoryId: input.categoryId } : undefined
+            OR: slotFilters
           },
           orderBy: [{ startsAt: "asc" }],
           take: 6,
