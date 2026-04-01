@@ -2,6 +2,7 @@ import Link from "next/link";
 import { CleaningOnboardingStatus, PayoutStatus, TicketStatus, UserRole } from "@prisma/client";
 import { AdminHeroShell } from "@/components/admin-hero-shell";
 import { formatPaymentRejectionReason } from "@/lib/payment-rejection";
+import { normalizeCommuneList } from "@/lib/communes";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -183,7 +184,7 @@ export default async function AdminPage() {
       prisma.cleaningOnboarding.findMany({
         where: {
           status: {
-            in: [CleaningOnboardingStatus.PENDIENTE_REVISION, CleaningOnboardingStatus.REQUIERE_CORRECCION, CleaningOnboardingStatus.APROBADO]
+            in: [CleaningOnboardingStatus.BORRADOR, CleaningOnboardingStatus.PENDIENTE_REVISION, CleaningOnboardingStatus.REQUIERE_CORRECCION]
           }
         },
         take: 5,
@@ -232,22 +233,22 @@ export default async function AdminPage() {
       </div>
 
       <div className="module-grid admin-metrics-grid">
-        <Link href="/admin/onboarding-limpieza?status=PENDIENTE_REVISION" className="module-card module-link admin-metric-card">
+        <Link href="/admin/onboarding-limpieza?view=queue&status=PENDIENTE_REVISION" className="module-card module-link admin-metric-card">
           <span className="metric-label">Pendientes de revisión</span>
           <strong>{pendingReview}</strong>
           <p>Perfiles listos para que tu equipo revise documentación y apruebe.</p>
         </Link>
-        <Link href="/admin/onboarding-limpieza?status=REQUIERE_CORRECCION" className="module-card module-link admin-metric-card">
+        <Link href="/admin/onboarding-limpieza?view=queue&status=REQUIERE_CORRECCION" className="module-card module-link admin-metric-card">
           <span className="metric-label">Correcciones solicitadas</span>
           <strong>{needsCorrection}</strong>
           <p>Taskers que deben completar o corregir su información.</p>
         </Link>
-        <Link href="/admin/onboarding-limpieza?status=APROBADO" className="module-card module-link admin-metric-card">
+        <Link href="/admin/onboarding-limpieza?view=validated&status=APROBADO" className="module-card module-link admin-metric-card">
           <span className="metric-label">Listos para activar</span>
           <strong>{approved}</strong>
           <p>Profesionales aprobados que ya pueden pasar a activos.</p>
         </Link>
-        <Link href="/admin/onboarding-limpieza?status=ACTIVO" className="module-card module-link admin-metric-card">
+        <Link href="/admin/onboarding-limpieza?view=validated&status=ACTIVO" className="module-card module-link admin-metric-card">
           <span className="metric-label">Taskers activos</span>
           <strong>{activePros}</strong>
           <p>Perfiles verificados y operativos dentro de WeTask.</p>
@@ -290,10 +291,10 @@ export default async function AdminPage() {
       </div>
 
       <div className="module-grid">
-        <Link href="/admin/onboarding-limpieza" className="module-card module-link">
-          <h3>Validación de profesionales</h3>
+        <Link href="/admin/onboarding-limpieza?view=queue" className="module-card module-link">
+          <h3>Validación de taskers</h3>
           <p>Revisa onboarding, documentos, tarifas y activa perfiles manualmente.</p>
-          <span className="module-meta">{pendingReview + needsCorrection + approved} casos en cola</span>
+          <span className="module-meta">{pendingReview + needsCorrection} en revisión · {approved} validados</span>
         </Link>
 
         <Link href="/admin/team" className="module-card module-link">
@@ -317,7 +318,7 @@ export default async function AdminPage() {
               <h3>Cola de validación</h3>
               <p>Los próximos perfiles que tu equipo debería revisar.</p>
             </div>
-            <Link href="/admin/onboarding-limpieza" className="cta ghost small">
+            <Link href="/admin/onboarding-limpieza?view=queue" className="cta ghost small">
               Ver todo
             </Link>
           </div>
@@ -329,7 +330,10 @@ export default async function AdminPage() {
                   <h4>{item.user.fullName}</h4>
                   <p>{item.user.email}</p>
                   <p>
-                    {item.categorySlug} · {item.baseCommune ?? "Sin comuna"} · Paso {item.currentStep}
+                    {item.categorySlug} · Base: {item.baseCommune ?? "Sin comuna"} · Paso {item.currentStep}
+                  </p>
+                  <p>
+                    Trabajo: {normalizeCommuneList(item.serviceCommunes).join(", ") || item.baseCommune || "Sin comunas"}
                   </p>
                 </div>
                 <div className="cta-row">

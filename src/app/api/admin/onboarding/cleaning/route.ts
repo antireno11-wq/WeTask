@@ -86,19 +86,25 @@ export async function GET(req: NextRequest) {
 
   const status = req.nextUrl.searchParams.get("status") ?? undefined;
   const order = req.nextUrl.searchParams.get("order") === "asc" ? "asc" : "desc";
+  const view = req.nextUrl.searchParams.get("view") === "validated" ? "validated" : "queue";
+
+  const validStatuses = [
+    CleaningOnboardingStatus.BORRADOR,
+    CleaningOnboardingStatus.PENDIENTE_REVISION,
+    CleaningOnboardingStatus.REQUIERE_CORRECCION,
+    CleaningOnboardingStatus.APROBADO,
+    CleaningOnboardingStatus.ACTIVO
+  ];
+
+  const where =
+    status && validStatuses.includes(status as CleaningOnboardingStatus)
+      ? { status: status as CleaningOnboardingStatus }
+      : view === "validated"
+        ? { status: { in: [CleaningOnboardingStatus.APROBADO, CleaningOnboardingStatus.ACTIVO] } }
+        : { status: { in: [CleaningOnboardingStatus.BORRADOR, CleaningOnboardingStatus.PENDIENTE_REVISION, CleaningOnboardingStatus.REQUIERE_CORRECCION] } };
 
   const items = await prisma.cleaningOnboarding.findMany({
-    where:
-      status &&
-      [
-        CleaningOnboardingStatus.BORRADOR,
-        CleaningOnboardingStatus.PENDIENTE_REVISION,
-        CleaningOnboardingStatus.REQUIERE_CORRECCION,
-        CleaningOnboardingStatus.APROBADO,
-        CleaningOnboardingStatus.ACTIVO
-      ].includes(status as CleaningOnboardingStatus)
-        ? { status: status as CleaningOnboardingStatus }
-        : undefined,
+    where,
     orderBy: [{ submittedAt: order }, { createdAt: order }],
     take: 300,
     include: {
@@ -119,7 +125,7 @@ export async function GET(req: NextRequest) {
     }
   });
 
-  return NextResponse.json({ items }, { status: 200 });
+  return NextResponse.json({ items, view }, { status: 200 });
 }
 
 export async function PATCH(req: NextRequest) {

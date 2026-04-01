@@ -5770,6 +5770,17 @@ textarea {
   background: rgba(248, 251, 255, 0.92);
 }
 
+.admin-view-toggle {
+  margin-top: 0;
+  margin-bottom: 0.2rem;
+}
+
+.admin-view-toggle .cta.active {
+  border-color: #1f4f80;
+  background: #1f4f80;
+  color: #ffffff;
+}
+
 .admin-filter-bar label {
   display: grid;
   gap: 0.4rem;
