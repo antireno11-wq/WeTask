@@ -1056,27 +1056,15 @@ export default function ProDetailPage() {
             <section className="auth-flow-shell auth-flow-shell-wide client-dashboard-hero public-tasker-hero">
               <div className="auth-flow-copy client-dashboard-copy public-tasker-hero-copy">
                 <p className="auth-flow-kicker">Tasker verificado</p>
-                <div className="public-tasker-category-badge" aria-label={`Categoría principal ${categoryName}`}>
-                  <strong>{categoryName}</strong>
-                  <span>{taskerRole}</span>
-                </div>
                 <h1>{data.user.fullName}</h1>
-                <p
-                  style={{
-                    margin: "14px 0 0",
-                    fontSize: "1.04rem",
-                    fontWeight: 800,
-                    color: "#ffddb9",
-                    letterSpacing: "0.01em"
-                  }}
-                >
-                  {taskerRole}
+                <p className="public-tasker-role-line">
+                  {taskerRole} · {categoryName}
                 </p>
                 <p>{summaryDescription}</p>
 
                 <div className="auth-flow-copy-list client-dashboard-summary">
                   <div className="auth-flow-meta-card">
-                    <strong>{categoryName}</strong>
+                    <strong>Servicios que realiza</strong>
                     <span>{offeredServices.join(", ")}</span>
                   </div>
                   <div className="auth-flow-meta-card">
@@ -1108,16 +1096,8 @@ export default function ProDetailPage() {
                   </div>
                   <div>
                     <div className="public-tasker-category-inline">{categoryName}</div>
-                    <h3>{data.user.fullName}</h3>
-                    <p
-                      style={{
-                        margin: "4px 0 0",
-                        color: "#264d7a",
-                        fontWeight: 800
-                      }}
-                    >
-                      {taskerRole}
-                    </p>
+                    <h3>Agenda y tarifa</h3>
+                    <p className="public-tasker-card-label">Reserva directamente con su disponibilidad visible.</p>
                     <p>{data.ratingsCount > 0 ? <><span className="we-star">★</span> {rating.toFixed(1)} ({data.ratingsCount} valoraciones)</> : "0.0 (0 valoraciones)"}</p>
                   </div>
                 </div>
@@ -1170,7 +1150,7 @@ export default function ProDetailPage() {
                     <>
                   <article className="auth-flow-panel client-dashboard-section tasker-profile-section">
                     <h2>Perfil del tasker</h2>
-                    <p>{summaryDescription}</p>
+                    <p>Revisa su experiencia, forma de trabajo y datos importantes antes de reservar.</p>
                     <div className="we-trust-grid">
                       <div className={`we-trust-card ${hasIdentityProof ? "ok" : ""}`}>
                         <span className="we-trust-check" aria-hidden>{hasIdentityProof ? "✓" : "•"}</span>
@@ -1195,10 +1175,6 @@ export default function ProDetailPage() {
                       <div>
                         <h3>Modalidad</h3>
                         <p>{workModeLabel}</p>
-                      </div>
-                      <div>
-                        <h3>Categoría</h3>
-                        <p>{categoryName}</p>
                       </div>
                       <div>
                         <h3>{focusLabel}</h3>
