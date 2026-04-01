@@ -761,7 +761,8 @@ export default function ProDetailPage() {
       const hash = view === "agenda" ? "#availability" : view === "valoraciones" ? "#reviews" : "#perfil";
       window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}${hash}`);
       window.setTimeout(() => {
-        document.getElementById("public-tasker-view")?.scrollIntoView({ behavior: "smooth", block: "start" });
+        const targetId = view === "agenda" ? "availability" : view === "valoraciones" ? "reviews" : "public-tasker-view";
+        document.getElementById(targetId)?.scrollIntoView({ behavior: "smooth", block: "start" });
       }, 40);
     }
   };
@@ -1126,9 +1127,9 @@ export default function ProDetailPage() {
                         <p className="public-tasker-summary-price">{data.hourlyRateFromClp ? clp(data.hourlyRateFromClp) : "Por definir"}/h</p>
                         <p className="public-tasker-summary-meta">{data.coverageCity ?? "Santiago"} · {workModeLabel}</p>
                         <div className="cta-row public-tasker-summary-cta">
-                          <Link className="cta small" href={buildReserveHref()}>
+                          <button type="button" className="cta small" onClick={() => switchPublicView("agenda")}>
                             Ver disponibilidad
-                          </Link>
+                          </button>
                         </div>
                         <p className="public-tasker-summary-side-note">Reserva directamente en WeTask y mantiene tu pago protegido.</p>
                       </div>
@@ -1535,30 +1536,28 @@ export default function ProDetailPage() {
                       </div>
 
                       <div className="pro-availability-shell public-availability-shell">
-                        <aside className="pro-availability-sidebar">
-                          <div className="pro-availability-overview">
-                            <article className="availability-stat-card tone-indigo">
-                              <span>Hoy</span>
-                              <strong>{todaySlots.length}</strong>
-                              <p>bloque(s) abiertos hoy</p>
-                            </article>
-                            <article className="availability-stat-card tone-peach">
-                              <span>Disponibles</span>
-                              <strong>{availableSlotsCount}</strong>
-                              <p>horarios visibles para reserva</p>
-                            </article>
-                            <article className="availability-stat-card tone-sky">
-                              <span>Días activos</span>
-                              <strong>{daysWithSlotsCount}</strong>
-                              <p>días con agenda cargada</p>
-                            </article>
-                            <article className="availability-stat-card tone-mint">
-                              <span>Próximo</span>
-                              <strong>{nextAvailableSlot ? new Date(nextAvailableSlot.startsAt).toLocaleDateString("es-CL", { day: "2-digit", month: "2-digit" }) : "--"}</strong>
-                              <p>{nextAvailableSlot ? new Date(nextAvailableSlot.startsAt).toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" }) : "Sin bloques cercanos"}</p>
-                            </article>
-                          </div>
-                        </aside>
+                        <div className="pro-availability-overview public-availability-overview">
+                          <article className="availability-stat-card tone-indigo">
+                            <span>Hoy</span>
+                            <strong>{todaySlots.length}</strong>
+                            <p>bloque(s) abiertos hoy</p>
+                          </article>
+                          <article className="availability-stat-card tone-peach">
+                            <span>Disponibles</span>
+                            <strong>{availableSlotsCount}</strong>
+                            <p>horarios visibles para reserva</p>
+                          </article>
+                          <article className="availability-stat-card tone-sky">
+                            <span>Días activos</span>
+                            <strong>{daysWithSlotsCount}</strong>
+                            <p>días con agenda cargada</p>
+                          </article>
+                          <article className="availability-stat-card tone-mint">
+                            <span>Próximo</span>
+                            <strong>{nextAvailableSlot ? new Date(nextAvailableSlot.startsAt).toLocaleDateString("es-CL", { day: "2-digit", month: "2-digit" }) : "--"}</strong>
+                            <p>{nextAvailableSlot ? new Date(nextAvailableSlot.startsAt).toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" }) : "Sin bloques cercanos"}</p>
+                          </article>
+                        </div>
 
                         <div className="availability-board-card">
                           <div className="availability-board-head">
@@ -1623,7 +1622,7 @@ export default function ProDetailPage() {
                           </div>
                         </div>
 
-                        <div className="availability-task-panel">
+                        <div className="availability-task-panel public-availability-day-panel">
                           <div className="availability-task-head">
                             <div>
                               <p className="availability-eyebrow">Día elegido</p>

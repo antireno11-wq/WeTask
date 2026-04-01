@@ -4000,8 +4000,12 @@ textarea {
 }
 
 .public-availability-shell {
-  grid-template-columns: minmax(220px, 260px) minmax(0, 1.1fr) minmax(300px, 360px);
+  grid-template-columns: minmax(0, 1fr);
   gap: 18px;
+}
+
+.public-availability-overview {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
 .public-availability-shell .availability-stat-card {
@@ -4034,6 +4038,10 @@ textarea {
 
 .public-availability-shell .availability-task-panel {
   align-content: start;
+}
+
+.public-availability-day-panel {
+  margin-top: 2px;
 }
 
 .public-availability-task-item {
@@ -4450,12 +4458,11 @@ textarea {
 
 @media (max-width: 1200px) {
   .public-availability-shell {
-    grid-template-columns: minmax(0, 1fr) minmax(280px, 320px);
+    grid-template-columns: 1fr;
   }
 
-  .public-availability-shell .pro-availability-sidebar,
-  .public-availability-shell .availability-task-panel {
-    grid-column: 1 / -1;
+  .public-availability-overview {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .public-rating-hero {
@@ -4658,6 +4665,10 @@ textarea {
   }
 
   .public-tasker-summary-stats {
+    grid-template-columns: 1fr;
+  }
+
+  .public-availability-overview {
     grid-template-columns: 1fr;
   }
 
