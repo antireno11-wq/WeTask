@@ -23,6 +23,8 @@ export async function GET(_: Request, context: { params: { proId: string } }) {
             cleaningOnboarding: {
               select: {
                 profilePhotoUrl: true,
+                profilePhotoPositionX: true,
+                profilePhotoPositionY: true,
                 shortDescription: true,
                 yearsExperience: true,
                 workMode: true,

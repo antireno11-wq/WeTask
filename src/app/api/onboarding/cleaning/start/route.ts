@@ -53,6 +53,8 @@ export async function POST(req: NextRequest) {
         professionalProfile: {
           create: {
             avatarUrl: input.profilePhotoUrl ?? null,
+            avatarPositionX: input.profilePhotoPositionX,
+            avatarPositionY: input.profilePhotoPositionY,
             isVerified: false,
             verificationStatus: "PENDING_REVIEW",
             coverageComuna: baseCommune,
@@ -69,6 +71,8 @@ export async function POST(req: NextRequest) {
             referenceAddress: input.referenceAddress?.trim() || null,
             documentId: input.documentId?.trim() || null,
             profilePhotoUrl: input.profilePhotoUrl ?? null,
+            profilePhotoPositionX: input.profilePhotoPositionX,
+            profilePhotoPositionY: input.profilePhotoPositionY,
             serviceCommunes: [baseCommune],
             phoneValidatedAt: phoneIsVerified ? new Date() : null
           }

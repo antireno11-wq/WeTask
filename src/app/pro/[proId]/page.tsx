@@ -63,6 +63,8 @@ import {
 
 type CleaningOnboardingSummary = {
   profilePhotoUrl: string | null;
+  profilePhotoPositionX?: number | null;
+  profilePhotoPositionY?: number | null;
   shortDescription: string | null;
   yearsExperience: number | null;
   workMode: "SOLO" | "EQUIPO" | null;
@@ -93,6 +95,8 @@ type CleaningOnboardingSummary = {
 type ProfessionalDetail = {
   id: string;
   avatarUrl?: string | null;
+  avatarPositionX?: number | null;
+  avatarPositionY?: number | null;
   userId: string;
   bio: string | null;
   isVerified: boolean;
@@ -310,6 +314,12 @@ function taskerRoleLabel(value: string | null | undefined) {
     default:
       return "Tasker de servicios a domicilio";
   }
+}
+
+function avatarObjectPosition(x?: number | null, y?: number | null) {
+  const nextX = typeof x === "number" ? Math.min(Math.max(x, 0), 100) : 50;
+  const nextY = typeof y === "number" ? Math.min(Math.max(y, 0), 100) : 34;
+  return `${nextX}% ${nextY}%`;
 }
 
 function faqItemsForCategory(categorySlug: string | null | undefined): FaqItem[] {
@@ -955,7 +965,11 @@ export default function ProDetailPage() {
         label: `${item.service?.name} · ${item.priceClp ? clp(item.priceClp) : "Por definir"}/h`
       }));
   }, [data?.taskerServices, normalizedPrimaryCategorySlug]);
-  const profilePhotoUrl = onboarding?.profilePhotoUrl?.trim() || data?.avatarUrl?.trim() || "";
+  const profilePhotoUrl = data?.avatarUrl?.trim() || onboarding?.profilePhotoUrl?.trim() || "";
+  const profilePhotoObjectPosition = avatarObjectPosition(
+    data?.avatarPositionX ?? onboarding?.profilePhotoPositionX,
+    data?.avatarPositionY ?? onboarding?.profilePhotoPositionY
+  );
   const activeCommunes = useMemo(() => {
     const raw =
       selectedCategoryProfile?.serviceCommunes && selectedCategoryProfile.serviceCommunes.length > 0
@@ -1092,7 +1106,7 @@ export default function ProDetailPage() {
               <section className="auth-flow-panel auth-flow-panel-wide client-dashboard-profile-panel public-tasker-hero-card">
                 <div className="we-sticky-head">
                   <div className="we-pro-avatar large" aria-hidden>
-                    {profilePhotoUrl ? <img src={profilePhotoUrl} alt="" className="we-pro-avatar-image" /> : initials(data.user.fullName)}
+                    {profilePhotoUrl ? <img src={profilePhotoUrl} alt="" className="we-pro-avatar-image" style={{ objectPosition: profilePhotoObjectPosition }} /> : initials(data.user.fullName)}
                   </div>
                   <div>
                     <div className="public-tasker-category-inline">{categoryName}</div>

@@ -36,6 +36,8 @@ export async function GET(req: NextRequest) {
           select: {
             id: true,
             avatarUrl: true,
+            avatarPositionX: true,
+            avatarPositionY: true,
             bio: true,
             isVerified: true,
             verificationStatus: true,
@@ -57,6 +59,8 @@ export async function GET(req: NextRequest) {
           select: {
             categorySlug: true,
             profilePhotoUrl: true,
+            profilePhotoPositionX: true,
+            profilePhotoPositionY: true,
             availabilityMode: true,
             availabilityBlocks: true,
             serviceCommunes: true,
@@ -93,7 +97,9 @@ export async function GET(req: NextRequest) {
         user: { id: user.id, fullName: user.fullName, email: user.email },
         profile: user.professionalProfile,
         categorySlug: user.cleaningOnboarding?.categorySlug ?? null,
-        profilePhotoUrl: user.cleaningOnboarding?.profilePhotoUrl ?? user.professionalProfile?.avatarUrl ?? null,
+        profilePhotoUrl: user.professionalProfile?.avatarUrl ?? user.cleaningOnboarding?.profilePhotoUrl ?? null,
+        profilePhotoPositionX: user.professionalProfile?.avatarPositionX ?? user.cleaningOnboarding?.profilePhotoPositionX ?? 50,
+        profilePhotoPositionY: user.professionalProfile?.avatarPositionY ?? user.cleaningOnboarding?.profilePhotoPositionY ?? 34,
         availabilityMode: user.cleaningOnboarding?.availabilityMode ?? null,
         availabilityBlocks: user.cleaningOnboarding?.availabilityBlocks ?? [],
         serviceCommunes: normalizeCommuneList(user.cleaningOnboarding?.serviceCommunes),
@@ -140,9 +146,12 @@ export async function PATCH(req: NextRequest) {
 
     const profile = await prisma.professionalProfile.upsert({
       where: { userId: targetProId },
-      create: {
-        userId: targetProId,
-        bio: input.bio ?? null,
+        create: {
+          userId: targetProId,
+          avatarUrl: input.avatarUrl ?? null,
+          avatarPositionX: input.avatarPositionX ?? 50,
+          avatarPositionY: input.avatarPositionY ?? 34,
+          bio: input.bio ?? null,
         coverageStreet: input.coverageStreet ?? null,
         coverageComuna: input.coverageComuna ?? null,
         coverageCity: input.coverageCity ?? null,
@@ -152,8 +161,11 @@ export async function PATCH(req: NextRequest) {
         serviceRadiusKm: input.serviceRadiusKm ?? 8,
         hourlyRateFromClp: input.hourlyRateFromClp ?? null
       },
-      update: {
-        bio: input.bio,
+        update: {
+          avatarUrl: input.avatarUrl,
+          avatarPositionX: input.avatarPositionX ?? undefined,
+          avatarPositionY: input.avatarPositionY ?? undefined,
+          bio: input.bio,
         coverageStreet: input.coverageStreet,
         coverageComuna: input.coverageComuna,
         coverageCity: input.coverageCity,
@@ -174,11 +186,17 @@ export async function PATCH(req: NextRequest) {
           userId: targetProId,
           currentStep: 4,
           baseCommune: nextBaseCommune,
-          serviceCommunes: normalizedServiceCommunes
+          serviceCommunes: normalizedServiceCommunes,
+          profilePhotoUrl: input.avatarUrl ?? null,
+          profilePhotoPositionX: input.avatarPositionX ?? 50,
+          profilePhotoPositionY: input.avatarPositionY ?? 34
         },
         update: {
           baseCommune: nextBaseCommune ?? undefined,
-          serviceCommunes: normalizedServiceCommunes
+          serviceCommunes: normalizedServiceCommunes,
+          profilePhotoUrl: input.avatarUrl ?? undefined,
+          profilePhotoPositionX: input.avatarPositionX ?? undefined,
+          profilePhotoPositionY: input.avatarPositionY ?? undefined
         }
       });
     }

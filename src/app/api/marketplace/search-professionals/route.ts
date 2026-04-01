@@ -213,6 +213,8 @@ export async function GET(req: NextRequest) {
               select: {
                 categorySlug: true,
                 profilePhotoUrl: true,
+                profilePhotoPositionX: true,
+                profilePhotoPositionY: true,
                 cleaningScope: true,
                 petScope: true,
                 babysitterScope: true,

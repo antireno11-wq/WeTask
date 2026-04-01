@@ -279,6 +279,8 @@ export async function PATCH(req: NextRequest) {
 
       data = {
         profilePhotoUrl: parsed.profilePhotoUrl,
+        profilePhotoPositionX: parsed.profilePhotoPositionX,
+        profilePhotoPositionY: parsed.profilePhotoPositionY,
         documentId: parsed.documentId.trim(),
         baseCommune: parsed.baseCommune,
         referenceAddress: parsed.referenceAddress.trim(),
@@ -305,6 +307,8 @@ export async function PATCH(req: NextRequest) {
         create: {
           userId,
           avatarUrl: parsed.profilePhotoUrl,
+          avatarPositionX: parsed.profilePhotoPositionX,
+          avatarPositionY: parsed.profilePhotoPositionY,
           coverageStreet: parsed.referenceAddress.trim(),
           coverageComuna: parsed.baseCommune,
           coverageCity: "Santiago",
@@ -314,6 +318,8 @@ export async function PATCH(req: NextRequest) {
         },
         update: {
           avatarUrl: parsed.profilePhotoUrl,
+          avatarPositionX: parsed.profilePhotoPositionX,
+          avatarPositionY: parsed.profilePhotoPositionY,
           coverageStreet: parsed.referenceAddress.trim(),
           coverageComuna: parsed.baseCommune,
           coverageCity: "Santiago",

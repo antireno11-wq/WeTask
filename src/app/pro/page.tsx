@@ -22,6 +22,7 @@ const SANTIAGO_BOUNDS = {
 };
 const CHILE_CITIES = ["Santiago", "Valparaiso", "Vina del Mar", "Concepcion", "La Serena", "Antofagasta", "Temuco", "Puerto Montt"];
 const TASKER_WIZARD_STORAGE_KEY = "wetask_tasker_wizard_v2";
+const MAX_PROFILE_PHOTO_BYTES = 6 * 1024 * 1024;
 const PRO_STATUS_LABELS: Record<string, string> = {
   ACCEPTED: "Aceptado",
   IN_PROGRESS: "Servicio en curso",
@@ -86,6 +87,8 @@ type AvailabilityBlock = {
 type ProProfile = {
   id: string;
   avatarUrl?: string | null;
+  avatarPositionX?: number | null;
+  avatarPositionY?: number | null;
   bio: string | null;
   coverageStreet: string | null;
   coverageComuna: string | null;
@@ -107,6 +110,8 @@ type ProProfileResponse = {
   profile?: ProProfile | null;
   categorySlug?: string | null;
   profilePhotoUrl?: string | null;
+  profilePhotoPositionX?: number | null;
+  profilePhotoPositionY?: number | null;
   availabilityMode?: "FIJA" | "VARIABLE" | null;
   availabilityBlocks?: unknown;
   taskerServices?: Service[];
@@ -247,6 +252,30 @@ function localDraftProfilePhoto() {
   }
 }
 
+function localDraftProfilePhotoFocus() {
+  if (typeof window === "undefined") return { x: 50, y: 34 };
+  try {
+    const raw = window.localStorage.getItem(TASKER_WIZARD_STORAGE_KEY);
+    if (!raw) return { x: 50, y: 34 };
+    const parsed = JSON.parse(raw) as { profilePhotoPositionX?: number; profilePhotoPositionY?: number };
+    return {
+      x: typeof parsed.profilePhotoPositionX === "number" ? clamp(parsed.profilePhotoPositionX, 0, 100) : 50,
+      y: typeof parsed.profilePhotoPositionY === "number" ? clamp(parsed.profilePhotoPositionY, 0, 100) : 34
+    };
+  } catch {
+    return { x: 50, y: 34 };
+  }
+}
+
+function fileToDataUrl(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error("No se pudo leer la imagen."));
+    reader.onload = () => resolve(String(reader.result ?? ""));
+    reader.readAsDataURL(file);
+  });
+}
+
 function buildAdditionalCategoryDraft(
   categorySlug: SupportedTaskerCategorySlug | "",
   options?: {
@@ -297,6 +326,8 @@ export default function ProPage() {
 
   const [profile, setProfile] = useState<ProProfile | null>(null);
   const [profilePhotoUrl, setProfilePhotoUrl] = useState("");
+  const [profilePhotoPositionX, setProfilePhotoPositionX] = useState(50);
+  const [profilePhotoPositionY, setProfilePhotoPositionY] = useState(34);
   const [availabilityMode, setAvailabilityMode] = useState<"FIJA" | "VARIABLE" | null>(null);
   const [onboardingAvailabilityBlocks, setOnboardingAvailabilityBlocks] = useState<AvailabilityBlock[]>([]);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
@@ -517,6 +548,8 @@ export default function ProPage() {
     setProfile(nextProfile);
     setIsEditingProfile(false);
     if (!nextProfile) return;
+    setProfilePhotoPositionX(clamp(nextProfile.avatarPositionX ?? 50, 0, 100));
+    setProfilePhotoPositionY(clamp(nextProfile.avatarPositionY ?? 34, 0, 100));
     setBio(nextProfile.bio ?? "");
     setCoverageStreet(nextProfile.coverageStreet ?? "");
     setCoverageComuna(nextProfile.coverageComuna ?? "");
@@ -622,7 +655,10 @@ export default function ProPage() {
     setProName(profileData.user?.fullName ?? "");
     setCategorySlug(profileData.categorySlug ?? "");
     const nextProfilePhoto = profileData.profilePhotoUrl?.trim() || profileData.profile?.avatarUrl?.trim() || localDraftProfilePhoto();
+    const localDraftFocus = localDraftProfilePhotoFocus();
     setProfilePhotoUrl(nextProfilePhoto);
+    setProfilePhotoPositionX(clamp(profileData.profilePhotoPositionX ?? profileData.profile?.avatarPositionX ?? localDraftFocus.x, 0, 100));
+    setProfilePhotoPositionY(clamp(profileData.profilePhotoPositionY ?? profileData.profile?.avatarPositionY ?? localDraftFocus.y, 0, 100));
     setAvailabilityMode(profileData.availabilityMode ?? null);
     setOnboardingAvailabilityBlocks(normalizeAvailabilityBlocks(profileData.availabilityBlocks));
     applyProfile(profileData.profile ?? null, profileData.serviceCommunes ?? []);
@@ -873,6 +909,24 @@ export default function ProPage() {
     }
   };
 
+  const handleProfilePhotoChange = async (file: File | null) => {
+    if (!file) return;
+    if (file.size > MAX_PROFILE_PHOTO_BYTES) {
+      setError("La foto de perfil supera los 6 MB. Súbela más liviana para continuar.");
+      return;
+    }
+
+    try {
+      setError("");
+      const content = await fileToDataUrl(file);
+      setProfilePhotoUrl(content);
+      setProfilePhotoPositionX(50);
+      setProfilePhotoPositionY(34);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "No pudimos cargar esa foto.");
+    }
+  };
+
   const saveProfile = async () => {
     setFeedback("");
     setError("");
@@ -889,6 +943,9 @@ export default function ProPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           proId,
+          avatarUrl: profilePhotoUrl.trim() || null,
+          avatarPositionX: profilePhotoPositionX,
+          avatarPositionY: profilePhotoPositionY,
           bio: bio.trim() || null,
           coverageStreet: coverageStreet.trim() || null,
           coverageComuna: coverageComuna.trim() || null,
@@ -903,6 +960,19 @@ export default function ProPage() {
       });
       const data = (await response.json()) as { profile?: ProProfile; serviceCommunes?: string[]; error?: string; detail?: string };
       if (!response.ok || !data.profile) throw new Error(data.detail || data.error || "No se pudo guardar perfil");
+      try {
+        const raw = window.localStorage.getItem(TASKER_WIZARD_STORAGE_KEY);
+        const parsed = raw ? JSON.parse(raw) : {};
+        window.localStorage.setItem(
+          TASKER_WIZARD_STORAGE_KEY,
+          JSON.stringify({
+            ...parsed,
+            profilePhotoUrl,
+            profilePhotoPositionX,
+            profilePhotoPositionY
+          })
+        );
+      } catch {}
       applyProfile(data.profile, data.serviceCommunes ?? serviceCommunes);
       setIsEditingProfile(false);
       setFeedback("Perfil actualizado.");
@@ -1101,7 +1171,12 @@ export default function ProPage() {
             <div className="client-profile-box client-profile-box-auth pro-dashboard-profile-box">
               <div className="client-photo-frame pro-dashboard-badge" aria-hidden>
                 {profilePhotoUrl ? (
-                  <img src={profilePhotoUrl} alt="" className="client-photo-img pro-dashboard-photo-img" />
+                  <img
+                    src={profilePhotoUrl}
+                    alt=""
+                    className="client-photo-img pro-dashboard-photo-img"
+                    style={{ objectPosition: `${profilePhotoPositionX}% ${profilePhotoPositionY}%` }}
+                  />
                 ) : (
                   <span>{initialsFromName(proName)}</span>
                 )}
@@ -1513,6 +1588,59 @@ export default function ProPage() {
             ) : null}
 
             {isEditingProfile ? <div className="grid-form">
+              <div className="full avatar-focus-editor">
+                <div>
+                  <p className="field-label">Foto de perfil</p>
+                  <p className="input-hint">Sube una foto clara y ajusta el encuadre para que se vea bien tu cara.</p>
+                </div>
+                <div className="avatar-focus-layout">
+                  <div className="avatar-focus-preview-frame" aria-hidden>
+                    {profilePhotoUrl ? (
+                      <img
+                        src={profilePhotoUrl}
+                        alt=""
+                        className="avatar-focus-preview-image"
+                        style={{ objectPosition: `${profilePhotoPositionX}% ${profilePhotoPositionY}%` }}
+                      />
+                    ) : (
+                      <span>{initialsFromName(proName)}</span>
+                    )}
+                  </div>
+                  <div className="avatar-focus-controls">
+                    <label>
+                      Cambiar foto
+                      <input
+                        type="file"
+                        accept="image/png,image/jpeg,image/webp"
+                        onChange={async (event) => {
+                          await handleProfilePhotoChange(event.target.files?.[0] ?? null);
+                          event.currentTarget.value = "";
+                        }}
+                      />
+                    </label>
+                    <label>
+                      Centrar horizontalmente
+                      <input
+                        type="range"
+                        min={0}
+                        max={100}
+                        value={profilePhotoPositionX}
+                        onChange={(event) => setProfilePhotoPositionX(Number(event.target.value))}
+                      />
+                    </label>
+                    <label>
+                      Centrar verticalmente
+                      <input
+                        type="range"
+                        min={0}
+                        max={100}
+                        value={profilePhotoPositionY}
+                        onChange={(event) => setProfilePhotoPositionY(Number(event.target.value))}
+                      />
+                    </label>
+                  </div>
+                </div>
+              </div>
               <label className="full">
                 Bio
                 <textarea value={bio} onChange={(e) => setBio(e.target.value)} placeholder="Experiencia, especialidad, herramientas." />

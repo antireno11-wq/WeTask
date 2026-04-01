@@ -228,6 +228,8 @@ model ProfessionalProfile {
   id                String      @id @default(cuid())
   userId            String      @unique
   avatarUrl         String?
+  avatarPositionX   Int         @default(50)
+  avatarPositionY   Int         @default(34)
   bio               String?
   isVerified        Boolean     @default(false)
   verificationStatus String     @default("PENDING_REVIEW")
@@ -574,6 +576,8 @@ model CleaningOnboarding {
   referenceAddress           String?
   documentId                 String?
   birthDate                  DateTime?
+  profilePhotoPositionX      Int                      @default(50)
+  profilePhotoPositionY      Int                      @default(34)
   nationality                String?
   migrationStatus            String?
   emergencyContactName       String?

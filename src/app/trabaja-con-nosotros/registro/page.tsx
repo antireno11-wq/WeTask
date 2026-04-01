@@ -146,6 +146,8 @@ type OnboardingPayload = {
   referenceAddress: string | null;
   documentId: string | null;
   profilePhotoUrl: string | null;
+  profilePhotoPositionX: number | null;
+  profilePhotoPositionY: number | null;
   yearsExperience: number | null;
   workMode: "SOLO" | "EQUIPO" | null;
   offeredServices: unknown;
@@ -239,6 +241,8 @@ type DraftState = {
   apartment: string;
   homeCommune: ActiveMvpCommune;
   profilePhotoUrl: string;
+  profilePhotoPositionX: number;
+  profilePhotoPositionY: number;
   coverageCommunes: ActiveMvpCommune[];
   category: CategorySlug;
   yearsExperience: string;
@@ -591,6 +595,8 @@ function createInitialDraft(): DraftState {
     apartment: "",
     homeCommune: "Las Condes",
     profilePhotoUrl: "",
+    profilePhotoPositionX: 50,
+    profilePhotoPositionY: 34,
     coverageCommunes: ["Las Condes"],
     category: "limpieza",
     yearsExperience: "1",
@@ -1342,6 +1348,8 @@ function CleaningOnboardingPageContent() {
       apartment: parsedReferenceAddress.apartment || current.apartment,
       homeCommune: (nextOnboarding.baseCommune as ActiveMvpCommune) ?? current.homeCommune,
       profilePhotoUrl: nextOnboarding.profilePhotoUrl ?? current.profilePhotoUrl,
+      profilePhotoPositionX: nextOnboarding.profilePhotoPositionX ?? current.profilePhotoPositionX,
+      profilePhotoPositionY: nextOnboarding.profilePhotoPositionY ?? current.profilePhotoPositionY,
       coverageCommunes:
         Array.isArray(nextOnboarding.serviceCommunes) && nextOnboarding.serviceCommunes.length > 0
           ? (nextOnboarding.serviceCommunes as ActiveMvpCommune[])
@@ -1679,6 +1687,10 @@ function CleaningOnboardingPageContent() {
       setError("");
       const content = await fileToDataUrl(file);
       updateDraft(field, content);
+      if (field === "profilePhotoUrl") {
+        updateDraft("profilePhotoPositionX", 50);
+        updateDraft("profilePhotoPositionY", 34);
+      }
     } catch (eventualError) {
       setError(eventualError instanceof Error ? eventualError.message : `No se pudo cargar ${label.toLowerCase()}.`);
     }
@@ -1947,7 +1959,9 @@ function CleaningOnboardingPageContent() {
           documentId: draft.rut.trim(),
           referenceAddress: composeReferenceAddress(draft.address, draft.apartment),
           baseCommune: draft.homeCommune,
-          profilePhotoUrl: draft.profilePhotoUrl
+          profilePhotoUrl: draft.profilePhotoUrl,
+          profilePhotoPositionX: draft.profilePhotoPositionX,
+          profilePhotoPositionY: draft.profilePhotoPositionY
         });
       } else {
         const response = await fetch("/api/onboarding/cleaning/start", {
@@ -1962,7 +1976,9 @@ function CleaningOnboardingPageContent() {
             baseCommune: draft.homeCommune,
             referenceAddress: composeReferenceAddress(draft.address, draft.apartment),
             documentId: draft.rut.trim(),
-            profilePhotoUrl: draft.profilePhotoUrl
+            profilePhotoUrl: draft.profilePhotoUrl,
+            profilePhotoPositionX: draft.profilePhotoPositionX,
+            profilePhotoPositionY: draft.profilePhotoPositionY
           })
         });
         const data = (await response.json()) as {
@@ -2886,7 +2902,44 @@ function CleaningOnboardingPageContent() {
                         await handleDraftFileUpload("profilePhotoUrl", event.target.files?.[0] ?? null, "Foto de perfil");
                       }}
                     />
+                    <p className="input-hint">Sube una foto clara y luego ajusta el encuadre para que se vea bien tu cara.</p>
                   </label>
+                  {draft.profilePhotoUrl ? (
+                    <div className="full avatar-focus-editor">
+                      <div className="avatar-focus-layout">
+                        <div className="avatar-focus-preview-frame" aria-hidden>
+                          <img
+                            src={draft.profilePhotoUrl}
+                            alt=""
+                            className="avatar-focus-preview-image"
+                            style={{ objectPosition: `${draft.profilePhotoPositionX}% ${draft.profilePhotoPositionY}%` }}
+                          />
+                        </div>
+                        <div className="avatar-focus-controls">
+                          <label>
+                            Centrar horizontalmente
+                            <input
+                              type="range"
+                              min={0}
+                              max={100}
+                              value={draft.profilePhotoPositionX}
+                              onChange={(event) => updateDraft("profilePhotoPositionX", Number(event.target.value))}
+                            />
+                          </label>
+                          <label>
+                            Centrar verticalmente
+                            <input
+                              type="range"
+                              min={0}
+                              max={100}
+                              value={draft.profilePhotoPositionY}
+                              onChange={(event) => updateDraft("profilePhotoPositionY", Number(event.target.value))}
+                            />
+                          </label>
+                        </div>
+                      </div>
+                    </div>
+                  ) : null}
                 </div>
                 {addressValidationMessage ? <p className="feedback ok">{addressValidationMessage}</p> : null}
                 {addressValidationError ? <p className="feedback error">{addressValidationError}</p> : null}

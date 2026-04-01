@@ -231,6 +231,14 @@ export const marketplaceSearchProsSchema = z.object({
 export const marketplaceProProfileUpdateSchema = z.object({
   proId: z.string().min(1).optional(),
   bio: z.string().max(600).optional().nullable(),
+  avatarUrl: z
+    .string()
+    .startsWith("data:image/")
+    .max(8_000_000, "Archivo demasiado grande para el MVP")
+    .optional()
+    .nullable(),
+  avatarPositionX: z.coerce.number().int().min(0).max(100).optional().nullable(),
+  avatarPositionY: z.coerce.number().int().min(0).max(100).optional().nullable(),
   coverageStreet: z.string().min(3).max(180).optional().nullable(),
   coverageComuna: activeCommuneInputSchema.optional().nullable(),
   serviceCommunes: z.array(activeCommuneInputSchema).min(1).optional().nullable(),
@@ -396,6 +404,8 @@ export const cleaningOnboardingStartSchema = z.object({
   baseCommune: activeCommuneInputSchema,
   acceptTerms: z.boolean().optional().default(false),
   profilePhotoUrl: imageDataUrlSchema.optional(),
+  profilePhotoPositionX: z.coerce.number().int().min(0).max(100).optional().default(50),
+  profilePhotoPositionY: z.coerce.number().int().min(0).max(100).optional().default(34),
   documentId: chileanRutSchema.optional(),
   referenceAddress: z.string().min(5).max(240).optional()
 });
@@ -493,7 +503,9 @@ export const taskerOnboardingStep3Schema = z.object({
   documentId: chileanRutSchema,
   referenceAddress: z.string().min(5).max(240),
   baseCommune: activeCommuneInputSchema,
-  profilePhotoUrl: imageDataUrlSchema
+  profilePhotoUrl: imageDataUrlSchema,
+  profilePhotoPositionX: z.coerce.number().int().min(0).max(100).default(50),
+  profilePhotoPositionY: z.coerce.number().int().min(0).max(100).default(34)
 });
 
 export const taskerOnboardingStep4Schema = z.object({

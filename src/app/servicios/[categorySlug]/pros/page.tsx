@@ -33,11 +33,15 @@ type Professional = {
   coverageComuna?: string | null;
   serviceRadiusKm: number;
   avatarUrl?: string | null;
+  avatarPositionX?: number | null;
+  avatarPositionY?: number | null;
   cleaningScope?: unknown;
   user: {
     fullName: string;
     cleaningOnboarding?: {
       profilePhotoUrl?: string | null;
+      profilePhotoPositionX?: number | null;
+      profilePhotoPositionY?: number | null;
       baseCommune?: string | null;
     } | null;
   };
@@ -74,6 +78,12 @@ function initials(name: string) {
 
 function profileSnippet(categoryName: string) {
   return `Tasker verificado para ${categoryName.toLowerCase()}, con agenda activa y servicios a domicilio en tu zona.`;
+}
+
+function avatarObjectPosition(x?: number | null, y?: number | null) {
+  const nextX = typeof x === "number" ? Math.min(Math.max(x, 0), 100) : 50;
+  const nextY = typeof y === "number" ? Math.min(Math.max(y, 0), 100) : 34;
+  return `${nextX}% ${nextY}%`;
 }
 
 function localYmd(date: Date) {
@@ -383,7 +393,11 @@ export default function ServiceProsPage() {
 
             <section className="we-results-list">
               {professionals.map((pro) => {
-                const profilePhotoUrl = pro.user.cleaningOnboarding?.profilePhotoUrl?.trim() || pro.avatarUrl?.trim() || "";
+                const profilePhotoUrl = pro.avatarUrl?.trim() || pro.user.cleaningOnboarding?.profilePhotoUrl?.trim() || "";
+                const profilePhotoObjectPosition = avatarObjectPosition(
+                  pro.avatarPositionX ?? pro.user.cleaningOnboarding?.profilePhotoPositionX,
+                  pro.avatarPositionY ?? pro.user.cleaningOnboarding?.profilePhotoPositionY
+                );
                 const communeLabel = pro.coverageComuna ?? pro.user.cleaningOnboarding?.baseCommune ?? comuna ?? city;
                 const agendaLabel = getAgendaLabel(pro.slots);
 
@@ -391,7 +405,7 @@ export default function ServiceProsPage() {
                   <article className="we-pro-card" key={pro.id}>
                     <div className="we-pro-main">
                       <div className="we-pro-avatar" aria-hidden>
-                        {profilePhotoUrl ? <img src={profilePhotoUrl} alt="" className="we-pro-avatar-image" /> : initials(pro.user.fullName)}
+                        {profilePhotoUrl ? <img src={profilePhotoUrl} alt="" className="we-pro-avatar-image" style={{ objectPosition: profilePhotoObjectPosition }} /> : initials(pro.user.fullName)}
                       </div>
 
                       <div className="we-pro-content">
