@@ -337,6 +337,7 @@ export async function PATCH(req: NextRequest) {
     console.info("[tasker-admin] activation audit", {
       onboardingId: input.onboardingId,
       userId: onboarding.userId,
+      syncedServices: marketplaceSync.updated,
       createdSlots: syncResult.created,
       publication: syncResult.publication,
       reason: syncResult.reason

@@ -379,7 +379,10 @@ export async function POST(req: NextRequest) {
       if (!pro || pro.role !== UserRole.PRO) {
         return NextResponse.json({ error: "Profesional no válido" }, { status: 400 });
       }
-      if (!pro.professionalProfile || pro.professionalProfile.taskerServices.length === 0) {
+      if (!pro.professionalProfile) {
+        return NextResponse.json({ error: "El tasker seleccionado no tiene perfil activo" }, { status: 400 });
+      }
+      if (pro.professionalProfile && pro.professionalProfile.taskerServices.length === 0) {
         await syncTaskerMarketplaceServicesFromOnboarding(assignedProId);
         const syncedProService = await prisma.taskerService.findFirst({
           where: {
@@ -391,9 +394,6 @@ export async function POST(req: NextRequest) {
         });
         if (!syncedProService) {
           return NextResponse.json({ error: "El tasker seleccionado no ofrece este servicio" }, { status: 400 });
-        }
-        if (!pro.professionalProfile) {
-          return NextResponse.json({ error: "El tasker seleccionado no tiene perfil activo" }, { status: 400 });
         }
         pro.professionalProfile.taskerServices = [syncedProService];
       }

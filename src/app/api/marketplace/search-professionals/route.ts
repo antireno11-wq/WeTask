@@ -11,6 +11,7 @@ import { supportsPetRequestedTasks } from "@/lib/pet-scope";
 import { prisma } from "@/lib/prisma";
 import {
   canPublishTaskerCategoryProfile,
+  getCoreServiceForTaskerCategory,
   normalizeTaskerCategorySlug,
   supportsRequestedTasksForTaskerCategory
 } from "@/lib/tasker-category-profiles";
@@ -122,6 +123,31 @@ export async function GET(req: NextRequest) {
     const requestedCategorySlug = normalizeTaskerCategorySlug(requestedService?.category?.slug ?? requestedCategory?.slug ?? null);
 
     const startDate = input.date ?? new Date();
+
+    if (requestedCategorySlug) {
+      const requestedCoreService = getCoreServiceForTaskerCategory(requestedCategorySlug);
+      if (requestedCoreService) {
+        const onboardingsToSync = await prisma.cleaningOnboarding.findMany({
+          where: {
+            categorySlug: requestedCoreService.slug,
+            status: "ACTIVO"
+          },
+          select: { userId: true }
+        });
+
+        for (const onboarding of onboardingsToSync) {
+          const syncResult = await syncTaskerMarketplaceServicesFromOnboarding(onboarding.userId);
+          if (syncResult.updated > 0 || syncResult.reason === "synced") {
+            console.info("[tasker-search] synced tasker services from onboarding", {
+              userId: onboarding.userId,
+              categorySlug: requestedCoreService.slug,
+              syncedServices: syncResult.updated,
+              reason: syncResult.reason
+            });
+          }
+        }
+      }
+    }
 
     const profiles = await prisma.professionalProfile.findMany({
       where: {

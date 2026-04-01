@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getRequestIdentity, hasRole } from "@/lib/auth";
 import { isChefServiceSlug } from "@/lib/chef-service-types";
 import { isCleaningServiceSlug } from "@/lib/cleaning-service-types";
-import { CORE_SERVICES } from "@/lib/core-services";
+import { findCoreServiceByOnboardingCategory } from "@/lib/core-services";
 import { geocodeAddress } from "@/lib/geo";
 import { CLEANING_WEEK_DAYS } from "@/lib/cleaning-onboarding";
 import { normalizeCommune, normalizeCommuneList } from "@/lib/communes";
@@ -105,7 +105,7 @@ async function upsertOnboardingTaskerServices(
   },
   explicitServiceRates: Array<{ serviceSlug: string; hourlyRateClp: number }>
 ) {
-  const selectedCoreService = CORE_SERVICES.find((service) => service.slug === onboarding.categorySlug);
+  const selectedCoreService = findCoreServiceByOnboardingCategory(onboarding.categorySlug);
   if (!selectedCoreService) return;
 
   const selectedServiceSlugs = getOnboardingServiceSlugs(onboarding.offeredServices);

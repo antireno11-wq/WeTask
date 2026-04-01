@@ -74,5 +74,13 @@ export const CORE_SERVICES = [
 ] as const;
 
 export type CoreTaskerServiceSlug = (typeof CORE_SERVICES)[number]["slug"];
+export type CoreTaskerServiceDefinition = (typeof CORE_SERVICES)[number];
 
 export const CORE_CATEGORY_SLUGS = CORE_SERVICES.map((service) => service.categorySlug);
+
+export function findCoreServiceByOnboardingCategory(categorySlug: string | null | undefined): CoreTaskerServiceDefinition | null {
+  if (!categorySlug) return null;
+  return (
+    CORE_SERVICES.find((service) => service.slug === categorySlug || service.categorySlug === categorySlug) ?? null
+  );
+}
