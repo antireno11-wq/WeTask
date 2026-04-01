@@ -3420,7 +3420,7 @@ textarea {
 
 .public-tasker-heading-copy {
   display: grid;
-  gap: 10px;
+  gap: 12px;
   min-width: 0;
 }
 
@@ -3454,6 +3454,7 @@ textarea {
 
 .public-tasker-market-switcher {
   justify-content: flex-start;
+  margin-top: -4px;
 }
 
 .public-tasker-summary-feature {
@@ -3484,12 +3485,12 @@ textarea {
   display: grid;
   gap: 8px;
   min-width: 0;
-  align-content: center;
+  align-content: start;
 }
 
 .public-tasker-summary-feature-copy strong {
   color: #173b5f;
-  font-size: 1.12rem;
+  font-size: 1.18rem;
   line-height: 1.25;
 }
 
@@ -3497,6 +3498,35 @@ textarea {
   color: #5a7290;
   font-size: 0.96rem;
   font-weight: 700;
+}
+
+.public-tasker-summary-stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.public-tasker-summary-stat {
+  display: grid;
+  gap: 6px;
+  padding: 14px 16px;
+  border-radius: 18px;
+  border: 1px solid #d7e7f6;
+  background: linear-gradient(180deg, #ffffff 0%, #f5faff 100%);
+}
+
+.public-tasker-summary-stat small {
+  color: #6b83a0;
+  font-size: 0.76rem;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.public-tasker-summary-stat strong {
+  color: #173b5f;
+  font-size: 1rem;
+  line-height: 1.3;
 }
 
 .public-tasker-summary-feature-side {
@@ -3552,6 +3582,10 @@ textarea {
   color: rgba(234, 245, 255, 0.8);
   font-size: 0.92rem;
   line-height: 1.55;
+}
+
+.tasker-profile-communes {
+  margin-top: 18px;
 }
 
 .public-profile-switcher {
@@ -4603,6 +4637,10 @@ textarea {
 
   .public-tasker-summary-feature-side {
     justify-items: stretch;
+  }
+
+  .public-tasker-summary-stats {
+    grid-template-columns: 1fr;
   }
 
   .public-tasker-summary-meta {

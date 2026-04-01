@@ -1084,11 +1084,41 @@ export default function ProDetailPage() {
                       </div>
                     </div>
 
+                    <div className="public-profile-switcher public-tasker-market-switcher">
+                      <button type="button" className={`public-profile-switch ${activeView === "perfil" ? "active" : ""}`} onClick={() => switchPublicView("perfil")}>
+                        Perfil
+                      </button>
+                      <button type="button" className={`public-profile-switch ${activeView === "valoraciones" ? "active" : ""}`} onClick={() => switchPublicView("valoraciones")}>
+                        Valoraciones
+                      </button>
+                      <button type="button" className={`public-profile-switch ${activeView === "agenda" ? "active" : ""}`} onClick={() => switchPublicView("agenda")}>
+                        Agenda
+                      </button>
+                    </div>
+
                     <div className="public-tasker-summary-feature">
                       <div className="public-tasker-summary-feature-main">
                         <div className="public-tasker-summary-feature-copy">
-                          <strong>{data.ratingsCount > 0 ? `${rating.toFixed(1)} (${data.ratingsCount} valoraciones)` : "0 valoraciones aún"}</strong>
-                          <span>{daysWithSlotsCount} día(s) con agenda abierta para reserva.</span>
+                          <strong>Resumen rapido</strong>
+                          <span>Lo mas importante para reservar sin perderte entre datos repetidos.</span>
+                        </div>
+                        <div className="public-tasker-summary-stats">
+                          <div className="public-tasker-summary-stat">
+                            <small>Valoraciones</small>
+                            <strong>{data.ratingsCount > 0 ? `${rating.toFixed(1)} (${data.ratingsCount})` : "0 por ahora"}</strong>
+                          </div>
+                          <div className="public-tasker-summary-stat">
+                            <small>Agenda abierta</small>
+                            <strong>{daysWithSlotsCount} dia(s)</strong>
+                          </div>
+                          <div className="public-tasker-summary-stat">
+                            <small>Servicios activos</small>
+                            <strong>{offeredServices.length}</strong>
+                          </div>
+                          <div className="public-tasker-summary-stat">
+                            <small>Idiomas</small>
+                            <strong>{languages.join(", ")}</strong>
+                          </div>
                         </div>
                       </div>
 
@@ -1115,8 +1145,8 @@ export default function ProDetailPage() {
                         <p>{experienceYears} años en servicios a domicilio.</p>
                       </div>
                       <div>
-                        <h3>Disponibilidad</h3>
-                        <p>{daysWithSlotsCount} día(s) con agenda visible para reserva.</p>
+                        <h3>{focusLabel}</h3>
+                        <p>{experienceTypes.join(", ")}</p>
                       </div>
                       <div>
                         <h3>{requestedRecommendedHours ? "Tiempo sugerido" : "Modalidad"}</h3>
@@ -1128,25 +1158,13 @@ export default function ProDetailPage() {
                       </div>
                     </div>
 
-                    <div className="public-profile-switcher public-tasker-market-switcher">
-                      <button type="button" className={`public-profile-switch ${activeView === "perfil" ? "active" : ""}`} onClick={() => switchPublicView("perfil")}>
-                        Perfil
-                      </button>
-                      <button type="button" className={`public-profile-switch ${activeView === "valoraciones" ? "active" : ""}`} onClick={() => switchPublicView("valoraciones")}>
-                        Valoraciones
-                      </button>
-                      <button type="button" className={`public-profile-switch ${activeView === "agenda" ? "active" : ""}`} onClick={() => switchPublicView("agenda")}>
-                        Agenda
-                      </button>
-                    </div>
                   </article>
 
                   <div className="we-pro-detail-main">
                   {activeView === "perfil" ? (
                     <>
                   <article className="auth-flow-panel client-dashboard-section tasker-profile-section">
-                    <h2>Perfil del tasker</h2>
-                    <p>Revisa su experiencia, forma de trabajo y datos importantes antes de reservar.</p>
+                    <h2>Confianza y forma de trabajo</h2>
                     <div className="we-trust-grid">
                       <div className={`we-trust-card ${hasIdentityProof ? "ok" : ""}`}>
                         <span className="we-trust-check" aria-hidden>{hasIdentityProof ? "✓" : "•"}</span>
@@ -1161,24 +1179,6 @@ export default function ProDetailPage() {
                           <strong>Antecedentes revisados</strong>
                           <p>{hasBackgroundCheck ? "Tiene certificado de antecedentes cargado en su perfil." : "Aún no informa certificado de antecedentes."}</p>
                         </div>
-                      </div>
-                    </div>
-                    <div className="we-info-grid we-profile-quick-grid tasker-profile-detail-grid tasker-profile-detail-grid-compact">
-                      <div>
-                        <h3>Experiencia</h3>
-                        <p>{experienceYears} años</p>
-                      </div>
-                      <div>
-                        <h3>Modalidad</h3>
-                        <p>{workModeLabel}</p>
-                      </div>
-                      <div>
-                        <h3>{focusLabel}</h3>
-                        <p>{experienceTypes.join(", ")}</p>
-                      </div>
-                      <div>
-                        <h3>Idiomas</h3>
-                        <p>{languages.join(", ")}</p>
                       </div>
                     </div>
                     <div className="we-pro-tags tasker-profile-service-tags">
@@ -1204,38 +1204,31 @@ export default function ProDetailPage() {
                     <h2>Informacion de interes</h2>
                     <div className="we-info-grid tasker-profile-detail-grid">
                       <div>
-                        <h3>¿Cuánta experiencia tiene?</h3>
-                        <p>{experienceYears} años trabajando en servicios a domicilio.</p>
+                        <h3>Idiomas</h3>
+                        <p>{languages.join(", ")}</p>
                       </div>
                       <div>
-                        <h3>{serviceLabel}</h3>
-                        <p>{offeredServices.join(", ")}</p>
+                        <h3>Modalidad</h3>
+                        <p>{workModeLabel}</p>
                       </div>
                       <div>
-                        <h3>{focusLabel}</h3>
-                        <p>{experienceTypes.join(", ")}</p>
+                        <h3>Comunas activas</h3>
+                        <p>{activeCommunes.length > 0 ? `${activeCommunes.length} comuna(s) configuradas` : "Aun no informa comunas de trabajo."}</p>
                       </div>
                       <div>
                         <h3>¿Qué busca en WeTask?</h3>
                         <p>{goalText}</p>
                       </div>
                     </div>
-                  </article>
-
-                  <article className="auth-flow-panel client-dashboard-section tasker-profile-section">
-                    <h2>Cobertura</h2>
-                    <p className="coverage-meta">Estas son las comunas activas que el tasker tiene configuradas hoy.</p>
                     {activeCommunes.length > 0 ? (
-                      <div className="coverage-map-chip-list" aria-label="Comunas donde trabaja">
+                      <div className="coverage-map-chip-list tasker-profile-communes" aria-label="Comunas donde trabaja">
                         {activeCommunes.map((commune) => (
                           <span key={commune} className="coverage-map-chip">
                             {commune}
                           </span>
                         ))}
                       </div>
-                    ) : (
-                      <p className="coverage-meta">Aún no hay comunas informadas en este perfil.</p>
-                    )}
+                    ) : null}
                   </article>
 
                   {normalizedPrimaryCategorySlug === "limpieza" ? (
