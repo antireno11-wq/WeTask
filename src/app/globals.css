@@ -3410,20 +3410,35 @@ textarea {
 }
 
 .public-tasker-summary-kicker {
+  position: relative;
+  overflow: hidden;
   margin: 0;
   width: auto;
   max-width: none;
-  padding: 14px 22px;
-  border-width: 2px;
+  padding: 16px 26px;
+  border-width: 1px;
   border-style: solid;
-  border-radius: 18px;
-  border-color: rgba(53, 145, 96, 0.5);
-  background: linear-gradient(180deg, rgba(232, 252, 239, 0.99) 0%, rgba(214, 245, 226, 0.99) 100%);
-  color: #176540;
-  font-size: 1rem;
+  border-radius: 999px;
+  border-color: rgba(17, 168, 40, 0.8);
+  background: linear-gradient(180deg, #4cff63 0%, #19df33 42%, #05c91d 100%);
+  color: #ffffff;
+  font-size: 1.03rem;
   font-weight: 900;
   letter-spacing: 0.06em;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.45), 0 10px 22px rgba(37, 128, 82, 0.12);
+  text-shadow: 0 1px 0 rgba(8, 94, 20, 0.35);
+  box-shadow: inset 0 -8px 16px rgba(8, 120, 26, 0.22), 0 12px 24px rgba(22, 146, 48, 0.18);
+}
+
+.public-tasker-summary-kicker::before {
+  content: "";
+  position: absolute;
+  left: 18px;
+  right: 18px;
+  top: 7px;
+  height: 46%;
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.72) 0%, rgba(255, 255, 255, 0.16) 100%);
+  pointer-events: none;
 }
 
 .public-tasker-heading-row {
