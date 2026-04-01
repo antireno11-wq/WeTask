@@ -102,7 +102,7 @@ export default function AdminTeamPage() {
         </div>
         <div className="cta-row">
           <Link href="/admin/team/new" className="cta">
-            Crear otro administrador
+            Gestionar administradores
           </Link>
           <Link href="/admin/users" className="cta ghost small">
             Usuarios de la plataforma

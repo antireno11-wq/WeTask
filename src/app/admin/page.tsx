@@ -303,7 +303,7 @@ export default async function AdminPage() {
         </Link>
 
         <Link href="/admin/team/new" className="module-card module-link">
-          <h3>Crear otro administrador</h3>
+          <h3>Gestionar administradores</h3>
           <p>Invita a otra persona del equipo para que también pueda revisar y aprobar usuarios.</p>
           <span className="module-meta">Acceso para aprobaciones</span>
         </Link>

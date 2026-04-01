@@ -150,7 +150,7 @@ export default function AdminUsersPage() {
             Equipo interno
           </Link>
           <Link href="/admin/team/new" className="cta">
-            Crear otro administrador
+            Gestionar administradores
           </Link>
         </div>
       </div>

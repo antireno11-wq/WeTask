@@ -63,7 +63,7 @@ export default function AdminCreatePage() {
       <div className="panel-head admin-page-head">
         <div>
           <span className="eyebrow">Backoffice WeTask</span>
-          <h2>Crear otro administrador</h2>
+          <h2>Gestionar administradores</h2>
           <p>Crea un admin nuevo desde cero o dale acceso administrador a una cuenta que ya exista como cliente o tasker.</p>
         </div>
         <div className="cta-row">
