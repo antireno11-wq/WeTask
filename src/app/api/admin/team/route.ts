@@ -14,7 +14,8 @@ const teamActionSchema = z.object({
   userId: z.string().trim().min(1).optional(),
   email: z.string().trim().email().optional(),
   fullName: z.string().trim().min(3).optional(),
-  password: z.string().min(8).optional()
+  password: z.string().min(8).optional(),
+  roleCode: z.nativeEnum(UserRole).optional()
 });
 
 const teamListQuerySchema = z.object({
@@ -32,6 +33,16 @@ function formatRoleLabel(role: UserRole) {
 
 function hasAdminAssignment(roleAssignments: Array<{ role: { code: UserRole } }>) {
   return roleAssignments.some((assignment) => assignment.role.code === UserRole.ADMIN);
+}
+
+function hasRoleAssignment(roleAssignments: Array<{ role: { code: UserRole } }>, roleCode: UserRole) {
+  return roleAssignments.some((assignment) => assignment.role.code === roleCode);
+}
+
+function resolveRoleRecord(roleCode: UserRole, roles: { admin: { id: string }; customer: { id: string }; pro: { id: string } }) {
+  if (roleCode === UserRole.ADMIN) return roles.admin;
+  if (roleCode === UserRole.PRO) return roles.pro;
+  return roles.customer;
 }
 
 function formatBookingActivity(kind: "customer" | "pro", booking: { updatedAt: Date; service: { name: string } | null } | null) {
@@ -528,8 +539,19 @@ export async function PATCH(req: NextRequest) {
     }
 
     if (input.action === "grant") {
-      if (targetHasAdmin) {
-        return NextResponse.json({ error: "Ese usuario ya tiene acceso administrador." }, { status: 409 });
+      const roleCode = input.roleCode ?? UserRole.ADMIN;
+      const targetAlreadyHasRole = hasRoleAssignment(target.roleAssignments, roleCode);
+      const roleRecord = resolveRoleRecord(roleCode, {
+        admin: roleAdmin,
+        customer: roleCustomer,
+        pro: rolePro
+      });
+
+      if (targetAlreadyHasRole) {
+        return NextResponse.json(
+          { error: `Ese usuario ya tiene rol ${formatRoleLabel(roleCode).toLowerCase()}.` },
+          { status: 409 }
+        );
       }
 
       const updated = await prisma.$transaction(async (tx) => {
@@ -537,15 +559,22 @@ export async function PATCH(req: NextRequest) {
           where: {
             userId_roleId: {
               userId: target.id,
-              roleId: roleAdmin.id
+              roleId: roleRecord.id
             }
           },
           update: {},
           create: {
             userId: target.id,
-            roleId: roleAdmin.id
+            roleId: roleRecord.id
           }
         });
+
+        if (target.role === UserRole.ADMIN && roleCode !== UserRole.ADMIN) {
+          await tx.user.update({
+            where: { id: target.id },
+            data: { emailVerifiedAt: new Date() }
+          });
+        }
 
         return tx.user.findUniqueOrThrow({
           where: { id: target.id },
@@ -561,7 +590,10 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json(
         {
           ok: true,
-          message: `${updated.fullName} ahora tiene acceso al backoffice.`,
+          message:
+            roleCode === UserRole.ADMIN
+              ? `${updated.fullName} ahora tiene acceso al backoffice.`
+              : `${updated.fullName} ahora también tiene rol ${formatRoleLabel(roleCode).toLowerCase()}.`,
           user: updated
         },
         { status: 200 }

@@ -6,6 +6,14 @@ import { AdminHeroShell } from "@/components/admin-hero-shell";
 
 export const dynamic = "force-dynamic";
 
+type AssignableRole = "ADMIN" | "PRO" | "CUSTOMER";
+
+const ASSIGNABLE_ROLES: Array<{ value: AssignableRole; label: string; helper: string }> = [
+  { value: "ADMIN", label: "Admin", helper: "Acceso al backoffice interno." },
+  { value: "PRO", label: "Tasker", helper: "Acceso al panel tasker y perfil de servicios." },
+  { value: "CUSTOMER", label: "Cliente", helper: "Acceso al panel cliente y reservas." }
+];
+
 export default function AdminCreatePage() {
   const [feedback, setFeedback] = useState("");
   const [error, setError] = useState("");
@@ -15,10 +23,11 @@ export default function AdminCreatePage() {
   const [fullName, setFullName] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [grantRole, setGrantRole] = useState<AssignableRole>("ADMIN");
 
   const runAction = async (
     action: "grant" | "create_admin",
-    target: { email?: string; fullName?: string; password?: string }
+    target: { email?: string; fullName?: string; password?: string; roleCode?: AssignableRole }
   ) => {
     const currentBusyId = target.email || action;
     setBusyId(currentBusyId);
@@ -32,8 +41,11 @@ export default function AdminCreatePage() {
       });
       const payload = (await response.json()) as { ok?: boolean; error?: string; detail?: string; message?: string };
       if (!response.ok || !payload.ok) throw new Error(payload.detail || payload.error || "No se pudo crear el administrador");
-      setFeedback(payload.message || "Administrador creado correctamente.");
-      if (action === "grant") setExistingEmail("");
+      setFeedback(payload.message || "Rol actualizado correctamente.");
+      if (action === "grant") {
+        setExistingEmail("");
+        setGrantRole("ADMIN");
+      }
       if (action === "create_admin") {
         setEmail("");
         setFullName("");
@@ -128,8 +140,8 @@ export default function AdminCreatePage() {
       <section className="admin-section-card">
         <div className="admin-section-head">
           <div>
-            <h3>Dar acceso a cuenta existente</h3>
-            <p>Si la persona ya es cliente o tasker, aquí le agregas acceso admin sin crear otra cuenta.</p>
+            <h3>Asignar rol a cuenta existente</h3>
+            <p>Si la persona ya existe en WeTask, aquí le agregas acceso como admin, tasker o cliente sin crear otra cuenta.</p>
           </div>
         </div>
 
@@ -143,13 +155,26 @@ export default function AdminCreatePage() {
               placeholder="usuario-existente@wetask.cl"
             />
           </label>
+          <label>
+            Rol a agregar
+            <select value={grantRole} onChange={(event) => setGrantRole(event.target.value as AssignableRole)}>
+              {ASSIGNABLE_ROLES.map((role) => (
+                <option key={role.value} value={role.value}>
+                  {role.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <p className="feedback">
+            {ASSIGNABLE_ROLES.find((role) => role.value === grantRole)?.helper}
+          </p>
           <button
             type="button"
             className="cta ghost"
             disabled={!existingEmail.trim() || busyId === existingEmail.trim().toLowerCase()}
-            onClick={() => void runAction("grant", { email: existingEmail.trim().toLowerCase() })}
+            onClick={() => void runAction("grant", { email: existingEmail.trim().toLowerCase(), roleCode: grantRole })}
           >
-            Dar acceso admin
+            Agregar rol
           </button>
         </div>
       </section>
