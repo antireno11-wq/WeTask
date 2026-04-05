@@ -164,6 +164,15 @@ type ProSlot = {
 };
 
 type ProView = "resumen" | "perfil" | "agenda" | "reservas" | "resenas" | "notificaciones";
+const WEEK_DAY_OPTIONS: Array<{ key: DayKey; label: string; shortLabel: string }> = [
+  { key: "lunes", label: "Lunes", shortLabel: "Lun" },
+  { key: "martes", label: "Martes", shortLabel: "Mar" },
+  { key: "miercoles", label: "Miércoles", shortLabel: "Mié" },
+  { key: "jueves", label: "Jueves", shortLabel: "Jue" },
+  { key: "viernes", label: "Viernes", shortLabel: "Vie" },
+  { key: "sabado", label: "Sábado", shortLabel: "Sáb" },
+  { key: "domingo", label: "Domingo", shortLabel: "Dom" }
+];
 
 function clp(value: number) {
   return new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP", maximumFractionDigits: 0 }).format(value);
@@ -474,6 +483,17 @@ export default function ProPage() {
   const selectedDaySlots = slotsByDay.get(slotDate) ?? [];
   const bookedSlotsCount = useMemo(() => displaySlots.filter((item) => item.bookings.length > 0).length, [displaySlots]);
   const daysWithSlotsCount = useMemo(() => slotsByDay.size, [slotsByDay]);
+  const weeklyAvailabilityDays = useMemo(
+    () =>
+      WEEK_DAY_OPTIONS.map((day) => ({
+        ...day,
+        blocks: onboardingAvailabilityBlocks
+          .filter((block) => block.day === day.key)
+          .sort((a, b) => a.start.localeCompare(b.start))
+      })),
+    [onboardingAvailabilityBlocks]
+  );
+  const weeklyBlocksCount = useMemo(() => onboardingAvailabilityBlocks.length, [onboardingAvailabilityBlocks]);
 
   const upcomingBookings = useMemo(
     () => bookings.filter((item) => new Date(item.scheduledAt).getTime() >= Date.now() && item.status !== "COMPLETED"),
@@ -644,6 +664,23 @@ export default function ProPage() {
     if (!profileRes.ok) throw new Error(profileData.detail || profileData.error || "No se pudo cargar perfil");
     if (!slotsRes.ok || !slotsData.slots) throw new Error(slotsData.detail || slotsData.error || "No se pudo cargar disponibilidad");
 
+    const nextOnboardingAvailabilityBlocks = normalizeAvailabilityBlocks(profileData.availabilityBlocks);
+    let nextSlots = slotsData.slots;
+    if (nextSlots.length === 0 && nextOnboardingAvailabilityBlocks.length > 0) {
+      const syncRes = await fetch("/api/marketplace/pro/slots/sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ proId: targetProId })
+      });
+      if (syncRes.ok) {
+        const refreshedSlotsRes = await fetch(`/api/marketplace/pro/slots?proId=${targetProId}&days=21&limit=500`);
+        const refreshedSlotsData = (await refreshedSlotsRes.json()) as { slots?: ProSlot[] };
+        if (refreshedSlotsRes.ok && refreshedSlotsData.slots) {
+          nextSlots = refreshedSlotsData.slots;
+        }
+      }
+    }
+
     setBookings(bookingsData.bookings);
     const nextStatuses: Record<string, string> = {};
     bookingsData.bookings.forEach((item) => {
@@ -660,9 +697,9 @@ export default function ProPage() {
     setProfilePhotoPositionX(clamp(profileData.profilePhotoPositionX ?? profileData.profile?.avatarPositionX ?? localDraftFocus.x, 0, 100));
     setProfilePhotoPositionY(clamp(profileData.profilePhotoPositionY ?? profileData.profile?.avatarPositionY ?? localDraftFocus.y, 0, 100));
     setAvailabilityMode(profileData.availabilityMode ?? null);
-    setOnboardingAvailabilityBlocks(normalizeAvailabilityBlocks(profileData.availabilityBlocks));
+    setOnboardingAvailabilityBlocks(nextOnboardingAvailabilityBlocks);
     applyProfile(profileData.profile ?? null, profileData.serviceCommunes ?? []);
-    setSlots(slotsData.slots);
+    setSlots(nextSlots);
     const nextServices = profileData.taskerServices ?? [];
     const nextAdditionalCategories = profileData.additionalCategories ?? [];
     setAdditionalCategories(nextAdditionalCategories);
@@ -1838,8 +1875,8 @@ export default function ProPage() {
           {activeView === "agenda" ? (
             <section className="auth-flow-panel client-dashboard-section">
             <div className="panel-head client-dashboard-panel-head">
-              <h2>Calendario de disponibilidad</h2>
-              <p>Organiza tus horarios como una agenda visual y controla qué bloques quedan abiertos para reservas.</p>
+              <h2>Disponibilidad semanal</h2>
+              <p>Primero defines tu semana base y luego, si quieres, bloqueas o ajustas fechas puntuales sin tocar el resto.</p>
             </div>
 
             <div className="pro-availability-shell">
@@ -1870,8 +1907,8 @@ export default function ProPage() {
                 <div className="availability-composer-card">
                   <div className="availability-composer-head">
                     <div>
-                      <p className="availability-eyebrow">Nuevo bloque</p>
-                      <h3>Agrega una franja rápida</h3>
+                      <p className="availability-eyebrow">Excepción puntual</p>
+                      <h3>Agrega un bloque solo para una fecha</h3>
                     </div>
                     <span className="availability-selected-pill">{selectedDayLabel}</span>
                   </div>
@@ -1900,157 +1937,196 @@ export default function ProPage() {
 
                   <p className="availability-inline-note">
                     {services[0]?.name
-                      ? `Este bloque se publicará para ${services[0].name}.`
+                      ? `Este bloque puntual se publicará para ${services[0].name}.`
                       : categorySlug
-                        ? `Este bloque se publicará para tu servicio de ${categorySlug.replaceAll("-", " ")}.`
-                        : "Este bloque se publicará para el servicio que registraste en tu onboarding."}
+                        ? `Este bloque puntual se publicará para tu servicio de ${categorySlug.replaceAll("-", " ")}.`
+                        : "Este bloque puntual se publicará para el servicio que registraste en tu onboarding."}
                   </p>
-
-                  {slots.length === 0 && onboardingAvailabilityBlocks.length > 0 ? (
-                    <p className="availability-inline-note soft">
-                      Ya cargaste {onboardingAvailabilityBlocks.length} bloque(s) en tu onboarding. Los estamos mostrando abajo como base
-                      {availabilityMode === "VARIABLE" ? " variable" : " semanal"}.
-                    </p>
-                  ) : null}
+                  <p className="availability-inline-note soft">
+                    Tu semana base sigue repitiéndose automáticamente. Desde el calendario de abajo puedes bloquear o reabrir horarios
+                    específicos si un día no quieres trabajar.
+                  </p>
 
                   <div className="cta-row availability-form-actions">
                     <button className="cta" type="button" onClick={createSlot}>
-                      Agregar bloque
+                      Agregar bloque puntual
                     </button>
                   </div>
                 </div>
               </aside>
 
-              <div className="availability-board-card">
-                <div className="availability-board-head">
-                  <div>
-                    <p className="availability-eyebrow">
-                      {selectedDate.toLocaleDateString("es-CL", { day: "2-digit", month: "short", year: "2-digit", weekday: "long" })}
-                    </p>
-                    <h3>{selectedMonthLabel}</h3>
-                  </div>
-                  <div className="availability-board-controls">
-                    <div className="availability-month-nav" aria-label="Cambiar mes">
-                      <button
-                        type="button"
-                        className="availability-month-nav-btn"
-                        onClick={() => setSlotDate((current) => shiftMonthKey(current, -1))}
-                        aria-label="Ver mes anterior"
-                      >
-                        ‹
-                      </button>
-                      <button
-                        type="button"
-                        className="availability-month-nav-btn"
-                        onClick={() => setSlotDate((current) => shiftMonthKey(current, 1))}
-                        aria-label="Ver mes siguiente"
-                      >
-                        ›
-                      </button>
-                    </div>
-                    <span className="availability-board-chip">
-                      {selectedDaySlots.length} bloque(s) en {selectedDate.getDate()}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="availability-weekdays">
-                  {["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"].map((day) => (
-                    <span key={day}>{day}</span>
-                  ))}
-                </div>
-
-                <div className="availability-month-grid">
-                  {monthCalendarDays.map((day) => {
-                    const daySlots = slotsByDay.get(day.key) ?? [];
-                    const freeCount = daySlots.filter((slot) => slot.isAvailable && slot.bookings.length === 0).length;
-                    const reservedCount = daySlots.filter((slot) => slot.bookings.length > 0).length;
-                    const isSelected = day.key === slotDate;
-                    const isToday = day.key === todayKey;
-
-                    return (
-                      <button
-                        key={day.key}
-                        type="button"
-                        className={[
-                          "availability-day-card",
-                          day.isCurrentMonth ? "" : "muted",
-                          isSelected ? "selected" : "",
-                          isToday ? "today" : ""
-                        ]
-                          .filter(Boolean)
-                          .join(" ")}
-                        onClick={() => setSlotDate(day.key)}
-                      >
-                        <span className="availability-day-number">{day.date.getDate()}</span>
-                        <span className="availability-day-meta">
-                          {daySlots.length > 0 ? `${daySlots.length} bloque(s)` : "Sin bloques"}
-                        </span>
-                        <span className="availability-day-dots" aria-hidden>
-                          {freeCount > 0 ? <span className="availability-dot free" /> : null}
-                          {reservedCount > 0 ? <span className="availability-dot booked" /> : null}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-
-                <div className="availability-task-panel">
-                  <div className="availability-task-head">
+              <div className="availability-main-column">
+                <div className="availability-board-card">
+                  <div className="availability-board-head">
                     <div>
-                      <p className="availability-eyebrow">Detalle del día</p>
-                      <h4>{selectedDayLabel}</h4>
+                      <p className="availability-eyebrow">Semana base</p>
+                      <h3>Estos horarios se repiten cada semana</h3>
                     </div>
-                    <span className="availability-selected-pill">
-                      {selectedDaySlots.length > 0 ? `${selectedDaySlots.length} bloque(s)` : "Sin bloques"}
-                    </span>
+                    <span className="availability-board-chip">{weeklyBlocksCount} bloque(s) semanales</span>
                   </div>
 
-                  {selectedDaySlots.length === 0 ? (
-                    <div className="availability-empty-state">
-                      <strong>No tienes horarios cargados para este día.</strong>
-                      <p>Usa el formulario de la izquierda para agregar una nueva franja de atención.</p>
+                  <p className="availability-inline-note">
+                    Esta es la disponibilidad que definiste en tu onboarding. Si luego necesitas cerrar un bloque específico, hazlo
+                    abajo desde el calendario sin tocar toda la semana.
+                  </p>
+
+                  <div className="availability-weekly-grid">
+                    {weeklyAvailabilityDays.map((day) => (
+                      <article key={day.key} className={`availability-weekly-day ${day.blocks.length > 0 ? "active" : ""}`}>
+                        <div className="availability-weekly-day-head">
+                          <strong>{day.label}</strong>
+                          <span>{day.blocks.length > 0 ? `${day.blocks.length} bloque(s)` : "Libre"}</span>
+                        </div>
+                        {day.blocks.length === 0 ? (
+                          <p className="availability-weekly-empty">Sin horario base ese día.</p>
+                        ) : (
+                          <div className="availability-weekly-blocks">
+                            {day.blocks.map((block, index) => (
+                              <span key={`${day.key}-${block.start}-${block.end}-${index}`} className="availability-weekly-block">
+                                {block.start} - {block.end}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </article>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="availability-board-card">
+                  <div className="availability-board-head">
+                    <div>
+                      <p className="availability-eyebrow">
+                        {selectedDate.toLocaleDateString("es-CL", { day: "2-digit", month: "short", year: "2-digit", weekday: "long" })}
+                      </p>
+                      <h3>{selectedMonthLabel}</h3>
                     </div>
-                  ) : (
-                    <div className="availability-task-list">
-                      {selectedDaySlots.map((slot) => (
-                        <article
-                          key={slot.id}
-                          className={`availability-task-item ${
-                            slot.bookings.length > 0 ? "reserved" : slot.isAvailable ? "open" : "closed"
-                          }`}
+                    <div className="availability-board-controls">
+                      <div className="availability-month-nav" aria-label="Cambiar mes">
+                        <button
+                          type="button"
+                          className="availability-month-nav-btn"
+                          onClick={() => setSlotDate((current) => shiftMonthKey(current, -1))}
+                          aria-label="Ver mes anterior"
                         >
-                          <div className="availability-task-time">
-                            {new Date(slot.startsAt).toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" })}
-                            <span />
-                            {new Date(slot.endsAt).toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" })}
-                          </div>
-                          <div className="availability-task-copy">
-                            <strong>{slot.service?.name ?? "Disponibilidad general"}</strong>
-                            <p>
-                              {slot.source === "onboarding"
-                                ? "Bloque base traído desde tu onboarding."
-                                : slot.bookings.length > 0
-                                ? "Este bloque ya tiene una reserva asociada."
-                                : slot.isAvailable
-                                  ? "Visible para nuevas reservas."
-                                  : "Guardado pero oculto para clientes."}
-                            </p>
-                          </div>
-                          {slot.source === "onboarding" ? null : (
-                            <div className="availability-task-actions">
-                              <button className="cta small" type="button" onClick={() => updateSlotAvailability(slot.id, !slot.isAvailable)}>
-                                {slot.isAvailable ? "Desactivar" : "Activar"}
-                              </button>
-                              <button className="cta ghost small" type="button" onClick={() => deleteSlot(slot.id)}>
-                                Eliminar
-                              </button>
-                            </div>
-                          )}
-                        </article>
-                      ))}
+                          ‹
+                        </button>
+                        <button
+                          type="button"
+                          className="availability-month-nav-btn"
+                          onClick={() => setSlotDate((current) => shiftMonthKey(current, 1))}
+                          aria-label="Ver mes siguiente"
+                        >
+                          ›
+                        </button>
+                      </div>
+                      <span className="availability-board-chip">
+                        {selectedDaySlots.length} bloque(s) en {selectedDate.getDate()}
+                      </span>
                     </div>
-                  )}
+                  </div>
+
+                  <p className="availability-inline-note">
+                    Aquí gestionas excepciones puntuales. Puedes seleccionar una fecha específica y bloquear, reabrir o eliminar ese
+                    bloque si ese día no quieres trabajar.
+                  </p>
+
+                  <div className="availability-weekdays">
+                    {WEEK_DAY_OPTIONS.map((day) => (
+                      <span key={day.key}>{day.shortLabel}</span>
+                    ))}
+                  </div>
+
+                  <div className="availability-month-grid">
+                    {monthCalendarDays.map((day) => {
+                      const daySlots = slotsByDay.get(day.key) ?? [];
+                      const freeCount = daySlots.filter((slot) => slot.isAvailable && slot.bookings.length === 0).length;
+                      const reservedCount = daySlots.filter((slot) => slot.bookings.length > 0).length;
+                      const isSelected = day.key === slotDate;
+                      const isToday = day.key === todayKey;
+
+                      return (
+                        <button
+                          key={day.key}
+                          type="button"
+                          className={[
+                            "availability-day-card",
+                            day.isCurrentMonth ? "" : "muted",
+                            isSelected ? "selected" : "",
+                            isToday ? "today" : ""
+                          ]
+                            .filter(Boolean)
+                            .join(" ")}
+                          onClick={() => setSlotDate(day.key)}
+                        >
+                          <span className="availability-day-number">{day.date.getDate()}</span>
+                          <span className="availability-day-meta">
+                            {daySlots.length > 0 ? `${daySlots.length} bloque(s)` : "Sin bloques"}
+                          </span>
+                          <span className="availability-day-dots" aria-hidden>
+                            {freeCount > 0 ? <span className="availability-dot free" /> : null}
+                            {reservedCount > 0 ? <span className="availability-dot booked" /> : null}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <div className="availability-task-panel">
+                    <div className="availability-task-head">
+                      <div>
+                        <p className="availability-eyebrow">Fecha puntual</p>
+                        <h4>{selectedDayLabel}</h4>
+                      </div>
+                      <span className="availability-selected-pill">
+                        {selectedDaySlots.length > 0 ? `${selectedDaySlots.length} bloque(s)` : "Sin bloques"}
+                      </span>
+                    </div>
+
+                    {selectedDaySlots.length === 0 ? (
+                      <div className="availability-empty-state">
+                        <strong>No tienes horarios puntuales cargados para este día.</strong>
+                        <p>Si quieres abrir una excepción adicional para esta fecha, usa el formulario de la izquierda.</p>
+                      </div>
+                    ) : (
+                      <div className="availability-task-list">
+                        {selectedDaySlots.map((slot) => (
+                          <article
+                            key={slot.id}
+                            className={`availability-task-item ${
+                              slot.bookings.length > 0 ? "reserved" : slot.isAvailable ? "open" : "closed"
+                            }`}
+                          >
+                            <div className="availability-task-time">
+                              {new Date(slot.startsAt).toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" })}
+                              <span />
+                              {new Date(slot.endsAt).toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" })}
+                            </div>
+                            <div className="availability-task-copy">
+                              <strong>{slot.service?.name ?? "Disponibilidad general"}</strong>
+                              <p>
+                                {slot.bookings.length > 0
+                                  ? "Este bloque ya tiene una reserva asociada."
+                                  : slot.isAvailable
+                                    ? "Visible para nuevas reservas en esa fecha."
+                                    : "Bloqueado para esa fecha y oculto a clientes."}
+                              </p>
+                            </div>
+                            {slot.source === "onboarding" ? null : (
+                              <div className="availability-task-actions">
+                                <button className="cta small" type="button" onClick={() => updateSlotAvailability(slot.id, !slot.isAvailable)}>
+                                  {slot.isAvailable ? "Bloquear" : "Volver a abrir"}
+                                </button>
+                                <button className="cta ghost small" type="button" onClick={() => deleteSlot(slot.id)}>
+                                  Eliminar
+                                </button>
+                              </div>
+                            )}
+                          </article>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>

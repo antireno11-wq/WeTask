@@ -4894,10 +4894,10 @@ function CleaningOnboardingPageContent() {
                   <div className="availability-board-card onboarding-board-card">
                     <div className="availability-board-head">
                       <div>
-                        <p className="availability-eyebrow">Paso 1</p>
-                        <h3>Revisa un día y sus horarios</h3>
+                        <p className="availability-eyebrow">Resumen semanal</p>
+                        <h3>Así se va a ver tu semana base</h3>
                       </div>
-                      <span className="availability-board-chip">{totalAvailabilityBlocks} bloque(s) en total</span>
+                      <span className="availability-board-chip">{totalAvailabilityBlocks} bloque(s) que se repiten</span>
                     </div>
 
                     <div className="onboarding-week-grid">
@@ -4925,7 +4925,7 @@ function CleaningOnboardingPageContent() {
                     <div className="availability-task-panel" ref={availabilityTaskPanelRef} tabIndex={-1}>
                       <div className="availability-task-head">
                         <div>
-                          <p className="availability-eyebrow">Paso 3</p>
+                          <p className="availability-eyebrow">Editar un día</p>
                           <h4>{selectedDayConfig?.label ?? "Sin día seleccionado"}</h4>
                         </div>
                         <span className="availability-selected-pill">{selectedDayConfig?.blocks.length ?? 0} bloque(s)</span>
@@ -4977,14 +4977,15 @@ function CleaningOnboardingPageContent() {
                     <div className="availability-composer-card">
                       <div className="availability-composer-head">
                         <div>
-                          <p className="availability-eyebrow">Paso 2</p>
-                          <h3>{bulkAvailabilityDays.length > 1 ? `${bulkAvailabilityDays.length} días seleccionados` : selectedDayConfig?.label ?? "Selecciona un día"}</h3>
+                          <p className="availability-eyebrow">Tu semana de trabajo</p>
+                          <h3>{bulkAvailabilityDays.length > 1 ? `${bulkAvailabilityDays.length} días seleccionados` : selectedDayConfig?.label ?? "Selecciona uno o más días"}</h3>
                         </div>
                         <span className="availability-selected-pill">Se repite cada semana</span>
                       </div>
 
                       <p className="input-hint">
-                        Marca uno o varios días, elige un rango horario y crea un bloque recurrente. Luego podrás editarlo desde tu perfil.
+                        Marca los días que trabajas, elige un rango horario y crea tu semana base. Estos horarios se repetirán todas las
+                        semanas y luego podrás bloquear fechas puntuales desde tu perfil si algún día no quieres trabajar.
                       </p>
 
                       <div className="availability-day-toggle-grid">
