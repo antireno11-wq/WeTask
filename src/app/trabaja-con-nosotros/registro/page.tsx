@@ -464,15 +464,22 @@ function formatClp(value: number) {
 }
 
 function getPricingGuide(draft: DraftState) {
-  const baseByCategory: Record<CategorySlug, { min: number; max: number; note: string }> = {
-    limpieza: { min: 12000, max: 16000, note: "Referencia habitual para limpieza estándar en comunas del MVP." },
-    mascotas: { min: 10000, max: 14000, note: "Útil para paseos, visitas y cuidado básico por hora." },
-    babysitter: { min: 12000, max: 18000, note: "Suele variar según experiencia, cantidad de niños y horario." },
-    "profesor-particular": { min: 15000, max: 25000, note: "Las clases especializadas y universitarias suelen cobrar más." },
-    "personal-trainer": { min: 18000, max: 30000, note: "Depende del tipo de entrenamiento, modalidad e implementos." },
-    chef: { min: 18000, max: 42000, note: "Varía según el tipo de cocina, la cantidad de personas y la complejidad del servicio." },
-    maquillaje: { min: 18000, max: 30000, note: "Novias y eventos suelen estar en el tramo alto." },
-    planchado: { min: 10000, max: 14000, note: "Se recomienda cobrar por hora según volumen y delicadeza." }
+  const baseByCategory: Record<CategorySlug, { min: number; max: number; note: string; unit: string; inputLabel?: string; placeholder?: string }> = {
+    limpieza: { min: 12000, max: 16000, note: "Referencia habitual para limpieza estándar en comunas del MVP.", unit: "por hora" },
+    mascotas: {
+      min: 5000,
+      max: 9000,
+      note: "Referencia sugerida para paseo de mascotas dentro del rango más liviano del servicio.",
+      unit: "por paseo",
+      inputLabel: "Tarifa por paseo",
+      placeholder: "7000"
+    },
+    babysitter: { min: 12000, max: 18000, note: "Suele variar según experiencia, cantidad de niños y horario.", unit: "por hora" },
+    "profesor-particular": { min: 15000, max: 25000, note: "Las clases especializadas y universitarias suelen cobrar más.", unit: "por hora" },
+    "personal-trainer": { min: 18000, max: 30000, note: "Depende del tipo de entrenamiento, modalidad e implementos.", unit: "por hora" },
+    chef: { min: 18000, max: 42000, note: "Varía según el tipo de cocina, la cantidad de personas y la complejidad del servicio.", unit: "por hora" },
+    maquillaje: { min: 18000, max: 30000, note: "Novias y eventos suelen estar en el tramo alto.", unit: "por hora" },
+    planchado: { min: 10000, max: 14000, note: "Se recomienda cobrar por hora según volumen y delicadeza.", unit: "por hora" }
   };
 
   const base = baseByCategory[draft.category];
@@ -520,7 +527,10 @@ function getPricingGuide(draft: DraftState) {
     min,
     max,
     note: base.note,
-    extras
+    extras,
+    unit: base.unit,
+    inputLabel: base.inputLabel ?? "Tarifa por hora",
+    placeholder: base.placeholder ?? "15000"
   };
 }
 
@@ -4773,7 +4783,7 @@ function CleaningOnboardingPageContent() {
                   <strong>Referencia para {pricingGuide.title}</strong>
                   <span>
                     En WeTask, para este servicio suele funcionar un rango de <strong>${formatClp(pricingGuide.min)}</strong> a{" "}
-                    <strong>${formatClp(pricingGuide.max)}</strong> por hora.
+                    <strong>${formatClp(pricingGuide.max)}</strong> {pricingGuide.unit}.
                   </span>
                   <span>{pricingGuide.note}</span>
                   {pricingGuide.extras.length > 0 ? (
@@ -4839,8 +4849,8 @@ function CleaningOnboardingPageContent() {
                     </div>
                   ) : (
                     <label>
-                      Tarifa por hora
-                      <input value={draft.hourlyRate} onChange={(event) => updateDraft("hourlyRate", event.target.value.replace(/\D/g, ""))} placeholder="15000" />
+                      {pricingGuide.inputLabel}
+                      <input value={draft.hourlyRate} onChange={(event) => updateDraft("hourlyRate", event.target.value.replace(/\D/g, ""))} placeholder={pricingGuide.placeholder} />
                     </label>
                   )}
                   <label>
