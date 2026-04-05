@@ -1,5 +1,7 @@
+"use client";
+
 import type { ReactNode } from "react";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { MarketNav } from "@/components/market-nav";
 
 type AdminHeroShellProps = {
@@ -7,15 +9,17 @@ type AdminHeroShellProps = {
 };
 
 export function AdminHeroShell({ children }: AdminHeroShellProps) {
+  const router = useRouter();
+
   return (
     <main className="page market-shell market-shell-auth admin-auth-page">
       <div className="auth-flow-backdrop" aria-hidden />
       <div className="market-shell-auth-content admin-auth-content">
         <MarketNav />
         <div className="admin-shell-actions">
-          <Link href="/admin" className="cta ghost small admin-head-action">
+          <button type="button" className="cta ghost small admin-head-action" onClick={() => router.push("/admin")}>
             Volver al inicio
-          </Link>
+          </button>
         </div>
 
         <section className="admin-auth-shell">
