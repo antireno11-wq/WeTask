@@ -470,8 +470,8 @@ function getPricingGuide(draft: DraftState) {
       min: 5000,
       max: 9000,
       note: "Referencia sugerida para paseo de mascotas dentro del rango más liviano del servicio.",
-      unit: "por paseo",
-      inputLabel: "Tarifa por paseo",
+      unit: "por hora",
+      inputLabel: "Tarifa por hora",
       placeholder: "7000"
     },
     babysitter: { min: 12000, max: 18000, note: "Suele variar según experiencia, cantidad de niños y horario.", unit: "por hora" },
