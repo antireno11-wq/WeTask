@@ -19,7 +19,8 @@ export async function GET(req: NextRequest) {
       limit: searchParams.get("limit") ?? undefined
     });
 
-    const startsAt = input.date ?? new Date();
+    const now = new Date();
+    const startsAt = input.date && input.date.getTime() > now.getTime() ? input.date : now;
     const endsAt = new Date(startsAt.getTime() + input.days * 24 * 60 * 60 * 1000);
 
     const slots = await prisma.availabilitySlot.findMany({

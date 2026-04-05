@@ -165,6 +165,8 @@ export async function GET(req: NextRequest) {
         }
       }
     }
+    const now = new Date();
+    const startDate = input.date && input.date.getTime() > now.getTime() ? input.date : now;
 
     const profiles = await prisma.professionalProfile.findMany({
       where: {

@@ -591,6 +591,10 @@ function buildDemoSlots(baseDate: string, proId: string): AvailabilitySlot[] {
   return slots;
 }
 
+function isFutureSlot(slot: AvailabilitySlot) {
+  return new Date(slot.endsAt).getTime() > Date.now();
+}
+
 export default function ProDetailPage() {
   const params = useParams<{ proId: string }>();
   const searchParams = useSearchParams();
@@ -655,10 +659,10 @@ export default function ProDetailPage() {
         }
 
         setData(resolvedProfile);
-        setSlots(resolvedSlots);
+        setSlots(resolvedSlots.filter(isFutureSlot));
       } catch {
         setData(buildDemoProfessional(params.proId));
-        setSlots(buildDemoSlots(date, params.proId));
+        setSlots(buildDemoSlots(date, params.proId).filter(isFutureSlot));
         setNotice("No fue posible cargar todos los datos en vivo. Te mostramos una vista de ejemplo.");
         setError("");
       } finally {
@@ -677,16 +681,17 @@ export default function ProDetailPage() {
     }
   }, []);
 
+  const visibleSlots = useMemo(() => slots.filter(isFutureSlot), [slots]);
   const dayGroups = useMemo(() => {
     const map = new Map<string, AvailabilitySlot[]>();
-    for (const slot of slots) {
+    for (const slot of visibleSlots) {
       const key = slot.startsAt.slice(0, 10);
       const prev = map.get(key) ?? [];
       prev.push(slot);
       map.set(key, prev);
     }
     return Array.from(map.entries()).sort(([a], [b]) => a.localeCompare(b));
-  }, [slots]);
+  }, [visibleSlots]);
 
   useEffect(() => {
     if (!selectedDay && dayGroups[0]) {
@@ -745,10 +750,10 @@ export default function ProDetailPage() {
     }
     return map;
   }, [slots]);
-  const availableSlotsCount = slots.length;
+  const availableSlotsCount = visibleSlots.length;
   const daysWithSlotsCount = slotsByDay.size;
   const todaySlots = slotsByDay.get(todayKey) ?? [];
-  const nextAvailableSlot = slots[0] ?? null;
+  const nextAvailableSlot = visibleSlots[0] ?? null;
 
   const aboutText = useMemo(() => {
     const base = data?.bio?.trim() || data?.user.cleaningOnboarding?.shortDescription?.trim();

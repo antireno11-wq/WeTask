@@ -138,6 +138,10 @@ function clampBookingHours(value: number) {
   return Math.min(8, Math.max(1, Math.floor(value || 1)));
 }
 
+function clampBookingHours(value: number) {
+  return Math.min(8, Math.max(1, Math.floor(value || 1)));
+}
+
 function clp(value: number) {
   return new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP", maximumFractionDigits: 0 }).format(value);
 }
@@ -166,6 +170,10 @@ function durationHours(slot: Slot) {
   const start = new Date(slot.startsAt).getTime();
   const end = new Date(slot.endsAt).getTime();
   return Math.max(0.5, Math.round(((end - start) / 36e5) * 2) / 2);
+}
+
+function isFutureSlot(slot: Slot): boolean {
+  return new Date(slot.endsAt).getTime() > Date.now();
 }
 
 function starsText(value: number) {
@@ -659,7 +667,7 @@ export default function ReservarPage() {
           serviceId: taskerService.service?.id ?? taskerService.serviceId ?? null,
           serviceName: taskerService.service?.name ?? null
         })),
-        slots: item.slots
+        slots: item.slots.filter(isFutureSlot)
       }));
 
       let resolvedMatches = normalized;
@@ -835,6 +843,8 @@ export default function ReservarPage() {
       }
 
       const payerEmail = (selectedSavedPaymentMethod?.payerEmail || cardData.cardholderEmail || "").trim();
+
+      const safeHours = clampBookingHours(hours);
 
       const safeHours = clampBookingHours(hours);
 
