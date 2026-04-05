@@ -1,6 +1,7 @@
 type PricingInput = {
   hourlyRateClp: number;
   hours: number;
+  pricingModel?: "hourly" | "fixed";
   materials: boolean;
   urgency: boolean;
   travelFeeClp: number;
@@ -20,7 +21,7 @@ export type PricingBreakdown = {
 };
 
 export function calculateMarketplacePrice(input: PricingInput): PricingBreakdown {
-  const subtotalClp = input.hourlyRateClp * input.hours;
+  const subtotalClp = input.pricingModel === "fixed" ? input.hourlyRateClp : input.hourlyRateClp * input.hours;
 
   const extras: Array<{ code: string; name: string; priceClp: number }> = [];
 

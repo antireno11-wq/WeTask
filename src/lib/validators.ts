@@ -43,9 +43,9 @@ import {
   PET_TASK_INCLUDED_OPTIONS
 } from "@/lib/pet-scope";
 import {
+  MAKEUP_BOOKING_NOTICE_OPTIONS,
+  MAKEUP_DURATION_OPTIONS,
   MAKEUP_SCOPE_SERVICE_OPTIONS,
-  MAKEUP_TASK_EXCLUDED_OPTIONS,
-  MAKEUP_TASK_INCLUDED_OPTIONS
 } from "@/lib/makeup-scope";
 import {
   IRONING_SCOPE_SERVICE_OPTIONS,
@@ -84,8 +84,6 @@ const petScopeAnimalEnum = z.enum(PET_SCOPE_ANIMAL_OPTIONS.map((option) => optio
 const petIncludedTaskEnum = z.enum(PET_TASK_INCLUDED_OPTIONS.map((option) => option.value) as [string, ...string[]]);
 const petExcludedTaskEnum = z.enum(PET_TASK_EXCLUDED_OPTIONS.map((option) => option.value) as [string, ...string[]]);
 const makeupScopeServiceEnum = z.enum(MAKEUP_SCOPE_SERVICE_OPTIONS.map((option) => option.value) as [string, ...string[]]);
-const makeupIncludedTaskEnum = z.enum(MAKEUP_TASK_INCLUDED_OPTIONS.map((option) => option.value) as [string, ...string[]]);
-const makeupExcludedTaskEnum = z.enum(MAKEUP_TASK_EXCLUDED_OPTIONS.map((option) => option.value) as [string, ...string[]]);
 const ironingScopeServiceEnum = z.enum(IRONING_SCOPE_SERVICE_OPTIONS.map((option) => option.value) as [string, ...string[]]);
 const ironingIncludedTaskEnum = z.enum(IRONING_TASK_INCLUDED_OPTIONS.map((option) => option.value) as [string, ...string[]]);
 const ironingExcludedTaskEnum = z.enum(IRONING_TASK_EXCLUDED_OPTIONS.map((option) => option.value) as [string, ...string[]]);
@@ -548,10 +546,29 @@ export const taskerOnboardingStep7Schema = z.object({
   makeupScope: z
     .object({
       services_offered: z.array(makeupScopeServiceEnum).min(1),
-      includes_kit: z.boolean().optional().nullable(),
-      tasks_included: z.array(makeupIncludedTaskEnum).min(1),
-      tasks_excluded: z.array(makeupExcludedTaskEnum).optional().default([]),
-      special_conditions: z.string().max(600).optional().default("")
+      service_configs: z.array(
+        z.object({
+          service_slug: makeupScopeServiceEnum,
+          custom_label: z.string().max(80).optional().default(""),
+          base_price_clp: z.coerce.number().int().min(5000).max(200000),
+          duration_min: z.coerce
+            .number()
+            .refine((value) => MAKEUP_DURATION_OPTIONS.some((option) => option.minutes === value), "Duración inválida"),
+          includes_travel: z.boolean().optional().default(true),
+          includes_lashes: z.boolean().optional().default(false),
+          includes_trial: z.boolean().optional().default(false),
+          includes_materials: z.boolean().optional().default(true)
+        })
+      ).min(1),
+      specialty: z.string().max(120).optional().default(""),
+      style_description: z.string().max(1200).optional().default(""),
+      portfolio_photos: z.array(imageDataUrlSchema).max(6).optional().default([]),
+      works_at_home: z.boolean().optional().nullable(),
+      booking_notice_hours: z.coerce
+        .number()
+        .refine((value) => MAKEUP_BOOKING_NOTICE_OPTIONS.some((option) => option.value === value), "Anticipación inválida"),
+      same_day_bookings: z.boolean().optional().default(false),
+      client_preparation: z.string().max(600).optional().default("")
     })
     .optional()
     .nullable(),
@@ -633,7 +650,12 @@ export const taskerOnboardingStep8Schema = z
 
 const taskerServiceRateSchema = z.object({
   serviceSlug: z.string().min(1),
-  hourlyRateClp: z.coerce.number().int().min(5000).max(200000)
+  hourlyRateClp: z.coerce.number().int().min(5000).max(200000),
+  durationMin: z.coerce.number().int().min(45).max(180).optional(),
+  includesTravel: z.boolean().optional(),
+  includesLashes: z.boolean().optional(),
+  includesTrial: z.boolean().optional(),
+  includesMaterials: z.boolean().optional()
 });
 
 export const taskerOnboardingStep9Schema = z.object({

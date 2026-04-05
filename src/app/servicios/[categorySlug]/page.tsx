@@ -23,7 +23,7 @@ import {
 import { getCleaningServiceDefinition } from "@/lib/cleaning-service-types";
 import { COVERAGE_UNAVAILABLE_MESSAGE, inferCommuneFromAddress, normalizeCommune } from "@/lib/communes";
 import { estimateIroningDuration } from "@/lib/ironing-duration-estimator";
-import { MAKEUP_TASK_INCLUDED_OPTIONS } from "@/lib/makeup-scope";
+import { getMakeupServiceDefinitionBySlug } from "@/lib/makeup-service-types";
 import { PET_TASK_INCLUDED_OPTIONS } from "@/lib/pet-scope";
 import { getMarketplaceCategorySlugForTaskerCategory, normalizeTaskerCategorySlug } from "@/lib/tasker-category-profiles";
 import { TEACHER_TASK_INCLUDED_OPTIONS } from "@/lib/teacher-scope";
@@ -48,9 +48,13 @@ const TASK_FILTER_OPTIONS_BY_CATEGORY: Record<string, TaskFilterOption[]> = {
   "profesor-particular": [...TEACHER_TASK_INCLUDED_OPTIONS],
   "personal-trainer": [...TRAINER_TASK_INCLUDED_OPTIONS],
   chef: [...CHEF_TASK_INCLUDED_OPTIONS],
-  maquillaje: [...MAKEUP_TASK_INCLUDED_OPTIONS],
+  maquillaje: [],
   planchado: []
 };
+
+function clp(value: number) {
+  return new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP", maximumFractionDigits: 0 }).format(value);
+}
 
 export default function ServicioCategoriaPage() {
   const params = useParams<{ categorySlug: string }>();
@@ -111,17 +115,24 @@ export default function ServicioCategoriaPage() {
   const [ironingGarments, setIroningGarments] = useState(query.get("ironingGarments") ?? "");
   const [ironingBulkyItems, setIroningBulkyItems] = useState(query.get("ironingBulkyItems") ?? "");
   const [ironingDelicates, setIroningDelicates] = useState(query.get("ironingDelicates") === "true");
+  const [requestedDate, setRequestedDate] = useState(query.get("requestedDate") ?? "");
+  const [requestedTime, setRequestedTime] = useState(query.get("requestedTime") ?? "");
+  const [makeupEventType, setMakeupEventType] = useState(query.get("makeupEventType") ?? "");
+  const [makeupEventTime, setMakeupEventTime] = useState(query.get("makeupEventTime") ?? "");
+  const [makeupStyleNotes, setMakeupStyleNotes] = useState(query.get("makeupStyleNotes") ?? "");
+  const [makeupLashes, setMakeupLashes] = useState(query.get("makeupLashes") === "true");
+  const [makeupTrial, setMakeupTrial] = useState(query.get("makeupTrial") === "true");
   const autoAdvanceCategorySlugs = new Set([
     "mascotas",
     "babysitter",
     "profesor-particular",
     "personal-trainer",
-    "chef",
-    "maquillaje"
+    "chef"
   ]);
   const autoAdvanceOnServiceSelect = category ? autoAdvanceCategorySlugs.has(category.slug) : false;
   const isCleaningCategory = category?.slug === "limpieza";
   const isIroningCategory = category?.slug === "planchado";
+  const isMakeupCategory = category?.slug === "maquillaje";
   const isCustomerSession = sessionRole === "CUSTOMER";
   const skipAddressStep = query.get("skipAddress") === "1";
 
@@ -269,6 +280,11 @@ export default function ServicioCategoriaPage() {
     if (!selectedCleaningServiceSlug) return null;
     return getCleaningServiceDefinition(selectedCleaningServiceSlug);
   }, [selectedCleaningServiceSlug]);
+  const selectedMakeupDefinition = useMemo(() => {
+    if (!isMakeupCategory || !category || !selectedServiceId) return null;
+    const service = category.services.find((item) => item.id === selectedServiceId);
+    return service ? getMakeupServiceDefinitionBySlug(service.slug) : null;
+  }, [category, isMakeupCategory, selectedServiceId]);
 
   const visibleServices = useMemo(() => {
     if (!category) return [];
@@ -416,6 +432,10 @@ export default function ServicioCategoriaPage() {
         return;
       }
     }
+    if (category?.slug === "maquillaje" && (!requestedDate || !requestedTime)) {
+      setCoverageNote("Cuéntanos para qué fecha y hora necesitas el maquillaje antes de continuar.");
+      return;
+    }
     setCoverageNote("");
 
     const qs = new URLSearchParams({
@@ -429,6 +449,13 @@ export default function ServicioCategoriaPage() {
     if (selectedTasks.length > 0) qs.set("tasks", selectedTasks.join(","));
     const nextServiceId = serviceIdOverride ?? selectedServiceId;
     if (nextServiceId) qs.set("serviceId", nextServiceId);
+    if (requestedDate) qs.set("requestedDate", requestedDate);
+    if (requestedTime) qs.set("requestedTime", requestedTime);
+    if (makeupEventType.trim()) qs.set("makeupEventType", makeupEventType.trim());
+    if (makeupEventTime.trim()) qs.set("makeupEventTime", makeupEventTime.trim());
+    if (makeupStyleNotes.trim()) qs.set("makeupStyleNotes", makeupStyleNotes.trim());
+    if (makeupLashes) qs.set("makeupLashes", "true");
+    if (makeupTrial) qs.set("makeupTrial", "true");
     if (category?.slug === "limpieza" && cleaningEstimate) {
       qs.set("cleaningBedrooms", cleaningBedrooms);
       qs.set("cleaningBathrooms", cleaningBathrooms);
@@ -573,6 +600,7 @@ export default function ServicioCategoriaPage() {
                       {visibleServices.map((service) => {
                         const cleaningDefinition = category.slug === "limpieza" ? getCleaningServiceDefinition(service.slug) : null;
                         const chefDefinition = category.slug === "chef" ? getChefServiceDefinition(service.slug) : null;
+                        const makeupDefinition = category.slug === "maquillaje" ? getMakeupServiceDefinitionBySlug(service.slug) : null;
                         const isActive = selectedServiceId === service.id;
                         return (
                           <label
@@ -595,10 +623,11 @@ export default function ServicioCategoriaPage() {
                             <div className="auth-service-card-head">
                               <strong>{service.name}</strong>
                               <span className="auth-service-price-inline">
-                                Desde <strong>${new Intl.NumberFormat("es-CL").format(service.basePriceClp)}</strong>/h
+                                Desde <strong>${new Intl.NumberFormat("es-CL").format(service.basePriceClp)}</strong>
+                                {makeupDefinition ? "" : "/h"}
                               </span>
                             </div>
-                            <span>{cleaningDefinition?.forClients ?? chefDefinition?.forClients ?? service.description}</span>
+                            <span>{cleaningDefinition?.forClients ?? chefDefinition?.forClients ?? makeupDefinition?.forClients ?? service.description}</span>
                             {isActive ? (
                               <div className="auth-service-card-detail">
                                 {isCleaningCategory && cleaningEstimate ? (
@@ -606,8 +635,10 @@ export default function ServicioCategoriaPage() {
                                     Tiempo sugerido: {cleaningEstimate.minHours} a {cleaningEstimate.maxHours} horas · Recomendado: {cleaningEstimate.recommendedHours} h.
                                   </span>
                                 ) : null}
+                                {makeupDefinition ? <span>Duración estimada: {makeupDefinition.durationLabel}.</span> : null}
                                 {cleaningDefinition ? <span>Incluye: {cleaningDefinition.includes.slice(0, 4).join(", ")}.</span> : null}
                                 {chefDefinition ? <span>Incluye: {chefDefinition.includes.slice(0, 4).join(", ")}.</span> : null}
+                                {makeupDefinition ? <span>{makeupDefinition.idealFor}</span> : null}
                                 {cleaningDefinition?.excludes?.length ? <span>No incluye: {cleaningDefinition.excludes.slice(0, 3).join(", ")}.</span> : null}
                                 {chefDefinition?.excludes?.length ? <span>No incluye: {chefDefinition.excludes.slice(0, 3).join(", ")}.</span> : null}
                               </div>
@@ -815,6 +846,75 @@ export default function ServicioCategoriaPage() {
                             ? `${ironingEstimate.summary} Si quieres irte a la segura, reserva ${ironingEstimate.recommendedHours} hora(s).`
                             : "Te mostraremos un rango sugerido antes de buscar taskers."}
                         </span>
+                      </div>
+                    </div>
+                  ) : null}
+                  {isMakeupCategory && selectedMakeupDefinition ? (
+                    <div className="full service-prep-card" id="task-focos">
+                      <div className="panel-head">
+                        <h3>Cuéntanos qué resultado necesitas</h3>
+                        <p>En maquillaje la búsqueda se orienta al look final, no a horas sueltas. Luego te mostraremos maquilladoras según servicio, comuna y disponibilidad.</p>
+                      </div>
+
+                      <div className="service-prep-summary">
+                        <strong>{selectedMakeupDefinition.name}</strong>
+                        <span>
+                          Desde {clp(category.services.find((item) => item.id === selectedServiceId)?.basePriceClp ?? selectedMakeupDefinition.recommendedMinClp)} ·
+                          {" "}Duración estimada: {selectedMakeupDefinition.durationLabel}
+                        </span>
+                        <span>{selectedMakeupDefinition.idealFor}</span>
+                      </div>
+
+                      <div className="service-duration-grid">
+                        <label>
+                          ¿Para cuándo lo necesitas?
+                          <input type="date" value={requestedDate} onChange={(event) => setRequestedDate(event.target.value)} required />
+                        </label>
+                        <label>
+                          Hora estimada
+                          <input type="time" value={requestedTime} onChange={(event) => setRequestedTime(event.target.value)} required />
+                        </label>
+                      </div>
+
+                      <div className="service-duration-grid">
+                        <label>
+                          Tipo de evento
+                          <input
+                            value={makeupEventType}
+                            onChange={(event) => setMakeupEventType(event.target.value)}
+                            placeholder="Ej: matrimonio, fiesta, sesión de fotos"
+                          />
+                        </label>
+                        <label>
+                          Hora del evento
+                          <input type="time" value={makeupEventTime} onChange={(event) => setMakeupEventTime(event.target.value)} />
+                        </label>
+                      </div>
+
+                      <label className="full">
+                        Preferencias o detalles opcionales
+                        <textarea
+                          value={makeupStyleNotes}
+                          rows={3}
+                          onChange={(event) => setMakeupStyleNotes(event.target.value)}
+                          placeholder="Cuéntanos si buscas algo más natural, glam, si tienes referencias de estilo o alguna preferencia especial."
+                        />
+                      </label>
+
+                      <div className="service-duration-toggles">
+                        <label className={`onboarding-check-card ${makeupLashes ? "active" : ""}`}>
+                          <input type="checkbox" checked={makeupLashes} onChange={() => setMakeupLashes((current) => !current)} />
+                          <span>Quiero agregar pestañas</span>
+                        </label>
+                        <label className={`onboarding-check-card ${makeupTrial ? "active" : ""}`}>
+                          <input type="checkbox" checked={makeupTrial} onChange={() => setMakeupTrial((current) => !current)} />
+                          <span>Quiero opción con prueba previa</span>
+                        </label>
+                      </div>
+
+                      <div className="auth-flow-note-card auth-flow-note-card-compact">
+                        <strong>Qué verás en resultados</strong>
+                        <span>Fotos de trabajos, tipo de maquillaje, precio base y duración estimada. No te mostraremos el servicio como una tarifa por hora.</span>
                       </div>
                     </div>
                   ) : null}

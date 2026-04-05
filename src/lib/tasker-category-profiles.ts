@@ -36,8 +36,6 @@ import {
 import {
   emptyMakeupScope,
   MAKEUP_SCOPE_SERVICE_OPTIONS,
-  MAKEUP_TASK_EXCLUDED_OPTIONS,
-  MAKEUP_TASK_INCLUDED_OPTIONS,
   normalizeMakeupScope,
   supportsMakeupRequestedTasks
 } from "@/lib/makeup-scope";
@@ -188,9 +186,9 @@ const CATEGORY_CONFIGS: Record<SupportedTaskerCategorySlug, TaskerCategoryConfig
     label: "Maquillaje",
     marketplaceCategorySlug: "maquillaje-a-domicilio",
     serviceOptions: MAKEUP_SCOPE_SERVICE_OPTIONS,
-    includedTaskOptions: MAKEUP_TASK_INCLUDED_OPTIONS,
-    excludedTaskOptions: MAKEUP_TASK_EXCLUDED_OPTIONS,
-    toggleFields: [{ key: "includes_kit", label: "Incluyo mi kit de maquillaje" }]
+    includedTaskOptions: [],
+    excludedTaskOptions: [],
+    toggleFields: [{ key: "works_at_home", label: "Trabajo a domicilio" }, { key: "same_day_bookings", label: "Acepto reservas el mismo día" }]
   },
   planchado: {
     slug: "planchado",

@@ -3,6 +3,7 @@ import { isChefServiceSlug } from "@/lib/chef-service-types";
 import { CLEANING_WEEK_DAYS } from "@/lib/cleaning-onboarding";
 import { isCleaningServiceSlug } from "@/lib/cleaning-service-types";
 import { normalizeCommune, normalizeCommuneList } from "@/lib/communes";
+import { getMakeupServiceSlugFromScopeValue, isMakeupScopeServiceSlug } from "@/lib/makeup-service-types";
 import { prisma } from "@/lib/prisma";
 import {
   extractOfferedServicesForTaskerCategory,
@@ -168,6 +169,11 @@ async function syncTaskerServicesForCategory(input: {
       ? input.offeredServices.filter((item) => isCleaningServiceSlug(item))
       : normalizedCategorySlug === "chef"
         ? input.offeredServices.filter((item) => isChefServiceSlug(item))
+        : normalizedCategorySlug === "maquillaje"
+          ? input.offeredServices
+              .filter((item) => isMakeupScopeServiceSlug(item))
+              .map((item) => getMakeupServiceSlugFromScopeValue(item))
+              .filter((item): item is NonNullable<typeof item> => Boolean(item))
         : [];
 
   const services = selectedServices.length

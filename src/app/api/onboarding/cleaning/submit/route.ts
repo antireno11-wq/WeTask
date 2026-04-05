@@ -85,9 +85,18 @@ function listMissingFields(onboarding: Awaited<ReturnType<typeof prisma.cleaning
 
   if (onboarding.categorySlug === "maquillaje") {
     const makeupScope = normalizeMakeupScope(onboarding.makeupScope);
+    const hasConfiguredServices =
+      makeupScope.services_offered.length > 0 &&
+      makeupScope.service_configs.length === makeupScope.services_offered.length &&
+      makeupScope.service_configs.every(
+        (config) =>
+          config.base_price_clp &&
+          config.duration_min &&
+          (config.service_slug !== "otro" || config.custom_label.trim().length > 0)
+      );
     required.splice(8, 0, [
       "makeupScope",
-      makeupScope.services_offered.length > 0 && makeupScope.tasks_included.length > 0 ? makeupScope : null
+      hasConfiguredServices && makeupScope.style_description.trim().length > 0 && makeupScope.portfolio_photos.length > 0 ? makeupScope : null
     ]);
   }
 

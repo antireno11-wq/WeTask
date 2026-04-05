@@ -426,6 +426,7 @@ export async function POST(req: NextRequest) {
     const price = calculateMarketplacePrice({
       hourlyRateClp: baseRate,
       hours: input.hours,
+      pricingModel: service.category.slug === "maquillaje" ? "fixed" : "hourly",
       materials: Boolean(input.extras?.materials),
       urgency: Boolean(input.extras?.urgency),
       travelFeeClp: input.extras?.travelFeeClp ?? 0,

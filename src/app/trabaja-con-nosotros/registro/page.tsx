@@ -105,15 +105,26 @@ import {
 } from "@/lib/pet-scope";
 import {
   MAKEUP_SCOPE_SERVICE_OPTIONS,
-  MAKEUP_TASK_EXCLUDED_OPTIONS,
-  MAKEUP_TASK_INCLUDED_OPTIONS,
+  MAKEUP_SPECIALTY_OPTIONS,
+  emptyMakeupServiceConfig,
   emptyMakeupScope,
-  getMakeupExcludedTaskLabel,
-  getMakeupIncludedTaskLabel,
+  getMakeupDurationSummary,
+  getMakeupServiceConfig,
+  getMakeupServiceHeadline,
   getMakeupServiceLabel,
   normalizeMakeupScope,
-  type MakeupScopeData
+  type MakeupScopeData,
+  type MakeupServiceConfig
 } from "@/lib/makeup-scope";
+import {
+  MAKEUP_DURATION_OPTIONS,
+  MAKEUP_SERVICE_DEFINITIONS,
+  getMakeupDurationLabel,
+  getMakeupServiceDefinitionByScopeValue,
+  getMakeupServiceSlugFromScopeValue,
+  isMakeupScopeServiceSlug,
+  type MakeupScopeServiceSlug
+} from "@/lib/makeup-service-types";
 import {
   IRONING_SCOPE_SERVICE_OPTIONS,
   IRONING_TASK_EXCLUDED_OPTIONS,
@@ -273,8 +284,6 @@ type DraftState = {
   trainerMode: "presencial" | "online" | "ambas";
   trainerBringsEquipment: boolean | null;
   trainerScope: TrainerScopeData;
-  makeupType: Array<"social" | "eventos" | "novias">;
-  makeupKit: boolean | null;
   ironingType: "casa_cliente" | "retiro_entrega";
   ironingDelicate: boolean | null;
   ironingPricing: "por_hora" | "por_prenda";
@@ -298,7 +307,6 @@ type DraftState = {
 
 type CleaningScopeScreen = 1 | 2 | 3 | 4 | 5;
 type PetScopeScreen = 1 | 2 | 3 | 4 | 5 | 6;
-type MakeupScopeScreen = 1 | 2 | 3 | 4 | 5;
 type IroningScopeScreen = 1 | 2 | 3 | 4 | 5;
 type BabysitterScopeScreen = 1 | 2 | 3 | 4 | 5 | 6;
 type ChefScopeScreen = 1 | 2 | 3 | 4 | 5;
@@ -516,7 +524,14 @@ function getPricingGuide(draft: DraftState) {
     "profesor-particular": { min: 15000, max: 25000, note: "Las clases especializadas y universitarias suelen cobrar más.", unit: "por hora" },
     "personal-trainer": { min: 18000, max: 30000, note: "Depende del tipo de entrenamiento, modalidad e implementos.", unit: "por hora" },
     chef: { min: 18000, max: 42000, note: "Varía según el tipo de cocina, la cantidad de personas y la complejidad del servicio.", unit: "por hora" },
-    maquillaje: { min: 18000, max: 30000, note: "Novias y eventos suelen estar en el tramo alto.", unit: "por hora" },
+    maquillaje: {
+      min: 25000,
+      max: 90000,
+      note: "En maquillaje importa más el resultado final, el tipo de look y el tiempo estimado que una tarifa por hora suelta.",
+      unit: "por servicio",
+      inputLabel: "Precio base desde",
+      placeholder: "35000"
+    },
     planchado: { min: 10000, max: 14000, note: "Se recomienda cobrar por hora según volumen y delicadeza.", unit: "por hora" }
   };
 
@@ -533,10 +548,8 @@ function getPricingGuide(draft: DraftState) {
     if (draft.cleaningBringsEquipment) extras.push("Si llevas aspiradora o equipo propio, también puedes posicionarte en el tramo alto.");
   }
 
-  if (draft.category === "maquillaje" && draft.makeupKit) {
-    min += 3000;
-    max += 5000;
-    extras.push("Si incluyes tu kit de maquillaje, conviene cobrar un extra por hora.");
+  if (draft.category === "maquillaje") {
+    extras.push("En maquillaje conviene mostrar precio base por servicio y duración estimada para que el cliente reserve por resultado.");
   }
 
   if (draft.category === "personal-trainer" && draft.trainerBringsEquipment) {
@@ -597,13 +610,12 @@ function selectedChefServiceDefinitions(draft: DraftState): ChefServiceDefinitio
   return CHEF_SERVICE_DEFINITIONS.filter((service) => draft.chefServiceType.includes(service.slug));
 }
 
-function normalizeMakeupTypes(value: unknown): Array<"social" | "eventos" | "novias"> {
-  const allowed = new Set(["social", "eventos", "novias"]);
+function normalizeMakeupTypes(value: unknown): MakeupScopeServiceSlug[] {
   if (Array.isArray(value)) {
-    return value.filter((item): item is "social" | "eventos" | "novias" => typeof item === "string" && allowed.has(item));
+    return value.filter((item): item is MakeupScopeServiceSlug => typeof item === "string" && isMakeupScopeServiceSlug(item));
   }
-  if (typeof value === "string" && allowed.has(value)) {
-    return [value as "social" | "eventos" | "novias"];
+  if (typeof value === "string" && isMakeupScopeServiceSlug(value)) {
+    return [value];
   }
   return [];
 }
@@ -627,6 +639,20 @@ function normalizePetServiceTypes(value: unknown): PetScopeServiceSlug[] {
     return [value];
   }
   return [];
+}
+
+function selectedMakeupDefinitions(draft: DraftState) {
+  return MAKEUP_SERVICE_DEFINITIONS.filter((service) => draft.makeupScope.services_offered.includes(service.scopeValue));
+}
+
+function syncMakeupServiceConfigs(
+  currentConfigs: MakeupServiceConfig[],
+  selectedServices: MakeupScopeServiceSlug[]
+): MakeupServiceConfig[] {
+  return selectedServices.map((serviceSlug) => {
+    const existing = currentConfigs.find((item) => item.service_slug === serviceSlug);
+    return existing ? existing : emptyMakeupServiceConfig(serviceSlug);
+  });
 }
 
 function createInitialDraft(): DraftState {
@@ -676,8 +702,6 @@ function createInitialDraft(): DraftState {
     trainerMode: "presencial",
     trainerBringsEquipment: null,
     trainerScope: emptyTrainerScope(),
-    makeupType: [],
-    makeupKit: null,
     ironingType: "casa_cliente",
     ironingDelicate: null,
     ironingPricing: "por_hora",
@@ -730,6 +754,10 @@ function composeReferenceAddress(address: string, apartment: string) {
   const cleanApartment = apartment.trim();
   if (!cleanApartment) return cleanAddress;
   return `${cleanAddress} · Depto ${cleanApartment}`;
+}
+
+function clp(value: number) {
+  return new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP", maximumFractionDigits: 0 }).format(value);
 }
 
 function splitReferenceAddress(referenceAddress: string | null | undefined) {
@@ -872,9 +900,9 @@ function buildStep7Payload(draft: DraftState) {
         offeredServices: draft.makeupScope.services_offered,
         makeupScope: {
           ...draft.makeupScope,
-          includes_kit: draft.makeupKit
+          service_configs: syncMakeupServiceConfigs(draft.makeupScope.service_configs, draft.makeupScope.services_offered)
         },
-        bringsOwnProducts: draft.makeupKit,
+        bringsOwnProducts: draft.makeupScope.service_configs.some((item) => item.includes_materials),
         worksWithClientProducts: true
       };
     case "planchado":
@@ -930,7 +958,6 @@ function CleaningOnboardingPageContent() {
   const [smsPreview, setSmsPreview] = useState("");
   const [cleaningScopeScreen, setCleaningScopeScreen] = useState<CleaningScopeScreen>(1);
   const [petScopeScreen, setPetScopeScreen] = useState<PetScopeScreen>(1);
-  const [makeupScopeScreen, setMakeupScopeScreen] = useState<MakeupScopeScreen>(1);
   const [ironingScopeScreen, setIroningScopeScreen] = useState<IroningScopeScreen>(1);
   const [babysitterScopeScreen, setBabysitterScopeScreen] = useState<BabysitterScopeScreen>(1);
   const [chefScopeScreen, setChefScopeScreen] = useState<ChefScopeScreen>(1);
@@ -958,9 +985,7 @@ function CleaningOnboardingPageContent() {
   const petScopeAnimalsPreview = draft.petAnimals.map(getPetScopeAnimalLabel);
   const petScopeIncludedPreview = draft.petScope.tasks_included.map(getPetIncludedTaskLabel);
   const petScopeExcludedPreview = draft.petScope.tasks_excluded.map(getPetExcludedTaskLabel);
-  const makeupScopeServicesPreview = draft.makeupScope.services_offered.map(getMakeupServiceLabel);
-  const makeupScopeIncludedPreview = draft.makeupScope.tasks_included.map(getMakeupIncludedTaskLabel);
-  const makeupScopeExcludedPreview = draft.makeupScope.tasks_excluded.map(getMakeupExcludedTaskLabel);
+  const makeupScopeConfigsPreview = syncMakeupServiceConfigs(draft.makeupScope.service_configs, draft.makeupScope.services_offered);
   const ironingScopeServicesPreview = draft.ironingScope.services_offered.map(getIroningServiceLabel);
   const babysitterScopeServicesPreview = draft.babysitterScope.services_offered.map(getBabysitterServiceLabel);
   const babysitterScopeAgePreview = draft.babysitterScope.age_ranges.map(getBabysitterAgeRangeLabel);
@@ -1017,8 +1042,7 @@ function CleaningOnboardingPageContent() {
         ironingScope: normalizeIroningScope(parsed.ironingScope ?? current.ironingScope),
         babysitterScope: normalizeBabysitterScope(parsed.babysitterScope ?? current.babysitterScope),
         teacherScope: normalizeTeacherScope(parsed.teacherScope ?? current.teacherScope),
-        trainerScope: normalizeTrainerScope(parsed.trainerScope ?? current.trainerScope),
-        makeupType: normalizeMakeupTypes(parsed.makeupType)
+        trainerScope: normalizeTrainerScope(parsed.trainerScope ?? current.trainerScope)
       }));
       if (parsed.activeStep && parsed.activeStep >= 1 && parsed.activeStep <= 12) {
         setActiveStep(parsed.activeStep);
@@ -1176,19 +1200,22 @@ function CleaningOnboardingPageContent() {
 
   useEffect(() => {
     if (draft.category !== "maquillaje") return;
-    const scope = draft.makeupScope;
-    const normalizedServices = normalizeMakeupTypes(scope.services_offered);
-    const servicesChanged = normalizedServices.join("|") !== draft.makeupType.join("|");
-    const kitChanged = scope.includes_kit !== draft.makeupKit;
+    const normalizedServices = normalizeMakeupTypes(draft.makeupScope.services_offered);
+    const syncedConfigs = syncMakeupServiceConfigs(draft.makeupScope.service_configs, normalizedServices);
+    const servicesChanged = normalizedServices.join("|") !== draft.makeupScope.services_offered.join("|");
+    const configsChanged = JSON.stringify(syncedConfigs) !== JSON.stringify(draft.makeupScope.service_configs);
 
-    if (!servicesChanged && !kitChanged) return;
+    if (!servicesChanged && !configsChanged) return;
 
     setDraft((current) => ({
       ...current,
-      makeupType: normalizeMakeupTypes(current.makeupScope.services_offered),
-      makeupKit: current.makeupScope.includes_kit
+      makeupScope: {
+        ...current.makeupScope,
+        services_offered: normalizeMakeupTypes(current.makeupScope.services_offered),
+        service_configs: syncMakeupServiceConfigs(current.makeupScope.service_configs, normalizeMakeupTypes(current.makeupScope.services_offered))
+      }
     }));
-  }, [draft.category, draft.makeupKit, draft.makeupScope, draft.makeupType]);
+  }, [draft.category, draft.makeupScope]);
 
   useEffect(() => {
     if (draft.category !== "planchado") return;
@@ -1346,12 +1373,6 @@ function CleaningOnboardingPageContent() {
   }, [activeStep, draft.category]);
 
   useEffect(() => {
-    if (activeStep !== 7 || draft.category !== "maquillaje") {
-      setMakeupScopeScreen(1);
-    }
-  }, [activeStep, draft.category]);
-
-  useEffect(() => {
     if (activeStep !== 7 || draft.category !== "planchado") {
       setIroningScopeScreen(1);
     }
@@ -1433,13 +1454,13 @@ function CleaningOnboardingPageContent() {
         nextOnboarding.categorySlug === "maquillaje"
           ? (() => {
               const normalizedScope = normalizeMakeupScope(nextOnboarding.makeupScope);
-              if (normalizedScope.services_offered.length > 0 || normalizedScope.tasks_included.length > 0) {
+              if (normalizedScope.services_offered.length > 0 || normalizedScope.service_configs.length > 0) {
                 return normalizedScope;
               }
               return {
                 ...normalizedScope,
                 services_offered: normalizeMakeupTypes(nextOnboarding.offeredServices),
-                includes_kit: nextOnboarding.bringsOwnProducts ?? current.makeupKit
+                service_configs: syncMakeupServiceConfigs([], normalizeMakeupTypes(nextOnboarding.offeredServices))
               };
             })()
           : current.makeupScope,
@@ -1576,11 +1597,6 @@ function CleaningOnboardingPageContent() {
             })()
           : current.trainerScope,
       chefServiceType: nextOnboarding.categorySlug === "chef" ? normalizeChefServiceTypes(nextOnboarding.offeredServices) : current.chefServiceType,
-      makeupType: nextOnboarding.categorySlug === "maquillaje" ? normalizeMakeupTypes(nextOnboarding.offeredServices) : current.makeupType,
-      makeupKit:
-        nextOnboarding.categorySlug === "maquillaje"
-          ? normalizeMakeupScope(nextOnboarding.makeupScope).includes_kit ?? nextOnboarding.bringsOwnProducts ?? current.makeupKit
-          : current.makeupKit,
       ironingType:
         nextOnboarding.categorySlug === "planchado"
           ? normalizeIroningScope(nextOnboarding.ironingScope).services_offered[0] ?? current.ironingType
@@ -1743,6 +1759,54 @@ function CleaningOnboardingPageContent() {
     } catch (eventualError) {
       setError(eventualError instanceof Error ? eventualError.message : `No se pudo cargar ${label.toLowerCase()}.`);
     }
+  };
+
+  const updateMakeupServiceConfig = (
+    serviceSlug: MakeupScopeServiceSlug,
+    updater: (current: MakeupServiceConfig) => MakeupServiceConfig
+  ) => {
+    setDraft((current) => {
+      const syncedConfigs = syncMakeupServiceConfigs(current.makeupScope.service_configs, current.makeupScope.services_offered);
+      return {
+        ...current,
+        makeupScope: {
+          ...current.makeupScope,
+          service_configs: syncedConfigs.map((config) => (config.service_slug === serviceSlug ? updater(config) : config))
+        }
+      };
+    });
+  };
+
+  const handleMakeupPortfolioUpload = async (file: File | null) => {
+    if (!file) return;
+    if (file.size > MAX_UPLOAD_BYTES) {
+      setError("Portafolio de maquillaje: la foto supera los 6 MB. Súbela más liviana para continuar.");
+      return;
+    }
+
+    try {
+      setError("");
+      const content = await fileToDataUrl(file);
+      setDraft((current) => ({
+        ...current,
+        makeupScope: {
+          ...current.makeupScope,
+          portfolio_photos: [...current.makeupScope.portfolio_photos, content].slice(0, 6)
+        }
+      }));
+    } catch (eventualError) {
+      setError(eventualError instanceof Error ? eventualError.message : "No se pudo cargar la foto del portafolio.");
+    }
+  };
+
+  const removeMakeupPortfolioPhoto = (index: number) => {
+    setDraft((current) => ({
+      ...current,
+      makeupScope: {
+        ...current.makeupScope,
+        portfolio_photos: current.makeupScope.portfolio_photos.filter((_, currentIndex) => currentIndex !== index)
+      }
+    }));
   };
 
   const selectAddressSuggestion = (suggestion: string) => {
@@ -2155,24 +2219,6 @@ function CleaningOnboardingPageContent() {
     setPetScopeScreen((current) => (Math.max(1, current - 1) as PetScopeScreen));
   };
 
-  const continueMakeupScopeScreen = () => {
-    if (makeupScopeScreen === 1 && draft.makeupScope.services_offered.length === 0) {
-      setError("Selecciona al menos un tipo de maquillaje que ofreces.");
-      return;
-    }
-    if (makeupScopeScreen === 2 && draft.makeupScope.tasks_included.length === 0) {
-      setError("Selecciona al menos una tarea que sí realizas.");
-      return;
-    }
-    setError("");
-    setMakeupScopeScreen((current) => (Math.min(5, current + 1) as MakeupScopeScreen));
-  };
-
-  const previousMakeupScopeScreen = () => {
-    setError("");
-    setMakeupScopeScreen((current) => (Math.max(1, current - 1) as MakeupScopeScreen));
-  };
-
   const continueIroningScopeScreen = () => {
     if (ironingScopeScreen === 1 && draft.ironingScope.services_offered.length === 0) {
       setError("Selecciona al menos una modalidad de planchado que ofreces.");
@@ -2307,9 +2353,23 @@ function CleaningOnboardingPageContent() {
       setError("Selecciona al menos un tipo de maquillaje que ofreces.");
       return;
     }
-    if (draft.category === "maquillaje" && draft.makeupScope.tasks_included.length === 0) {
-      setError("Selecciona al menos una tarea que sí realizas.");
-      return;
+    if (draft.category === "maquillaje") {
+      const syncedConfigs = syncMakeupServiceConfigs(draft.makeupScope.service_configs, draft.makeupScope.services_offered);
+      const invalidConfig = syncedConfigs.find(
+        (config) => !config.base_price_clp || !config.duration_min || (config.service_slug === "otro" && !config.custom_label.trim())
+      );
+      if (invalidConfig) {
+        setError("Completa precio base, duración y nombre del servicio cuando marques 'Otro'.");
+        return;
+      }
+      if (!draft.makeupScope.style_description.trim()) {
+        setError("Describe tu estilo de maquillaje para que el cliente entienda tu propuesta.");
+        return;
+      }
+      if (draft.makeupScope.portfolio_photos.length === 0) {
+        setError("Sube al menos una foto de trabajos anteriores.");
+        return;
+      }
     }
     if (draft.category === "planchado" && draft.ironingScope.services_offered.length === 0) {
       setError("Selecciona al menos una modalidad de planchado que ofreces.");
@@ -2412,14 +2472,28 @@ function CleaningOnboardingPageContent() {
             hourlyRateClp: Number(draft.chefServiceRates[service.slug] || 0)
           }))
         : [];
-    const categoryRates = draft.category === "limpieza" ? cleaningRates : draft.category === "chef" ? chefRates : [];
+    const makeupRates =
+      draft.category === "maquillaje"
+        ? syncMakeupServiceConfigs(draft.makeupScope.service_configs, draft.makeupScope.services_offered).map((config) => ({
+            serviceSlug: getMakeupServiceSlugFromScopeValue(config.service_slug) ?? config.service_slug,
+            hourlyRateClp: Number(config.base_price_clp || 0),
+            durationMin: Number(config.duration_min || 0),
+            includesTravel: config.includes_travel,
+            includesLashes: config.includes_lashes,
+            includesTrial: config.includes_trial,
+            includesMaterials: config.includes_materials
+          }))
+        : [];
+    const categoryRates =
+      draft.category === "limpieza" ? cleaningRates : draft.category === "chef" ? chefRates : draft.category === "maquillaje" ? makeupRates : [];
 
     if (
-      ((draft.category === "limpieza" || draft.category === "chef") && categoryRates.some((item) => !item.hourlyRateClp)) ||
-      (draft.category !== "limpieza" && draft.category !== "chef" && !draft.hourlyRate.trim()) ||
+      ((draft.category === "limpieza" || draft.category === "chef" || draft.category === "maquillaje") &&
+        categoryRates.some((item) => !item.hourlyRateClp)) ||
+      (draft.category !== "limpieza" && draft.category !== "chef" && draft.category !== "maquillaje" && !draft.hourlyRate.trim()) ||
       !draft.minimumHours.trim()
     ) {
-      setError("Completa tu tarifa y mínimo de horas.");
+      setError(draft.category === "maquillaje" ? "Completa precio base, duración y mínimo de reserva." : "Completa tu tarifa y mínimo de horas.");
       return;
     }
     setSaving(true);
@@ -2434,11 +2508,19 @@ function CleaningOnboardingPageContent() {
             ? chefRates.find((item) => item.serviceSlug === "cocina-casera")?.hourlyRateClp ??
               chefRates[0]?.hourlyRateClp ??
               Number(draft.hourlyRate || 0)
+            : draft.category === "maquillaje"
+              ? makeupRates[0]?.hourlyRateClp ?? Number(draft.hourlyRate || 0)
             : Number(draft.hourlyRate);
       await persistServerStep(9, {
         hourlyRateClp: fallbackRate,
         serviceRates: categoryRates,
-        minBookingHours: Number(draft.minimumHours),
+        minBookingHours:
+          draft.category === "maquillaje"
+            ? Math.max(
+                1,
+                ...makeupRates.map((item) => (item.durationMin ? Math.ceil(item.durationMin / 60) : 1))
+              )
+            : Number(draft.minimumHours),
         weekendSurchargePct: draft.hasWeekendSurcharge ? Number(draft.weekendSurchargePct || 0) : 0,
         holidaySurchargePct: draft.hasHolidaySurcharge ? Number(draft.holidaySurchargePct || 0) : 0,
         remoteCommuneSurchargeClp: onboarding?.remoteCommuneSurchargeClp ?? 0
@@ -4324,189 +4406,337 @@ function CleaningOnboardingPageContent() {
 
                 {draft.category === "maquillaje" ? (
                   <div className="grid-form auth-flow-form">
-                    <div className="full onboarding-scope-progress">
-                      <span className={makeupScopeScreen >= 1 ? "active" : ""}>Servicios</span>
-                      <span className={makeupScopeScreen >= 2 ? "active" : ""}>Sí realiza</span>
-                      <span className={makeupScopeScreen >= 3 ? "active" : ""}>No realiza</span>
-                      <span className={makeupScopeScreen >= 4 ? "active" : ""}>Condiciones</span>
-                      <span className={makeupScopeScreen >= 5 ? "active" : ""}>Revisión</span>
-                    </div>
+                    <div className="full service-prep-card">
+                      <div className="panel-head">
+                        <h3>Configura tus servicios de maquillaje</h3>
+                        <p>En maquillaje el cliente reserva un resultado final. Define tus tipos de maquillaje, precio base, duración estimada y lo que incluyes para que tu perfil se vea claro y premium.</p>
+                      </div>
 
-                    {makeupScopeScreen === 1 ? (
-                      <>
-                        <div className="full">
-                          <p className="field-label">¿Qué tipos de maquillaje ofreces?</p>
-                          <div className="auth-service-grid auth-service-grid-cleaning">
-                            {MAKEUP_SCOPE_SERVICE_OPTIONS.map((option) => (
-                              <label
-                                key={option.value}
-                                className={`auth-service-card auth-service-card-scope ${draft.makeupScope.services_offered.includes(option.value) ? "active" : ""}`}
-                              >
-                                <input
-                                  type="checkbox"
-                                  checked={draft.makeupScope.services_offered.includes(option.value)}
-                                  onChange={(event) => {
-                                    setDraft((current) => ({
+                      <div className="full">
+                        <p className="field-label">¿Qué tipos de maquillaje ofreces?</p>
+                        <div className="auth-service-grid auth-service-grid-cleaning">
+                          {MAKEUP_SCOPE_SERVICE_OPTIONS.map((option) => (
+                            <label
+                              key={option.value}
+                              className={`auth-service-card auth-service-card-scope ${draft.makeupScope.services_offered.includes(option.value) ? "active" : ""}`}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={draft.makeupScope.services_offered.includes(option.value)}
+                                onChange={(event) => {
+                                  setDraft((current) => {
+                                    const nextServices = event.target.checked
+                                      ? Array.from(new Set([...current.makeupScope.services_offered, option.value]))
+                                      : current.makeupScope.services_offered.filter((item) => item !== option.value);
+                                    return {
                                       ...current,
                                       makeupScope: {
                                         ...current.makeupScope,
-                                        services_offered: event.target.checked
-                                          ? Array.from(new Set([...current.makeupScope.services_offered, option.value]))
-                                          : current.makeupScope.services_offered.filter((item) => item !== option.value)
+                                        services_offered: nextServices,
+                                        service_configs: syncMakeupServiceConfigs(current.makeupScope.service_configs, nextServices)
                                       }
-                                    }));
-                                  }}
-                                />
-                                <strong>{option.label}</strong>
-                                <span>{option.description}</span>
-                              </label>
-                            ))}
-                          </div>
+                                    };
+                                  });
+                                }}
+                              />
+                              <strong>{option.label}</strong>
+                              <span>{option.description}</span>
+                            </label>
+                          ))}
                         </div>
-                        <div className="full auth-flow-note-card">
-                          <strong>Atención a domicilio</strong>
-                          <span>En WeTask, maquillaje se considera siempre un servicio a domicilio.</span>
-                        </div>
-                      </>
-                    ) : null}
+                      </div>
 
-                    {makeupScopeScreen === 2 ? (
-                      <>
-                        <div className="full">
-                          <p className="field-label">¿Qué tareas sí realizas?</p>
-                          <div className="onboarding-task-checklist">
-                            {MAKEUP_TASK_INCLUDED_OPTIONS.map((task) => (
-                              <label key={task.value} className={`onboarding-task-checklist-row ${draft.makeupScope.tasks_included.includes(task.value) ? "checked" : ""}`}>
-                                <div>
-                                  <strong>{task.label}</strong>
-                                </div>
-                                <span className="onboarding-task-checklist-control">
+                      {selectedMakeupDefinitions(draft).length > 0 ? (
+                        <div className="full onboarding-scope-review-grid">
+                          {selectedMakeupDefinitions(draft).map((service) => {
+                            const config = getMakeupServiceConfig(draft.makeupScope, service.scopeValue);
+                            return (
+                              <div key={service.scopeValue} className="auth-flow-note-card">
+                                <strong>{getMakeupServiceHeadline(draft.makeupScope, service.scopeValue)}</strong>
+                                <span>{service.forClients}</span>
+                                {service.scopeValue === "otro" ? (
+                                  <label>
+                                    Nombre del servicio
+                                    <input
+                                      value={config.custom_label}
+                                      onChange={(event) =>
+                                        updateMakeupServiceConfig(service.scopeValue, (current) => ({
+                                          ...current,
+                                          custom_label: event.target.value.slice(0, 80)
+                                        }))
+                                      }
+                                      placeholder="Ej: maquillaje editorial suave"
+                                    />
+                                  </label>
+                                ) : null}
+                                <label>
+                                  Precio base
                                   <input
-                                    type="checkbox"
-                                    checked={draft.makeupScope.tasks_included.includes(task.value)}
-                                    onChange={(event) => {
-                                      setDraft((current) => ({
+                                    type="number"
+                                    min={5000}
+                                    step={1000}
+                                    value={config.base_price_clp ?? ""}
+                                    onChange={(event) =>
+                                      updateMakeupServiceConfig(service.scopeValue, (current) => ({
                                         ...current,
-                                        makeupScope: {
-                                          ...current.makeupScope,
-                                          tasks_included: event.target.checked
-                                            ? Array.from(new Set([...current.makeupScope.tasks_included, task.value]))
-                                            : current.makeupScope.tasks_included.filter((item) => item !== task.value)
-                                        }
-                                      }));
-                                    }}
+                                        base_price_clp: event.target.value ? Number(event.target.value) : null
+                                      }))
+                                    }
+                                    placeholder={String(service.recommendedMinClp)}
                                   />
-                                  <span className="onboarding-task-checklist-box" aria-hidden />
-                                </span>
-                              </label>
-                            ))}
-                          </div>
+                                </label>
+                                <label>
+                                  Duración estimada
+                                  <select
+                                    value={config.duration_min ?? ""}
+                                    onChange={(event) =>
+                                      updateMakeupServiceConfig(service.scopeValue, (current) => ({
+                                        ...current,
+                                        duration_min: event.target.value ? Number(event.target.value) as (typeof current.duration_min) : null
+                                      }))
+                                    }
+                                  >
+                                    <option value="">Selecciona</option>
+                                    {MAKEUP_DURATION_OPTIONS.map((option) => (
+                                      <option key={option.minutes} value={option.minutes}>
+                                        {option.label}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </label>
+                                <div className="service-duration-toggles">
+                                  <label className={`onboarding-check-card ${config.includes_travel ? "active" : ""}`}>
+                                    <input
+                                      type="checkbox"
+                                      checked={config.includes_travel}
+                                      onChange={(event) =>
+                                        updateMakeupServiceConfig(service.scopeValue, (current) => ({
+                                          ...current,
+                                          includes_travel: event.target.checked
+                                        }))
+                                      }
+                                    />
+                                    <span>Incluye traslado</span>
+                                  </label>
+                                  <label className={`onboarding-check-card ${config.includes_lashes ? "active" : ""}`}>
+                                    <input
+                                      type="checkbox"
+                                      checked={config.includes_lashes}
+                                      onChange={(event) =>
+                                        updateMakeupServiceConfig(service.scopeValue, (current) => ({
+                                          ...current,
+                                          includes_lashes: event.target.checked
+                                        }))
+                                      }
+                                    />
+                                    <span>Incluye pestañas</span>
+                                  </label>
+                                  <label className={`onboarding-check-card ${config.includes_trial ? "active" : ""}`}>
+                                    <input
+                                      type="checkbox"
+                                      checked={config.includes_trial}
+                                      onChange={(event) =>
+                                        updateMakeupServiceConfig(service.scopeValue, (current) => ({
+                                          ...current,
+                                          includes_trial: event.target.checked
+                                        }))
+                                      }
+                                    />
+                                    <span>Incluye prueba previa</span>
+                                  </label>
+                                  <label className={`onboarding-check-card ${config.includes_materials ? "active" : ""}`}>
+                                    <input
+                                      type="checkbox"
+                                      checked={config.includes_materials}
+                                      onChange={(event) =>
+                                        updateMakeupServiceConfig(service.scopeValue, (current) => ({
+                                          ...current,
+                                          includes_materials: event.target.checked
+                                        }))
+                                      }
+                                    />
+                                    <span>Incluye materiales</span>
+                                  </label>
+                                </div>
+                                <div className="auth-flow-note-card auth-flow-note-card-compact">
+                                  <strong>Cómo se verá en tu perfil</strong>
+                                  <span>
+                                    {getMakeupServiceHeadline(draft.makeupScope, service.scopeValue)} · Desde{" "}
+                                    {config.base_price_clp ? clp(config.base_price_clp) : "por definir"} · Duración estimada:{" "}
+                                    {getMakeupDurationSummary(draft.makeupScope, service.scopeValue)}
+                                  </span>
+                                </div>
+                              </div>
+                            );
+                          })}
                         </div>
-                        <label>
-                          ¿Incluye kit de maquillaje?
+                      ) : null}
+
+                      <div className="full onboarding-scope-review-grid">
+                        <label className="auth-flow-note-card">
+                          <strong>Especialidad principal</strong>
                           <select
-                            value={draft.makeupScope.includes_kit == null ? "" : draft.makeupScope.includes_kit ? "si" : "no"}
+                            value={draft.makeupScope.specialty}
                             onChange={(event) =>
                               setDraft((current) => ({
                                 ...current,
                                 makeupScope: {
                                   ...current.makeupScope,
-                                  includes_kit: event.target.value === "" ? null : event.target.value === "si"
+                                  specialty: event.target.value
+                                }
+                              }))
+                            }
+                          >
+                            <option value="">Selecciona tu foco principal</option>
+                            {MAKEUP_SPECIALTY_OPTIONS.map((option) => (
+                              <option key={option} value={option}>
+                                {option}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+
+                        <label className="auth-flow-note-card">
+                          <strong>¿Trabajas a domicilio?</strong>
+                          <select
+                            value={draft.makeupScope.works_at_home == null ? "" : draft.makeupScope.works_at_home ? "si" : "no"}
+                            onChange={(event) =>
+                              setDraft((current) => ({
+                                ...current,
+                                makeupScope: {
+                                  ...current.makeupScope,
+                                  works_at_home: event.target.value === "" ? null : event.target.value === "si"
                                 }
                               }))
                             }
                           >
                             <option value="">Selecciona</option>
-                            <option value="si">Sí</option>
-                            <option value="no">No</option>
+                            <option value="si">Sí, trabajo a domicilio</option>
+                            <option value="no">No, recibo en punto acordado</option>
                           </select>
                         </label>
-                      </>
-                    ) : null}
 
-                    {makeupScopeScreen === 3 ? (
-                      <div className="full">
-                        <p className="field-label">¿Qué tareas no realizas?</p>
-                        <div className="onboarding-task-checklist">
-                          {MAKEUP_TASK_EXCLUDED_OPTIONS.map((task) => (
-                            <label
-                              key={task.value}
-                              className={`onboarding-task-checklist-row onboarding-task-checklist-row-warning ${draft.makeupScope.tasks_excluded.includes(task.value) ? "checked" : ""}`}
-                            >
-                              <div>
-                                <strong>{task.label}</strong>
-                              </div>
-                              <span className="onboarding-task-checklist-control">
-                                <input
-                                  type="checkbox"
-                                  checked={draft.makeupScope.tasks_excluded.includes(task.value)}
-                                  onChange={(event) => {
-                                    setDraft((current) => ({
-                                      ...current,
-                                      makeupScope: {
-                                        ...current.makeupScope,
-                                        tasks_excluded: event.target.checked
-                                          ? Array.from(new Set([...current.makeupScope.tasks_excluded, task.value]))
-                                          : current.makeupScope.tasks_excluded.filter((item) => item !== task.value)
-                                      }
-                                    }));
-                                  }}
-                                />
-                                <span className="onboarding-task-checklist-box" aria-hidden />
-                              </span>
-                            </label>
-                          ))}
-                        </div>
-                      </div>
-                    ) : null}
-
-                    {makeupScopeScreen === 4 ? (
-                      <div className="full">
-                        <label>
-                          Condiciones especiales de tu servicio
-                          <textarea
-                            value={draft.makeupScope.special_conditions}
-                            rows={4}
-                            placeholder="Ejemplo: las pruebas de novia se agendan aparte, no hago grupos grandes y el traslado fuera de comuna tiene recargo."
+                        <label className="auth-flow-note-card">
+                          <strong>Tiempo mínimo de anticipación</strong>
+                          <select
+                            value={draft.makeupScope.booking_notice_hours ?? 4}
                             onChange={(event) =>
                               setDraft((current) => ({
                                 ...current,
                                 makeupScope: {
                                   ...current.makeupScope,
-                                  special_conditions: event.target.value
+                                  booking_notice_hours: Number(event.target.value)
+                                }
+                              }))
+                            }
+                          >
+                            {[
+                              { value: 2, label: "2 horas" },
+                              { value: 4, label: "4 horas" },
+                              { value: 8, label: "8 horas" },
+                              { value: 12, label: "12 horas" },
+                              { value: 24, label: "24 horas" }
+                            ].map((option) => (
+                              <option key={option.value} value={option.value}>
+                                {option.label}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+
+                        <label className={`auth-flow-note-card onboarding-check-card ${draft.makeupScope.same_day_bookings ? "active" : ""}`}>
+                          <input
+                            type="checkbox"
+                            checked={draft.makeupScope.same_day_bookings === true}
+                            onChange={(event) =>
+                              setDraft((current) => ({
+                                ...current,
+                                makeupScope: {
+                                  ...current.makeupScope,
+                                  same_day_bookings: event.target.checked
                                 }
                               }))
                             }
                           />
+                          <strong>Acepto reservas el mismo día</strong>
+                          <span>Actívalo si te acomoda recibir reservas más urgentes dentro de tu agenda.</span>
                         </label>
                       </div>
-                    ) : null}
 
-                    {makeupScopeScreen === 5 ? (
-                      <div className="full onboarding-scope-review-grid">
-                        <div className="auth-flow-note-card">
-                          <strong>Tipos de maquillaje</strong>
-                          <span>{makeupScopeServicesPreview.length > 0 ? makeupScopeServicesPreview.join(", ") : "Sin información aún."}</span>
+                      <label className="full">
+                        Describe tu estilo de maquillaje
+                        <textarea
+                          value={draft.makeupScope.style_description}
+                          rows={4}
+                          placeholder="Ej: me enfoco en piel luminosa, ojos definidos y resultados elegantes para eventos. Trabajo buscando que la clienta se vea como ella, pero más pulida."
+                          onChange={(event) =>
+                            setDraft((current) => ({
+                              ...current,
+                              makeupScope: {
+                                ...current.makeupScope,
+                                style_description: event.target.value
+                              }
+                            }))
+                          }
+                        />
+                      </label>
+
+                      <label className="full">
+                        Qué debe tener preparado el cliente antes del servicio
+                        <textarea
+                          value={draft.makeupScope.client_preparation}
+                          rows={3}
+                          placeholder="Ej: rostro limpio e hidratado, buena luz cerca del espejo, mesa pequeña disponible y referencia visual si tiene una idea de look."
+                          onChange={(event) =>
+                            setDraft((current) => ({
+                              ...current,
+                              makeupScope: {
+                                ...current.makeupScope,
+                                client_preparation: event.target.value
+                              }
+                            }))
+                          }
+                        />
+                      </label>
+
+                      <div className="full service-prep-card service-prep-card-tight">
+                        <div className="panel-head">
+                          <h3>Portafolio de trabajos</h3>
+                          <p>Sube fotos reales de maquillajes que hayas realizado. Esto pesa mucho en la decisión del cliente.</p>
                         </div>
-                        <div className="auth-flow-note-card">
-                          <strong>Tareas que sí realiza</strong>
-                          <span>{makeupScopeIncludedPreview.length > 0 ? makeupScopeIncludedPreview.join(", ") : "Sin información aún."}</span>
-                        </div>
-                        <div className="auth-flow-note-card">
-                          <strong>Tareas que no realiza</strong>
-                          <span>{makeupScopeExcludedPreview.length > 0 ? makeupScopeExcludedPreview.join(", ") : "No marcaste exclusiones."}</span>
-                        </div>
-                        <div className="auth-flow-note-card">
-                          <strong>Incluye kit</strong>
-                          <span>{draft.makeupScope.includes_kit == null ? "No informado." : draft.makeupScope.includes_kit ? "Sí" : "No"}</span>
-                        </div>
-                        <div className="auth-flow-note-card">
-                          <strong>Condiciones especiales</strong>
-                          <span>{draft.makeupScope.special_conditions.trim() || "No agregaste condiciones especiales."}</span>
-                        </div>
+
+                        <label>
+                          Subir foto
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={async (event) => {
+                              await handleMakeupPortfolioUpload(event.target.files?.[0] ?? null);
+                              event.currentTarget.value = "";
+                            }}
+                          />
+                        </label>
+
+                        {draft.makeupScope.portfolio_photos.length > 0 ? (
+                          <div className="we-gallery-grid">
+                            {draft.makeupScope.portfolio_photos.map((photo, index) => (
+                              <div key={`${photo.slice(0, 32)}-${index}`} className="tasker-gallery-item tasker-gallery-item-tight">
+                                <img src={photo} alt={`Trabajo de maquillaje ${index + 1}`} />
+                                <button type="button" className="we-text-link" onClick={() => removeMakeupPortfolioPhoto(index)}>
+                                  Eliminar
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="auth-flow-note-card auth-flow-note-card-compact">
+                            <strong>Sin fotos aún</strong>
+                            <span>Sube al menos una foto para que el cliente vea tu estilo y resultado final.</span>
+                          </div>
+                        )}
                       </div>
-                    ) : null}
-                  </div>
+                    </div>
+                    </div>
                 ) : null}
 
                 {draft.category === "planchado" ? (
@@ -4585,10 +4815,6 @@ function CleaningOnboardingPageContent() {
                     <button type="button" className="cta ghost" onClick={previousPetScopeScreen}>
                       Volver
                     </button>
-                  ) : draft.category === "maquillaje" && makeupScopeScreen > 1 ? (
-                    <button type="button" className="cta ghost" onClick={previousMakeupScopeScreen}>
-                      Volver
-                    </button>
                   ) : draft.category === "babysitter" && babysitterScopeScreen > 1 ? (
                     <button type="button" className="cta ghost" onClick={previousBabysitterScopeScreen}>
                       Volver
@@ -4616,10 +4842,6 @@ function CleaningOnboardingPageContent() {
                     </button>
                   ) : draft.category === "mascotas" && petScopeScreen < 6 ? (
                     <button type="button" className="cta" onClick={continuePetScopeScreen}>
-                      Siguiente
-                    </button>
-                  ) : draft.category === "maquillaje" && makeupScopeScreen < 5 ? (
-                    <button type="button" className="cta" onClick={continueMakeupScopeScreen}>
                       Siguiente
                     </button>
                   ) : draft.category === "babysitter" && babysitterScopeScreen < 6 ? (

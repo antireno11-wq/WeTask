@@ -2,6 +2,7 @@ import { PaymentStatus, UserRole } from "@prisma/client";
 import { CHEF_SERVICE_DEFINITIONS } from "@/lib/chef-service-types";
 import { CLEANING_SERVICE_DEFINITIONS } from "@/lib/cleaning-service-types";
 import { type CleaningScopeData } from "@/lib/cleaning-scope";
+import { MAKEUP_SERVICE_DEFINITIONS } from "@/lib/makeup-service-types";
 import { prisma } from "@/lib/prisma";
 
 const DEMO_PASSWORD_HASH = "$2a$12$LX3eD21fpfkg/xsBDNBrkeBrgQdo9iLcWaG1jOOMonHmBMChElxva";
@@ -692,20 +693,23 @@ export async function ensureMarketplaceDemoData() {
       name: service.name,
       description: service.forClients,
       basePriceClp: service.recommendedMinClp,
+      durationMin: 60,
       categoryId: categories.chefDomicilio.id
     })),
-    {
-      slug: "maquillaje-a-domicilio-sesion",
-      name: "Maquillaje a domicilio por sesión",
-      description: "Maquillaje social, de día o de noche en tu domicilio",
-      basePriceClp: 26000,
+    ...MAKEUP_SERVICE_DEFINITIONS.map((service) => ({
+      slug: service.slug,
+      name: service.name,
+      description: `${service.forClients} ${service.idealFor}`,
+      basePriceClp: service.recommendedMinClp,
+      durationMin: service.defaultDurationMin,
       categoryId: categories.maquillajeDomicilio.id
-    },
+    })),
     {
       slug: "planchado-por-hora",
       name: "Planchado por hora",
       description: "Planchado, doblado y orden de prendas",
       basePriceClp: 14000,
+      durationMin: 60,
       categoryId: categories.planchado.id
     }
   ];
@@ -717,7 +721,7 @@ export async function ensureMarketplaceDemoData() {
         name: spec.name,
         description: spec.description,
         basePriceClp: spec.basePriceClp,
-        durationMin: 60,
+        durationMin: spec.durationMin ?? 60,
         categoryId: spec.categoryId,
         isActive: true
       },
@@ -726,7 +730,7 @@ export async function ensureMarketplaceDemoData() {
         name: spec.name,
         description: spec.description,
         basePriceClp: spec.basePriceClp,
-        durationMin: 60,
+        durationMin: spec.durationMin ?? 60,
         categoryId: spec.categoryId,
         isActive: true
       }

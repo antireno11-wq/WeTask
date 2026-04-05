@@ -6,6 +6,7 @@ import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { MarketNav } from "@/components/market-nav";
 import { parseCleaningRecommendedHours } from "@/lib/cleaning-duration-estimator";
 import { COVERAGE_UNAVAILABLE_MESSAGE, inferCommuneFromAddress, normalizeCommune } from "@/lib/communes";
+import { getMakeupServiceDefinitionBySlug } from "@/lib/makeup-service-types";
 import { formatPaymentRejectionReason } from "@/lib/payment-rejection";
 
 export const dynamic = "force-dynamic";
@@ -264,6 +265,12 @@ export default function ReservarPage() {
   const selectedPro = useMemo(() => matches.find((pro) => pro.userId === selectedProId) ?? null, [matches, selectedProId]);
   const selectedService = useMemo(() => services.find((service) => service.id === filters.serviceId) ?? null, [services, filters.serviceId]);
   const isChefService = Boolean(selectedService?.slug?.startsWith("cocina-") || selectedService?.slug === "reposteria" || selectedService?.slug === "cumpleanos");
+  const selectedMakeupDefinition = useMemo(
+    () => (selectedService ? getMakeupServiceDefinitionBySlug(selectedService.slug) : null),
+    [selectedService]
+  );
+  const isMakeupService = Boolean(selectedMakeupDefinition);
+  const fixedMakeupHours = selectedMakeupDefinition ? clampBookingHours(Math.ceil(selectedMakeupDefinition.defaultDurationMin / 60)) : 0;
   const quickCheckoutMode = quickCheckoutEnabled && !createdBooking && !pinnedTaskerMode;
   const selectedSavedPaymentMethod = useMemo(
     () => savedPaymentMethods.find((item) => item.isDefault) ?? savedPaymentMethods[0] ?? null,
@@ -316,7 +323,8 @@ export default function ReservarPage() {
     const options: Array<{ value: string; label: string }> = [];
     const start = new Date(selectedSlot.startsAt);
     const end = new Date(selectedSlot.endsAt);
-    const latestStart = new Date(end.getTime() - 60 * 60 * 1000);
+    const minimumHours = isMakeupService ? fixedMakeupHours : 1;
+    const latestStart = new Date(end.getTime() - minimumHours * 60 * 60 * 1000);
 
     for (let current = new Date(start); current <= latestStart; current = addHours(current, 1)) {
       options.push({
@@ -326,7 +334,7 @@ export default function ReservarPage() {
     }
 
     return options;
-  }, [selectedSlot]);
+  }, [fixedMakeupHours, isMakeupService, selectedSlot]);
 
   const selectedBookingStartAt = useMemo(() => {
     if (!selectedSlot) return "";
@@ -339,8 +347,11 @@ export default function ReservarPage() {
     const start = new Date(selectedBookingStartAt);
     const end = new Date(selectedSlot.endsAt);
     const diffHours = Math.floor((end.getTime() - start.getTime()) / (60 * 60 * 1000));
+    if (isMakeupService) {
+      return diffHours >= fixedMakeupHours ? [fixedMakeupHours] : [];
+    }
     return Array.from({ length: Math.max(0, Math.min(8, diffHours)) }, (_, index) => index + 1);
-  }, [selectedBookingStartAt, selectedSlot]);
+  }, [fixedMakeupHours, isMakeupService, selectedBookingStartAt, selectedSlot]);
 
   const selectedBookingEndsAt = useMemo(() => {
     if (!selectedBookingStartAt || !hours) return "";
@@ -377,7 +388,7 @@ export default function ReservarPage() {
   }, [details, dietaryFlags, dietaryNotes, isChefService]);
 
   const baseHourly = selectedPro?.hourlyRateFromClp ?? services.find((s) => s.id === filters.serviceId)?.basePriceClp ?? 0;
-  const subtotal = baseHourly * hours;
+  const subtotal = isMakeupService ? baseHourly : baseHourly * hours;
   const commission = Math.round(subtotal * 0.12);
   const total = subtotal + commission;
   const bookingSteps = [
@@ -520,9 +531,9 @@ export default function ReservarPage() {
   useEffect(() => {
     if (!selectedSlot) return;
     setSelectedStartAt(selectedSlot.startsAt);
-    setHours(Math.max(1, Math.min(8, Math.floor(durationHours(selectedSlot)))));
+    setHours(isMakeupService ? fixedMakeupHours : Math.max(1, Math.min(8, Math.floor(durationHours(selectedSlot)))));
     setBookingStep(4);
-  }, [selectedSlot]);
+  }, [fixedMakeupHours, isMakeupService, selectedSlot]);
 
   useEffect(() => {
     if (!selectedStartOptions.length) return;
@@ -1088,7 +1099,7 @@ export default function ReservarPage() {
               <section className="auth-flow-panel client-dashboard-section">
                 <div className="panel-head auth-flow-panel-head">
                   <h2>Taskers disponibles</h2>
-                  <p>Ordenados por distancia, disponibilidad, valoración y precio estimado por hora.</p>
+                  <p>{isMakeupService ? "Ordenados por disponibilidad, valoración y precio base del servicio." : "Ordenados por distancia, disponibilidad, valoración y precio estimado por hora."}</p>
                 </div>
 
                 <div className="list booking-results-list">
@@ -1103,7 +1114,7 @@ export default function ReservarPage() {
                         {pro.ratingsCount > 0 ? `${starsText(pro.ratingAvg)} ${pro.ratingAvg.toFixed(1)} (${pro.ratingsCount})` : "0.0 (0 valoraciones)"}
                       </p>
                       <p>
-                        <strong>Precio/hora:</strong> {pro.hourlyRateFromClp ? clp(pro.hourlyRateFromClp) : "Por definir"}
+                        <strong>{isMakeupService ? "Precio base:" : "Precio/hora:"}</strong> {pro.hourlyRateFromClp ? clp(pro.hourlyRateFromClp) : "Por definir"}
                       </p>
                       <p>
                         <strong>Próxima hora:</strong> {pro.nextAvailableAt ? new Date(pro.nextAvailableAt).toLocaleString("es-ES") : "Sin slots"}
@@ -1148,7 +1159,7 @@ export default function ReservarPage() {
 
                     <div className="booking-pro-highlights">
                       <article>
-                        <span>Precio por hora</span>
+                        <span>{isMakeupService ? "Precio base" : "Precio por hora"}</span>
                         <strong>{selectedPro.hourlyRateFromClp ? clp(selectedPro.hourlyRateFromClp) : "Por definir"}</strong>
                       </article>
                       <article>
@@ -1172,7 +1183,7 @@ export default function ReservarPage() {
                 <section className="auth-flow-panel client-dashboard-section booking-agenda-section">
                   <div className="panel-head auth-flow-panel-head">
                     <h2>Agenda y detalles de la reserva</h2>
-                    <p>Elige un día, selecciona un bloque del tasker y luego define tu hora de inicio y duración dentro de ese bloque.</p>
+                    <p>{isMakeupService ? "Elige un día, selecciona un bloque del tasker y reserva el tramo necesario para ese maquillaje." : "Elige un día, selecciona un bloque del tasker y luego define tu hora de inicio y duración dentro de ese bloque."}</p>
                   </div>
 
                   <div className="booking-month-calendar">
@@ -1248,7 +1259,7 @@ export default function ReservarPage() {
                     </label>
                     <label>
                       Duración del servicio
-                      <select value={String(hours)} onChange={(e) => setHours(clampBookingHours(Number(e.target.value)))} disabled={!selectedSlot}>
+                      <select value={String(hours)} onChange={(e) => setHours(clampBookingHours(Number(e.target.value)))} disabled={!selectedSlot || isMakeupService}>
                         {selectedDurationOptions.length === 0 ? (
                           <option value="">Elige un bloque primero</option>
                         ) : (
@@ -1264,6 +1275,9 @@ export default function ReservarPage() {
                           Recomendación WeTask: {estimatedHoursRange ? `${estimatedHoursRange} · ` : ""}
                           reserva sugerida {recommendedHours} hora(s).
                         </small>
+                      ) : null}
+                      {isMakeupService && selectedMakeupDefinition ? (
+                        <small className="input-hint">Duración estimada para {selectedMakeupDefinition.name.toLowerCase()}: {selectedMakeupDefinition.durationLabel}.</small>
                       ) : null}
                     </label>
                     {selectedSlot && selectedBookingStartAt && selectedBookingEndsAt ? (
@@ -1311,12 +1325,12 @@ export default function ReservarPage() {
                   <div className="booking-invoice-card">
                     <strong>Resumen del cobro</strong>
                     <div className="booking-invoice-line">
-                      <span>Valor por hora</span>
+                      <span>{isMakeupService ? "Precio base del servicio" : "Valor por hora"}</span>
                       <span>{clp(baseHourly)}</span>
                     </div>
                     <div className="booking-invoice-line">
-                      <span>Duración del bloque</span>
-                      <span>{hours} h</span>
+                      <span>{isMakeupService ? "Duración estimada" : "Duración del bloque"}</span>
+                      <span>{isMakeupService && selectedMakeupDefinition ? selectedMakeupDefinition.durationLabel : `${hours} h`}</span>
                     </div>
                     <div className="booking-invoice-line">
                       <span>Subtotal servicio</span>
@@ -1361,7 +1375,9 @@ export default function ReservarPage() {
                   Dirección: <strong>{address.street}, {address.commune}, {address.city}</strong>
                 </p>
                 <p>
-                  Horas estimadas: <strong>{hours}</strong> · Total: <strong>{clp(total)}</strong>
+                  {isMakeupService
+                    ? <>Duración estimada: <strong>{selectedMakeupDefinition?.durationLabel ?? `${hours} h`}</strong> · Total: <strong>{clp(total)}</strong></>
+                    : <>Horas estimadas: <strong>{hours}</strong> · Total: <strong>{clp(total)}</strong></>}
                 </p>
                 {recommendedHours ? (
                   <p>

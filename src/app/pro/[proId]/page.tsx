@@ -34,11 +34,13 @@ import {
   normalizePetScope
 } from "@/lib/pet-scope";
 import {
-  getMakeupExcludedTaskLabel,
-  getMakeupIncludedTaskLabel,
-  getMakeupServiceLabel,
+  emptyMakeupServiceConfig,
+  getMakeupDurationSummary,
+  getMakeupServiceConfig,
+  getMakeupServiceHeadline,
   normalizeMakeupScope
 } from "@/lib/makeup-scope";
+import { getMakeupServiceDefinitionByScopeValue, isMakeupScopeServiceSlug } from "@/lib/makeup-service-types";
 import {
   getIroningExcludedTaskLabel,
   getIroningIncludedTaskLabel,
@@ -829,18 +831,26 @@ export default function ProDetailPage() {
   }, [normalizedPrimaryCategorySlug, onboarding?.petScope, onboarding?.offeredServices, onboarding?.experienceTypes, onboarding?.acceptsHomesWithPets, selectedScopeSource]);
   const makeupScope = useMemo(() => {
     const normalized = normalizeMakeupScope(normalizedPrimaryCategorySlug === "maquillaje" && selectedScopeSource ? selectedScopeSource : onboarding?.makeupScope);
-    if (normalized.services_offered.length > 0 || normalized.tasks_included.length > 0) {
+    if (normalized.services_offered.length > 0 || normalized.service_configs.length > 0 || normalized.portfolio_photos.length > 0) {
       return normalized;
     }
 
+    const offeredServices = Array.isArray(onboarding?.offeredServices)
+      ? onboarding.offeredServices.filter(
+          (item): item is Parameters<typeof emptyMakeupServiceConfig>[0] => typeof item === "string" && isMakeupScopeServiceSlug(item)
+        )
+      : [];
+
     return {
       ...normalized,
-      services_offered: Array.isArray(onboarding?.offeredServices)
-        ? onboarding.offeredServices.filter(
-            (item): item is "social" | "eventos" | "novias" => item === "social" || item === "eventos" || item === "novias"
-          )
-        : [],
-      includes_kit: onboarding?.bringsOwnProducts ?? null
+      services_offered: offeredServices,
+      service_configs: offeredServices.map((serviceSlug) => {
+        const config = emptyMakeupServiceConfig(serviceSlug);
+        return {
+          ...config,
+          includes_materials: onboarding?.bringsOwnProducts ?? config.includes_materials
+        };
+      })
     };
   }, [normalizedPrimaryCategorySlug, onboarding?.makeupScope, onboarding?.offeredServices, onboarding?.bringsOwnProducts, selectedScopeSource]);
   const ironingScope = useMemo(() => {
@@ -1014,9 +1024,27 @@ export default function ProDetailPage() {
   const petScopeAnimals = petScope.animals_accepted.map(getPetScopeAnimalLabel);
   const petScopeIncludedTasks = petScope.tasks_included.map(getPetIncludedTaskLabel);
   const petScopeExcludedTasks = petScope.tasks_excluded.map(getPetExcludedTaskLabel);
-  const makeupScopeServices = makeupScope.services_offered.map(getMakeupServiceLabel);
-  const makeupScopeIncludedTasks = makeupScope.tasks_included.map(getMakeupIncludedTaskLabel);
-  const makeupScopeExcludedTasks = makeupScope.tasks_excluded.map(getMakeupExcludedTaskLabel);
+  const makeupServiceSummaries = makeupScope.services_offered.map((serviceSlug) => {
+    const definition = getMakeupServiceDefinitionByScopeValue(serviceSlug);
+    const config = getMakeupServiceConfig(makeupScope, serviceSlug);
+    const audience =
+      definition && "idealFor" in definition && typeof definition.idealFor === "string"
+        ? definition.idealFor
+        : "Servicio de maquillaje a domicilio.";
+    return {
+      serviceSlug,
+      title: getMakeupServiceHeadline(makeupScope, serviceSlug),
+      audience,
+      duration: getMakeupDurationSummary(makeupScope, serviceSlug),
+      priceClp: config.base_price_clp,
+      includes: [
+        config.includes_travel ? "Traslado" : null,
+        config.includes_lashes ? "Pestañas" : null,
+        config.includes_trial ? "Prueba previa" : null,
+        config.includes_materials ? "Materiales" : null
+      ].filter((item): item is string => Boolean(item))
+    };
+  });
   const ironingScopeServices = ironingScope.services_offered.map(getIroningServiceLabel);
   const ironingScopeIncludedTasks = ironingScope.tasks_included.map(getIroningIncludedTaskLabel);
   const ironingScopeExcludedTasks = ironingScope.tasks_excluded.map(getIroningExcludedTaskLabel);
@@ -1136,9 +1164,15 @@ export default function ProDetailPage() {
                       </div>
 
                       <div className="public-tasker-summary-feature-side">
-                        <p className="public-tasker-summary-side-label">Reserva protegida</p>
-                        <p className="public-tasker-summary-price">{data.hourlyRateFromClp ? clp(data.hourlyRateFromClp) : "Por definir"}/h</p>
+                        <p className="public-tasker-summary-side-label">{normalizedPrimaryCategorySlug === "maquillaje" ? "Precio base" : "Reserva protegida"}</p>
+                        <p className="public-tasker-summary-price">
+                          {data.hourlyRateFromClp ? clp(data.hourlyRateFromClp) : "Por definir"}
+                          {normalizedPrimaryCategorySlug === "maquillaje" ? "" : "/h"}
+                        </p>
                         <p className="public-tasker-summary-meta">{data.coverageCity ?? "Santiago"} · {workModeLabel}</p>
+                        {normalizedPrimaryCategorySlug === "maquillaje" && makeupServiceSummaries[0] ? (
+                          <p className="public-tasker-summary-side-note">Duración estimada: {makeupServiceSummaries[0].duration}</p>
+                        ) : null}
                         <div className="cta-row public-tasker-summary-cta">
                           <button type="button" className="cta small" onClick={() => switchPublicView("agenda")}>
                             Ver disponibilidad
@@ -1158,9 +1192,11 @@ export default function ProDetailPage() {
                         <p>{experienceYears} años en servicios a domicilio.</p>
                       </div>
                       <div>
-                        <h3>{requestedRecommendedHours ? "Tiempo sugerido" : "Modalidad"}</h3>
+                        <h3>{normalizedPrimaryCategorySlug === "maquillaje" ? "Duración estimada" : requestedRecommendedHours ? "Tiempo sugerido" : "Modalidad"}</h3>
                         <p>
-                          {requestedRecommendedHours
+                          {normalizedPrimaryCategorySlug === "maquillaje"
+                            ? makeupServiceSummaries[0]?.duration ?? "Por confirmar"
+                            : requestedRecommendedHours
                             ? `${requestedEstimatedMinHours && requestedEstimatedMaxHours ? `${requestedEstimatedMinHours} a ${requestedEstimatedMaxHours} horas · ` : ""}Recomendado: ${requestedRecommendedHours} h`
                             : workModeLabel}
                         </p>
@@ -1296,26 +1332,57 @@ export default function ProDetailPage() {
                       <h2>Alcance del servicio</h2>
                       <div className="we-info-grid tasker-profile-detail-grid">
                         <div>
-                          <h3>Tipos de maquillaje</h3>
-                          <p>{makeupScopeServices.length > 0 ? makeupScopeServices.join(", ") : "Aún no informado."}</p>
+                          <h3>Servicios de maquillaje</h3>
+                          <p>{makeupServiceSummaries.length > 0 ? makeupServiceSummaries.map((item) => item.title).join(", ") : "Aún no informado."}</p>
                         </div>
                         <div>
-                          <h3>Tareas que sí realiza</h3>
-                          <p>{makeupScopeIncludedTasks.length > 0 ? makeupScopeIncludedTasks.join(", ") : "Aún no informado."}</p>
+                          <h3>Especialidad principal</h3>
+                          <p>{makeupScope.specialty || "Aún no informado."}</p>
                         </div>
                         <div>
-                          <h3>Tareas que no realiza</h3>
-                          <p>{makeupScopeExcludedTasks.length > 0 ? makeupScopeExcludedTasks.join(", ") : "No reporta exclusiones."}</p>
+                          <h3>Trabajo a domicilio</h3>
+                          <p>{makeupScope.works_at_home == null ? "No informado." : makeupScope.works_at_home ? "Sí" : "No"}</p>
                         </div>
                         <div>
-                          <h3>Incluye kit</h3>
-                          <p>{makeupScope.includes_kit == null ? "No informado." : makeupScope.includes_kit ? "Sí" : "No"}</p>
+                          <h3>Reserva con anticipación</h3>
+                          <p>
+                            {makeupScope.booking_notice_hours ? `${makeupScope.booking_notice_hours} hora(s) mínimo` : "Por confirmar"}
+                            {makeupScope.same_day_bookings ? " · acepta el mismo día" : ""}
+                          </p>
                         </div>
                         <div>
-                          <h3>Condiciones especiales</h3>
-                          <p>{makeupScope.special_conditions || "Sin condiciones especiales reportadas."}</p>
+                          <h3>Qué preparar antes</h3>
+                          <p>{makeupScope.client_preparation || "Aún no informó recomendaciones previas para el cliente."}</p>
                         </div>
                       </div>
+                      {makeupScope.style_description ? (
+                        <div className="auth-flow-note-card auth-flow-note-card-compact">
+                          <strong>Estilo de maquillaje</strong>
+                          <span>{makeupScope.style_description}</span>
+                        </div>
+                      ) : null}
+                      {makeupServiceSummaries.length > 0 ? (
+                        <div className="onboarding-scope-review-grid">
+                          {makeupServiceSummaries.map((item) => (
+                            <div key={item.serviceSlug} className="auth-flow-note-card">
+                              <strong>{item.title}</strong>
+                              <span>{item.audience}</span>
+                              <span>{item.priceClp ? `Desde ${clp(item.priceClp)}` : "Precio base por confirmar"}</span>
+                              <span>Duración estimada: {item.duration}</span>
+                              <span>{item.includes.length > 0 ? `Incluye: ${item.includes.join(", ")}` : "Extras incluidos por confirmar."}</span>
+                            </div>
+                          ))}
+                        </div>
+                      ) : null}
+                      {makeupScope.portfolio_photos.length > 0 ? (
+                        <div className="we-gallery-grid">
+                          {makeupScope.portfolio_photos.map((photo, index) => (
+                            <div key={`${photo.slice(0, 24)}-${index}`} className="tasker-gallery-item">
+                              <img src={photo} alt={`Trabajo de maquillaje ${index + 1}`} />
+                            </div>
+                          ))}
+                        </div>
+                      ) : null}
                       <p className="minimal-note">Si necesitas algo fuera de este alcance base, revísalo antes de reservar para evitar malos entendidos.</p>
                     </article>
                   ) : null}

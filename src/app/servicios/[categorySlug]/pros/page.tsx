@@ -8,7 +8,8 @@ import { BABYSITTER_TASK_INCLUDED_OPTIONS } from "@/lib/babysitter-scope";
 import { CHEF_TASK_INCLUDED_OPTIONS } from "@/lib/chef-scope";
 import { copyCleaningEstimateParams, parseCleaningRecommendedHours, parseCleaningServiceSlug } from "@/lib/cleaning-duration-estimator";
 import { CLEANING_TASK_INCLUDED_OPTIONS, getCleaningTaskOptionsForService } from "@/lib/cleaning-scope";
-import { MAKEUP_TASK_INCLUDED_OPTIONS } from "@/lib/makeup-scope";
+import { getMakeupDurationSummary, getMakeupServiceConfig, getMakeupServiceHeadline, normalizeMakeupScope } from "@/lib/makeup-scope";
+import { getMakeupServiceDefinitionBySlug } from "@/lib/makeup-service-types";
 import { PET_TASK_INCLUDED_OPTIONS } from "@/lib/pet-scope";
 import { getMarketplaceCategorySlugForTaskerCategory, normalizeTaskerCategorySlug } from "@/lib/tasker-category-profiles";
 import { TEACHER_TASK_INCLUDED_OPTIONS } from "@/lib/teacher-scope";
@@ -35,7 +36,6 @@ type Professional = {
   avatarUrl?: string | null;
   avatarPositionX?: number | null;
   avatarPositionY?: number | null;
-  cleaningScope?: unknown;
   user: {
     fullName: string;
     cleaningOnboarding?: {
@@ -43,6 +43,7 @@ type Professional = {
       profilePhotoPositionX?: number | null;
       profilePhotoPositionY?: number | null;
       baseCommune?: string | null;
+      makeupScope?: unknown;
     } | null;
   };
   slots: Array<{ id: string; startsAt: string }>;
@@ -59,7 +60,7 @@ const TASK_FILTER_OPTIONS_BY_CATEGORY: Record<string, TaskFilterOption[]> = {
   "personal-trainer": [...TRAINER_TASK_INCLUDED_OPTIONS],
   "profesor-particular": [...TEACHER_TASK_INCLUDED_OPTIONS],
   chef: [...CHEF_TASK_INCLUDED_OPTIONS],
-  maquillaje: [...MAKEUP_TASK_INCLUDED_OPTIONS],
+  maquillaje: [],
   planchado: []
 };
 
@@ -169,6 +170,10 @@ export default function ServiceProsPage() {
   const selectedService = useMemo(
     () => category?.services.find((service) => service.id === selectedServiceId) ?? null,
     [category, selectedServiceId]
+  );
+  const selectedMakeupDefinition = useMemo(
+    () => (category?.slug === "maquillaje" && selectedService ? getMakeupServiceDefinitionBySlug(selectedService.slug) : null),
+    [category?.slug, selectedService]
   );
   const selectedCleaningServiceSlug = useMemo(() => parseCleaningServiceSlug(selectedService?.slug), [selectedService?.slug]);
   const availableTaskOptions = useMemo(() => {
@@ -400,6 +405,25 @@ export default function ServiceProsPage() {
                 );
                 const communeLabel = pro.coverageComuna ?? pro.user.cleaningOnboarding?.baseCommune ?? comuna ?? city;
                 const agendaLabel = getAgendaLabel(pro.slots);
+                const makeupScope = normalizeMakeupScope(pro.user.cleaningOnboarding?.makeupScope);
+                const makeupScopeValue = selectedMakeupDefinition?.scopeValue ?? null;
+                const makeupConfig =
+                  makeupScopeValue && makeupScope.services_offered.includes(makeupScopeValue)
+                    ? getMakeupServiceConfig(makeupScope, makeupScopeValue)
+                    : null;
+                const makeupHeadline =
+                  makeupScopeValue && makeupScope.services_offered.includes(makeupScopeValue)
+                    ? getMakeupServiceHeadline(makeupScope, makeupScopeValue)
+                    : selectedMakeupDefinition?.name ?? selectedService?.name ?? category?.name ?? "Maquillaje";
+                const makeupDuration =
+                  makeupScopeValue && makeupScope.services_offered.includes(makeupScopeValue)
+                    ? getMakeupDurationSummary(makeupScope, makeupScopeValue)
+                    : selectedMakeupDefinition?.durationLabel ?? "Duración por confirmar";
+                const makeupAudience =
+                  selectedMakeupDefinition && "idealFor" in selectedMakeupDefinition && typeof selectedMakeupDefinition.idealFor === "string"
+                    ? selectedMakeupDefinition.idealFor
+                    : profileSnippet(category?.name ?? "servicios");
+                const priceLabel = pro.hourlyRateFromClp ? clp(pro.hourlyRateFromClp) : "Por definir";
 
                 return (
                   <article className="we-pro-card" key={pro.id}>
@@ -422,7 +446,26 @@ export default function ServiceProsPage() {
                           <span className="we-tag">{agendaLabel}</span>
                         </div>
 
-                        <p className="we-pro-snippet">{profileSnippet(category?.name ?? "servicios")}</p>
+                        <p className="we-pro-snippet">
+                          {category?.slug === "maquillaje" ? `${makeupHeadline}. ${makeupAudience}` : profileSnippet(category?.name ?? "servicios")}
+                        </p>
+
+                        {category?.slug === "maquillaje" ? (
+                          <div className="auth-flow-copy-list">
+                            <div className="auth-flow-meta-card">
+                              <strong>Servicio</strong>
+                              <span>{makeupHeadline}</span>
+                            </div>
+                            <div className="auth-flow-meta-card">
+                              <strong>Duración estimada</strong>
+                              <span>{makeupDuration}</span>
+                            </div>
+                            <div className="auth-flow-meta-card">
+                              <strong>Cobertura</strong>
+                              <span>{communeLabel}</span>
+                            </div>
+                          </div>
+                        ) : null}
 
                         <div className="cta-row we-pro-actions">
                           <Link className="cta small" href={`/pro/${pro.userId}${contextQuery ? `?${contextQuery}` : ""}`}>
@@ -439,8 +482,9 @@ export default function ServiceProsPage() {
                     </div>
 
                     <aside className="we-pro-price">
-                      <strong>{pro.hourlyRateFromClp ? clp(pro.hourlyRateFromClp) : "Por definir"}</strong>
-                      <span>por hora</span>
+                      <strong>{priceLabel}</strong>
+                      <span>{category?.slug === "maquillaje" ? "precio base" : "por hora"}</span>
+                      {category?.slug === "maquillaje" ? <small>{makeupConfig ? `Duración: ${makeupDuration}` : "Duración por confirmar"}</small> : null}
                     </aside>
                   </article>
                 );
