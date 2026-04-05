@@ -1,3 +1,4 @@
+import { UserRole } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { ensureMarketplaceDemoData } from "@/lib/marketplace-demo-data";
 import { prisma } from "@/lib/prisma";
@@ -11,7 +12,9 @@ export async function GET(_: Request, context: { params: { proId: string } }) {
     const profile = await prisma.professionalProfile.findFirst({
       where: {
         userId: context.params.proId,
-        user: { role: "PRO" }
+        user: {
+          OR: [{ role: UserRole.PRO }, { roleAssignments: { some: { role: { code: UserRole.PRO } } } }]
+        }
       },
       include: {
         user: {

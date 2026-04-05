@@ -40,6 +40,26 @@ type MatchProfessional = {
   slots: Slot[];
 };
 
+type ProfessionalDetailResponse = {
+  professional?: {
+    id: string;
+    userId: string;
+    ratingAvg: number;
+    ratingsCount: number;
+    hourlyRateFromClp: number | null;
+    coverageCity: string | null;
+    serviceRadiusKm: number;
+    user: { id: string; fullName: string };
+    taskerServices?: Array<{
+      priceClp: number;
+      service: { id: string; name: string } | null;
+    }>;
+    slots?: Slot[];
+  };
+  error?: string;
+  detail?: string;
+};
+
 type BookingResponse = {
   id: string;
   status: string;
@@ -180,6 +200,10 @@ function paymentMethodLabel(paymentMethod: SavedPaymentMethod) {
       ? ` · ${String(paymentMethod.expirationMonth).padStart(2, "0")}/${String(paymentMethod.expirationYear).slice(-2)}`
       : "";
   return `${base} terminada en ${paymentMethod.last4}${expiry}`;
+}
+
+function slotMatchesRequestedService(slot: Slot, serviceId: string) {
+  return !slot.service?.id || slot.service.id === serviceId;
 }
 
 export default function ReservarPage() {
@@ -627,10 +651,44 @@ export default function ReservarPage() {
         slots: item.slots
       }));
 
-      setMatches(normalized);
-      if (normalized[0]) {
-        const preferredPro = options?.preferredProId ? normalized.find((item) => item.userId === options.preferredProId) ?? null : null;
-        const nextPro = preferredPro ?? normalized[0];
+      let resolvedMatches = normalized;
+
+      if (!resolvedMatches.length && options?.preferredProId) {
+        const pinnedResponse = await fetch(`/api/marketplace/pros/${options.preferredProId}`);
+        const pinnedData = (await pinnedResponse.json()) as ProfessionalDetailResponse;
+
+        if (pinnedResponse.ok && pinnedData.professional) {
+          const professional = pinnedData.professional;
+          const filteredSlots = (professional.slots ?? []).filter((slot) =>
+            filters.serviceId ? slotMatchesRequestedService(slot, filters.serviceId) : true
+          );
+
+          resolvedMatches = [
+            {
+              id: professional.id,
+              userId: professional.userId,
+              fullName: professional.user.fullName,
+              ratingAvg: Number(professional.ratingAvg),
+              ratingsCount: professional.ratingsCount,
+              hourlyRateFromClp: professional.hourlyRateFromClp,
+              distanceKm: 0,
+              nextAvailableAt: filteredSlots[0]?.startsAt ?? null,
+              coverageCity: professional.coverageCity,
+              serviceRadiusKm: professional.serviceRadiusKm,
+              taskerServices: (professional.taskerServices ?? []).map((taskerService) => ({
+                serviceId: taskerService.service?.id ?? null,
+                serviceName: taskerService.service?.name ?? null
+              })),
+              slots: filteredSlots
+            }
+          ];
+        }
+      }
+
+      setMatches(resolvedMatches);
+      if (resolvedMatches[0]) {
+        const preferredPro = options?.preferredProId ? resolvedMatches.find((item) => item.userId === options.preferredProId) ?? null : null;
+        const nextPro = preferredPro ?? resolvedMatches[0];
         setSelectedProId(nextPro.userId);
 
         const preferredSlot = options?.preferredStartsAt
@@ -660,7 +718,7 @@ export default function ReservarPage() {
       }
 
       if (!options?.silent) {
-        setMessage(`${normalized.length} tasker(s) encontrados para tu dirección.`);
+        setMessage(`${resolvedMatches.length} tasker(s) encontrados para tu dirección.`);
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error inesperado");
