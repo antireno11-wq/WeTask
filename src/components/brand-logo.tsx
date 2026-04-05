@@ -3,8 +3,6 @@
 import { useEffect, useState } from "react";
 import { buildTransparentLogo, buildWhiteLogo } from "@/lib/logo-processing";
 
-const FALLBACK_LOGO_SRC = "/logo-wetask-cropped.png";
-
 let cachedTransparentLogoSrc: string | null = null;
 let cachedWhiteLogoSrc: string | null = null;
 
@@ -16,8 +14,8 @@ type BrandLogoProps = {
 };
 
 export function BrandLogo({ className, width, height, variant = "default" }: BrandLogoProps) {
-  const [baseLogoSrc, setBaseLogoSrc] = useState(cachedTransparentLogoSrc ?? FALLBACK_LOGO_SRC);
-  const [whiteLogoSrc, setWhiteLogoSrc] = useState(cachedWhiteLogoSrc ?? FALLBACK_LOGO_SRC);
+  const [baseLogoSrc, setBaseLogoSrc] = useState<string | null>(cachedTransparentLogoSrc);
+  const [whiteLogoSrc, setWhiteLogoSrc] = useState<string | null>(variant === "white-wordmark" ? cachedWhiteLogoSrc : null);
 
   useEffect(() => {
     if (cachedTransparentLogoSrc) {
@@ -41,8 +39,21 @@ export function BrandLogo({ className, width, height, variant = "default" }: Bra
     }
   }, [variant]);
 
+  const placeholder = (
+    <span
+      className={className}
+      style={{ width, height, maxWidth: "100%", display: "inline-block", background: "transparent", flexShrink: 0 }}
+      aria-hidden
+    />
+  );
+
   if (variant !== "white-wordmark") {
+    if (!baseLogoSrc) return placeholder;
     return <img src={baseLogoSrc} alt="WeTask" className={className} width={width} height={height} />;
+  }
+
+  if (!baseLogoSrc || !whiteLogoSrc) {
+    return placeholder;
   }
 
   return (
