@@ -464,8 +464,46 @@ function formatClp(value: number) {
 }
 
 function getPricingGuide(draft: DraftState) {
-  const baseByCategory: Record<CategorySlug, { min: number; max: number; note: string; unit: string; inputLabel?: string; placeholder?: string }> = {
-    limpieza: { min: 12000, max: 16000, note: "Referencia habitual para limpieza estándar en comunas del MVP.", unit: "por hora" },
+  const baseByCategory: Record<
+    CategorySlug,
+    {
+      min: number;
+      max: number;
+      note: string;
+      unit: string;
+      inputLabel?: string;
+      placeholder?: string;
+      communeAdjustments?: Array<{
+        tone: "green" | "amber";
+        title: string;
+        communes: string[];
+        min: number;
+        max: number;
+      }>;
+    }
+  > = {
+    limpieza: {
+      min: 12000,
+      max: 16000,
+      note: "Referencia habitual para limpieza estándar en comunas del MVP.",
+      unit: "por hora",
+      communeAdjustments: [
+        {
+          tone: "green",
+          title: "Sector oriente",
+          communes: ["Las Condes", "Vitacura", "Providencia"],
+          min: 6000,
+          max: 8000
+        },
+        {
+          tone: "amber",
+          title: "Sector medio",
+          communes: ["Nuñoa", "La Florida", "Macul"],
+          min: 4500,
+          max: 6500
+        }
+      ]
+    },
     mascotas: {
       min: 5000,
       max: 9000,
@@ -530,7 +568,8 @@ function getPricingGuide(draft: DraftState) {
     extras,
     unit: base.unit,
     inputLabel: base.inputLabel ?? "Tarifa por hora",
-    placeholder: base.placeholder ?? "15000"
+    placeholder: base.placeholder ?? "15000",
+    communeAdjustments: base.communeAdjustments ?? []
   };
 }
 
@@ -4786,6 +4825,22 @@ function CleaningOnboardingPageContent() {
                     <strong>${formatClp(pricingGuide.max)}</strong> {pricingGuide.unit}.
                   </span>
                   <span>{pricingGuide.note}</span>
+                  {pricingGuide.communeAdjustments.length > 0 ? (
+                    <div className="pricing-commune-guide">
+                      <strong>Ajuste por comuna</strong>
+                      <div className="pricing-commune-grid">
+                        {pricingGuide.communeAdjustments.map((adjustment) => (
+                          <article key={adjustment.title} className={`pricing-commune-card tone-${adjustment.tone}`}>
+                            <strong>{adjustment.title}</strong>
+                            <span>({adjustment.communes.join(", ")})</span>
+                            <span>
+                              <strong>${formatClp(adjustment.min)}</strong> a <strong>${formatClp(adjustment.max)}</strong>
+                            </span>
+                          </article>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
                   {pricingGuide.extras.length > 0 ? (
                     <span>{pricingGuide.extras.join(" ")}</span>
                   ) : null}
