@@ -4274,24 +4274,111 @@ textarea {
 
 .we-faq-list {
   display: grid;
-  gap: 8px;
+  gap: 12px;
 }
 
 .we-faq-list details {
-  border: 1px solid #d7e5f2;
-  border-radius: 10px;
-  padding: 8px 10px;
-  background: #ffffff;
+  border: 1px solid #deebf6;
+  border-radius: 22px;
+  padding: 10px 14px;
+  background: linear-gradient(180deg, #ffffff 0%, #f9fbff 100%);
+  box-shadow: 0 14px 28px rgba(19, 42, 87, 0.05);
 }
 
 .we-faq-list summary {
   cursor: pointer;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
   font-weight: 800;
+  color: #173b5f;
 }
 
 .we-faq-list p {
-  margin: 8px 0 0;
-  color: #314055;
+  margin: 12px 0 2px;
+  color: #5b748e;
+  line-height: 1.65;
+}
+
+.we-faq-list summary::-webkit-details-marker {
+  display: none;
+}
+
+.we-faq-list summary::after {
+  content: "+";
+  display: inline-grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #6bc2d3 0%, #4f88e5 100%);
+  color: #ffffff;
+  font-size: 1.1rem;
+  font-weight: 900;
+  flex-shrink: 0;
+}
+
+.we-faq-list details[open] summary::after {
+  content: "−";
+}
+
+.tasker-faq-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 0.88fr) minmax(0, 1.12fr);
+  gap: 28px;
+  align-items: start;
+}
+
+.tasker-faq-copy {
+  display: grid;
+  gap: 12px;
+  align-content: start;
+  padding: 12px 6px 12px 0;
+}
+
+.tasker-faq-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  padding: 7px 12px;
+  border-radius: 999px;
+  background: rgba(111, 135, 230, 0.1);
+  color: #6d68d6;
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.tasker-faq-copy h2 {
+  margin: 0;
+  font-size: clamp(1.9rem, 3.2vw, 2.6rem);
+  line-height: 1.02;
+}
+
+.tasker-faq-copy p {
+  margin: 0;
+  max-width: 36ch;
+  color: #667f99;
+  font-size: 1rem;
+  line-height: 1.75;
+}
+
+.tasker-faq-list {
+  min-width: 0;
+}
+
+@media (max-width: 900px) {
+  .tasker-faq-layout {
+    grid-template-columns: 1fr;
+    gap: 18px;
+  }
+
+  .tasker-faq-copy {
+    padding-right: 0;
+  }
 }
 
 .support-page-shell .auth-flow-copy {

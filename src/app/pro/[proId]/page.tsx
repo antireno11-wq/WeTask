@@ -1488,14 +1488,23 @@ export default function ProDetailPage() {
                   </article>
 
                   <article className="auth-flow-panel client-dashboard-section tasker-profile-section">
-                    <h2>Preguntas frecuentes</h2>
-                    <div className="we-faq-list">
-                      {faqItems.map((item) => (
-                        <details key={item.question}>
-                          <summary>{item.question}</summary>
-                          <p>{item.answer}</p>
-                        </details>
-                      ))}
+                    <div className="tasker-faq-layout">
+                      <div className="tasker-faq-copy">
+                        <span className="tasker-faq-eyebrow">Preguntas habituales</span>
+                        <h2>Preguntas frecuentes</h2>
+                        <p>
+                          Resolvemos rápido las dudas más comunes para que puedas reservar con claridad y sin perderte entre
+                          información repetida.
+                        </p>
+                      </div>
+                      <div className="we-faq-list tasker-faq-list">
+                        {faqItems.map((item) => (
+                          <details key={item.question}>
+                            <summary>{item.question}</summary>
+                            <p>{item.answer}</p>
+                          </details>
+                        ))}
+                      </div>
                     </div>
                   </article>
 
