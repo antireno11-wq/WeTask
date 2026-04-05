@@ -961,19 +961,6 @@ export default function ProDetailPage() {
     );
     return filtered.length > 0 ? filtered : serviceCategories;
   }, [normalizedPrimaryCategorySlug, serviceCategories]);
-  const servicePriceTags = useMemo(() => {
-    return (data?.taskerServices ?? [])
-      .filter((item) =>
-        normalizedPrimaryCategorySlug
-          ? normalizeCategorySlug(item.category?.slug) === normalizedPrimaryCategorySlug
-          : true
-      )
-      .filter((item) => item.service?.name)
-      .map((item) => ({
-        key: `${item.service?.id ?? item.service?.name}`,
-        label: `${item.service?.name} · ${item.priceClp ? clp(item.priceClp) : "Por definir"}/h`
-      }));
-  }, [data?.taskerServices, normalizedPrimaryCategorySlug]);
   const registeredServiceNames = useMemo(() => {
     const names = (data?.taskerServices ?? [])
       .filter((item) =>
@@ -1202,13 +1189,6 @@ export default function ProDetailPage() {
                           <p>{hasBackgroundCheck ? "Tiene certificado de antecedentes cargado en su perfil." : "Aún no informa certificado de antecedentes."}</p>
                         </div>
                       </div>
-                    </div>
-                    <div className="we-pro-tags tasker-profile-service-tags">
-                      {(servicePriceTags.length > 0 ? servicePriceTags : offeredServices.map((service) => ({ key: service, label: service }))).map((service) => (
-                        <span key={service.key} className="we-tag">
-                          {service.label}
-                        </span>
-                      ))}
                     </div>
                   </article>
 
