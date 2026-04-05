@@ -1075,11 +1075,12 @@ export default function ProDetailPage() {
       normalizedPrimaryCategorySlug ? normalizeCategorySlug(item.category?.slug) === normalizedPrimaryCategorySlug : true
     )?.service?.id ||
     "";
-  const buildReserveHref = (options?: { startsAt?: string; serviceId?: string | null }) => {
+  const buildReserveHref = (options?: { slotId?: string; startsAt?: string; serviceId?: string | null }) => {
     const qs = new URLSearchParams();
     qs.set("proId", data?.userId ?? params.proId);
     const resolvedServiceId = options?.serviceId || defaultReserveServiceId;
     if (resolvedServiceId) qs.set("serviceId", resolvedServiceId);
+    if (options?.slotId) qs.set("slotId", options.slotId);
     if (options?.startsAt) qs.set("startsAt", options.startsAt);
     if (requestedAddress) qs.set("address", requestedAddress);
     if (requestedApartment) qs.set("apartment", requestedApartment);
@@ -1741,7 +1742,7 @@ export default function ProDetailPage() {
                                     <p>Disponible para reservar en WeTask.</p>
                                   </div>
                                   <div className="availability-task-actions">
-                                    <Link className="cta small" href={buildReserveHref({ startsAt: slot.startsAt, serviceId: slot.service?.id })}>
+                                    <Link className="cta small" href={buildReserveHref({ slotId: slot.id, startsAt: slot.startsAt, serviceId: slot.service?.id })}>
                                       Reservar este horario
                                     </Link>
                                   </div>

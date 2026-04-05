@@ -265,6 +265,8 @@ export default function ReservarPage() {
   const [createdBooking, setCreatedBooking] = useState<BookingResponse | null>(null);
   const [savedPaymentMethods, setSavedPaymentMethods] = useState<SavedPaymentMethod[]>([]);
   const [bookingStep, setBookingStep] = useState<1 | 2 | 3 | 4 | 5>(1);
+  const [loadingSavedPaymentMethods, setLoadingSavedPaymentMethods] = useState(false);
+  const [preferredSlotId, setPreferredSlotId] = useState("");
   const [preferredStartsAt, setPreferredStartsAt] = useState("");
   const [quickCheckoutEnabled, setQuickCheckoutEnabled] = useState(false);
   const [pinnedTaskerMode, setPinnedTaskerMode] = useState(false);
@@ -455,6 +457,7 @@ export default function ReservarPage() {
     const params = new URLSearchParams(window.location.search);
     const serviceId = params.get("serviceId");
     const proId = params.get("proId");
+    const slotId = params.get("slotId");
     const startsAt = params.get("startsAt");
     const suggestedHours = parseCleaningRecommendedHours(params.get("recommendedHours"));
     const estimatedMinHours = params.get("estimatedMinHours");
@@ -468,6 +471,7 @@ export default function ReservarPage() {
 
     if (serviceId) setFilters((prev) => ({ ...prev, serviceId }));
     if (proId) setSelectedProId(proId);
+    if (slotId) setPreferredSlotId(slotId);
     if (startsAt) {
       setPreferredStartsAt(startsAt);
       setQuickCheckoutEnabled(hasBookingAddress && !hasPinnedTasker);
@@ -606,7 +610,7 @@ export default function ReservarPage() {
     );
   };
 
-  const loadProfessionals = async (options?: { preferredProId?: string; preferredStartsAt?: string; silent?: boolean }) => {
+  const loadProfessionals = async (options?: { preferredProId?: string; preferredSlotId?: string; preferredStartsAt?: string; silent?: boolean }) => {
     setError("");
     if (!options?.silent) setMessage("");
     setSelectedSlotId("");
@@ -710,9 +714,14 @@ export default function ReservarPage() {
         const nextPro = preferredPro ?? resolvedMatches[0];
         setSelectedProId(nextPro.userId);
 
-        const preferredSlot = options?.preferredStartsAt
+        const preferredSlotById = options?.preferredSlotId ? nextPro.slots.find((slot) => slot.id === options.preferredSlotId) ?? null : null;
+        const preferredSlotByStart = options?.preferredStartsAt
           ? nextPro.slots.find((slot) => slot.startsAt === options.preferredStartsAt) ?? null
           : null;
+        const preferredSlotByDay = options?.preferredStartsAt
+          ? nextPro.slots.find((slot) => isoDay(slot.startsAt) === isoDay(options.preferredStartsAt!)) ?? null
+          : null;
+        const preferredSlot = preferredSlotById ?? preferredSlotByStart ?? preferredSlotByDay;
 
         if (preferredSlot) {
           setSelectedDay(isoDay(preferredSlot.startsAt));
@@ -727,11 +736,11 @@ export default function ReservarPage() {
           setFilters((prev) => ({ ...prev, serviceId: resolvedServiceId }));
         }
 
-        if (options?.preferredStartsAt && !preferredSlot) {
+        if ((options?.preferredSlotId || options?.preferredStartsAt) && !preferredSlot) {
           setQuickCheckoutEnabled(false);
           setError("No pudimos reconstruir el horario que elegiste. Vuelve a seleccionar un bloque disponible para continuar.");
         }
-      } else if (options?.preferredProId || options?.preferredStartsAt) {
+      } else if (options?.preferredProId || options?.preferredSlotId || options?.preferredStartsAt) {
         setQuickCheckoutEnabled(false);
         setError("No pudimos recuperar el tasker o el horario seleccionado. Revisa los bloques disponibles e inténtalo nuevamente.");
       }
@@ -753,13 +762,15 @@ export default function ReservarPage() {
   };
 
   useEffect(() => {
-    if ((!quickCheckoutEnabled && !pinnedTaskerMode) || !selectedProId || !services.length) return;
+    if ((!quickCheckoutEnabled && !pinnedTaskerMode) || !selectedProId || services.length === 0) return;
+    if (!preferredSlotId && !preferredStartsAt) return;
     void loadProfessionals({
       preferredProId: selectedProId,
+      preferredSlotId,
       preferredStartsAt,
       silent: true
     });
-  }, [filters.serviceId, pinnedTaskerMode, preferredStartsAt, quickCheckoutEnabled, selectedProId, services.length]);
+  }, [filters.serviceId, pinnedTaskerMode, preferredSlotId, preferredStartsAt, quickCheckoutEnabled, selectedProId, services.length]);
 
   useEffect(() => {
     setCardFormReady(false);
