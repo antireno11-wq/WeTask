@@ -138,10 +138,6 @@ function clampBookingHours(value: number) {
   return Math.min(8, Math.max(1, Math.floor(value || 1)));
 }
 
-function clampBookingHours(value: number) {
-  return Math.min(8, Math.max(1, Math.floor(value || 1)));
-}
-
 function clp(value: number) {
   return new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP", maximumFractionDigits: 0 }).format(value);
 }
@@ -854,8 +850,6 @@ export default function ReservarPage() {
       }
 
       const payerEmail = (selectedSavedPaymentMethod?.payerEmail || cardData.cardholderEmail || "").trim();
-
-      const safeHours = clampBookingHours(hours);
 
       const safeHours = clampBookingHours(hours);
 

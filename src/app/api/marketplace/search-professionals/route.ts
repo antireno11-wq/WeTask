@@ -138,7 +138,6 @@ export async function GET(req: NextRequest) {
 
     const requestedCategorySlug = normalizeTaskerCategorySlug(requestedService?.category?.slug ?? requestedCategory?.slug ?? null);
 
-    const startDate = input.date ?? new Date();
     const slotFilters = buildSlotFiltersForCategory(input.categoryId, input.serviceId);
 
     if (requestedCategorySlug) {
