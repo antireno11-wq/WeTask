@@ -82,7 +82,7 @@ import {
   getTeacherModeLabel,
   getTeacherServiceLabel,
   normalizeTeacherScope,
-  type TeacherLevelSlug,
+  type TeacherAnyLevelSlug,
   type TeacherModeSlug,
   type TeacherScopeData,
   type TeacherScopeServiceSlug
@@ -112,6 +112,7 @@ import {
   normalizeMakeupScope,
   type MakeupScopeData
 } from "@/lib/makeup-scope";
+import { isMakeupScopeServiceSlug, type MakeupScopeServiceSlug } from "@/lib/makeup-service-types";
 import {
   IRONING_SCOPE_SERVICE_OPTIONS,
   IRONING_TASK_EXCLUDED_OPTIONS,
@@ -256,15 +257,15 @@ type DraftState = {
   babysitterFirstAid: boolean | null;
   babysitterMultiChild: boolean | null;
   babysitterScope: BabysitterScopeData;
-  teacherSubject: "matematicas" | "ingles" | "lenguaje" | "ciencias" | "otra";
-  teacherLevel: "basica" | "media" | "universitario";
+  teacherSubject: TeacherScopeServiceSlug;
+  teacherLevel: TeacherAnyLevelSlug;
   teacherMode: "presencial" | "online" | "ambas";
   teacherScope: TeacherScopeData;
   trainerServiceType: "funcional" | "fuerza" | "perdida_peso" | "movilidad";
   trainerMode: "presencial" | "online" | "ambas";
   trainerBringsEquipment: boolean | null;
   trainerScope: TrainerScopeData;
-  makeupType: Array<"social" | "eventos" | "novias">;
+  makeupType: MakeupScopeServiceSlug[];
   makeupKit: boolean | null;
   ironingType: "casa_cliente" | "retiro_entrega";
   ironingDelicate: boolean | null;
@@ -526,13 +527,12 @@ function selectedChefServiceDefinitions(draft: DraftState): ChefServiceDefinitio
   return CHEF_SERVICE_DEFINITIONS.filter((service) => draft.chefServiceType.includes(service.slug));
 }
 
-function normalizeMakeupTypes(value: unknown): Array<"social" | "eventos" | "novias"> {
-  const allowed = new Set(["social", "eventos", "novias"]);
+function normalizeMakeupTypes(value: unknown): MakeupScopeServiceSlug[] {
   if (Array.isArray(value)) {
-    return value.filter((item): item is "social" | "eventos" | "novias" => typeof item === "string" && allowed.has(item));
+    return value.filter((item): item is MakeupScopeServiceSlug => typeof item === "string" && isMakeupScopeServiceSlug(item));
   }
-  if (typeof value === "string" && allowed.has(value)) {
-    return [value as "social" | "eventos" | "novias"];
+  if (typeof value === "string" && isMakeupScopeServiceSlug(value)) {
+    return [value];
   }
   return [];
 }
@@ -1395,7 +1395,7 @@ function CleaningOnboardingPageContent() {
                   : [],
                 levels: Array.isArray(nextOnboarding.experienceTypes)
                   ? nextOnboarding.experienceTypes.filter(
-                      (item): item is TeacherLevelSlug =>
+                      (item): item is TeacherAnyLevelSlug =>
                         typeof item === "string" &&
                         TEACHER_LEVEL_OPTIONS.some((option) => option.value === item)
                     )

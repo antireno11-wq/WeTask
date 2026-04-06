@@ -190,13 +190,12 @@ export default function ReservarPage() {
   const [selectedDay, setSelectedDay] = useState("");
   const [selectedSlotId, setSelectedSlotId] = useState("");
   const [selectedStartAt, setSelectedStartAt] = useState("");
+  const [bookingStage, setBookingStage] = useState<"agenda" | "checkout">("agenda");
+  const [taskerFlowLocked, setTaskerFlowLocked] = useState(false);
 
   const [hours, setHours] = useState(2);
   const [recommendedHours, setRecommendedHours] = useState<number | null>(null);
   const [estimatedHoursRange, setEstimatedHoursRange] = useState("");
-  const [materials, setMaterials] = useState(false);
-  const [urgency, setUrgency] = useState(false);
-  const [travelFeeClp, setTravelFeeClp] = useState(0);
   const [details, setDetails] = useState("");
   const [dietaryFlags, setDietaryFlags] = useState<string[]>([]);
   const [dietaryNotes, setDietaryNotes] = useState("");
@@ -206,13 +205,12 @@ export default function ReservarPage() {
   const [loadingSavedPaymentMethods, setLoadingSavedPaymentMethods] = useState(false);
   const [preferredSlotId, setPreferredSlotId] = useState("");
   const [preferredStartsAt, setPreferredStartsAt] = useState("");
-  const [quickCheckoutEnabled, setQuickCheckoutEnabled] = useState(false);
   const mercadoPagoPublicKey = process.env.NEXT_PUBLIC_MERCADOPAGO_PUBLIC_KEY ?? "";
 
   const selectedPro = useMemo(() => matches.find((pro) => pro.userId === selectedProId) ?? null, [matches, selectedProId]);
   const selectedService = useMemo(() => services.find((service) => service.id === filters.serviceId) ?? null, [services, filters.serviceId]);
   const isChefService = Boolean(selectedService?.slug && getChefServiceDefinition(selectedService.slug));
-  const quickCheckoutMode = false;
+  const quickCheckoutMode = taskerFlowLocked;
 
   const dayGroups = useMemo(() => {
     if (!selectedPro) return [] as Array<[string, Slot[]]>;
@@ -267,7 +265,7 @@ export default function ReservarPage() {
   }, [details, dietaryFlags, dietaryNotes, isChefService]);
 
   const baseHourly = selectedPro?.hourlyRateFromClp ?? services.find((s) => s.id === filters.serviceId)?.basePriceClp ?? 0;
-  const extrasTotal = (materials ? 5000 : 0) + (urgency ? 9000 : 0) + travelFeeClp;
+  const extrasTotal = 0;
   const subtotal = baseHourly * hours;
   const commission = Math.round(subtotal * 0.12);
   const total = subtotal + extrasTotal + commission;
@@ -319,18 +317,18 @@ export default function ReservarPage() {
     const city = params.get("city");
     const commune = params.get("commune") ?? params.get("comuna");
     const postalCode = params.get("postalCode");
-    const hasBookingAddress = Boolean(addressLine || city || commune || postalCode);
-
     if (serviceId) setFilters((prev) => ({ ...prev, serviceId }));
     if (proId) setSelectedProId(proId);
     if (slotId) setPreferredSlotId(slotId);
     if (startsAt) {
       setPreferredStartsAt(startsAt);
-      setQuickCheckoutEnabled(hasBookingAddress);
       const derivedDate = startsAt.slice(0, 10);
       if (derivedDate) {
         setFilters((prev) => ({ ...prev, date: derivedDate }));
       }
+    }
+    if (proId) {
+      setTaskerFlowLocked(true);
     }
     if (suggestedHours) {
       const safeSuggestedHours = clampBookingHours(suggestedHours);
@@ -409,7 +407,7 @@ export default function ReservarPage() {
         ? `wtk_checkout_${crypto.randomUUID()}`
         : `wtk_checkout_${Date.now()}_${Math.random().toString(16).slice(2)}`;
     setCheckoutIdempotencyKey(nextKey);
-  }, [customerId, selectedSlotId, filters.serviceId, hours, travelFeeClp, materials, urgency, address.street, address.commune]);
+  }, [customerId, selectedSlotId, filters.serviceId, hours, address.street, address.commune]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -527,6 +525,7 @@ export default function ReservarPage() {
     setSelectedSlotId("");
     setSelectedDay("");
     setSelectedStartAt("");
+    setBookingStage("agenda");
 
     try {
       setLoadingSearch(true);
@@ -633,11 +632,9 @@ export default function ReservarPage() {
         }
 
         if ((options?.preferredSlotId || options?.preferredStartsAt) && !preferredSlot) {
-          setQuickCheckoutEnabled(false);
           setError("No pudimos reconstruir el horario que elegiste. Vuelve a seleccionar un bloque disponible para continuar.");
         }
       } else if (options?.preferredProId || options?.preferredSlotId || options?.preferredStartsAt) {
-        setQuickCheckoutEnabled(false);
         setError("No pudimos recuperar el tasker o el horario seleccionado. Revisa los bloques disponibles e inténtalo nuevamente.");
       }
 
@@ -653,7 +650,8 @@ export default function ReservarPage() {
 
   const searchPros = async (event: FormEvent) => {
     event.preventDefault();
-    setQuickCheckoutEnabled(false);
+    setTaskerFlowLocked(false);
+    setBookingStage("agenda");
     await loadProfessionals();
   };
 
@@ -776,9 +774,9 @@ export default function ReservarPage() {
           },
           details: bookingDetails,
           extras: {
-            materials,
-            urgency,
-            travelFeeClp
+            materials: false,
+            urgency: false,
+            travelFeeClp: 0
           },
           payment: {
             token: cardData.token,
@@ -881,8 +879,8 @@ export default function ReservarPage() {
             {quickCheckoutMode ? (
               <>
                 <div className="panel-head auth-flow-panel-head">
-                  <h2>Resumen antes de confirmar</h2>
-                  <p>Ya vienes con tasker y horario elegidos. Aquí solo revisas el resumen y continúas al pago.</p>
+                  <h2>Tasker seleccionado</h2>
+                  <p>Ya elegiste un tasker. En este paso solo define la fecha, la hora de inicio y cuántas horas quieres reservar.</p>
                 </div>
 
                 <div className="booking-checkout-summary">
@@ -901,7 +899,14 @@ export default function ReservarPage() {
                 </div>
 
                 <div className="cta-row">
-                  <button className="cta ghost" type="button" onClick={() => setQuickCheckoutEnabled(false)}>
+                  <button
+                    className="cta ghost"
+                    type="button"
+                    onClick={() => {
+                      setTaskerFlowLocked(false);
+                      setBookingStage("agenda");
+                    }}
+                  >
                     Editar búsqueda
                   </button>
                 </div>
@@ -1002,6 +1007,8 @@ export default function ReservarPage() {
                         type="button"
                         onClick={() => {
                           setSelectedProId(pro.userId);
+                          setTaskerFlowLocked(true);
+                          setBookingStage("agenda");
                           const firstDay = isoDay(pro.slots[0]?.startsAt ?? "");
                           setSelectedDay(firstDay);
                           setSelectedSlotId("");
@@ -1018,59 +1025,11 @@ export default function ReservarPage() {
             ) : null}
 
             {selectedPro ? (
-              <div className="booking-selection-column">
-                <section className="auth-flow-panel client-dashboard-section booking-pro-profile-panel">
-                  <div className="panel-head auth-flow-panel-head">
-                    <h2>Perfil del tasker</h2>
-                    <p>Revisa su información principal y luego elige horario en la agenda.</p>
-                  </div>
-
-                  <div className="booking-pro-card">
-                    <div className="booking-pro-card-head">
-                      <div className="booking-pro-avatar" aria-hidden>
-                        {initials(selectedPro.fullName)}
-                      </div>
-                      <div>
-                        <h3>{selectedPro.fullName}</h3>
-                        <p>{starsText(selectedPro.ratingAvg)} {selectedPro.ratingAvg.toFixed(1)} · {selectedPro.ratingsCount} reseñas</p>
-                      </div>
-                    </div>
-
-                    <div className="booking-pro-highlights">
-                      <article>
-                        <span>Precio por hora</span>
-                        <strong>{selectedPro.hourlyRateFromClp ? clp(selectedPro.hourlyRateFromClp) : "Por definir"}</strong>
-                      </article>
-                      <article>
-                        <span>Próximo bloque</span>
-                        <strong>{selectedPro.nextAvailableAt ? new Date(selectedPro.nextAvailableAt).toLocaleString("es-CL") : "Sin bloques"}</strong>
-                      </article>
-                      <article>
-                        <span>Distancia</span>
-                        <strong>{selectedPro.distanceKm} km</strong>
-                      </article>
-                      <article>
-                        <span>Cobertura</span>
-                        <strong>{selectedPro.coverageCity ?? "Santiago"} · {selectedPro.serviceRadiusKm} km</strong>
-                      </article>
-                    </div>
-
-                    <div className="booking-pro-meta">
-                      <p>Este bloque es solo para revisar el perfil rápido del profesional antes de reservar.</p>
-                    </div>
-
-                    <div className="cta-row">
-                      <Link className="cta ghost small" href={`/pro/${selectedPro.userId}`}>
-                        Ver perfil completo
-                      </Link>
-                    </div>
-                  </div>
-                </section>
-
+              <div className={quickCheckoutMode ? "booking-selection-column booking-selection-column-wide" : "booking-selection-column"}>
                 <section className="auth-flow-panel client-dashboard-section booking-agenda-section">
                   <div className="panel-head auth-flow-panel-head">
                     <h2>Agenda y detalles de la reserva</h2>
-                    <p>Selecciona un día, elige un horario y completa abajo los detalles del servicio.</p>
+                    <p>Selecciona un día, luego elige el bloque, la hora de inicio y la cantidad de horas del servicio.</p>
                   </div>
 
                   <div className="day-tabs">
@@ -1128,17 +1087,6 @@ export default function ReservarPage() {
                         </small>
                       ) : null}
                     </label>
-                    <label>
-                      Desplazamiento (CLP)
-                      <input type="number" min={0} value={travelFeeClp} onChange={(e) => setTravelFeeClp(Number(e.target.value) || 0)} />
-                    </label>
-                    <label>
-                      <span>Extras</span>
-                      <div className="inline-checks">
-                        <label><input type="checkbox" checked={materials} onChange={(e) => setMaterials(e.target.checked)} /> Materiales</label>
-                        <label><input type="checkbox" checked={urgency} onChange={(e) => setUrgency(e.target.checked)} /> Urgencia</label>
-                      </div>
-                    </label>
                     <label className="full">
                       Detalles del trabajo
                       <textarea value={details} onChange={(e) => setDetails(e.target.value)} />
@@ -1174,7 +1122,7 @@ export default function ReservarPage() {
                   </div>
 
                   <div className="price-box booking-price-box">
-                    Resumen en vivo: ({clp(baseHourly)} x {hours}h) + extras {clp(extrasTotal)} + comisión {clp(commission)} = <strong>{clp(total)}</strong>
+                    Resumen en vivo: ({clp(baseHourly)} x {hours}h) + comisión {clp(commission)} = <strong>{clp(total)}</strong>
                   </div>
                   {selectedSlot && selectedStartAt ? (
                     <p className="minimal-note">
@@ -1187,17 +1135,26 @@ export default function ReservarPage() {
                       {estimatedHoursRange ? ` · Rango estimado ${estimatedHoursRange}` : ""}
                     </p>
                   ) : null}
-                  <p className="minimal-note">Pago seguro procesado por Mercado Pago.</p>
+                  <div className="cta-row">
+                    <button
+                      className="cta"
+                      type="button"
+                      disabled={!selectedSlot || !selectedStartAt}
+                      onClick={() => setBookingStage("checkout")}
+                    >
+                      Continuar al checkout
+                    </button>
+                  </div>
                 </section>
               </div>
             ) : null}
           </div>
 
-          {selectedPro ? (
+          {selectedPro && bookingStage === "checkout" ? (
             <section className="auth-flow-panel client-dashboard-section booking-checkout-section">
               <div className="panel-head auth-flow-panel-head">
                 <h2>Checkout</h2>
-                <p>Confirma el horario elegido y completa el pago con Mercado Pago sin salir de WeTask.</p>
+                <p>Revisa el horario elegido y completa el pago con Mercado Pago.</p>
               </div>
 
               <div className="booking-checkout-summary">
@@ -1253,6 +1210,12 @@ export default function ReservarPage() {
                     Gestionar tarjetas
                   </Link>
                 </div>
+              </div>
+
+              <div className="cta-row">
+                <button className="cta ghost small" type="button" onClick={() => setBookingStage("agenda")}>
+                  Volver a la agenda
+                </button>
               </div>
 
               <form id="mp-card-form" className="grid-form auth-flow-form" onSubmit={(event) => event.preventDefault()}>
