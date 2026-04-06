@@ -10,9 +10,9 @@ export const CORE_SERVICES = [
   },
   {
     slug: "mascotas",
-    label: "Paseo y cuidado mascotas",
+    label: "Paseo de mascotas",
     icon: "🐾",
-    requestService: "Paseo y cuidado de mascotas",
+    requestService: "Paseo de mascotas",
     categorySlug: "paseo-cuidado-mascotas",
     taskerDescription: "Paseo de perros, visitas, cuidado diario y apoyo para mascotas.",
     image: "/services/mascotas-opt.jpg"
@@ -28,11 +28,11 @@ export const CORE_SERVICES = [
   },
   {
     slug: "profesor-particular",
-    label: "Clases particulares",
+    label: "Profesor particular",
     icon: "📚",
-    requestService: "Clases particulares",
+    requestService: "Profesor particular",
     categorySlug: "profesor-particular",
-    taskerDescription: "Matemáticas, inglés, apoyo escolar y música en formato particular.",
+    taskerDescription: "Refuerzo escolar y apoyo personalizado a domicilio o en línea.",
     image: "/services/profesor-particular-opt.jpg"
   },
   {
@@ -74,13 +74,5 @@ export const CORE_SERVICES = [
 ] as const;
 
 export type CoreTaskerServiceSlug = (typeof CORE_SERVICES)[number]["slug"];
-export type CoreTaskerServiceDefinition = (typeof CORE_SERVICES)[number];
 
 export const CORE_CATEGORY_SLUGS = CORE_SERVICES.map((service) => service.categorySlug);
-
-export function findCoreServiceByOnboardingCategory(categorySlug: string | null | undefined): CoreTaskerServiceDefinition | null {
-  if (!categorySlug) return null;
-  return (
-    CORE_SERVICES.find((service) => service.slug === categorySlug || service.categorySlug === categorySlug) ?? null
-  );
-}

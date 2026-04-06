@@ -661,8 +661,8 @@ export async function ensureMarketplaceDemoData() {
     },
     {
       slug: "paseo-cuidado-mascotas",
-      name: "Paseo y cuidado de mascotas",
-      description: "Paseo de perros, visitas y cuidado de mascotas en domicilio",
+      name: "Paseo de mascotas",
+      description: "Paseos, visitas y cuidado básico de mascotas a domicilio",
       basePriceClp: 17000,
       categoryId: categories.mascotas.id
     },
