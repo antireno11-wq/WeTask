@@ -6,7 +6,7 @@ import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { MarketNav } from "@/components/market-nav";
 import { getChefServiceDefinition } from "@/lib/chef-service-types";
 import { parseCleaningRecommendedHours } from "@/lib/cleaning-duration-estimator";
-import { COVERAGE_UNAVAILABLE_MESSAGE, inferCommuneFromAddress, normalizeCommune } from "@/lib/communes";
+import { ACTIVE_MVP_COMMUNES, COVERAGE_UNAVAILABLE_MESSAGE, inferCommuneFromAddress, normalizeCommune } from "@/lib/communes";
 
 export const dynamic = "force-dynamic";
 
@@ -920,7 +920,13 @@ export default function ReservarPage() {
                   </label>
                   <label>
                     Comuna
-                    <input value={address.commune} onChange={(e) => setAddress((prev) => ({ ...prev, commune: e.target.value }))} required />
+                    <select value={address.commune} onChange={(e) => setAddress((prev) => ({ ...prev, commune: e.target.value }))} required>
+                      {ACTIVE_MVP_COMMUNES.map((commune) => (
+                        <option key={commune} value={commune}>
+                          {commune}
+                        </option>
+                      ))}
+                    </select>
                   </label>
                   <label>
                     Código postal

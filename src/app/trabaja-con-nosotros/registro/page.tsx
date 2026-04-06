@@ -82,7 +82,6 @@ import {
   getTeacherModeLabel,
   getTeacherServiceLabel,
   normalizeTeacherScope,
-  type TeacherAnyLevelSlug,
   type TeacherLevelSlug,
   type TeacherModeSlug,
   type TeacherScopeData,
@@ -257,15 +256,15 @@ type DraftState = {
   babysitterFirstAid: boolean | null;
   babysitterMultiChild: boolean | null;
   babysitterScope: BabysitterScopeData;
-  teacherSubject: TeacherScopeServiceSlug;
-  teacherLevel: TeacherAnyLevelSlug;
+  teacherSubject: "matematicas" | "ingles" | "lenguaje" | "ciencias" | "otra";
+  teacherLevel: "basica" | "media" | "universitario";
   teacherMode: "presencial" | "online" | "ambas";
   teacherScope: TeacherScopeData;
   trainerServiceType: "funcional" | "fuerza" | "perdida_peso" | "movilidad";
   trainerMode: "presencial" | "online" | "ambas";
   trainerBringsEquipment: boolean | null;
   trainerScope: TrainerScopeData;
-  makeupType: Array<(typeof MAKEUP_SCOPE_SERVICE_OPTIONS)[number]["value"]>;
+  makeupType: Array<"social" | "eventos" | "novias">;
   makeupKit: boolean | null;
   ironingType: "casa_cliente" | "retiro_entrega";
   ironingDelicate: boolean | null;
@@ -527,18 +526,13 @@ function selectedChefServiceDefinitions(draft: DraftState): ChefServiceDefinitio
   return CHEF_SERVICE_DEFINITIONS.filter((service) => draft.chefServiceType.includes(service.slug));
 }
 
-function normalizeMakeupTypes(value: unknown): Array<(typeof MAKEUP_SCOPE_SERVICE_OPTIONS)[number]["value"]> {
-  const allowed = new Set<(typeof MAKEUP_SCOPE_SERVICE_OPTIONS)[number]["value"]>(
-    MAKEUP_SCOPE_SERVICE_OPTIONS.map((option) => option.value)
-  );
+function normalizeMakeupTypes(value: unknown): Array<"social" | "eventos" | "novias"> {
+  const allowed = new Set(["social", "eventos", "novias"]);
   if (Array.isArray(value)) {
-    return value.filter(
-      (item): item is (typeof MAKEUP_SCOPE_SERVICE_OPTIONS)[number]["value"] =>
-        typeof item === "string" && allowed.has(item as (typeof MAKEUP_SCOPE_SERVICE_OPTIONS)[number]["value"])
-    );
+    return value.filter((item): item is "social" | "eventos" | "novias" => typeof item === "string" && allowed.has(item));
   }
-  if (typeof value === "string" && allowed.has(value as (typeof MAKEUP_SCOPE_SERVICE_OPTIONS)[number]["value"])) {
-    return [value as (typeof MAKEUP_SCOPE_SERVICE_OPTIONS)[number]["value"]];
+  if (typeof value === "string" && allowed.has(value)) {
+    return [value as "social" | "eventos" | "novias"];
   }
   return [];
 }
@@ -2707,7 +2701,12 @@ function CleaningOnboardingPageContent() {
 
             {activeStep === 4 ? (
               <div className="onboarding-screen">
-                <h3>¿En qué comunas quieres trabajar?</h3>
+                <h3>{draft.category === "babysitter" ? "¿En qué comunas activas de WeTask quieres trabajar como babysitter?" : "¿En qué comunas quieres trabajar?"}</h3>
+                <p className="input-hint">
+                  {draft.category === "babysitter"
+                    ? "Estas comunas están definidas por WeTask. Solo puedes seleccionar dentro de esta cobertura y no agregar zonas manualmente."
+                    : "Selecciona solo comunas activas definidas por WeTask para tu cobertura."}
+                </p>
                 <div className="auth-flow-actions">
                   <button type="button" className="cta ghost small" onClick={selectAllCoverageCommunes}>
                     Todas

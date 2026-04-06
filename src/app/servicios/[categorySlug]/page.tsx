@@ -20,7 +20,7 @@ import {
   parseCleaningServiceSlug
 } from "@/lib/cleaning-duration-estimator";
 import { getCleaningServiceDefinition } from "@/lib/cleaning-service-types";
-import { COVERAGE_UNAVAILABLE_MESSAGE, inferCommuneFromAddress, normalizeCommune } from "@/lib/communes";
+import { ACTIVE_MVP_COMMUNES, COVERAGE_UNAVAILABLE_MESSAGE, inferCommuneFromAddress, normalizeCommune } from "@/lib/communes";
 import { estimateIroningDuration } from "@/lib/ironing-duration-estimator";
 import { MAKEUP_TASK_INCLUDED_OPTIONS } from "@/lib/makeup-scope";
 import { PET_TASK_INCLUDED_OPTIONS } from "@/lib/pet-scope";
@@ -64,6 +64,7 @@ export default function ServicioCategoriaPage() {
   const [sessionRole, setSessionRole] = useState<string | null>(null);
   const [coverageNote, setCoverageNote] = useState("");
   const [detectedCommune, setDetectedCommune] = useState<string | null>(null);
+  const [selectedCommune, setSelectedCommune] = useState<string>(normalizeCommune(query.get("commune") ?? "") ?? "");
   const [coverageEmail, setCoverageEmail] = useState("");
   const [coverageEmailStatus, setCoverageEmailStatus] = useState("");
   const [savingCoverageEmail, setSavingCoverageEmail] = useState(false);
@@ -219,12 +220,15 @@ export default function ServicioCategoriaPage() {
     setSelectedFromAutocomplete(true);
     setAddressSuggestions([]);
     setShowSuggestions(false);
-    setDetectedCommune(normalizeCommune(value) ?? inferCommuneFromAddress(value));
+    const nextCommune = normalizeCommune(value) ?? inferCommuneFromAddress(value);
+    setDetectedCommune(nextCommune);
+    if (nextCommune) setSelectedCommune(nextCommune);
   };
 
   useEffect(() => {
     const commune = normalizeCommune(street) ?? inferCommuneFromAddress(street);
     setDetectedCommune(commune);
+    if (commune) setSelectedCommune(commune);
   }, [street]);
 
   useEffect(() => {
@@ -381,9 +385,9 @@ export default function ServicioCategoriaPage() {
       setCoverageNote("Completa el servicio y la dirección para ver taskers disponibles.");
       return;
     }
-    const commune = detectedCommune ?? normalizeCommune(street) ?? inferCommuneFromAddress(street);
+    const commune = normalizeCommune(selectedCommune) ?? detectedCommune ?? normalizeCommune(street) ?? inferCommuneFromAddress(street);
     if (!commune) {
-      setCoverageNote(COVERAGE_UNAVAILABLE_MESSAGE);
+      setCoverageNote("Selecciona una comuna disponible dentro de la cobertura activa de WeTask.");
       return;
     }
     if (category?.slug === "limpieza") {
@@ -472,12 +476,12 @@ export default function ServicioCategoriaPage() {
           <div className="auth-flow-copy">
             <p className="auth-flow-kicker">Servicio</p>
             <h1>{category?.name ?? "Cargando servicio..."}</h1>
-            <p>Elige una variante del servicio y tu dirección para ver taskers disponibles en tu zona.</p>
+            <p>Elige una variante del servicio y una comuna activa de WeTask para ver taskers disponibles en tu zona.</p>
 
             <div className="auth-flow-copy-list">
               <div className="auth-flow-meta-card">
                 <strong>Cobertura inteligente</strong>
-                <span>Detectamos tu comuna para mostrar solo taskers y disponibilidad relevante.</span>
+                <span>Trabajamos solo en comunas activas definidas por WeTask y mostramos solo taskers dentro de esa cobertura.</span>
               </div>
               <div className="auth-flow-meta-card">
                 <strong>Siguiente paso</strong>
@@ -502,7 +506,11 @@ export default function ServicioCategoriaPage() {
                     <div className="full auth-flow-note-card auth-flow-note-card-compact">
                       <strong>Usaremos tu dirección guardada</strong>
                       <span>{street}</span>
-                      <span>{detectedCommune ? `Comuna detectada: ${detectedCommune}` : "Si quieres cambiarla, edítala desde tu panel cliente."}</span>
+                      <span>
+                        {selectedCommune || detectedCommune
+                          ? `Comuna dentro de cobertura: ${selectedCommune || detectedCommune}`
+                          : "Si quieres cambiarla, edítala desde tu panel cliente."}
+                      </span>
                     </div>
                   ) : (
                     <>
@@ -536,6 +544,18 @@ export default function ServicioCategoriaPage() {
                         ) : null}
                       </label>
                       <label>
+                        Comuna disponible
+                        <select value={selectedCommune} onChange={(event) => setSelectedCommune(event.target.value)} required>
+                          <option value="">Selecciona una comuna</option>
+                          {ACTIVE_MVP_COMMUNES.map((commune) => (
+                            <option key={commune} value={commune}>
+                              {commune}
+                            </option>
+                          ))}
+                        </select>
+                        <p className="input-hint">Solo puedes buscar dentro de las comunas activas definidas por WeTask.</p>
+                      </label>
+                      <label>
                         Departamento
                         <input
                           value={apartment}
@@ -552,8 +572,8 @@ export default function ServicioCategoriaPage() {
                         />
                       </label>
                       <div className="full auth-flow-note-card">
-                        <strong>Comuna detectada</strong>
-                        <span>{detectedCommune ?? "Aún no detectamos una comuna válida."}</span>
+                        <strong>Comuna para la búsqueda</strong>
+                        <span>{selectedCommune || detectedCommune || "Selecciona una comuna activa para continuar."}</span>
                       </div>
                     </>
                   )}
