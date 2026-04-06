@@ -1,4 +1,3 @@
-import { UserRole } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { ensureMarketplaceDemoData } from "@/lib/marketplace-demo-data";
 import { prisma } from "@/lib/prisma";
@@ -13,7 +12,7 @@ export async function GET(_: Request, context: { params: { proId: string } }) {
       where: {
         userId: context.params.proId,
         user: {
-          OR: [{ role: UserRole.PRO }, { roleAssignments: { some: { role: { code: UserRole.PRO } } } }]
+          OR: [{ role: "PRO" }, { roleAssignments: { some: { role: { code: "PRO" } } } }]
         }
       },
       include: {
@@ -26,8 +25,6 @@ export async function GET(_: Request, context: { params: { proId: string } }) {
             cleaningOnboarding: {
               select: {
                 profilePhotoUrl: true,
-                profilePhotoPositionX: true,
-                profilePhotoPositionY: true,
                 shortDescription: true,
                 yearsExperience: true,
                 workMode: true,
@@ -74,10 +71,6 @@ export async function GET(_: Request, context: { params: { proId: string } }) {
               }
             }
           }
-        },
-        categoryProfiles: {
-          where: { isActive: true },
-          orderBy: [{ createdAt: "asc" }]
         },
         slots: {
           where: { isAvailable: true, startsAt: { gte: new Date() } },

@@ -1,11 +1,9 @@
-import { Prisma, UserRole } from "@prisma/client";
+import { UserRole } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { getRequestIdentity, hasRole } from "@/lib/auth";
 import { COVERAGE_UNAVAILABLE_MESSAGE, inferCommuneFromAddress, normalizeCommune, taskerServesCommune } from "@/lib/communes";
 import { calculateMarketplacePrice } from "@/lib/marketplace-pricing";
 import { prisma } from "@/lib/prisma";
-import { syncTaskerMarketplaceServicesFromOnboarding } from "@/lib/tasker-publication";
-import { hasAssignedRole } from "@/lib/user-roles";
 import { marketplaceCreateBookingSchema } from "@/lib/validators";
 
 export async function GET(req: NextRequest) {
@@ -42,127 +40,6 @@ export async function GET(req: NextRequest) {
   }
 }
 
-function requestedBookingEndsAt(startsAt: Date, hours: number) {
-  return new Date(startsAt.getTime() + hours * 60 * 60 * 1000);
-}
-
-async function reserveRequestedWindow(
-  tx: Prisma.TransactionClient,
-  params: {
-    slotId: string;
-    serviceId: string;
-    startsAt: Date;
-    endsAt: Date;
-  }
-) {
-  const slot = await tx.availabilitySlot.findUnique({
-    where: { id: params.slotId },
-    select: {
-      id: true,
-      professionalProfileId: true,
-      serviceId: true,
-      startsAt: true,
-      endsAt: true,
-      isAvailable: true
-    }
-  });
-
-  if (!slot || !slot.isAvailable) {
-    throw new Error("El horario ya fue tomado por otro cliente");
-  }
-
-  if (params.startsAt < slot.startsAt || params.endsAt <= params.startsAt) {
-    throw new Error("El horario solicitado ya no cabe dentro del bloque del tasker");
-  }
-
-  const candidateSlots = await tx.availabilitySlot.findMany({
-    where: {
-      professionalProfileId: slot.professionalProfileId,
-      isAvailable: true,
-      startsAt: { lt: params.endsAt },
-      endsAt: { gt: params.startsAt },
-      OR: [{ serviceId: null }, { serviceId: params.serviceId }]
-    },
-    orderBy: [{ startsAt: "asc" }],
-    select: {
-      id: true,
-      professionalProfileId: true,
-      serviceId: true,
-      startsAt: true,
-      endsAt: true,
-      isAvailable: true
-    }
-  });
-
-  const firstIndex = candidateSlots.findIndex((candidate) => candidate.id === params.slotId);
-  if (firstIndex < 0) {
-    throw new Error("El horario ya fue tomado por otro cliente");
-  }
-
-  const reservedChain = [candidateSlots[firstIndex]];
-  let coveredUntil = reservedChain[0].endsAt;
-
-  for (let index = firstIndex + 1; coveredUntil < params.endsAt && index < candidateSlots.length; index += 1) {
-    const nextSlot = candidateSlots[index];
-    if (nextSlot.startsAt > coveredUntil) break;
-    reservedChain.push(nextSlot);
-    if (nextSlot.endsAt > coveredUntil) {
-      coveredUntil = nextSlot.endsAt;
-    }
-  }
-
-  if (coveredUntil < params.endsAt) {
-    throw new Error("El horario solicitado ya no cabe dentro del bloque del tasker");
-  }
-
-  const extraWindows: Array<{
-    professionalProfileId: string;
-    serviceId: string | null;
-    startsAt: Date;
-    endsAt: Date;
-    isAvailable: true;
-  }> = [];
-
-  for (const reservedSlot of reservedChain) {
-    const reservationStart = reservedSlot.startsAt < params.startsAt ? params.startsAt : reservedSlot.startsAt;
-    const reservationEnd = reservedSlot.endsAt > params.endsAt ? params.endsAt : reservedSlot.endsAt;
-
-    if (reservationEnd <= reservationStart) continue;
-
-    if (reservedSlot.startsAt < reservationStart) {
-      extraWindows.push({
-        professionalProfileId: reservedSlot.professionalProfileId,
-        serviceId: reservedSlot.serviceId,
-        startsAt: reservedSlot.startsAt,
-        endsAt: reservationStart,
-        isAvailable: true
-      });
-    }
-    if (reservationEnd < reservedSlot.endsAt) {
-      extraWindows.push({
-        professionalProfileId: reservedSlot.professionalProfileId,
-        serviceId: reservedSlot.serviceId,
-        startsAt: reservationEnd,
-        endsAt: reservedSlot.endsAt,
-        isAvailable: true
-      });
-    }
-
-    await tx.availabilitySlot.update({
-      where: { id: reservedSlot.id },
-      data: {
-        startsAt: reservationStart,
-        endsAt: reservationEnd,
-        isAvailable: false
-      }
-    });
-  }
-
-  if (extraWindows.length > 0) {
-    await tx.availabilitySlot.createMany({ data: extraWindows });
-  }
-}
-
 export async function POST(req: NextRequest) {
   try {
     const identity = getRequestIdentity(req);
@@ -188,11 +65,11 @@ export async function POST(req: NextRequest) {
     }
 
     const [customer, service] = await Promise.all([
-      prisma.user.findUnique({ where: { id: input.customerId }, include: { roleAssignments: { select: { role: { select: { code: true } } } } } }),
+      prisma.user.findUnique({ where: { id: input.customerId } }),
       prisma.service.findUnique({ where: { id: input.serviceId }, include: { category: true } })
     ]);
 
-    if (!customer || !hasAssignedRole(customer, UserRole.CUSTOMER)) {
+    if (!customer || customer.role !== UserRole.CUSTOMER) {
       return NextResponse.json({ error: "Cliente no válido" }, { status: 400 });
     }
 
@@ -210,7 +87,6 @@ export async function POST(req: NextRequest) {
     const requestedSlotMinutes = service.category.slotMinutes;
     const platformFeePct = Number(service.category.basePlatformFeePct);
     let baseRate = service.basePriceClp;
-    const requestedEndsAt = requestedBookingEndsAt(input.startsAt, input.hours);
 
     let assignedProId = input.proId ?? null;
     let selectedSlotId = input.slotId ?? null;
@@ -249,27 +125,20 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: "Horario no disponible" }, { status: 409 });
       }
 
-      if (input.startsAt < selectedSlot.startsAt || requestedEndsAt <= input.startsAt) {
-        return NextResponse.json({ error: "La hora elegida no cae dentro del bloque disponible" }, { status: 400 });
+      const requestedStartMs = input.startsAt.getTime();
+      const requestedEndMs = requestedStartMs + input.hours * 60 * 60 * 1000;
+      const slotStartMs = selectedSlot.startsAt.getTime();
+      const slotEndMs = selectedSlot.endsAt.getTime();
+
+      if (requestedStartMs < slotStartMs || requestedEndMs > slotEndMs) {
+        return NextResponse.json({ error: "La hora seleccionada queda fuera del bloque disponible" }, { status: 400 });
       }
 
       if (selectedSlot.serviceId && selectedSlot.serviceId !== input.serviceId) {
         return NextResponse.json({ error: "El bloque no pertenece al servicio seleccionado" }, { status: 400 });
       }
       if (selectedSlot.professionalProfile.taskerServices.length === 0) {
-        await syncTaskerMarketplaceServicesFromOnboarding(selectedSlot.professionalProfile.userId);
-        const syncedTaskerService = await prisma.taskerService.findFirst({
-          where: {
-            professionalProfileId: selectedSlot.professionalProfileId,
-            serviceId: input.serviceId,
-            isActive: true
-          },
-          select: { id: true, priceClp: true }
-        });
-        if (!syncedTaskerService) {
-          return NextResponse.json({ error: "El tasker seleccionado no ofrece este servicio" }, { status: 400 });
-        }
-        selectedSlot.professionalProfile.taskerServices = [syncedTaskerService];
+        return NextResponse.json({ error: "El tasker seleccionado no ofrece este servicio" }, { status: 400 });
       }
 
       const slotTaskerCanServe = taskerServesCommune(
@@ -387,26 +256,15 @@ export async function POST(req: NextRequest) {
           }
         }
       });
-      if (!pro || !hasAssignedRole(pro, UserRole.PRO)) {
+      const isTasker = Boolean(
+        pro &&
+          (pro.role === UserRole.PRO || pro.roleAssignments.some((assignment) => assignment.role.code === UserRole.PRO))
+      );
+      if (!pro || !isTasker) {
         return NextResponse.json({ error: "Profesional no válido" }, { status: 400 });
       }
-      if (!pro.professionalProfile) {
-        return NextResponse.json({ error: "El tasker seleccionado no tiene perfil activo" }, { status: 400 });
-      }
-      if (pro.professionalProfile && pro.professionalProfile.taskerServices.length === 0) {
-        await syncTaskerMarketplaceServicesFromOnboarding(assignedProId);
-        const syncedProService = await prisma.taskerService.findFirst({
-          where: {
-            professionalProfile: { userId: assignedProId },
-            serviceId: input.serviceId,
-            isActive: true
-          },
-          select: { id: true, priceClp: true }
-        });
-        if (!syncedProService) {
-          return NextResponse.json({ error: "El tasker seleccionado no ofrece este servicio" }, { status: 400 });
-        }
-        pro.professionalProfile.taskerServices = [syncedProService];
+      if (!pro.professionalProfile || pro.professionalProfile.taskerServices.length === 0) {
+        return NextResponse.json({ error: "El tasker seleccionado no ofrece este servicio" }, { status: 400 });
       }
 
       baseRate = pro.professionalProfile.taskerServices[0]?.priceClp ?? baseRate;
@@ -426,7 +284,6 @@ export async function POST(req: NextRequest) {
     const price = calculateMarketplacePrice({
       hourlyRateClp: baseRate,
       hours: input.hours,
-      pricingModel: service.category.slug === "maquillaje" ? "fixed" : "hourly",
       materials: Boolean(input.extras?.materials),
       urgency: Boolean(input.extras?.urgency),
       travelFeeClp: input.extras?.travelFeeClp ?? 0,
@@ -446,65 +303,54 @@ export async function POST(req: NextRequest) {
       }
     });
 
-    const booking = await prisma.$transaction(async (tx) => {
-      if (selectedSlotId) {
-        await reserveRequestedWindow(tx, {
-          slotId: selectedSlotId,
-          serviceId: input.serviceId,
-          startsAt: input.startsAt,
-          endsAt: requestedEndsAt
-        });
-      }
-
-      return tx.booking.create({
-        data: {
-          customerId: customer.id,
-          proId: assignedProId,
-          bookedSlotId: selectedSlotId,
-          serviceId: input.serviceId,
-          addressId: address.id,
-          status: assignedProId ? "ASSIGNED" : "CREATED",
-          scheduledAt: input.startsAt,
-          addressLine1: input.address.street,
-          comuna: clientCommune,
-          region: input.address.region ?? "N/A",
-          city: input.address.city,
-          postalCode: input.address.postalCode,
-          notes: input.details,
-          hours: input.hours,
-          slotMinutes: requestedSlotMinutes,
-          autoAssign: input.autoAssign,
-          hourlyPriceClp: price.hourlyRateClp,
-          subtotalClp: price.subtotalClp,
-          extrasTotalClp: price.extrasTotalClp,
-          platformFeeClp: price.platformFeeClp,
-          totalPriceClp: price.totalClp,
-          paymentStatus: "PENDING",
-          extras: {
-            create: price.extras.map((item) => ({
-              code: item.code,
-              name: item.name,
-              priceClp: item.priceClp,
-              quantity: 1
-            }))
-          },
-          payment: {
-            create: {
-              provider: "STRIPE",
-              amountClp: price.totalClp,
-              platformFeeClp: price.platformFeeClp,
-              status: "PENDING"
-            }
-          }
+    const booking = await prisma.booking.create({
+      data: {
+        customerId: customer.id,
+        proId: assignedProId,
+        bookedSlotId: selectedSlotId,
+        serviceId: input.serviceId,
+        addressId: address.id,
+        status: assignedProId ? "ASSIGNED" : "CREATED",
+        scheduledAt: input.startsAt,
+        addressLine1: input.address.street,
+        comuna: clientCommune,
+        region: input.address.region ?? "N/A",
+        city: input.address.city,
+        postalCode: input.address.postalCode,
+        notes: input.details,
+        hours: input.hours,
+        slotMinutes: requestedSlotMinutes,
+        autoAssign: input.autoAssign,
+        hourlyPriceClp: price.hourlyRateClp,
+        subtotalClp: price.subtotalClp,
+        extrasTotalClp: price.extrasTotalClp,
+        platformFeeClp: price.platformFeeClp,
+        totalPriceClp: price.totalClp,
+        paymentStatus: "PENDING",
+        extras: {
+          create: price.extras.map((item) => ({
+            code: item.code,
+            name: item.name,
+            priceClp: item.priceClp,
+            quantity: 1
+          }))
         },
-        include: {
-          service: { select: { id: true, name: true } },
-          customer: { select: { id: true, fullName: true, email: true } },
-          pro: { select: { id: true, fullName: true } },
-          extras: true,
-          payment: true
+        payment: {
+          create: {
+            provider: "STRIPE",
+            amountClp: price.totalClp,
+            platformFeeClp: price.platformFeeClp,
+            status: "PENDING"
+          }
         }
-      });
+      },
+      include: {
+        service: { select: { id: true, name: true } },
+        customer: { select: { id: true, fullName: true, email: true } },
+        pro: { select: { id: true, fullName: true } },
+        extras: true,
+        payment: true
+      }
     });
 
     return NextResponse.json({ booking }, { status: 201 });

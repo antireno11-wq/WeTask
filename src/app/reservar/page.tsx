@@ -6,8 +6,6 @@ import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { MarketNav } from "@/components/market-nav";
 import { parseCleaningRecommendedHours } from "@/lib/cleaning-duration-estimator";
 import { COVERAGE_UNAVAILABLE_MESSAGE, inferCommuneFromAddress, normalizeCommune } from "@/lib/communes";
-import { getMakeupServiceDefinitionBySlug } from "@/lib/makeup-service-types";
-import { formatPaymentRejectionReason } from "@/lib/payment-rejection";
 
 export const dynamic = "force-dynamic";
 
@@ -41,26 +39,6 @@ type MatchProfessional = {
   slots: Slot[];
 };
 
-type ProfessionalDetailResponse = {
-  professional?: {
-    id: string;
-    userId: string;
-    ratingAvg: number;
-    ratingsCount: number;
-    hourlyRateFromClp: number | null;
-    coverageCity: string | null;
-    serviceRadiusKm: number;
-    user: { id: string; fullName: string };
-    taskerServices?: Array<{
-      priceClp: number;
-      service: { id: string; name: string } | null;
-    }>;
-    slots?: Slot[];
-  };
-  error?: string;
-  detail?: string;
-};
-
 type BookingResponse = {
   id: string;
   status: string;
@@ -79,40 +57,6 @@ type SavedPaymentMethod = {
   paymentMethodId: string | null;
   isDefault: boolean;
 };
-
-function mergeContiguousSlots(slots: Slot[]) {
-  if (slots.length === 0) return [] as Slot[];
-
-  const sorted = [...slots].sort((a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime());
-  const merged: Slot[] = [];
-
-  for (const slot of sorted) {
-    const currentServiceId = slot.service?.id ?? null;
-    const previous = merged[merged.length - 1];
-    const previousServiceId = previous?.service?.id ?? null;
-
-    if (!previous) {
-      merged.push({ ...slot });
-      continue;
-    }
-
-    const previousEndsAt = new Date(previous.endsAt).getTime();
-    const currentStartsAt = new Date(slot.startsAt).getTime();
-    const currentEndsAt = new Date(slot.endsAt).getTime();
-    const canMerge = previousServiceId === currentServiceId && currentStartsAt <= previousEndsAt;
-
-    if (!canMerge) {
-      merged.push({ ...slot });
-      continue;
-    }
-
-    if (currentEndsAt > previousEndsAt) {
-      previous.endsAt = slot.endsAt;
-    }
-  }
-
-  return merged;
-}
 
 type CardFormData = {
   token?: string;
@@ -134,6 +78,8 @@ const DIETARY_OPTIONS = [
   "Otra alergia o indicación"
 ] as const;
 
+const BOOKING_HOUR_OPTIONS = Array.from({ length: 8 }, (_, index) => index + 1);
+
 function clampBookingHours(value: number) {
   return Math.min(8, Math.max(1, Math.floor(value || 1)));
 }
@@ -146,47 +92,13 @@ function isoDay(value: string): string {
   return value.slice(0, 10);
 }
 
-function firstOfMonth(value: Date) {
-  return new Date(value.getFullYear(), value.getMonth(), 1);
-}
-
-function addMonths(value: Date, amount: number) {
-  return new Date(value.getFullYear(), value.getMonth() + amount, 1);
-}
-
-function startOffsetMonday(value: Date) {
-  return (value.getDay() + 6) % 7;
-}
-
-function formatSlotRange(slot: Slot) {
-  return `${new Date(slot.startsAt).toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" })} - ${new Date(slot.endsAt).toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" })}`;
-}
-
-function durationHours(slot: Slot) {
-  const start = new Date(slot.startsAt).getTime();
-  const end = new Date(slot.endsAt).getTime();
-  return Math.max(0.5, Math.round(((end - start) / 36e5) * 2) / 2);
-}
-
 function isFutureSlot(slot: Slot): boolean {
   return new Date(slot.endsAt).getTime() > Date.now();
 }
 
 function starsText(value: number) {
-  const rounded = Math.max(0, Math.min(5, Math.round(value || 0)));
+  const rounded = Math.max(1, Math.min(5, Math.round(value || 0)));
   return `${"★".repeat(rounded)}${"☆".repeat(5 - rounded)}`;
-}
-
-function addHours(dateValue: Date, hours: number) {
-  return new Date(dateValue.getTime() + hours * 60 * 60 * 1000);
-}
-
-function formatDateTime(value: string) {
-  return new Date(value).toLocaleString("es-CL");
-}
-
-function formatTime(value: string) {
-  return new Date(value).toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" });
 }
 
 function initials(name: string) {
@@ -207,8 +119,36 @@ function paymentMethodLabel(paymentMethod: SavedPaymentMethod) {
   return `${base} terminada en ${paymentMethod.last4}${expiry}`;
 }
 
-function slotMatchesRequestedService(slot: Slot, serviceId: string) {
-  return !slot.service?.id || slot.service.id === serviceId;
+function formatBookingDateTime(value: string) {
+  return new Date(value).toLocaleString("es-CL", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    hour: "2-digit",
+    minute: "2-digit"
+  });
+}
+
+function buildStartOptions(slot: Slot | null) {
+  if (!slot) return [] as string[];
+  const startMs = new Date(slot.startsAt).getTime();
+  const endMs = new Date(slot.endsAt).getTime();
+  const options: string[] = [];
+
+  for (let cursor = startMs; cursor + 60 * 60 * 1000 <= endMs; cursor += 60 * 60 * 1000) {
+    options.push(new Date(cursor).toISOString());
+  }
+
+  return options;
+}
+
+function buildHourOptions(slot: Slot | null, selectedStartAt: string) {
+  if (!slot || !selectedStartAt) return BOOKING_HOUR_OPTIONS;
+  const startMs = new Date(selectedStartAt).getTime();
+  const endMs = new Date(slot.endsAt).getTime();
+  const availableWholeHours = Math.max(1, Math.floor((endMs - startMs) / (60 * 60 * 1000)));
+  const maxHours = Math.min(8, availableWholeHours);
+  return BOOKING_HOUR_OPTIONS.filter((value) => value <= maxHours);
 }
 
 export default function ReservarPage() {
@@ -249,120 +189,52 @@ export default function ReservarPage() {
   const [selectedDay, setSelectedDay] = useState("");
   const [selectedSlotId, setSelectedSlotId] = useState("");
   const [selectedStartAt, setSelectedStartAt] = useState("");
-  const [calendarMonth, setCalendarMonth] = useState(() => firstOfMonth(new Date()));
 
   const [hours, setHours] = useState(2);
   const [recommendedHours, setRecommendedHours] = useState<number | null>(null);
   const [estimatedHoursRange, setEstimatedHoursRange] = useState("");
+  const [materials, setMaterials] = useState(false);
+  const [urgency, setUrgency] = useState(false);
+  const [travelFeeClp, setTravelFeeClp] = useState(0);
   const [details, setDetails] = useState("");
   const [dietaryFlags, setDietaryFlags] = useState<string[]>([]);
   const [dietaryNotes, setDietaryNotes] = useState("");
 
   const [createdBooking, setCreatedBooking] = useState<BookingResponse | null>(null);
   const [savedPaymentMethods, setSavedPaymentMethods] = useState<SavedPaymentMethod[]>([]);
-  const [bookingStep, setBookingStep] = useState<1 | 2 | 3 | 4 | 5>(1);
   const [loadingSavedPaymentMethods, setLoadingSavedPaymentMethods] = useState(false);
   const [preferredSlotId, setPreferredSlotId] = useState("");
   const [preferredStartsAt, setPreferredStartsAt] = useState("");
   const [quickCheckoutEnabled, setQuickCheckoutEnabled] = useState(false);
-  const [pinnedTaskerMode, setPinnedTaskerMode] = useState(false);
   const mercadoPagoPublicKey = process.env.NEXT_PUBLIC_MERCADOPAGO_PUBLIC_KEY ?? "";
 
   const selectedPro = useMemo(() => matches.find((pro) => pro.userId === selectedProId) ?? null, [matches, selectedProId]);
   const selectedService = useMemo(() => services.find((service) => service.id === filters.serviceId) ?? null, [services, filters.serviceId]);
   const isChefService = Boolean(selectedService?.slug?.startsWith("cocina-") || selectedService?.slug === "reposteria" || selectedService?.slug === "cumpleanos");
-  const selectedMakeupDefinition = useMemo(
-    () => (selectedService ? getMakeupServiceDefinitionBySlug(selectedService.slug) : null),
-    [selectedService]
-  );
-  const isMakeupService = Boolean(selectedMakeupDefinition);
-  const fixedMakeupHours = selectedMakeupDefinition ? clampBookingHours(Math.ceil(selectedMakeupDefinition.defaultDurationMin / 60)) : 0;
-  const quickCheckoutMode = quickCheckoutEnabled && !createdBooking && !pinnedTaskerMode;
-  const selectedSavedPaymentMethod = useMemo(
-    () => savedPaymentMethods.find((item) => item.isDefault) ?? savedPaymentMethods[0] ?? null,
-    [savedPaymentMethods]
-  );
-
-  const mergedSelectedProSlots = useMemo(() => mergeContiguousSlots(selectedPro?.slots ?? []), [selectedPro]);
+  const quickCheckoutMode = false;
 
   const dayGroups = useMemo(() => {
     if (!selectedPro) return [] as Array<[string, Slot[]]>;
     const map = new Map<string, Slot[]>();
-    for (const slot of mergedSelectedProSlots) {
+    for (const slot of selectedPro.slots) {
       const key = isoDay(slot.startsAt);
       const prev = map.get(key) ?? [];
       prev.push(slot);
       map.set(key, prev);
     }
     return Array.from(map.entries()).sort(([a], [b]) => a.localeCompare(b));
-  }, [mergedSelectedProSlots, selectedPro]);
+  }, [selectedPro]);
 
   const selectedSlots = useMemo(() => dayGroups.find(([day]) => day === selectedDay)?.[1] ?? [], [dayGroups, selectedDay]);
-  const availableDays = useMemo(() => new Map(dayGroups.map(([day, slots]) => [day, slots])), [dayGroups]);
-  const calendarCells = useMemo(() => {
-    const start = firstOfMonth(calendarMonth);
-    const offset = startOffsetMonday(start);
-    const daysInMonth = new Date(start.getFullYear(), start.getMonth() + 1, 0).getDate();
-    const totalCells = Math.ceil((offset + daysInMonth) / 7) * 7;
-    return Array.from({ length: totalCells }, (_, index) => {
-      const dayNumber = index - offset + 1;
-      if (dayNumber < 1 || dayNumber > daysInMonth) return null;
-      const date = new Date(start.getFullYear(), start.getMonth(), dayNumber);
-      const iso = date.toISOString().slice(0, 10);
-      const slots = availableDays.get(iso) ?? [];
-      return {
-        iso,
-        dayNumber,
-        slotsCount: slots.length,
-        hasAvailability: slots.length > 0
-      };
-    });
-  }, [availableDays, calendarMonth]);
 
   const selectedSlot = useMemo(() => {
     if (!selectedPro || !selectedSlotId) return null;
-    return mergedSelectedProSlots.find((slot) => slot.id === selectedSlotId) ?? null;
-  }, [mergedSelectedProSlots, selectedPro, selectedSlotId]);
+    return selectedPro.slots.find((slot) => slot.id === selectedSlotId) ?? null;
+  }, [selectedPro, selectedSlotId]);
 
-  const selectedStartOptions = useMemo(() => {
-    if (!selectedSlot) return [] as Array<{ value: string; label: string }>;
-    const options: Array<{ value: string; label: string }> = [];
-    const start = new Date(selectedSlot.startsAt);
-    const end = new Date(selectedSlot.endsAt);
-    const minimumHours = isMakeupService ? fixedMakeupHours : 1;
-    const latestStart = new Date(end.getTime() - minimumHours * 60 * 60 * 1000);
+  const startOptions = useMemo(() => buildStartOptions(selectedSlot), [selectedSlot]);
 
-    for (let current = new Date(start); current <= latestStart; current = addHours(current, 1)) {
-      options.push({
-        value: current.toISOString(),
-        label: formatTime(current.toISOString())
-      });
-    }
-
-    return options;
-  }, [fixedMakeupHours, isMakeupService, selectedSlot]);
-
-  const selectedBookingStartAt = useMemo(() => {
-    if (!selectedSlot) return "";
-    if (selectedStartAt && selectedStartOptions.some((option) => option.value === selectedStartAt)) return selectedStartAt;
-    return selectedSlot.startsAt;
-  }, [selectedSlot, selectedStartAt, selectedStartOptions]);
-
-  const selectedDurationOptions = useMemo(() => {
-    if (!selectedSlot || !selectedBookingStartAt) return [] as number[];
-    const start = new Date(selectedBookingStartAt);
-    const end = new Date(selectedSlot.endsAt);
-    const diffHours = Math.floor((end.getTime() - start.getTime()) / (60 * 60 * 1000));
-    if (isMakeupService) {
-      return diffHours >= fixedMakeupHours ? [fixedMakeupHours] : [];
-    }
-    return Array.from({ length: Math.max(0, Math.min(8, diffHours)) }, (_, index) => index + 1);
-  }, [fixedMakeupHours, isMakeupService, selectedBookingStartAt, selectedSlot]);
-
-  const selectedBookingEndsAt = useMemo(() => {
-    if (!selectedBookingStartAt || !hours) return "";
-    return addHours(new Date(selectedBookingStartAt), hours).toISOString();
-  }, [selectedBookingStartAt, hours]);
+  const hourOptions = useMemo(() => buildHourOptions(selectedSlot, selectedStartAt), [selectedSlot, selectedStartAt]);
 
   const resolveServiceIdForProfessional = (professional: MatchProfessional | null, slot?: Slot | null) => {
     return (
@@ -394,26 +266,10 @@ export default function ReservarPage() {
   }, [details, dietaryFlags, dietaryNotes, isChefService]);
 
   const baseHourly = selectedPro?.hourlyRateFromClp ?? services.find((s) => s.id === filters.serviceId)?.basePriceClp ?? 0;
-  const subtotal = isMakeupService ? baseHourly : baseHourly * hours;
+  const extrasTotal = (materials ? 5000 : 0) + (urgency ? 9000 : 0) + travelFeeClp;
+  const subtotal = baseHourly * hours;
   const commission = Math.round(subtotal * 0.12);
-  const total = subtotal + commission;
-  const bookingSteps = [
-    { id: 1 as const, label: "Servicio" },
-    { id: 2 as const, label: pinnedTaskerMode ? "Dirección" : "Ubicación" },
-    { id: 3 as const, label: pinnedTaskerMode ? "Horario" : "Tasker" },
-    { id: 4 as const, label: "Detalles" },
-    { id: 5 as const, label: "Pago" }
-  ];
-  const canGoToStep2 = Boolean(filters.serviceId);
-  const canGoToStep3 = pinnedTaskerMode ? Boolean(selectedPro) : matches.length > 0;
-  const canGoToStep4 = Boolean(selectedPro && selectedSlot);
-  const canGoToStep5 = Boolean(selectedPro && selectedSlot && selectedBookingStartAt);
-  const canAdvanceFromCurrent =
-    (bookingStep === 1 && canGoToStep2) ||
-    (bookingStep === 2 && canGoToStep3) ||
-    (bookingStep === 3 && canGoToStep4) ||
-    (bookingStep === 4 && canGoToStep5) ||
-    bookingStep === 5;
+  const total = subtotal + extrasTotal + commission;
 
   const loadServices = async () => {
     try {
@@ -463,21 +319,17 @@ export default function ReservarPage() {
     const commune = params.get("commune") ?? params.get("comuna");
     const postalCode = params.get("postalCode");
     const hasBookingAddress = Boolean(addressLine || city || commune || postalCode);
-    const hasPinnedTasker = Boolean(proId);
 
     if (serviceId) setFilters((prev) => ({ ...prev, serviceId }));
     if (proId) setSelectedProId(proId);
     if (slotId) setPreferredSlotId(slotId);
     if (startsAt) {
       setPreferredStartsAt(startsAt);
-      setQuickCheckoutEnabled(hasBookingAddress && !hasPinnedTasker);
+      setQuickCheckoutEnabled(hasBookingAddress);
       const derivedDate = startsAt.slice(0, 10);
       if (derivedDate) {
         setFilters((prev) => ({ ...prev, date: derivedDate }));
       }
-    }
-    if (hasPinnedTasker) {
-      setPinnedTaskerMode(true);
     }
     if (suggestedHours) {
       const safeSuggestedHours = clampBookingHours(suggestedHours);
@@ -515,6 +367,7 @@ export default function ReservarPage() {
     if (!customerId) return;
     const loadSavedPaymentMethods = async () => {
       try {
+        setLoadingSavedPaymentMethods(true);
         const response = await fetch("/api/marketplace/client/payment-methods");
         const data = (await response.json()) as { paymentMethods?: SavedPaymentMethod[] };
         if (response.ok) {
@@ -522,6 +375,8 @@ export default function ReservarPage() {
         }
       } catch {
         // noop
+      } finally {
+        setLoadingSavedPaymentMethods(false);
       }
     };
 
@@ -529,38 +384,31 @@ export default function ReservarPage() {
   }, [customerId]);
 
   useEffect(() => {
+    if (!selectedSlot) {
+      setSelectedStartAt("");
+      return;
+    }
+
+    const nextStartAt = startOptions.includes(selectedStartAt)
+      ? selectedStartAt
+      : startOptions[0] ?? new Date(selectedSlot.startsAt).toISOString();
+    if (nextStartAt !== selectedStartAt) {
+      setSelectedStartAt(nextStartAt);
+      return;
+    }
+
+    if (!hourOptions.includes(hours)) {
+      setHours(hourOptions[hourOptions.length - 1] ?? 1);
+    }
+  }, [selectedSlot, selectedStartAt, startOptions, hourOptions, hours]);
+
+  useEffect(() => {
     const nextKey =
       typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
         ? `wtk_checkout_${crypto.randomUUID()}`
         : `wtk_checkout_${Date.now()}_${Math.random().toString(16).slice(2)}`;
     setCheckoutIdempotencyKey(nextKey);
-  }, [customerId, selectedSlotId, selectedBookingStartAt, filters.serviceId, hours, address.street, address.commune]);
-
-  useEffect(() => {
-    if (!selectedSlot) return;
-    setSelectedStartAt(selectedSlot.startsAt);
-    setHours(isMakeupService ? fixedMakeupHours : Math.max(1, Math.min(8, Math.floor(durationHours(selectedSlot)))));
-    setBookingStep(4);
-  }, [fixedMakeupHours, isMakeupService, selectedSlot]);
-
-  useEffect(() => {
-    if (!selectedStartOptions.length) return;
-    if (!selectedStartOptions.some((option) => option.value === selectedStartAt)) {
-      setSelectedStartAt(selectedStartOptions[0]?.value ?? "");
-    }
-  }, [selectedStartAt, selectedStartOptions]);
-
-  useEffect(() => {
-    if (!selectedDurationOptions.length) return;
-    if (!selectedDurationOptions.includes(hours)) {
-      setHours(selectedDurationOptions[0] ?? 1);
-    }
-  }, [hours, selectedDurationOptions]);
-
-  useEffect(() => {
-    if (!selectedDay) return;
-    setCalendarMonth(firstOfMonth(new Date(`${selectedDay}T00:00:00`)));
-  }, [selectedDay]);
+  }, [customerId, selectedSlotId, filters.serviceId, hours, travelFeeClp, materials, urgency, address.street, address.commune]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -606,11 +454,78 @@ export default function ReservarPage() {
     );
   };
 
+  const loadPinnedProfessional = async (options: { preferredProId: string; preferredSlotId?: string; preferredStartsAt?: string }) => {
+    const response = await fetch(`/api/marketplace/pros/${options.preferredProId}`);
+    const data = (await response.json()) as {
+      professional?: {
+        id: string;
+        userId: string;
+        ratingAvg: number;
+        ratingsCount: number;
+        hourlyRateFromClp: number | null;
+        coverageCity: string | null;
+        serviceRadiusKm: number;
+        taskerServices?: Array<{ priceClp: number; service?: { id: string; name: string } | null }>;
+        user: { fullName: string };
+        slots: Slot[];
+      };
+    };
+
+    if (!response.ok || !data.professional) {
+      return false;
+    }
+
+    const professional = data.professional;
+    const pinnedMatch: MatchProfessional = {
+      id: professional.id,
+      userId: professional.userId,
+      fullName: professional.user.fullName,
+      ratingAvg: Number(professional.ratingAvg ?? 0),
+      ratingsCount: professional.ratingsCount ?? 0,
+      hourlyRateFromClp: professional.hourlyRateFromClp,
+      distanceKm: 0,
+      nextAvailableAt: professional.slots[0]?.startsAt ?? null,
+      coverageCity: professional.coverageCity,
+      serviceRadiusKm: professional.serviceRadiusKm,
+      taskerServices: (professional.taskerServices ?? []).map((taskerService) => ({
+        serviceId: taskerService.service?.id ?? null,
+        serviceName: taskerService.service?.name ?? null
+      })),
+      slots: (professional.slots ?? []).filter(isFutureSlot)
+    };
+
+    setMatches([pinnedMatch]);
+    setSelectedProId(pinnedMatch.userId);
+
+    const preferredSlotById = options.preferredSlotId ? pinnedMatch.slots.find((slot) => slot.id === options.preferredSlotId) ?? null : null;
+    const preferredSlotByStart = options.preferredStartsAt
+      ? pinnedMatch.slots.find((slot) => slot.startsAt === options.preferredStartsAt) ?? null
+      : null;
+    const preferredSlotByDay = options.preferredStartsAt
+      ? pinnedMatch.slots.find((slot) => isoDay(slot.startsAt) === isoDay(options.preferredStartsAt ?? "")) ?? null
+      : null;
+    const preferredSlot = preferredSlotById ?? preferredSlotByStart ?? preferredSlotByDay ?? pinnedMatch.slots[0] ?? null;
+
+    if (preferredSlot) {
+      setSelectedDay(isoDay(preferredSlot.startsAt));
+      setSelectedSlotId(preferredSlot.id);
+      setSelectedStartAt(new Date(preferredSlotByStart?.startsAt ?? preferredSlot.startsAt).toISOString());
+    }
+
+    const resolvedServiceId = filters.serviceId || resolveServiceIdForProfessional(pinnedMatch, preferredSlot);
+    if (resolvedServiceId && resolvedServiceId !== filters.serviceId) {
+      setFilters((prev) => ({ ...prev, serviceId: resolvedServiceId }));
+    }
+
+    return true;
+  };
+
   const loadProfessionals = async (options?: { preferredProId?: string; preferredSlotId?: string; preferredStartsAt?: string; silent?: boolean }) => {
     setError("");
     if (!options?.silent) setMessage("");
     setSelectedSlotId("");
     setSelectedDay("");
+    setSelectedStartAt("");
 
     try {
       setLoadingSearch(true);
@@ -672,35 +587,18 @@ export default function ReservarPage() {
 
       let resolvedMatches = normalized;
 
-      if (!resolvedMatches.length && options?.preferredProId) {
-        const pinnedResponse = await fetch(`/api/marketplace/pros/${options.preferredProId}`);
-        const pinnedData = (await pinnedResponse.json()) as ProfessionalDetailResponse;
+      if (resolvedMatches.length === 0 && options?.preferredProId) {
+        const pinnedLoaded = await loadPinnedProfessional({
+          preferredProId: options.preferredProId,
+          preferredSlotId: options.preferredSlotId,
+          preferredStartsAt: options.preferredStartsAt
+        });
 
-        if (pinnedResponse.ok && pinnedData.professional) {
-          const professional = pinnedData.professional;
-          const filteredSlots = (professional.slots ?? []).filter((slot) =>
-            filters.serviceId ? slotMatchesRequestedService(slot, filters.serviceId) : true
-          );
-
-          resolvedMatches = [
-            {
-              id: professional.id,
-              userId: professional.userId,
-              fullName: professional.user.fullName,
-              ratingAvg: Number(professional.ratingAvg),
-              ratingsCount: professional.ratingsCount,
-              hourlyRateFromClp: professional.hourlyRateFromClp,
-              distanceKm: 0,
-              nextAvailableAt: filteredSlots[0]?.startsAt ?? null,
-              coverageCity: professional.coverageCity,
-              serviceRadiusKm: professional.serviceRadiusKm,
-              taskerServices: (professional.taskerServices ?? []).map((taskerService) => ({
-                serviceId: taskerService.service?.id ?? null,
-                serviceName: taskerService.service?.name ?? null
-              })),
-              slots: filteredSlots
-            }
-          ];
+        if (pinnedLoaded) {
+          if (!options?.silent) {
+            setMessage("Recuperamos el tasker seleccionado para que continúes con la reserva.");
+          }
+          return;
         }
       }
 
@@ -722,6 +620,7 @@ export default function ReservarPage() {
         if (preferredSlot) {
           setSelectedDay(isoDay(preferredSlot.startsAt));
           setSelectedSlotId(preferredSlot.id);
+          setSelectedStartAt(new Date(preferredSlotByStart?.startsAt ?? preferredSlot.startsAt).toISOString());
         } else {
           const firstDay = isoDay(nextPro.slots[0]?.startsAt ?? "");
           if (firstDay) setSelectedDay(firstDay);
@@ -758,21 +657,22 @@ export default function ReservarPage() {
   };
 
   useEffect(() => {
-    if ((!quickCheckoutEnabled && !pinnedTaskerMode) || !selectedProId || services.length === 0) return;
-    if (!preferredSlotId && !preferredStartsAt) return;
+    if (!selectedProId || services.length === 0) return;
+    if (matches.some((professional) => professional.userId === selectedProId)) return;
+
     void loadProfessionals({
       preferredProId: selectedProId,
       preferredSlotId,
       preferredStartsAt,
       silent: true
     });
-  }, [filters.serviceId, pinnedTaskerMode, preferredSlotId, preferredStartsAt, quickCheckoutEnabled, selectedProId, services.length]);
+  }, [filters.serviceId, preferredSlotId, preferredStartsAt, selectedProId, services.length, matches]);
 
   useEffect(() => {
     setCardFormReady(false);
     setCheckoutState("idle");
     setCheckoutStatusText("");
-    if (!selectedSlot || !mpSdkReady || !mercadoPagoPublicKey || selectedSavedPaymentMethod) return;
+    if (!selectedSlot || !mpSdkReady || !mercadoPagoPublicKey) return;
     if (typeof window === "undefined") return;
     const MercadoPagoCtor = (window as any).MercadoPago;
     if (!MercadoPagoCtor) return;
@@ -817,14 +717,14 @@ export default function ReservarPage() {
         checkoutFormRef.current = null;
       }
     };
-  }, [selectedSavedPaymentMethod, selectedSlot, mpSdkReady, mercadoPagoPublicKey, total]);
+  }, [selectedSlot, mpSdkReady, mercadoPagoPublicKey, total]);
 
   const submitCheckout = async () => {
-    if (!customerId || !selectedPro || !selectedSlot || !filters.serviceId || !selectedBookingStartAt) {
+    if (!customerId || !selectedPro || !selectedSlot || !selectedStartAt || !filters.serviceId) {
       setError("Completa cliente, profesional, servicio y horario.");
       return;
     }
-    if (!selectedSavedPaymentMethod && (!cardFormReady || !checkoutFormRef.current)) {
+    if (!cardFormReady || !checkoutFormRef.current) {
       setError("Formulario de pago aún cargando. Espera unos segundos.");
       return;
     }
@@ -844,12 +744,15 @@ export default function ReservarPage() {
         return;
       }
 
-      const cardData = selectedSavedPaymentMethod ? ({} as CardFormData) : ((checkoutFormRef.current.getCardFormData?.() ?? {}) as CardFormData);
-      if (!selectedSavedPaymentMethod && (!cardData.token || !cardData.paymentMethodId)) {
+      const cardData = (checkoutFormRef.current.getCardFormData?.() ?? {}) as CardFormData;
+      if (!cardData.token || !cardData.paymentMethodId) {
         throw new Error("No pudimos tokenizar tu tarjeta. Revisa los datos e inténtalo nuevamente.");
       }
 
-      const payerEmail = (selectedSavedPaymentMethod?.payerEmail || cardData.cardholderEmail || "").trim();
+      const payerEmail = (cardData.cardholderEmail || "").trim();
+      if (!payerEmail) {
+        throw new Error("Ingresa un correo válido para procesar el pago.");
+      }
 
       const safeHours = clampBookingHours(hours);
 
@@ -861,7 +764,7 @@ export default function ReservarPage() {
           serviceId: filters.serviceId,
           proId: selectedPro.userId,
           slotId: selectedSlot.id,
-          startsAt: selectedBookingStartAt,
+          startsAt: selectedStartAt,
           hours: safeHours,
           address: {
             street: address.street,
@@ -872,19 +775,18 @@ export default function ReservarPage() {
           },
           details: bookingDetails,
           extras: {
-            materials: false,
-            urgency: false,
-            travelFeeClp: 0
+            materials,
+            urgency,
+            travelFeeClp
           },
           payment: {
             token: cardData.token,
-            paymentMethodId: selectedSavedPaymentMethod?.paymentMethodId ?? cardData.paymentMethodId,
+            paymentMethodId: cardData.paymentMethodId,
             issuerId: cardData.issuerId,
             installments: Number(cardData.installments || 1),
-            payerEmail: payerEmail || undefined,
+            payerEmail,
             payerIdentificationType: cardData.identificationType,
-            payerIdentificationNumber: cardData.identificationNumber,
-            savedCardId: selectedSavedPaymentMethod?.id
+            payerIdentificationNumber: cardData.identificationNumber
           },
           idempotencyKey: checkoutIdempotencyKey
         })
@@ -892,7 +794,7 @@ export default function ReservarPage() {
 
       const data = (await response.json()) as {
         booking?: BookingResponse;
-        payment?: { status?: string; providerStatus?: string; errorCode?: string | null; errorMessage?: string | null };
+        payment?: { status?: string; providerStatus?: string };
         error?: string;
         detail?: string;
       };
@@ -910,18 +812,9 @@ export default function ReservarPage() {
           router.push(`/booking/${data.booking!.id}`);
         }, 800);
       } else if (data.booking.status === "PAYMENT_FAILED" || paymentStatus === "FAILED") {
-        const paymentReason = formatPaymentRejectionReason({
-          errorCode: data.payment?.errorCode,
-          errorMessage: data.payment?.errorMessage,
-          providerStatus: data.payment?.providerStatus
-        });
         setCheckoutState("rejected");
         setCheckoutStatusText("Pago rechazado");
-        setError(
-          paymentReason.friendly
-            ? `${paymentReason.friendly}${paymentReason.rawCode && paymentReason.rawCode !== paymentReason.friendly ? ` (${paymentReason.rawCode})` : ""}`
-            : "El pago fue rechazado. Puedes intentar con otra tarjeta."
-        );
+        setError("El pago fue rechazado. Puedes intentar con otra tarjeta.");
       } else {
         setCheckoutState("processing");
         setCheckoutStatusText("Pago en proceso. Te avisaremos apenas se confirme.");
@@ -944,14 +837,10 @@ export default function ReservarPage() {
         <MarketNav />
 
         <section className="auth-flow-shell auth-flow-shell-wide client-dashboard-hero booking-flow-hero">
-          <div className="auth-flow-copy client-dashboard-copy booking-flow-hero-copy">
+          <div className="auth-flow-copy client-dashboard-copy">
             <p className="auth-flow-kicker">Reserva protegida</p>
-            <h1>{pinnedTaskerMode ? "Revisa la agenda y reserva con tu tasker." : "Agenda, compara y paga en un solo flujo."}</h1>
-            <p>
-              {pinnedTaskerMode
-                ? "Ya vienes con un tasker elegido. Selecciona un bloque disponible, revisa los detalles del servicio y confirma tu reserva con pago protegido dentro de WeTask."
-                : "Elige el servicio, encuentra profesionales disponibles en tu zona y confirma tu reserva con pago seguro dentro de WeTask. Tu dinero queda retenido hasta que confirmes o venza el plazo sin reclamo."}
-            </p>
+            <h1>Agenda, compara y paga en un solo flujo.</h1>
+            <p>Elige el servicio, encuentra profesionales disponibles en tu zona y confirma tu reserva con pago seguro dentro de WeTask.</p>
 
             <div className="auth-flow-copy-list client-dashboard-summary">
               <div className="auth-flow-meta-card">
@@ -966,37 +855,24 @@ export default function ReservarPage() {
                 <strong>Total estimado</strong>
                 <span>{selectedPro ? clp(total) : "Busca profesionales para calcularlo"}</span>
               </div>
-              {pinnedTaskerMode ? (
-                <div className="auth-flow-meta-card">
-                  <strong>Tasker</strong>
-                  <span>{selectedPro?.fullName ?? "Cargando tasker elegido"}</span>
-                </div>
-              ) : null}
             </div>
           </div>
-          <aside className="auth-flow-panel booking-summary-panel booking-summary-panel-inline">
+
+          <section className="auth-flow-panel auth-flow-panel-wide booking-summary-panel">
             <div className="booking-summary-card">
               <strong>Estado de tu reserva</strong>
               <div className="booking-summary-list">
                 <span className={filters.serviceId ? "is-complete" : ""}>1. Servicio seleccionado</span>
-                <span className={(pinnedTaskerMode ? Boolean(selectedPro) : matches.length > 0) ? "is-complete" : ""}>
-                  {pinnedTaskerMode ? "2. Tasker cargado" : "2. Taskers encontrados"}
-                </span>
-                <span className={selectedSlot ? "is-complete" : ""}>{pinnedTaskerMode ? "3. Horario definido" : "3. Horario elegido"}</span>
-                <span className={checkoutState === "approved" ? "is-complete" : ""}>4. Pago retenido y protegido</span>
+                <span className={matches.length > 0 ? "is-complete" : ""}>2. Profesionales encontrados</span>
+                <span className={selectedStartAt ? "is-complete" : ""}>3. Horario elegido</span>
+                <span className={checkoutState === "approved" ? "is-complete" : ""}>4. Pago confirmado</span>
               </div>
               <div className="auth-flow-note-card">
                 <strong>Resumen rápido</strong>
-                <span>
-                  {selectedPro
-                    ? `${selectedPro.fullName} · ${selectedBookingStartAt ? formatDateTime(selectedBookingStartAt) : "falta horario"}`
-                    : pinnedTaskerMode
-                      ? "Cargando tasker elegido."
-                      : "Aún no eliges profesional."}
-                </span>
+                <span>{selectedPro ? `${selectedPro.fullName} · ${selectedStartAt ? formatBookingDateTime(selectedStartAt) : "falta horario"}` : "Aún no eliges profesional."}</span>
               </div>
             </div>
-          </aside>
+          </section>
         </section>
 
         <div className="page client-dashboard-sections booking-flow-sections">
@@ -1016,7 +892,7 @@ export default function ReservarPage() {
                     Tasker: <strong>{selectedPro?.fullName ?? "Cargando profesional"}</strong>
                   </p>
                   <p>
-                    Fecha y hora: <strong>{selectedBookingStartAt ? formatDateTime(selectedBookingStartAt) : "Cargando horario"}</strong>
+                    Fecha y hora: <strong>{selectedStartAt ? formatBookingDateTime(selectedStartAt) : "Selecciona bloque y hora"}</strong>
                   </p>
                   <p>
                     Dirección: <strong>{address.street}, {address.commune}, {address.city}</strong>
@@ -1029,33 +905,11 @@ export default function ReservarPage() {
                   </button>
                 </div>
               </>
-            ) : pinnedTaskerMode ? (
-              <>
-                <div className="panel-head auth-flow-panel-head">
-                  <h2>Tasker y dirección de la reserva</h2>
-                  <p>Ya vienes con el tasker elegido. Revisa tu dirección y sigue directo a la agenda para escoger el horario.</p>
-                </div>
-
-                <div className="booking-checkout-summary">
-                  <p>
-                    Tasker: <strong>{selectedPro?.fullName ?? "Cargando tasker"}</strong>
-                  </p>
-                  <p>
-                    Servicio: <strong>{selectedService?.name ?? "Servicio seleccionado"}</strong>
-                  </p>
-                  <p>
-                    Dirección: <strong>{address.street}, {address.commune}, {address.city}</strong>
-                  </p>
-                  <p>
-                    Estado: <strong>{selectedSlot ? "Horario definido dentro del bloque" : "Falta elegir horario"}</strong>
-                  </p>
-                </div>
-              </>
             ) : (
               <>
                 <div className="panel-head auth-flow-panel-head">
                   <h2>Busca tu servicio</h2>
-                  <p>Completa la ubicación, elige la fecha deseada y encuentra taskers disponibles en tiempo real.</p>
+                  <p>Completa la ubicación, elige la fecha deseada y encuentra profesionales disponibles en tiempo real.</p>
                 </div>
 
                 <form className="grid-form auth-flow-form" onSubmit={searchPros}>
@@ -1109,12 +963,12 @@ export default function ReservarPage() {
             )}
           </section>
 
-          <div className={`booking-flow-grid ${quickCheckoutMode ? "booking-flow-grid-compact" : ""} ${pinnedTaskerMode ? "booking-flow-grid-pinned" : ""}`}>
-            {!quickCheckoutMode && !pinnedTaskerMode ? (
+          <div className={`booking-flow-grid ${quickCheckoutMode ? "booking-flow-grid-compact" : ""}`}>
+            {!quickCheckoutMode ? (
               <section className="auth-flow-panel client-dashboard-section">
                 <div className="panel-head auth-flow-panel-head">
-                  <h2>Taskers disponibles</h2>
-                  <p>{isMakeupService ? "Ordenados por disponibilidad, valoración y precio base del servicio." : "Ordenados por distancia, disponibilidad, valoración y precio estimado por hora."}</p>
+                  <h2>Profesionales disponibles</h2>
+                  <p>Ordenados por distancia, disponibilidad, valoración y precio estimado por hora.</p>
                 </div>
 
                 <div className="list booking-results-list">
@@ -1125,14 +979,16 @@ export default function ReservarPage() {
                         <span className="status status-completed">{pro.distanceKm} km</span>
                       </div>
                       <p>
-                        <strong>Rating:</strong>{" "}
-                        {pro.ratingsCount > 0 ? `${starsText(pro.ratingAvg)} ${pro.ratingAvg.toFixed(1)} (${pro.ratingsCount})` : "0.0 (0 valoraciones)"}
+                        <strong>Rating:</strong> {starsText(pro.ratingAvg)} {pro.ratingAvg.toFixed(1)} ({pro.ratingsCount})
                       </p>
                       <p>
-                        <strong>{isMakeupService ? "Precio base:" : "Precio/hora:"}</strong> {pro.hourlyRateFromClp ? clp(pro.hourlyRateFromClp) : "Por definir"}
+                        <strong>Precio/hora:</strong> {pro.hourlyRateFromClp ? clp(pro.hourlyRateFromClp) : "Por definir"}
                       </p>
                       <p>
                         <strong>Próxima hora:</strong> {pro.nextAvailableAt ? new Date(pro.nextAvailableAt).toLocaleString("es-ES") : "Sin slots"}
+                      </p>
+                      <p>
+                        <strong>Cobertura:</strong> hasta {pro.serviceRadiusKm} km
                       </p>
                       <button
                         className="cta small"
@@ -1142,6 +998,7 @@ export default function ReservarPage() {
                           const firstDay = isoDay(pro.slots[0]?.startsAt ?? "");
                           setSelectedDay(firstDay);
                           setSelectedSlotId("");
+                          setSelectedStartAt("");
                         }}
                       >
                         Elegir profesional
@@ -1153,7 +1010,7 @@ export default function ReservarPage() {
               </section>
             ) : null}
 
-            {selectedPro && bookingStep >= 3 ? (
+            {selectedPro ? (
               <div className="booking-selection-column">
                 <section className="auth-flow-panel client-dashboard-section booking-pro-profile-panel">
                   <div className="panel-head auth-flow-panel-head">
@@ -1168,18 +1025,26 @@ export default function ReservarPage() {
                       </div>
                       <div>
                         <h3>{selectedPro.fullName}</h3>
-                        <p>{selectedPro.ratingsCount > 0 ? `${starsText(selectedPro.ratingAvg)} ${selectedPro.ratingAvg.toFixed(1)} · ${selectedPro.ratingsCount} reseñas` : "0.0 · 0 reseñas"}</p>
+                        <p>{starsText(selectedPro.ratingAvg)} {selectedPro.ratingAvg.toFixed(1)} · {selectedPro.ratingsCount} reseñas</p>
                       </div>
                     </div>
 
                     <div className="booking-pro-highlights">
                       <article>
-                        <span>{isMakeupService ? "Precio base" : "Precio por hora"}</span>
+                        <span>Precio por hora</span>
                         <strong>{selectedPro.hourlyRateFromClp ? clp(selectedPro.hourlyRateFromClp) : "Por definir"}</strong>
                       </article>
                       <article>
                         <span>Próximo bloque</span>
                         <strong>{selectedPro.nextAvailableAt ? new Date(selectedPro.nextAvailableAt).toLocaleString("es-CL") : "Sin bloques"}</strong>
+                      </article>
+                      <article>
+                        <span>Distancia</span>
+                        <strong>{selectedPro.distanceKm} km</strong>
+                      </article>
+                      <article>
+                        <span>Cobertura</span>
+                        <strong>{selectedPro.coverageCity ?? "Santiago"} · {selectedPro.serviceRadiusKm} km</strong>
                       </article>
                     </div>
 
@@ -1198,59 +1063,30 @@ export default function ReservarPage() {
                 <section className="auth-flow-panel client-dashboard-section booking-agenda-section">
                   <div className="panel-head auth-flow-panel-head">
                     <h2>Agenda y detalles de la reserva</h2>
-                    <p>{isMakeupService ? "Elige un día, selecciona un bloque del tasker y reserva el tramo necesario para ese maquillaje." : "Elige un día, selecciona un bloque del tasker y luego define tu hora de inicio y duración dentro de ese bloque."}</p>
+                    <p>Selecciona un día, elige un horario y completa abajo los detalles del servicio.</p>
                   </div>
 
-                  <div className="booking-month-calendar">
-                    <div className="booking-month-calendar-head">
-                      <button type="button" className="day-tab" onClick={() => setCalendarMonth((current) => addMonths(current, -1))}>
-                        Mes anterior
+                  <div className="day-tabs">
+                    {dayGroups.map(([day]) => (
+                      <button key={day} type="button" className={`day-tab ${selectedDay === day ? "active" : ""}`} onClick={() => setSelectedDay(day)}>
+                        {new Date(`${day}T00:00:00`).toLocaleDateString("es-ES", { weekday: "short", day: "2-digit", month: "2-digit" })}
                       </button>
-                      <strong>{calendarMonth.toLocaleDateString("es-CL", { month: "long", year: "numeric" })}</strong>
-                      <button type="button" className="day-tab" onClick={() => setCalendarMonth((current) => addMonths(current, 1))}>
-                        Mes siguiente
-                      </button>
-                    </div>
-
-                    <div className="booking-month-weekdays">
-                      {["Lun", "Mar", "Mie", "Jue", "Vie", "Sab", "Dom"].map((label) => (
-                        <span key={label}>{label}</span>
-                      ))}
-                    </div>
-
-                    <div className="booking-month-grid">
-                      {calendarCells.map((cell, index) =>
-                        cell ? (
-                          <button
-                            key={cell.iso}
-                            type="button"
-                            className={`booking-month-day ${cell.hasAvailability ? "is-available" : ""} ${selectedDay === cell.iso ? "is-selected" : ""}`}
-                            onClick={() => {
-                              setSelectedDay(cell.iso);
-                              setSelectedSlotId("");
-                            }}
-                          >
-                            <strong>{cell.dayNumber}</strong>
-                            <span>{cell.hasAvailability ? `${cell.slotsCount} bloque(s)` : "Sin agenda"}</span>
-                          </button>
-                        ) : (
-                          <span key={`empty-${index}`} className="booking-month-day is-empty" aria-hidden />
-                        )
-                      )}
-                    </div>
+                    ))}
                   </div>
 
-                  <div className="booking-slot-list">
+                  <div className="calendar-slot-grid">
                     {selectedSlots.map((slot) => (
                       <button
                         key={slot.id}
                         type="button"
-                        className={`booking-slot-card ${selectedSlotId === slot.id ? "is-active" : ""}`}
-                        onClick={() => setSelectedSlotId(slot.id)}
+                        className={`slot-btn ${selectedSlotId === slot.id ? "slot-btn-active" : ""}`}
+                        onClick={() => {
+                          setSelectedSlotId(slot.id);
+                          setSelectedStartAt(new Date(slot.startsAt).toISOString());
+                        }}
                       >
-                        <strong>{formatSlotRange(slot)}</strong>
-                        <span>{Math.floor(durationHours(slot))} hora(s) disponibles en este bloque</span>
-                        <small>Elige este bloque para definir inicio y duración abajo</small>
+                        {new Date(slot.startsAt).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" })} -{" "}
+                        {new Date(slot.endsAt).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" })}
                       </button>
                     ))}
                   </div>
@@ -1260,30 +1096,23 @@ export default function ReservarPage() {
                   <div className="grid-form auth-flow-form booking-agenda-form">
                     <label>
                       Hora de inicio
-                      <select value={selectedBookingStartAt} onChange={(e) => setSelectedStartAt(e.target.value)} disabled={!selectedSlot}>
-                        {selectedStartOptions.length === 0 ? (
-                          <option value="">Elige un bloque primero</option>
-                        ) : (
-                          selectedStartOptions.map((option) => (
-                            <option key={option.value} value={option.value}>
-                              {option.label}
-                            </option>
-                          ))
-                        )}
+                      <select value={selectedStartAt} onChange={(e) => setSelectedStartAt(e.target.value)} disabled={!selectedSlot}>
+                        {!selectedSlot ? <option value="">Primero elige un bloque</option> : null}
+                        {startOptions.map((startAt) => (
+                          <option key={startAt} value={startAt}>
+                            {new Date(startAt).toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" })}
+                          </option>
+                        ))}
                       </select>
                     </label>
                     <label>
-                      Duración del servicio
-                      <select value={String(hours)} onChange={(e) => setHours(clampBookingHours(Number(e.target.value)))} disabled={!selectedSlot || isMakeupService}>
-                        {selectedDurationOptions.length === 0 ? (
-                          <option value="">Elige un bloque primero</option>
-                        ) : (
-                          selectedDurationOptions.map((duration) => (
-                            <option key={duration} value={String(duration)}>
-                              {duration} hora(s)
-                            </option>
-                          ))
-                        )}
+                      Horas (1-8)
+                      <select value={hours} onChange={(e) => setHours(clampBookingHours(Number(e.target.value) || 1))} disabled={!selectedSlot}>
+                        {hourOptions.map((hourOption) => (
+                          <option key={hourOption} value={hourOption}>
+                            {hourOption} hora{hourOption === 1 ? "" : "s"}
+                          </option>
+                        ))}
                       </select>
                       {recommendedHours ? (
                         <small className="input-hint">
@@ -1291,18 +1120,18 @@ export default function ReservarPage() {
                           reserva sugerida {recommendedHours} hora(s).
                         </small>
                       ) : null}
-                      {isMakeupService && selectedMakeupDefinition ? (
-                        <small className="input-hint">Duración estimada para {selectedMakeupDefinition.name.toLowerCase()}: {selectedMakeupDefinition.durationLabel}.</small>
-                      ) : null}
                     </label>
-                    {selectedSlot && selectedBookingStartAt && selectedBookingEndsAt ? (
-                      <div className="full auth-flow-note-card auth-flow-note-card-compact booking-range-note">
-                        <strong>Horario elegido</strong>
-                        <span>
-                          {formatDateTime(selectedBookingStartAt)} a {formatTime(selectedBookingEndsAt)} dentro del bloque del tasker.
-                        </span>
+                    <label>
+                      Desplazamiento (CLP)
+                      <input type="number" min={0} value={travelFeeClp} onChange={(e) => setTravelFeeClp(Number(e.target.value) || 0)} />
+                    </label>
+                    <label>
+                      <span>Extras</span>
+                      <div className="inline-checks">
+                        <label><input type="checkbox" checked={materials} onChange={(e) => setMaterials(e.target.checked)} /> Materiales</label>
+                        <label><input type="checkbox" checked={urgency} onChange={(e) => setUrgency(e.target.checked)} /> Urgencia</label>
                       </div>
-                    ) : null}
+                    </label>
                     <label className="full">
                       Detalles del trabajo
                       <textarea value={details} onChange={(e) => setDetails(e.target.value)} />
@@ -1337,36 +1166,21 @@ export default function ReservarPage() {
                     ) : null}
                   </div>
 
-                  <div className="booking-invoice-card">
-                    <strong>Resumen del cobro</strong>
-                    <div className="booking-invoice-line">
-                      <span>{isMakeupService ? "Precio base del servicio" : "Valor por hora"}</span>
-                      <span>{clp(baseHourly)}</span>
-                    </div>
-                    <div className="booking-invoice-line">
-                      <span>{isMakeupService ? "Duración estimada" : "Duración del bloque"}</span>
-                      <span>{isMakeupService && selectedMakeupDefinition ? selectedMakeupDefinition.durationLabel : `${hours} h`}</span>
-                    </div>
-                    <div className="booking-invoice-line">
-                      <span>Subtotal servicio</span>
-                      <span>{clp(subtotal)}</span>
-                    </div>
-                    <div className="booking-invoice-line">
-                      <span>Comisión WeTask</span>
-                      <span>{clp(commission)}</span>
-                    </div>
-                    <div className="booking-invoice-line is-total">
-                      <span>Total estimado</span>
-                      <span>{clp(total)}</span>
-                    </div>
+                  <div className="price-box booking-price-box">
+                    Resumen en vivo: ({clp(baseHourly)} x {hours}h) + extras {clp(extrasTotal)} + comisión {clp(commission)} = <strong>{clp(total)}</strong>
                   </div>
+                  {selectedSlot && selectedStartAt ? (
+                    <p className="minimal-note">
+                      Horario elegido: <strong>{formatBookingDateTime(selectedStartAt)}</strong> · duración <strong>{hours} hora(s)</strong>
+                    </p>
+                  ) : null}
                   {recommendedHours ? (
                     <p className="minimal-note">
                       Tiempo recomendado para este servicio: <strong>{recommendedHours} hora(s)</strong>
                       {estimatedHoursRange ? ` · Rango estimado ${estimatedHoursRange}` : ""}
                     </p>
                   ) : null}
-                  <p className="minimal-note">Pago seguro procesado por Mercado Pago. El cobro queda protegido hasta tu confirmación o hasta que venza el plazo sin reclamo.</p>
+                  <p className="minimal-note">Pago seguro procesado por Mercado Pago.</p>
                 </section>
               </div>
             ) : null}
@@ -1384,15 +1198,13 @@ export default function ReservarPage() {
                   Servicio: <strong>{selectedService?.name ?? "Servicio seleccionado"}</strong>
                 </p>
                 <p>
-                  Fecha y hora: <strong>{selectedBookingStartAt ? formatDateTime(selectedBookingStartAt) : "Selecciona un horario"}</strong>
+                  Fecha y hora: <strong>{selectedStartAt ? formatBookingDateTime(selectedStartAt) : "Selecciona un horario"}</strong>
                 </p>
                 <p>
                   Dirección: <strong>{address.street}, {address.commune}, {address.city}</strong>
                 </p>
                 <p>
-                  {isMakeupService
-                    ? <>Duración estimada: <strong>{selectedMakeupDefinition?.durationLabel ?? `${hours} h`}</strong> · Total: <strong>{clp(total)}</strong></>
-                    : <>Horas estimadas: <strong>{hours}</strong> · Total: <strong>{clp(total)}</strong></>}
+                  Horas estimadas: <strong>{hours}</strong> · Total: <strong>{clp(total)}</strong>
                 </p>
                 {recommendedHours ? (
                   <p>
@@ -1406,59 +1218,77 @@ export default function ReservarPage() {
                 <p className="feedback error">Configura `NEXT_PUBLIC_MERCADOPAGO_PUBLIC_KEY` para habilitar pagos.</p>
               ) : null}
 
-              {selectedSavedPaymentMethod ? (
-                <div className="auth-flow-note-card">
-                  <strong>Tarjeta usada para esta reserva</strong>
-                  <span>{paymentMethodLabel(selectedSavedPaymentMethod)}</span>
+              <div className="booking-checkout-saved-methods">
+                <div className="panel-head auth-flow-panel-head">
+                  <h3>Tus tarjetas guardadas</h3>
+                  <p>Guárdalas en tu panel cliente para acelerar futuras reservas con Mercado Pago.</p>
                 </div>
-              ) : (
-                <form id="mp-card-form" className="grid-form auth-flow-form" onSubmit={(event) => event.preventDefault()}>
-                  <label>
-                    Nombre del titular
-                    <input id="mp-cardholder-name" type="text" placeholder="Como aparece en tu tarjeta" />
-                  </label>
-                  <label>
-                    Email pagador
-                    <input id="mp-cardholder-email" type="email" placeholder="correo@ejemplo.com" />
-                  </label>
-                  <label className="full">
-                    Número de tarjeta
-                    <div id="mp-card-number" className="mp-secure-field" />
-                  </label>
-                  <label>
-                    Vencimiento
-                    <div id="mp-expiration-date" className="mp-secure-field" />
-                  </label>
-                  <label>
-                    Código de seguridad
-                    <div id="mp-security-code" className="mp-secure-field" />
-                  </label>
-                  <label>
-                    Cuotas
-                    <select id="mp-installments" defaultValue="" />
-                  </label>
-                  <label>
-                    Banco emisor
-                    <select id="mp-issuer" defaultValue="" />
-                  </label>
-                  <label>
-                    Tipo de identificación
-                    <select id="mp-identification-type" defaultValue="" />
-                  </label>
-                  <label>
-                    Número de identificación
-                    <input id="mp-identification-number" type="text" placeholder="RUT / documento" />
-                  </label>
-                </form>
-              )}
+
+                {loadingSavedPaymentMethods ? (
+                  <p className="minimal-note">Cargando tarjetas guardadas...</p>
+                ) : savedPaymentMethods.length === 0 ? (
+                  <p className="minimal-note">Aún no tienes tarjetas guardadas. Puedes agregarlas desde tu panel cliente.</p>
+                ) : (
+                  <div className="client-payment-methods-list compact">
+                    {savedPaymentMethods.map((paymentMethod) => (
+                      <article key={paymentMethod.id} className="client-payment-method-card compact">
+                        <div>
+                          <strong>{paymentMethodLabel(paymentMethod)}</strong>
+                          <p>{paymentMethod.isDefault ? "Tarjeta principal" : "Tarjeta guardada"}</p>
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                )}
+
+                <div className="cta-row">
+                  <Link className="cta ghost small" href="/cliente">
+                    Gestionar tarjetas
+                  </Link>
+                </div>
+              </div>
+
+              <form id="mp-card-form" className="grid-form auth-flow-form" onSubmit={(event) => event.preventDefault()}>
+                <label>
+                  Nombre del titular
+                  <input id="mp-cardholder-name" type="text" placeholder="Como aparece en tu tarjeta" />
+                </label>
+                <label>
+                  Email pagador
+                  <input id="mp-cardholder-email" type="email" placeholder="correo@ejemplo.com" />
+                </label>
+                <label className="full">
+                  Número de tarjeta
+                  <div id="mp-card-number" className="mp-secure-field" />
+                </label>
+                <label>
+                  Vencimiento
+                  <div id="mp-expiration-date" className="mp-secure-field" />
+                </label>
+                <label>
+                  Código de seguridad
+                  <div id="mp-security-code" className="mp-secure-field" />
+                </label>
+                <label>
+                  Cuotas
+                  <select id="mp-installments" defaultValue="" />
+                </label>
+                <label>
+                  Banco emisor
+                  <select id="mp-issuer" defaultValue="" />
+                </label>
+                <label>
+                  Tipo de identificación
+                  <select id="mp-identification-type" defaultValue="" />
+                </label>
+                <label>
+                  Número de identificación
+                  <input id="mp-identification-number" type="text" placeholder="RUT / documento" />
+                </label>
+              </form>
 
               <div className="cta-row">
-                <button
-                  className="cta"
-                  type="button"
-                  onClick={submitCheckout}
-                  disabled={loadingCheckout || !selectedSlot || !selectedBookingStartAt || (!selectedSavedPaymentMethod && !cardFormReady)}
-                >
+                <button className="cta" type="button" onClick={submitCheckout} disabled={loadingCheckout || !selectedSlot || !selectedStartAt || !cardFormReady}>
                   {loadingCheckout ? "Procesando pago..." : "Pagar y confirmar reserva"}
                 </button>
                 <Link className="cta ghost" href="/cliente">
@@ -1468,7 +1298,7 @@ export default function ReservarPage() {
 
               {checkoutState === "processing" ? <p className="feedback ok">Procesando pago...</p> : null}
               {checkoutState === "approved" ? <p className="feedback ok">Pago aprobado. Redirigiendo a tu confirmación...</p> : null}
-              {checkoutState === "rejected" ? <p className="feedback error">{error || "Pago rechazado. Revisa los datos o prueba otra tarjeta."}</p> : null}
+              {checkoutState === "rejected" ? <p className="feedback error">Pago rechazado. Revisa los datos o prueba otra tarjeta.</p> : null}
               {checkoutState === "connection_error" ? <p className="feedback error">Error de conexión con el proveedor de pago.</p> : null}
               {checkoutStatusText ? <p className="minimal-note">Estado checkout: {checkoutStatusText}</p> : null}
               {createdBooking ? (
@@ -1479,22 +1309,8 @@ export default function ReservarPage() {
             </section>
           ) : null}
 
-          <div className="booking-mobile-footer">
-            <button className="cta ghost" type="button" onClick={() => setBookingStep((current) => Math.max(1, current - 1) as 1 | 2 | 3 | 4 | 5)} disabled={bookingStep === 1}>
-              Volver
-            </button>
-            <button
-              className="cta"
-              type="button"
-              disabled={!canAdvanceFromCurrent || bookingStep === 5}
-              onClick={() => setBookingStep((current) => Math.min(5, current + 1) as 1 | 2 | 3 | 4 | 5)}
-            >
-              {bookingStep === 4 ? "Ir a pago" : "Continuar"}
-            </button>
-          </div>
-
           {message ? <p className="feedback ok">{message}</p> : null}
-          {error && checkoutState !== "rejected" && checkoutState !== "connection_error" ? <p className="feedback error">{error}</p> : null}
+          {error ? <p className="feedback error">{error}</p> : null}
         </div>
       </div>
     </main>

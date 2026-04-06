@@ -1,14 +1,11 @@
-import { PaymentStatus, Prisma, UserRole } from "@prisma/client";
+import { PaymentStatus, UserRole } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { sendBookingStatusEmailToCustomer } from "@/lib/booking-status-email";
 import { getRequestIdentity, hasRole } from "@/lib/auth";
 import { COVERAGE_UNAVAILABLE_MESSAGE, inferCommuneFromAddress, normalizeCommune, taskerServesCommune } from "@/lib/communes";
 import { calculateMarketplacePrice } from "@/lib/marketplace-pricing";
 import { createProviderPayment } from "@/lib/payments/provider-adapter";
 import { prisma } from "@/lib/prisma";
-import { syncTaskerMarketplaceServicesFromOnboarding } from "@/lib/tasker-publication";
-import { hasAssignedRole } from "@/lib/user-roles";
 
 export const dynamic = "force-dynamic";
 
@@ -36,22 +33,14 @@ const checkoutSchema = z.object({
     .optional()
     .default({ materials: false, urgency: false, travelFeeClp: 0 }),
   payment: z.object({
-    token: z.string().min(6).optional(),
+    token: z.string().min(6),
     paymentMethodId: z.string().min(2).optional(),
     issuerId: z.string().optional(),
     installments: z.coerce.number().int().min(1).max(48).default(1),
-    payerEmail: z.string().email().optional(),
+    payerEmail: z.string().email(),
     payerIdentificationType: z.string().max(10).optional(),
     payerIdentificationNumber: z.string().max(32).optional(),
     savedCardId: z.string().min(1).optional()
-  }).superRefine((payment, ctx) => {
-    if (payment.savedCardId) return;
-    if (!payment.token) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Falta el token de la tarjeta", path: ["token"] });
-    }
-    if (!payment.payerEmail) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Falta el correo del pagador", path: ["payerEmail"] });
-    }
   }),
   idempotencyKey: z.string().min(8).max(120).optional()
 });
@@ -65,133 +54,6 @@ function paymentStateFromProviderStatus(status: "approved" | "failed" | "pending
   if (status === "refunded") return { paymentStatus: PaymentStatus.REFUNDED, bookingStatus: "REFUNDED" as const };
   if (status === "pending") return { paymentStatus: PaymentStatus.PENDING, bookingStatus: "PENDING_PAYMENT" as const };
   return { paymentStatus: PaymentStatus.FAILED, bookingStatus: "PAYMENT_FAILED" as const };
-}
-
-function requestedBookingEndsAt(startsAt: Date, hours: number) {
-  return new Date(startsAt.getTime() + hours * 60 * 60 * 1000);
-}
-
-async function reserveRequestedWindow(
-  tx: Prisma.TransactionClient,
-  params: {
-    slotId: string;
-    serviceId: string;
-    startsAt: Date;
-    endsAt: Date;
-  }
-) {
-  const slot = await tx.availabilitySlot.findUnique({
-    where: { id: params.slotId },
-    select: {
-      id: true,
-      professionalProfileId: true,
-      serviceId: true,
-      startsAt: true,
-      endsAt: true,
-      isAvailable: true
-    }
-  });
-
-  if (!slot || !slot.isAvailable) {
-    throw new Error("El horario ya fue tomado por otro cliente");
-  }
-
-  if (params.startsAt < slot.startsAt || params.endsAt <= params.startsAt) {
-    throw new Error("El horario solicitado ya no cabe dentro del bloque del tasker");
-  }
-
-  const candidateSlots = await tx.availabilitySlot.findMany({
-    where: {
-      professionalProfileId: slot.professionalProfileId,
-      isAvailable: true,
-      startsAt: { lt: params.endsAt },
-      endsAt: { gt: params.startsAt },
-      OR: [{ serviceId: null }, { serviceId: params.serviceId }]
-    },
-    orderBy: [{ startsAt: "asc" }],
-    select: {
-      id: true,
-      professionalProfileId: true,
-      serviceId: true,
-      startsAt: true,
-      endsAt: true,
-      isAvailable: true
-    }
-  });
-
-  const firstIndex = candidateSlots.findIndex((candidate) => candidate.id === params.slotId);
-  if (firstIndex < 0) {
-    throw new Error("El horario ya fue tomado por otro cliente");
-  }
-
-  const reservedChain = [candidateSlots[firstIndex]];
-  let coveredUntil = reservedChain[0].endsAt;
-
-  for (let index = firstIndex + 1; coveredUntil < params.endsAt && index < candidateSlots.length; index += 1) {
-    const nextSlot = candidateSlots[index];
-    if (nextSlot.startsAt > coveredUntil) break;
-    reservedChain.push(nextSlot);
-    if (nextSlot.endsAt > coveredUntil) {
-      coveredUntil = nextSlot.endsAt;
-    }
-  }
-
-  if (coveredUntil < params.endsAt) {
-    throw new Error("El horario solicitado ya no cabe dentro del bloque del tasker");
-  }
-
-  const reservedSlotIds: string[] = [];
-  const extraWindows: Array<{
-    professionalProfileId: string;
-    serviceId: string | null;
-    startsAt: Date;
-    endsAt: Date;
-    isAvailable: true;
-  }> = [];
-
-  for (const reservedSlot of reservedChain) {
-    const reservationStart = reservedSlot.startsAt < params.startsAt ? params.startsAt : reservedSlot.startsAt;
-    const reservationEnd = reservedSlot.endsAt > params.endsAt ? params.endsAt : reservedSlot.endsAt;
-
-    if (reservationEnd <= reservationStart) continue;
-
-    if (reservedSlot.startsAt < reservationStart) {
-      extraWindows.push({
-        professionalProfileId: reservedSlot.professionalProfileId,
-        serviceId: reservedSlot.serviceId,
-        startsAt: reservedSlot.startsAt,
-        endsAt: reservationStart,
-        isAvailable: true
-      });
-    }
-
-    if (reservationEnd < reservedSlot.endsAt) {
-      extraWindows.push({
-        professionalProfileId: reservedSlot.professionalProfileId,
-        serviceId: reservedSlot.serviceId,
-        startsAt: reservationEnd,
-        endsAt: reservedSlot.endsAt,
-        isAvailable: true
-      });
-    }
-
-    await tx.availabilitySlot.update({
-      where: { id: reservedSlot.id },
-      data: {
-        startsAt: reservationStart,
-        endsAt: reservationEnd,
-        isAvailable: false
-      }
-    });
-
-    reservedSlotIds.push(reservedSlot.id);
-  }
-
-  if (extraWindows.length > 0) {
-    await tx.availabilitySlot.createMany({ data: extraWindows });
-  }
-
-  return reservedSlotIds;
 }
 
 export async function POST(req: NextRequest) {
@@ -216,11 +78,11 @@ export async function POST(req: NextRequest) {
     }
 
     const [customer, service] = await Promise.all([
-      prisma.user.findUnique({ where: { id: input.customerId }, include: { roleAssignments: { select: { role: { select: { code: true } } } } } }),
+      prisma.user.findUnique({ where: { id: input.customerId } }),
       prisma.service.findUnique({ where: { id: input.serviceId }, include: { category: true } })
     ]);
 
-    if (!customer || !hasAssignedRole(customer, UserRole.CUSTOMER)) {
+    if (!customer || customer.role !== UserRole.CUSTOMER) {
       return NextResponse.json({ error: "Cliente no válido" }, { status: 400 });
     }
     if (!service || !service.isActive || !service.category) {
@@ -234,7 +96,6 @@ export async function POST(req: NextRequest) {
     let assignedProId = input.proId ?? null;
     let selectedSlotId = input.slotId ?? null;
     let hourlyRateClp = service.basePriceClp;
-    const requestedEndsAt = requestedBookingEndsAt(input.startsAt, input.hours);
     let savedPaymentMethod:
       | {
           providerCustomerId: string;
@@ -290,26 +151,19 @@ export async function POST(req: NextRequest) {
       if (!slot || !slot.isAvailable) {
         return NextResponse.json({ error: "Horario no disponible" }, { status: 409 });
       }
-      if (input.startsAt < slot.startsAt || requestedEndsAt <= input.startsAt) {
-        return NextResponse.json({ error: "El horario elegido no cae dentro del bloque disponible" }, { status: 400 });
+      const requestedStartMs = input.startsAt.getTime();
+      const requestedEndMs = requestedStartMs + input.hours * 60 * 60 * 1000;
+      const slotStartMs = slot.startsAt.getTime();
+      const slotEndMs = slot.endsAt.getTime();
+
+      if (requestedStartMs < slotStartMs || requestedEndMs > slotEndMs) {
+        return NextResponse.json({ error: "El horario elegido queda fuera del bloque disponible" }, { status: 400 });
       }
       if (slot.serviceId && slot.serviceId !== input.serviceId) {
         return NextResponse.json({ error: "El horario no pertenece al servicio elegido" }, { status: 400 });
       }
       if (slot.professionalProfile.taskerServices.length === 0) {
-        await syncTaskerMarketplaceServicesFromOnboarding(slot.professionalProfile.userId);
-        const syncedTaskerService = await prisma.taskerService.findFirst({
-          where: {
-            professionalProfileId: slot.professionalProfileId,
-            serviceId: input.serviceId,
-            isActive: true
-          },
-          select: { id: true, priceClp: true }
-        });
-        if (!syncedTaskerService) {
-          return NextResponse.json({ error: "El tasker no ofrece este servicio" }, { status: 400 });
-        }
-        slot.professionalProfile.taskerServices = [syncedTaskerService];
+        return NextResponse.json({ error: "El tasker no ofrece este servicio" }, { status: 400 });
       }
 
       const canServe = taskerServesCommune(
@@ -357,24 +211,12 @@ export async function POST(req: NextRequest) {
         }
       });
 
-      if (!pro || !hasAssignedRole(pro, UserRole.PRO) || !pro.professionalProfile) {
+      const isTasker = Boolean(
+        pro &&
+          (pro.role === UserRole.PRO || pro.roleAssignments.some((assignment) => assignment.role.code === UserRole.PRO))
+      );
+      if (!pro || !isTasker || !pro.professionalProfile || pro.professionalProfile.taskerServices.length === 0) {
         return NextResponse.json({ error: "Tasker inválido para este servicio" }, { status: 400 });
-      }
-
-      if (pro.professionalProfile.taskerServices.length === 0) {
-        await syncTaskerMarketplaceServicesFromOnboarding(assignedProId);
-        const syncedProService = await prisma.taskerService.findFirst({
-          where: {
-            professionalProfile: { userId: assignedProId },
-            serviceId: input.serviceId,
-            isActive: true
-          },
-          select: { id: true, priceClp: true }
-        });
-        if (!syncedProService) {
-          return NextResponse.json({ error: "Tasker inválido para este servicio" }, { status: 400 });
-        }
-        pro.professionalProfile.taskerServices = [syncedProService];
       }
 
       const canServe = taskerServesCommune(
@@ -394,7 +236,6 @@ export async function POST(req: NextRequest) {
     const price = calculateMarketplacePrice({
       hourlyRateClp,
       hours: input.hours,
-      pricingModel: serviceCategory.slug === "maquillaje" ? "fixed" : "hourly",
       materials: Boolean(input.extras?.materials),
       urgency: Boolean(input.extras?.urgency),
       travelFeeClp: input.extras?.travelFeeClp ?? 0,
@@ -411,7 +252,7 @@ export async function POST(req: NextRequest) {
     if (!paymentMethodId) {
       return NextResponse.json({ error: "Falta el medio de pago seleccionado" }, { status: 400 });
     }
-    const normalizedPayerEmail = (savedPaymentMethod?.payerEmail ?? input.payment.payerEmail ?? customer.email).trim().toLowerCase();
+    const normalizedPayerEmail = (savedPaymentMethod?.payerEmail ?? input.payment.payerEmail).trim().toLowerCase();
 
     const existing = await prisma.payment.findUnique({
       where: { idempotencyKey },
@@ -430,9 +271,7 @@ export async function POST(req: NextRequest) {
             id: existing.id,
             status: existing.status,
             providerStatus: existing.providerStatus,
-            providerPaymentId: existing.providerPaymentId,
-            errorCode: existing.errorCode,
-            errorMessage: existing.errorMessage
+            providerPaymentId: existing.providerPaymentId
           },
           idempotentReplay: true
         },
@@ -440,16 +279,15 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    let reservedSlotIds: string[] = [];
-
     const created = await prisma.$transaction(async (tx) => {
       if (selectedSlotId) {
-        reservedSlotIds = await reserveRequestedWindow(tx, {
-          slotId: selectedSlotId,
-          serviceId: input.serviceId,
-          startsAt: input.startsAt,
-          endsAt: requestedEndsAt
+        const lock = await tx.availabilitySlot.updateMany({
+          where: { id: selectedSlotId, isAvailable: true },
+          data: { isAvailable: false }
         });
+        if (lock.count === 0) {
+          throw new Error("El horario ya fue tomado por otro cliente");
+        }
       }
 
       const address = await tx.address.create({
@@ -556,18 +394,12 @@ export async function POST(req: NextRequest) {
             paymentStatus: PaymentStatus.FAILED
           }
         });
-        if (reservedSlotIds.length > 0) {
+        if (selectedSlotId) {
           await tx.availabilitySlot.updateMany({
-            where: { id: { in: reservedSlotIds } },
+            where: { id: selectedSlotId },
             data: { isAvailable: true }
           });
         }
-      });
-
-      void sendBookingStatusEmailToCustomer({
-        bookingId: created.booking.id,
-        previousStatus: created.booking.status,
-        nextStatus: "PAYMENT_FAILED"
       });
 
       return NextResponse.json({ error: "Error de conexión con Mercado Pago. Intenta nuevamente." }, { status: 502 });
@@ -607,9 +439,9 @@ export async function POST(req: NextRequest) {
         }
       });
 
-      if (nextState.bookingStatus === "PAYMENT_FAILED" && reservedSlotIds.length > 0) {
+      if (nextState.bookingStatus === "PAYMENT_FAILED" && selectedSlotId) {
         await tx.availabilitySlot.updateMany({
-          where: { id: { in: reservedSlotIds } },
+          where: { id: selectedSlotId },
           data: { isAvailable: true }
         });
       }
@@ -638,12 +470,6 @@ export async function POST(req: NextRequest) {
       return booking;
     });
 
-    void sendBookingStatusEmailToCustomer({
-      bookingId: finalBooking.id,
-      previousStatus: created.booking.status,
-      nextStatus: finalBooking.status
-    });
-
     return NextResponse.json(
       {
         booking: finalBooking,
@@ -654,9 +480,7 @@ export async function POST(req: NextRequest) {
           providerStatus: providerResult.providerStatus,
           status: nextState.paymentStatus,
           paymentMethod: providerResult.paymentMethod,
-          last4: providerResult.last4,
-          errorCode: providerResult.errorCode ?? null,
-          errorMessage: providerResult.errorMessage ?? null
+          last4: providerResult.last4
         }
       },
       { status: 200 }
