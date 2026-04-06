@@ -12,13 +12,11 @@ import {
   normalizeBabysitterScope
 } from "@/lib/babysitter-scope";
 import {
-  getChefExcludedTaskLabel,
-  getChefIncludedTaskLabel,
   getChefScopeServiceLabel,
   normalizeChefScope
 } from "@/lib/chef-scope";
 import { copyCleaningEstimateParams, parseCleaningRecommendedHours } from "@/lib/cleaning-duration-estimator";
-import { getChefServiceDefinition } from "@/lib/chef-service-types";
+import { getChefServiceDefinition, isChefServiceSlug } from "@/lib/chef-service-types";
 import { getCleaningServiceDefinition } from "@/lib/cleaning-service-types";
 import {
   getCleaningExcludedTaskLabel,
@@ -34,13 +32,11 @@ import {
   normalizePetScope
 } from "@/lib/pet-scope";
 import {
-  emptyMakeupServiceConfig,
-  getMakeupDurationSummary,
-  getMakeupServiceConfig,
-  getMakeupServiceHeadline,
+  getMakeupExcludedTaskLabel,
+  getMakeupIncludedTaskLabel,
+  getMakeupServiceLabel,
   normalizeMakeupScope
 } from "@/lib/makeup-scope";
-import { getMakeupServiceDefinitionByScopeValue, isMakeupScopeServiceSlug } from "@/lib/makeup-service-types";
 import {
   getIroningExcludedTaskLabel,
   getIroningIncludedTaskLabel,
@@ -55,19 +51,16 @@ import {
   normalizeTrainerScope
 } from "@/lib/trainer-scope";
 import {
-  getTeacherBookingNoticeLabel,
-  getTeacherDurationLabel,
+  getTeacherExcludedTaskLabel,
+  getTeacherIncludedTaskLabel,
   getTeacherLevelLabel,
   getTeacherModeLabel,
-  getTeacherPublicServiceSlugs,
   getTeacherServiceLabel,
   normalizeTeacherScope
 } from "@/lib/teacher-scope";
 
 type CleaningOnboardingSummary = {
   profilePhotoUrl: string | null;
-  profilePhotoPositionX?: number | null;
-  profilePhotoPositionY?: number | null;
   shortDescription: string | null;
   yearsExperience: number | null;
   workMode: "SOLO" | "EQUIPO" | null;
@@ -98,8 +91,6 @@ type CleaningOnboardingSummary = {
 type ProfessionalDetail = {
   id: string;
   avatarUrl?: string | null;
-  avatarPositionX?: number | null;
-  avatarPositionY?: number | null;
   userId: string;
   bio: string | null;
   isVerified: boolean;
@@ -115,17 +106,6 @@ type ProfessionalDetail = {
     priceClp: number;
     category: { slug: string; name: string } | null;
     service: { id: string; name: string } | null;
-  }>;
-  categoryProfiles: Array<{
-    id: string;
-    categorySlug: string;
-    hourlyRateClp: number;
-    serviceCommunes: string[];
-    offeredServices: string[];
-    experienceTypes: string[];
-    scopeData: unknown;
-    isActive: boolean;
-    completedAt: string | null;
   }>;
   user: {
     id: string;
@@ -271,7 +251,7 @@ function categoryLabel(value: string | null | undefined) {
     case "babysitter":
       return "Babysitter";
     case "profesor-particular":
-      return "Clases particulares";
+      return "Profesor particular";
     case "personal-trainer":
       return "Personal trainer";
     case "chef":
@@ -317,12 +297,6 @@ function taskerRoleLabel(value: string | null | undefined) {
     default:
       return "Tasker de servicios a domicilio";
   }
-}
-
-function avatarObjectPosition(x?: number | null, y?: number | null) {
-  const nextX = typeof x === "number" ? Math.min(Math.max(x, 0), 100) : 50;
-  const nextY = typeof y === "number" ? Math.min(Math.max(y, 0), 100) : 34;
-  return `${nextX}% ${nextY}%`;
 }
 
 function faqItemsForCategory(categorySlug: string | null | undefined): FaqItem[] {
@@ -502,7 +476,6 @@ function buildDemoProfessional(proId: string): ProfessionalDetail {
     coverageLongitude: -70.6693,
     serviceRadiusKm: 12,
     hourlyRateFromClp: 15000,
-    categoryProfiles: [],
     taskerServices: [
       {
         priceClp: 14000,
@@ -651,6 +624,11 @@ export default function ProDetailPage() {
         let resolvedSlots: AvailabilitySlot[] = [];
         if (!availabilityRes.ok || !availabilityBody.slots) {
           resolvedSlots = buildDemoSlots(date, params.proId);
+          setNotice((prev) =>
+            prev
+              ? `${prev} También cargamos una agenda de ejemplo.`
+              : "Mostrando una agenda referencial para que puedas ver los días disponibles."
+          );
         } else {
           resolvedSlots = availabilityBody.slots;
         }
@@ -715,30 +693,17 @@ export default function ProDetailPage() {
     [selectedDate]
   );
   const monthCalendarDays = useMemo(() => {
-    const year = selectedDate.getFullYear();
-    const month = selectedDate.getMonth();
-    const firstDay = new Date(year, month, 1);
-    const firstWeekday = (firstDay.getDay() + 6) % 7;
-    const daysInMonth = new Date(year, month + 1, 0).getDate();
-    const totalCells = Math.ceil((firstWeekday + daysInMonth) / 7) * 7;
+    const start = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1);
+    const startWeekday = (start.getDay() + 6) % 7;
+    start.setDate(start.getDate() - startWeekday);
 
-    return Array.from({ length: totalCells }, (_, index) => {
-      const dayNumber = index - firstWeekday + 1;
-      if (dayNumber < 1 || dayNumber > daysInMonth) {
-        return {
-          key: `empty-${year}-${month}-${index}`,
-          date: null,
-          isCurrentMonth: false,
-          isPlaceholder: true
-        };
-      }
-
-      const current = new Date(year, month, dayNumber);
+    return Array.from({ length: 35 }, (_, index) => {
+      const current = new Date(start);
+      current.setDate(start.getDate() + index);
       return {
         key: formatDayKey(current),
         date: current,
-        isCurrentMonth: true,
-        isPlaceholder: false
+        isCurrentMonth: current.getMonth() === selectedDate.getMonth()
       };
     });
   }, [selectedDate]);
@@ -782,41 +747,14 @@ export default function ProDetailPage() {
       const hash = view === "agenda" ? "#availability" : view === "valoraciones" ? "#reviews" : "#perfil";
       window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}${hash}`);
       window.setTimeout(() => {
-        const targetId = view === "agenda" ? "availability" : view === "valoraciones" ? "reviews" : "public-tasker-view";
-        document.getElementById(targetId)?.scrollIntoView({ behavior: "smooth", block: "start" });
+        document.getElementById("public-tasker-view")?.scrollIntoView({ behavior: "smooth", block: "start" });
       }, 40);
     }
   };
   const onboarding = data?.user.cleaningOnboarding ?? null;
-  const serviceCategories = useMemo(() => {
-    const bySlug = new Map<string, { slug: string; name: string }>();
-    for (const item of data?.taskerServices ?? []) {
-      const category = item.category;
-      if (!category?.slug) continue;
-      if (!bySlug.has(category.slug)) {
-        bySlug.set(category.slug, category);
-      }
-    }
-    return Array.from(bySlug.values());
-  }, [data?.taskerServices]);
-  const normalizedOnboardingCategorySlug = normalizeCategorySlug(onboarding?.categorySlug ?? null);
-  const requestedCategorySlug = useMemo(() => {
-    const requestedService = (data?.taskerServices ?? []).find((item) => item.service?.id === requestedServiceId);
-    return normalizeCategorySlug(requestedService?.category?.slug ?? null);
-  }, [data?.taskerServices, requestedServiceId]);
-  const primaryCategorySlug = requestedCategorySlug ?? onboarding?.categorySlug ?? serviceCategories[0]?.slug ?? null;
-  const normalizedPrimaryCategorySlug = normalizeCategorySlug(primaryCategorySlug);
-  const selectedCategoryProfile =
-    normalizedPrimaryCategorySlug && normalizedPrimaryCategorySlug !== normalizedOnboardingCategorySlug
-      ? data?.categoryProfiles.find((item) => normalizeCategorySlug(item.categorySlug) === normalizedPrimaryCategorySlug) ?? null
-      : null;
-  const selectedScopeSource = selectedCategoryProfile?.scopeData ?? null;
-  const cleaningScope = useMemo(
-    () => normalizeCleaningScope(normalizedPrimaryCategorySlug === "limpieza" && selectedScopeSource ? selectedScopeSource : onboarding?.cleaningScope),
-    [normalizedPrimaryCategorySlug, onboarding?.cleaningScope, selectedScopeSource]
-  );
+  const cleaningScope = useMemo(() => normalizeCleaningScope(onboarding?.cleaningScope), [onboarding?.cleaningScope]);
   const petScope = useMemo(() => {
-    const normalized = normalizePetScope(normalizedPrimaryCategorySlug === "mascotas" && selectedScopeSource ? selectedScopeSource : onboarding?.petScope);
+    const normalized = normalizePetScope(onboarding?.petScope);
     if (normalized.services_offered.length > 0 || normalized.animals_accepted.length > 0 || normalized.tasks_included.length > 0) {
       return normalized;
     }
@@ -834,33 +772,25 @@ export default function ProDetailPage() {
         : [],
       accepts_large_pets: onboarding?.acceptsHomesWithPets ?? null
     };
-  }, [normalizedPrimaryCategorySlug, onboarding?.petScope, onboarding?.offeredServices, onboarding?.experienceTypes, onboarding?.acceptsHomesWithPets, selectedScopeSource]);
+  }, [onboarding?.petScope, onboarding?.offeredServices, onboarding?.experienceTypes, onboarding?.acceptsHomesWithPets]);
   const makeupScope = useMemo(() => {
-    const normalized = normalizeMakeupScope(normalizedPrimaryCategorySlug === "maquillaje" && selectedScopeSource ? selectedScopeSource : onboarding?.makeupScope);
-    if (normalized.services_offered.length > 0 || normalized.service_configs.length > 0 || normalized.portfolio_photos.length > 0) {
+    const normalized = normalizeMakeupScope(onboarding?.makeupScope);
+    if (normalized.services_offered.length > 0 || normalized.tasks_included.length > 0) {
       return normalized;
     }
 
-    const offeredServices = Array.isArray(onboarding?.offeredServices)
-      ? onboarding.offeredServices.filter(
-          (item): item is Parameters<typeof emptyMakeupServiceConfig>[0] => typeof item === "string" && isMakeupScopeServiceSlug(item)
-        )
-      : [];
-
     return {
       ...normalized,
-      services_offered: offeredServices,
-      service_configs: offeredServices.map((serviceSlug) => {
-        const config = emptyMakeupServiceConfig(serviceSlug);
-        return {
-          ...config,
-          includes_materials: onboarding?.bringsOwnProducts ?? config.includes_materials
-        };
-      })
+      services_offered: Array.isArray(onboarding?.offeredServices)
+        ? onboarding.offeredServices.filter(
+            (item): item is "social" | "eventos" | "novias" => item === "social" || item === "eventos" || item === "novias"
+          )
+        : [],
+      includes_kit: onboarding?.bringsOwnProducts ?? null
     };
-  }, [normalizedPrimaryCategorySlug, onboarding?.makeupScope, onboarding?.offeredServices, onboarding?.bringsOwnProducts, selectedScopeSource]);
+  }, [onboarding?.makeupScope, onboarding?.offeredServices, onboarding?.bringsOwnProducts]);
   const ironingScope = useMemo(() => {
-    const normalized = normalizeIroningScope(normalizedPrimaryCategorySlug === "planchado" && selectedScopeSource ? selectedScopeSource : onboarding?.ironingScope);
+    const normalized = normalizeIroningScope(onboarding?.ironingScope);
     if (normalized.services_offered.length > 0 || normalized.tasks_included.length > 0) {
       return normalized;
     }
@@ -874,11 +804,9 @@ export default function ProDetailPage() {
         : [],
       delicate_clothes: onboarding?.bringsOwnTools ?? null
     };
-  }, [normalizedPrimaryCategorySlug, onboarding?.ironingScope, onboarding?.offeredServices, onboarding?.bringsOwnTools, selectedScopeSource]);
+  }, [onboarding?.ironingScope, onboarding?.offeredServices, onboarding?.bringsOwnTools]);
   const babysitterScope = useMemo(() => {
-    const normalized = normalizeBabysitterScope(
-      normalizedPrimaryCategorySlug === "babysitter" && selectedScopeSource ? selectedScopeSource : onboarding?.babysitterScope
-    );
+    const normalized = normalizeBabysitterScope(onboarding?.babysitterScope);
     if (normalized.services_offered.length > 0 || normalized.age_ranges.length > 0 || normalized.tasks_included.length > 0) {
       return normalized;
     }
@@ -896,31 +824,22 @@ export default function ProDetailPage() {
       first_aid: onboarding?.bringsOwnTools ?? null,
       multi_child: onboarding?.acceptsHomesWithChildren ?? null
     };
-  }, [normalizedPrimaryCategorySlug, onboarding?.babysitterScope, onboarding?.offeredServices, onboarding?.experienceTypes, onboarding?.bringsOwnTools, onboarding?.acceptsHomesWithChildren, selectedScopeSource]);
+  }, [onboarding?.babysitterScope, onboarding?.offeredServices, onboarding?.experienceTypes, onboarding?.bringsOwnTools, onboarding?.acceptsHomesWithChildren]);
   const chefScope = useMemo(() => {
-    const normalized = normalizeChefScope(normalizedPrimaryCategorySlug === "chef" && selectedScopeSource ? selectedScopeSource : onboarding?.chefScope);
-    if (normalized.services_offered.length > 0 || normalized.tasks_included.length > 0) {
+    const normalized = normalizeChefScope(onboarding?.chefScope);
+    if (normalized.services_offered.length > 0) {
       return normalized;
     }
 
     return {
       ...normalized,
       services_offered: Array.isArray(onboarding?.offeredServices)
-        ? onboarding.offeredServices.filter(
-            (item): item is "cocina-gourmet" | "cocina-casera" | "reposteria" | "cocina-eventos" | "cumpleanos" =>
-              item === "cocina-gourmet" ||
-              item === "cocina-casera" ||
-              item === "reposteria" ||
-              item === "cocina-eventos" ||
-              item === "cumpleanos"
-          )
+        ? onboarding.offeredServices.filter((item): item is string => typeof item === "string" && isChefServiceSlug(item))
         : []
     };
-  }, [normalizedPrimaryCategorySlug, onboarding?.chefScope, onboarding?.offeredServices, selectedScopeSource]);
+  }, [onboarding?.chefScope, onboarding?.offeredServices]);
   const trainerScope = useMemo(() => {
-    const normalized = normalizeTrainerScope(
-      normalizedPrimaryCategorySlug === "personal-trainer" && selectedScopeSource ? selectedScopeSource : onboarding?.trainerScope
-    );
+    const normalized = normalizeTrainerScope(onboarding?.trainerScope);
     if (normalized.services_offered.length > 0 || normalized.modes.length > 0 || normalized.tasks_included.length > 0) {
       return normalized;
     }
@@ -940,16 +859,14 @@ export default function ProDetailPage() {
         : [],
       brings_equipment: onboarding?.bringsOwnTools ?? null
     };
-  }, [normalizedPrimaryCategorySlug, onboarding?.trainerScope, onboarding?.offeredServices, onboarding?.experienceTypes, onboarding?.bringsOwnTools, selectedScopeSource]);
+  }, [onboarding?.trainerScope, onboarding?.offeredServices, onboarding?.experienceTypes, onboarding?.bringsOwnTools]);
   const teacherScope = useMemo(() => {
-    const normalized = normalizeTeacherScope(
-      normalizedPrimaryCategorySlug === "profesor-particular" && selectedScopeSource ? selectedScopeSource : onboarding?.teacherScope
-    );
+    const normalized = normalizeTeacherScope(onboarding?.teacherScope);
     if (normalized.services_offered.length > 0 || normalized.levels.length > 0 || normalized.modes.length > 0 || normalized.tasks_included.length > 0) {
       return normalized;
     }
 
-    return normalizeTeacherScope({
+    return {
       ...normalized,
       services_offered: Array.isArray(onboarding?.offeredServices)
         ? onboarding.offeredServices.filter(
@@ -968,40 +885,30 @@ export default function ProDetailPage() {
             (item): item is "presencial" | "online" => item === "presencial" || item === "online"
           )
         : []
-    });
-  }, [normalizedPrimaryCategorySlug, onboarding?.teacherScope, onboarding?.offeredServices, onboarding?.experienceTypes, selectedScopeSource]);
-  const relevantServiceCategories = useMemo(() => {
-    if (!normalizedPrimaryCategorySlug) return serviceCategories;
-    const filtered = serviceCategories.filter(
-      (category) => normalizeCategorySlug(category.slug) === normalizedPrimaryCategorySlug
-    );
-    return filtered.length > 0 ? filtered : serviceCategories;
-  }, [normalizedPrimaryCategorySlug, serviceCategories]);
-  const registeredServiceNames = useMemo(() => {
-    const names = (data?.taskerServices ?? [])
-      .filter((item) =>
-        normalizedPrimaryCategorySlug
-          ? normalizeCategorySlug(item.category?.slug) === normalizedPrimaryCategorySlug
-          : true
-      )
-      .map((item) => item.service?.name?.trim())
-      .filter((item): item is string => Boolean(item));
-
-    const uniqueNames = Array.from(new Set(names));
-    return uniqueNames.length > 0 ? uniqueNames : [categoryLabel(primaryCategorySlug)];
-  }, [data?.taskerServices, normalizedPrimaryCategorySlug, primaryCategorySlug]);
-  const profilePhotoUrl = data?.avatarUrl?.trim() || onboarding?.profilePhotoUrl?.trim() || "";
-  const profilePhotoObjectPosition = avatarObjectPosition(
-    data?.avatarPositionX ?? onboarding?.profilePhotoPositionX,
-    data?.avatarPositionY ?? onboarding?.profilePhotoPositionY
-  );
+    };
+  }, [onboarding?.teacherScope, onboarding?.offeredServices, onboarding?.experienceTypes]);
+  const serviceCategories = useMemo(() => {
+    const bySlug = new Map<string, { slug: string; name: string }>();
+    for (const item of data?.taskerServices ?? []) {
+      const category = item.category;
+      if (!category?.slug) continue;
+      if (!bySlug.has(category.slug)) {
+        bySlug.set(category.slug, category);
+      }
+    }
+    return Array.from(bySlug.values());
+  }, [data?.taskerServices]);
+  const servicePriceTags = useMemo(() => {
+    return (data?.taskerServices ?? [])
+      .filter((item) => item.service?.name)
+      .map((item) => ({
+        key: `${item.service?.id ?? item.service?.name}`,
+        label: `${item.service?.name} · ${item.priceClp ? clp(item.priceClp) : "Por definir"}/h`
+      }));
+  }, [data?.taskerServices]);
+  const profilePhotoUrl = onboarding?.profilePhotoUrl?.trim() || data?.avatarUrl?.trim() || "";
   const activeCommunes = useMemo(() => {
-    const raw =
-      selectedCategoryProfile?.serviceCommunes && selectedCategoryProfile.serviceCommunes.length > 0
-        ? selectedCategoryProfile.serviceCommunes
-        : Array.isArray(onboarding?.serviceCommunes)
-          ? onboarding.serviceCommunes
-          : [];
+    const raw = Array.isArray(onboarding?.serviceCommunes) ? onboarding.serviceCommunes : [];
     const cleaned = raw
       .filter((item): item is string => typeof item === "string" && item.trim().length > 0)
       .map(labelize);
@@ -1009,18 +916,20 @@ export default function ProDetailPage() {
     if (cleaned.length > 0) return cleaned;
     if (onboarding?.baseCommune) return [labelize(onboarding.baseCommune)];
     return requestedCommune ? [labelize(requestedCommune)] : [];
-  }, [onboarding?.baseCommune, onboarding?.serviceCommunes, requestedCommune, selectedCategoryProfile?.serviceCommunes]);
+  }, [onboarding?.baseCommune, onboarding?.serviceCommunes, requestedCommune]);
   const summaryDescription =
     onboarding?.shortDescription?.trim() ||
     "Tasker con experiencia en servicios a domicilio, buena valoración y agenda activa durante la semana.";
   const experienceYears = onboarding?.yearsExperience ?? 6;
   const hasIdentityProof = Boolean(onboarding?.identityDocumentFrontFile && onboarding?.identityDocumentBackFile);
   const hasBackgroundCheck = Boolean(onboarding?.criminalRecordFile);
-  const offeredServices = toLabelList(selectedCategoryProfile?.offeredServices ?? onboarding?.offeredServices, demoOfferedServices);
-  const experienceTypes = toLabelList(selectedCategoryProfile?.experienceTypes ?? onboarding?.experienceTypes, demoExperienceTypes);
+  const offeredServices = toLabelList(onboarding?.offeredServices, demoOfferedServices);
+  const experienceTypes = toLabelList(onboarding?.experienceTypes, demoExperienceTypes);
   const languages = toLabelList(onboarding?.languages, demoLanguages);
   const workModeLabel = onboarding?.workMode === "EQUIPO" ? "Trabajo en equipo" : "Trabajo individual";
-  const categoryName = relevantServiceCategories[0]?.name ?? categoryLabel(primaryCategorySlug);
+  const primaryCategorySlug = serviceCategories[0]?.slug ?? onboarding?.categorySlug ?? null;
+  const normalizedPrimaryCategorySlug = normalizeCategorySlug(primaryCategorySlug);
+  const categoryName = serviceCategories[0]?.name ?? categoryLabel(primaryCategorySlug);
   const taskerRole = taskerRoleLabel(primaryCategorySlug);
   const faqItems = faqItemsForCategory(primaryCategorySlug);
   const cleaningScopeServices = cleaningScope.services_offered.map(getCleaningScopeServiceLabel);
@@ -1030,27 +939,9 @@ export default function ProDetailPage() {
   const petScopeAnimals = petScope.animals_accepted.map(getPetScopeAnimalLabel);
   const petScopeIncludedTasks = petScope.tasks_included.map(getPetIncludedTaskLabel);
   const petScopeExcludedTasks = petScope.tasks_excluded.map(getPetExcludedTaskLabel);
-  const makeupServiceSummaries = makeupScope.services_offered.map((serviceSlug) => {
-    const definition = getMakeupServiceDefinitionByScopeValue(serviceSlug);
-    const config = getMakeupServiceConfig(makeupScope, serviceSlug);
-    const audience =
-      definition && "idealFor" in definition && typeof definition.idealFor === "string"
-        ? definition.idealFor
-        : "Servicio de maquillaje a domicilio.";
-    return {
-      serviceSlug,
-      title: getMakeupServiceHeadline(makeupScope, serviceSlug),
-      audience,
-      duration: getMakeupDurationSummary(makeupScope, serviceSlug),
-      priceClp: config.base_price_clp,
-      includes: [
-        config.includes_travel ? "Traslado" : null,
-        config.includes_lashes ? "Pestañas" : null,
-        config.includes_trial ? "Prueba previa" : null,
-        config.includes_materials ? "Materiales" : null
-      ].filter((item): item is string => Boolean(item))
-    };
-  });
+  const makeupScopeServices = makeupScope.services_offered.map(getMakeupServiceLabel);
+  const makeupScopeIncludedTasks = makeupScope.tasks_included.map(getMakeupIncludedTaskLabel);
+  const makeupScopeExcludedTasks = makeupScope.tasks_excluded.map(getMakeupExcludedTaskLabel);
   const ironingScopeServices = ironingScope.services_offered.map(getIroningServiceLabel);
   const ironingScopeIncludedTasks = ironingScope.tasks_included.map(getIroningIncludedTaskLabel);
   const ironingScopeExcludedTasks = ironingScope.tasks_excluded.map(getIroningExcludedTaskLabel);
@@ -1059,22 +950,16 @@ export default function ProDetailPage() {
   const babysitterScopeIncludedTasks = babysitterScope.tasks_included.map(getBabysitterIncludedTaskLabel);
   const babysitterScopeExcludedTasks = babysitterScope.tasks_excluded.map(getBabysitterExcludedTaskLabel);
   const chefScopeServices = chefScope.services_offered.map(getChefScopeServiceLabel);
-  const chefScopeIncludedTasks = chefScope.tasks_included.map(getChefIncludedTaskLabel);
-  const chefScopeExcludedTasks = chefScope.tasks_excluded.map(getChefExcludedTaskLabel);
   const trainerScopeServices = trainerScope.services_offered.map(getTrainerServiceLabel);
   const trainerScopeModes = trainerScope.modes.map(getTrainerModeLabel);
   const trainerScopeIncludedTasks = trainerScope.tasks_included.map(getTrainerIncludedTaskLabel);
   const trainerScopeExcludedTasks = trainerScope.tasks_excluded.map(getTrainerExcludedTaskLabel);
-  const teacherScopeServices = getTeacherPublicServiceSlugs(teacherScope).map(getTeacherServiceLabel);
+  const teacherScopeServices = teacherScope.services_offered.map(getTeacherServiceLabel);
   const teacherScopeLevels = teacherScope.levels.map(getTeacherLevelLabel);
   const teacherScopeModes = teacherScope.modes.map(getTeacherModeLabel);
-  const teacherServiceConfigs = teacherScope.service_configs;
-  const defaultReserveServiceId =
-    requestedServiceId ||
-    (data?.taskerServices ?? []).find((item) =>
-      normalizedPrimaryCategorySlug ? normalizeCategorySlug(item.category?.slug) === normalizedPrimaryCategorySlug : true
-    )?.service?.id ||
-    "";
+  const teacherScopeIncludedTasks = teacherScope.tasks_included.map(getTeacherIncludedTaskLabel);
+  const teacherScopeExcludedTasks = teacherScope.tasks_excluded.map(getTeacherExcludedTaskLabel);
+  const defaultReserveServiceId = requestedServiceId || data?.taskerServices?.[0]?.service?.id || "";
   const buildReserveHref = (options?: { slotId?: string; startsAt?: string; serviceId?: string | null }) => {
     const qs = new URLSearchParams();
     qs.set("proId", data?.userId ?? params.proId);
@@ -1110,112 +995,121 @@ export default function ProDetailPage() {
 
         {data ? (
           <>
-            <div className="page public-tasker-market-page">
+            <section className="auth-flow-shell auth-flow-shell-wide client-dashboard-hero">
+              <div className="auth-flow-copy client-dashboard-copy">
+                <p className="auth-flow-kicker">Tasker verificado</p>
+                <h1>{data.user.fullName}</h1>
+                <p
+                  style={{
+                    margin: "14px 0 0",
+                    fontSize: "1.04rem",
+                    fontWeight: 800,
+                    color: "#ffddb9",
+                    letterSpacing: "0.01em"
+                  }}
+                >
+                  {taskerRole}
+                </p>
+                <p>{summaryDescription}</p>
+
+                <div className="auth-flow-copy-list client-dashboard-summary">
+                  <div className="auth-flow-meta-card">
+                    <strong>{categoryName}</strong>
+                    <span>{offeredServices.join(", ")}</span>
+                  </div>
+                  <div className="auth-flow-meta-card">
+                    <strong>Experiencia</strong>
+                    <span>{experienceYears} años de experiencia en servicios a domicilio.</span>
+                  </div>
+                  <div className="auth-flow-meta-card">
+                    <strong>Disponibilidad</strong>
+                    <span>{daysWithSlotsCount} día(s) con agenda visible para reserva.</span>
+                  </div>
+                  {requestedRecommendedHours ? (
+                    <div className="auth-flow-meta-card">
+                      <strong>Tiempo sugerido</strong>
+                      <span>
+                        {requestedEstimatedMinHours && requestedEstimatedMaxHours
+                          ? `${requestedEstimatedMinHours} a ${requestedEstimatedMaxHours} horas · `
+                          : ""}
+                        Recomendado: {requestedRecommendedHours} h
+                      </span>
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+
+              <section className="auth-flow-panel auth-flow-panel-wide client-dashboard-profile-panel we-pro-sticky-card">
+                <div className="we-sticky-head">
+                  <div className="we-pro-avatar large" aria-hidden>
+                    {profilePhotoUrl ? <img src={profilePhotoUrl} alt="" className="we-pro-avatar-image" /> : initials(data.user.fullName)}
+                  </div>
+                  <div>
+                    <h3>{data.user.fullName}</h3>
+                    <p
+                      style={{
+                        margin: "4px 0 0",
+                        color: "#264d7a",
+                        fontWeight: 800
+                      }}
+                    >
+                      {taskerRole}
+                    </p>
+                    <p>
+                      <span className="we-star">★</span> {rating.toFixed(1)} ({data.ratingsCount} valoraciones)
+                    </p>
+                  </div>
+                </div>
+
+                <p className="we-sticky-price">{data.hourlyRateFromClp ? clp(data.hourlyRateFromClp) : "Por definir"}/h</p>
+                <p className="we-sticky-meta">{data.coverageCity ?? "Santiago"} · {workModeLabel}</p>
+
+                <div className="public-profile-switcher">
+                  <button type="button" className={`public-profile-switch ${activeView === "perfil" ? "active" : ""}`} onClick={() => switchPublicView("perfil")}>
+                    Perfil
+                  </button>
+                  <button type="button" className={`public-profile-switch ${activeView === "valoraciones" ? "active" : ""}`} onClick={() => switchPublicView("valoraciones")}>
+                    Valoraciones
+                  </button>
+                  <button type="button" className={`public-profile-switch ${activeView === "agenda" ? "active" : ""}`} onClick={() => switchPublicView("agenda")}>
+                    Agenda
+                  </button>
+                </div>
+
+                <div className="cta-row">
+                  <Link className="cta small" href={buildReserveHref()}>
+                    Reservar ahora
+                  </Link>
+                </div>
+
+                <p className="minimal-note">Para protegerte, usa siempre WeTask para contratar y comunicarte.</p>
+              </section>
+            </section>
+
+            <div className="page client-dashboard-sections">
               {loading ? <p className="empty">Cargando perfil...</p> : null}
               {notice ? <p className="feedback ok">{notice}</p> : null}
               {error ? <p className="feedback error">{error}</p> : null}
 
-              <section className="public-tasker-market-layout" id="public-tasker-view">
-                <div className="public-tasker-main-column">
-                  <article className="auth-flow-panel client-dashboard-section tasker-profile-section public-tasker-summary-card">
-                    <div className="public-tasker-summary-topline">
-                      <p className="auth-flow-kicker public-tasker-summary-kicker">Tasker verificado</p>
-                    </div>
+              <section className="we-pro-detail-layout" id="public-tasker-view">
+                <div className="we-pro-detail-main">
+                  <div className="public-profile-switcher public-profile-switcher-wide">
+                    <button type="button" className={`public-profile-switch ${activeView === "perfil" ? "active" : ""}`} onClick={() => switchPublicView("perfil")}>
+                      Ver perfil
+                    </button>
+                    <button type="button" className={`public-profile-switch ${activeView === "valoraciones" ? "active" : ""}`} onClick={() => switchPublicView("valoraciones")}>
+                      Ver valoraciones
+                    </button>
+                    <button type="button" className={`public-profile-switch ${activeView === "agenda" ? "active" : ""}`} onClick={() => switchPublicView("agenda")}>
+                      Ver agenda
+                    </button>
+                  </div>
 
-                    <div className="public-tasker-heading-row">
-                      <div className="we-pro-avatar large public-tasker-summary-avatar" aria-hidden>
-                        {profilePhotoUrl ? <img src={profilePhotoUrl} alt="" className="we-pro-avatar-image" style={{ objectPosition: profilePhotoObjectPosition }} /> : initials(data.user.fullName)}
-                      </div>
-                      <div className="public-tasker-heading-copy">
-                        <h1>{data.user.fullName}</h1>
-                        <div className="public-tasker-services-block">
-                          <small>Servicios que realiza</small>
-                          <span className="public-tasker-summary-category">{registeredServiceNames.join(", ")}</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="public-profile-switcher public-tasker-market-switcher">
-                      <button type="button" className={`public-profile-switch ${activeView === "perfil" ? "active" : ""}`} onClick={() => switchPublicView("perfil")}>
-                        Perfil
-                      </button>
-                      <button type="button" className={`public-profile-switch ${activeView === "valoraciones" ? "active" : ""}`} onClick={() => switchPublicView("valoraciones")}>
-                        Valoraciones
-                      </button>
-                      <button type="button" className={`public-profile-switch ${activeView === "agenda" ? "active" : ""}`} onClick={() => switchPublicView("agenda")}>
-                        Agenda
-                      </button>
-                    </div>
-
-                    <div className="public-tasker-summary-feature">
-                      <div className="public-tasker-summary-feature-main">
-                        <div className="public-tasker-summary-stats">
-                          <div className="public-tasker-summary-stat">
-                            <small>Valoraciones</small>
-                            <strong>{data.ratingsCount > 0 ? `${rating.toFixed(1)} (${data.ratingsCount})` : "0 por ahora"}</strong>
-                          </div>
-                          <div className="public-tasker-summary-stat">
-                            <small>Agenda abierta</small>
-                            <strong>{daysWithSlotsCount} dia(s)</strong>
-                          </div>
-                          <div className="public-tasker-summary-stat">
-                            <small>{focusLabel}</small>
-                            <strong>{experienceTypes.join(", ")}</strong>
-                          </div>
-                          <div className="public-tasker-summary-stat">
-                            <small>Idiomas</small>
-                            <strong>{languages.join(", ")}</strong>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="public-tasker-summary-feature-side">
-                        <p className="public-tasker-summary-side-label">{normalizedPrimaryCategorySlug === "maquillaje" ? "Precio base" : "Reserva protegida"}</p>
-                        <p className="public-tasker-summary-price">
-                          {data.hourlyRateFromClp ? clp(data.hourlyRateFromClp) : "Por definir"}
-                          {normalizedPrimaryCategorySlug === "maquillaje" ? "" : "/h"}
-                        </p>
-                        <p className="public-tasker-summary-meta">{data.coverageCity ?? "Santiago"} · {workModeLabel}</p>
-                        {normalizedPrimaryCategorySlug === "maquillaje" && makeupServiceSummaries[0] ? (
-                          <p className="public-tasker-summary-side-note">Duración estimada: {makeupServiceSummaries[0].duration}</p>
-                        ) : null}
-                        <div className="cta-row public-tasker-summary-cta">
-                          <button type="button" className="cta small" onClick={() => switchPublicView("agenda")}>
-                            Ver disponibilidad
-                          </button>
-                        </div>
-                        <p className="public-tasker-summary-side-note">Reserva directamente en WeTask y mantiene tu pago protegido.</p>
-                      </div>
-                    </div>
-
-                    <div className="tasker-profile-detail-grid tasker-profile-detail-grid-compact public-tasker-summary-grid">
-                      <div>
-                        <h3>Servicios que realiza</h3>
-                        <p>{registeredServiceNames.join(", ")}</p>
-                      </div>
-                      <div>
-                        <h3>Experiencia</h3>
-                        <p>{experienceYears} años en servicios a domicilio.</p>
-                      </div>
-                      <div>
-                        <h3>{normalizedPrimaryCategorySlug === "maquillaje" ? "Duración estimada" : requestedRecommendedHours ? "Tiempo sugerido" : "Modalidad"}</h3>
-                        <p>
-                          {normalizedPrimaryCategorySlug === "maquillaje"
-                            ? makeupServiceSummaries[0]?.duration ?? "Por confirmar"
-                            : requestedRecommendedHours
-                            ? `${requestedEstimatedMinHours && requestedEstimatedMaxHours ? `${requestedEstimatedMinHours} a ${requestedEstimatedMaxHours} horas · ` : ""}Recomendado: ${requestedRecommendedHours} h`
-                            : workModeLabel}
-                        </p>
-                      </div>
-                    </div>
-
-                  </article>
-
-                  <div className="we-pro-detail-main">
                   {activeView === "perfil" ? (
                     <>
-                  <article className="auth-flow-panel client-dashboard-section tasker-profile-section">
-                    <h2>Confianza y forma de trabajo</h2>
+                  <article className="auth-flow-panel client-dashboard-section">
+                    <h2>Perfil del tasker</h2>
+                    <p>{summaryDescription}</p>
                     <div className="we-trust-grid">
                       <div className={`we-trust-card ${hasIdentityProof ? "ok" : ""}`}>
                         <span className="we-trust-check" aria-hidden>{hasIdentityProof ? "✓" : "•"}</span>
@@ -1232,11 +1126,40 @@ export default function ProDetailPage() {
                         </div>
                       </div>
                     </div>
+                    <div className="we-info-grid we-profile-quick-grid">
+                      <div>
+                        <h3>Experiencia</h3>
+                        <p>{experienceYears} años</p>
+                      </div>
+                      <div>
+                        <h3>Modalidad</h3>
+                        <p>{workModeLabel}</p>
+                      </div>
+                      <div>
+                        <h3>Categoría</h3>
+                        <p>{categoryName}</p>
+                      </div>
+                      <div>
+                        <h3>{focusLabel}</h3>
+                        <p>{experienceTypes.join(", ")}</p>
+                      </div>
+                      <div>
+                        <h3>Idiomas</h3>
+                        <p>{languages.join(", ")}</p>
+                      </div>
+                    </div>
+                    <div className="we-pro-tags">
+                      {(servicePriceTags.length > 0 ? servicePriceTags : offeredServices.map((service) => ({ key: service, label: service }))).map((service) => (
+                        <span key={service.key} className="we-tag">
+                          {service.label}
+                        </span>
+                      ))}
+                    </div>
                   </article>
 
-                  <article className="auth-flow-panel client-dashboard-section tasker-profile-section">
+                  <article className="auth-flow-panel client-dashboard-section">
                     <h2>Sobre mi</h2>
-                    <p className="tasker-profile-body-copy">{expandedAbout ? aboutText : aboutPreview}</p>
+                    <p>{expandedAbout ? aboutText : aboutPreview}</p>
                     {aboutText.length > 340 ? (
                       <button type="button" className="we-text-link" onClick={() => setExpandedAbout((prev) => !prev)}>
                         {expandedAbout ? "Ver menos" : "Ver mas"}
@@ -1244,41 +1167,48 @@ export default function ProDetailPage() {
                     ) : null}
                   </article>
 
-                  <article className="auth-flow-panel client-dashboard-section tasker-profile-section">
+                  <article className="auth-flow-panel client-dashboard-section">
                     <h2>Informacion de interes</h2>
-                    <div className="we-info-grid tasker-profile-detail-grid">
+                    <div className="we-info-grid">
                       <div>
-                        <h3>Idiomas</h3>
-                        <p>{languages.join(", ")}</p>
+                        <h3>¿Cuánta experiencia tiene?</h3>
+                        <p>{experienceYears} años trabajando en servicios a domicilio.</p>
                       </div>
                       <div>
-                        <h3>Modalidad</h3>
-                        <p>{workModeLabel}</p>
+                        <h3>{serviceLabel}</h3>
+                        <p>{offeredServices.join(", ")}</p>
                       </div>
                       <div>
-                        <h3>Comunas activas</h3>
-                        <p>{activeCommunes.length > 0 ? `${activeCommunes.length} comuna(s) configuradas` : "Aun no informa comunas de trabajo."}</p>
+                        <h3>{focusLabel}</h3>
+                        <p>{experienceTypes.join(", ")}</p>
                       </div>
                       <div>
                         <h3>¿Qué busca en WeTask?</h3>
                         <p>{goalText}</p>
                       </div>
                     </div>
+                  </article>
+
+                  <article className="auth-flow-panel client-dashboard-section">
+                    <h2>Cobertura</h2>
+                    <p className="coverage-meta">Estas son las comunas activas que el tasker tiene configuradas hoy.</p>
                     {activeCommunes.length > 0 ? (
-                      <div className="coverage-map-chip-list tasker-profile-communes" aria-label="Comunas donde trabaja">
+                      <div className="coverage-map-chip-list" aria-label="Comunas donde trabaja">
                         {activeCommunes.map((commune) => (
                           <span key={commune} className="coverage-map-chip">
                             {commune}
                           </span>
                         ))}
                       </div>
-                    ) : null}
+                    ) : (
+                      <p className="coverage-meta">Aún no hay comunas informadas en este perfil.</p>
+                    )}
                   </article>
 
                   {normalizedPrimaryCategorySlug === "limpieza" ? (
-                    <article className="auth-flow-panel client-dashboard-section tasker-profile-section">
+                    <article className="auth-flow-panel client-dashboard-section">
                       <h2>Alcance del servicio</h2>
-                      <div className="we-info-grid tasker-profile-detail-grid">
+                      <div className="we-info-grid">
                         <div>
                           <h3>Tipos de limpieza que acepta</h3>
                           <p>{cleaningScopeServices.length > 0 ? cleaningScopeServices.join(", ") : "Aún no informado."}</p>
@@ -1301,9 +1231,9 @@ export default function ProDetailPage() {
                   ) : null}
 
                   {normalizedPrimaryCategorySlug === "mascotas" ? (
-                    <article className="auth-flow-panel client-dashboard-section tasker-profile-section">
+                    <article className="auth-flow-panel client-dashboard-section">
                       <h2>Alcance del servicio</h2>
-                      <div className="we-info-grid tasker-profile-detail-grid">
+                      <div className="we-info-grid">
                         <div>
                           <h3>Servicios de mascotas que ofrece</h3>
                           <p>{petScopeServices.length > 0 ? petScopeServices.join(", ") : "Aún no informado."}</p>
@@ -1334,69 +1264,38 @@ export default function ProDetailPage() {
                   ) : null}
 
                   {normalizedPrimaryCategorySlug === "maquillaje" ? (
-                    <article className="auth-flow-panel client-dashboard-section tasker-profile-section">
+                    <article className="auth-flow-panel client-dashboard-section">
                       <h2>Alcance del servicio</h2>
-                      <div className="we-info-grid tasker-profile-detail-grid">
+                      <div className="we-info-grid">
                         <div>
-                          <h3>Servicios de maquillaje</h3>
-                          <p>{makeupServiceSummaries.length > 0 ? makeupServiceSummaries.map((item) => item.title).join(", ") : "Aún no informado."}</p>
+                          <h3>Tipos de maquillaje</h3>
+                          <p>{makeupScopeServices.length > 0 ? makeupScopeServices.join(", ") : "Aún no informado."}</p>
                         </div>
                         <div>
-                          <h3>Especialidad principal</h3>
-                          <p>{makeupScope.specialty || "Aún no informado."}</p>
+                          <h3>Tareas que sí realiza</h3>
+                          <p>{makeupScopeIncludedTasks.length > 0 ? makeupScopeIncludedTasks.join(", ") : "Aún no informado."}</p>
                         </div>
                         <div>
-                          <h3>Trabajo a domicilio</h3>
-                          <p>{makeupScope.works_at_home == null ? "No informado." : makeupScope.works_at_home ? "Sí" : "No"}</p>
+                          <h3>Tareas que no realiza</h3>
+                          <p>{makeupScopeExcludedTasks.length > 0 ? makeupScopeExcludedTasks.join(", ") : "No reporta exclusiones."}</p>
                         </div>
                         <div>
-                          <h3>Reserva con anticipación</h3>
-                          <p>
-                            {makeupScope.booking_notice_hours ? `${makeupScope.booking_notice_hours} hora(s) mínimo` : "Por confirmar"}
-                            {makeupScope.same_day_bookings ? " · acepta el mismo día" : ""}
-                          </p>
+                          <h3>Incluye kit</h3>
+                          <p>{makeupScope.includes_kit == null ? "No informado." : makeupScope.includes_kit ? "Sí" : "No"}</p>
                         </div>
                         <div>
-                          <h3>Qué preparar antes</h3>
-                          <p>{makeupScope.client_preparation || "Aún no informó recomendaciones previas para el cliente."}</p>
+                          <h3>Condiciones especiales</h3>
+                          <p>{makeupScope.special_conditions || "Sin condiciones especiales reportadas."}</p>
                         </div>
                       </div>
-                      {makeupScope.style_description ? (
-                        <div className="auth-flow-note-card auth-flow-note-card-compact">
-                          <strong>Estilo de maquillaje</strong>
-                          <span>{makeupScope.style_description}</span>
-                        </div>
-                      ) : null}
-                      {makeupServiceSummaries.length > 0 ? (
-                        <div className="onboarding-scope-review-grid">
-                          {makeupServiceSummaries.map((item) => (
-                            <div key={item.serviceSlug} className="auth-flow-note-card">
-                              <strong>{item.title}</strong>
-                              <span>{item.audience}</span>
-                              <span>{item.priceClp ? `Desde ${clp(item.priceClp)}` : "Precio base por confirmar"}</span>
-                              <span>Duración estimada: {item.duration}</span>
-                              <span>{item.includes.length > 0 ? `Incluye: ${item.includes.join(", ")}` : "Extras incluidos por confirmar."}</span>
-                            </div>
-                          ))}
-                        </div>
-                      ) : null}
-                      {makeupScope.portfolio_photos.length > 0 ? (
-                        <div className="we-gallery-grid">
-                          {makeupScope.portfolio_photos.map((photo, index) => (
-                            <div key={`${photo.slice(0, 24)}-${index}`} className="tasker-gallery-item">
-                              <img src={photo} alt={`Trabajo de maquillaje ${index + 1}`} />
-                            </div>
-                          ))}
-                        </div>
-                      ) : null}
                       <p className="minimal-note">Si necesitas algo fuera de este alcance base, revísalo antes de reservar para evitar malos entendidos.</p>
                     </article>
                   ) : null}
 
                   {normalizedPrimaryCategorySlug === "planchado" ? (
-                    <article className="auth-flow-panel client-dashboard-section tasker-profile-section">
+                    <article className="auth-flow-panel client-dashboard-section">
                       <h2>Alcance del servicio</h2>
-                      <div className="we-info-grid tasker-profile-detail-grid">
+                      <div className="we-info-grid">
                         <div>
                           <h3>Modalidades de planchado</h3>
                           <p>{ironingScopeServices.length > 0 ? ironingScopeServices.join(", ") : "Aún no informado."}</p>
@@ -1423,9 +1322,9 @@ export default function ProDetailPage() {
                   ) : null}
 
                   {normalizedPrimaryCategorySlug === "babysitter" ? (
-                    <article className="auth-flow-panel client-dashboard-section tasker-profile-section">
+                    <article className="auth-flow-panel client-dashboard-section">
                       <h2>Alcance del servicio</h2>
-                      <div className="we-info-grid tasker-profile-detail-grid">
+                      <div className="we-info-grid">
                         <div>
                           <h3>Servicios de babysitter que ofrece</h3>
                           <p>{babysitterScopeServices.length > 0 ? babysitterScopeServices.join(", ") : "Aún no informado."}</p>
@@ -1460,34 +1359,46 @@ export default function ProDetailPage() {
                   ) : null}
 
                   {normalizedPrimaryCategorySlug === "chef" ? (
-                    <article className="auth-flow-panel client-dashboard-section tasker-profile-section">
+                    <article className="auth-flow-panel client-dashboard-section">
                       <h2>Alcance del servicio</h2>
-                      <div className="we-info-grid tasker-profile-detail-grid">
+                      <div className="we-info-grid">
                         <div>
                           <h3>Servicios de chef que ofrece</h3>
                           <p>{chefScopeServices.length > 0 ? chefScopeServices.join(", ") : "Aún no informado."}</p>
                         </div>
                         <div>
-                          <h3>Tareas que sí realiza</h3>
-                          <p>{chefScopeIncludedTasks.length > 0 ? chefScopeIncludedTasks.join(", ") : "Aún no informado."}</p>
-                        </div>
-                        <div>
-                          <h3>Tareas que no realiza</h3>
-                          <p>{chefScopeExcludedTasks.length > 0 ? chefScopeExcludedTasks.join(", ") : "No reporta exclusiones."}</p>
+                          <h3>Modelo del servicio</h3>
+                          <p>Servicios estandarizados por WeTask con duración estimada, qué incluye y precio claro por servicio.</p>
                         </div>
                         <div>
                           <h3>Condiciones especiales</h3>
                           <p>{chefScope.special_conditions || "Sin condiciones especiales reportadas."}</p>
                         </div>
                       </div>
+                      <div className="we-info-grid" style={{ marginTop: 16 }}>
+                        {chefScope.services_offered.map((serviceSlug) => {
+                          const service = getChefServiceDefinition(serviceSlug);
+                          if (!service) return null;
+                          return (
+                            <div key={service.slug}>
+                              <h3>{service.name}</h3>
+                              <p>Duración estimada: {service.estimatedDurationLabel}</p>
+                              <p>Incluye: {service.includes.join(", ")}.</p>
+                              <p>
+                                Rango WeTask: ${service.recommendedMinClp.toLocaleString("es-CL")} - ${service.recommendedMaxClp.toLocaleString("es-CL")}
+                              </p>
+                            </div>
+                          );
+                        })}
+                      </div>
                       <p className="minimal-note">Si necesitas algo fuera de este alcance base, revísalo antes de reservar para evitar malos entendidos.</p>
                     </article>
                   ) : null}
 
                   {normalizedPrimaryCategorySlug === "personal-trainer" ? (
-                    <article className="auth-flow-panel client-dashboard-section tasker-profile-section">
+                    <article className="auth-flow-panel client-dashboard-section">
                       <h2>Alcance del servicio</h2>
-                      <div className="we-info-grid tasker-profile-detail-grid">
+                      <div className="we-info-grid">
                         <div>
                           <h3>Tipos de entrenamiento</h3>
                           <p>{trainerScopeServices.length > 0 ? trainerScopeServices.join(", ") : "Aún no informado."}</p>
@@ -1518,11 +1429,11 @@ export default function ProDetailPage() {
                   ) : null}
 
                   {normalizedPrimaryCategorySlug === "profesor-particular" ? (
-                    <article className="auth-flow-panel client-dashboard-section tasker-profile-section">
-                      <h2>Clases particulares</h2>
-                      <div className="we-info-grid tasker-profile-detail-grid">
+                    <article className="auth-flow-panel client-dashboard-section">
+                      <h2>Alcance del servicio</h2>
+                      <div className="we-info-grid">
                         <div>
-                          <h3>Qué enseña</h3>
+                          <h3>Asignaturas que ofrece</h3>
                           <p>{teacherScopeServices.length > 0 ? teacherScopeServices.join(", ") : "Aún no informado."}</p>
                         </div>
                         <div>
@@ -1530,48 +1441,27 @@ export default function ProDetailPage() {
                           <p>{teacherScopeLevels.length > 0 ? teacherScopeLevels.join(", ") : "Aún no informado."}</p>
                         </div>
                         <div>
-                          <h3>Modalidad</h3>
+                          <h3>Modalidades</h3>
                           <p>{teacherScopeModes.length > 0 ? teacherScopeModes.join(", ") : "Aún no informado."}</p>
                         </div>
                         <div>
-                          <h3>Experiencia</h3>
-                          <p>{teacherScope.years_experience != null ? `${teacherScope.years_experience} año(s)` : "Aún no informada."}</p>
+                          <h3>Tareas que sí realiza</h3>
+                          <p>{teacherScopeIncludedTasks.length > 0 ? teacherScopeIncludedTasks.join(", ") : "Aún no informado."}</p>
                         </div>
                         <div>
-                          <h3>Formación</h3>
-                          <p>{teacherScope.education_credentials || "Aún no informada."}</p>
+                          <h3>Tareas que no realiza</h3>
+                          <p>{teacherScopeExcludedTasks.length > 0 ? teacherScopeExcludedTasks.join(", ") : "No reporta exclusiones."}</p>
                         </div>
                         <div>
-                          <h3>Qué necesita el alumno</h3>
-                          <p>{teacherScope.student_requirements || "Sin requisitos especiales por ahora."}</p>
+                          <h3>Condiciones especiales</h3>
+                          <p>{teacherScope.special_conditions || "Sin condiciones especiales reportadas."}</p>
                         </div>
                       </div>
-                      {teacherScope.teaching_style ? (
-                        <div className="auth-flow-note-card auth-flow-note-card-compact">
-                          <strong>Estilo de enseñanza</strong>
-                          <span>{teacherScope.teaching_style}</span>
-                        </div>
-                      ) : null}
-                      {teacherServiceConfigs.length > 0 ? (
-                        <div className="onboarding-scope-review-grid">
-                          {teacherServiceConfigs.map((config) => (
-                            <div key={config.service_slug} className="auth-flow-note-card">
-                              <strong>{getTeacherServiceLabel(config.service_slug)}</strong>
-                              <span>{config.levels.length > 0 ? config.levels.map(getTeacherLevelLabel).join(", ") : "Nivel por definir"}</span>
-                              <span>{config.modes.length > 0 ? config.modes.map(getTeacherModeLabel).join(" / ") : "Modalidad por definir"}</span>
-                              <span>{config.hourly_rate_clp ? `${clp(config.hourly_rate_clp)} por hora` : "Precio por definir"}</span>
-                              <span>Duración típica: {getTeacherDurationLabel(config.typical_duration_min)}</span>
-                            </div>
-                          ))}
-                        </div>
-                      ) : null}
-                      <p className="minimal-note">
-                        Reserva según tipo de clase, nivel y modalidad. Si necesitas algo muy específico, conviene explicarlo antes de confirmar.
-                      </p>
+                      <p className="minimal-note">Si necesitas algo fuera de este alcance base, revísalo antes de reservar para evitar malos entendidos.</p>
                     </article>
                   ) : null}
 
-                  <article className="auth-flow-panel client-dashboard-section tasker-profile-section">
+                  <article className="auth-flow-panel client-dashboard-section">
                     <h2>Garantía WeTask</h2>
                     <p>Hasta confirmar que el servicio fue correcto, el pago permanece protegido en plataforma.</p>
                     <ul className="we-check-list">
@@ -1581,28 +1471,19 @@ export default function ProDetailPage() {
                     </ul>
                   </article>
 
-                  <article className="auth-flow-panel client-dashboard-section tasker-profile-section">
-                    <div className="tasker-faq-layout">
-                      <div className="tasker-faq-copy">
-                        <span className="tasker-faq-eyebrow">Preguntas habituales</span>
-                        <h2>Preguntas frecuentes</h2>
-                        <p>
-                          Resolvemos rápido las dudas más comunes para que puedas reservar con claridad y sin perderte entre
-                          información repetida.
-                        </p>
-                      </div>
-                      <div className="we-faq-list tasker-faq-list">
-                        {faqItems.map((item) => (
-                          <details key={item.question}>
-                            <summary>{item.question}</summary>
-                            <p>{item.answer}</p>
-                          </details>
-                        ))}
-                      </div>
+                  <article className="auth-flow-panel client-dashboard-section">
+                    <h2>Preguntas frecuentes</h2>
+                    <div className="we-faq-list">
+                      {faqItems.map((item) => (
+                        <details key={item.question}>
+                          <summary>{item.question}</summary>
+                          <p>{item.answer}</p>
+                        </details>
+                      ))}
                     </div>
                   </article>
 
-                  <article className="auth-flow-panel client-dashboard-section tasker-profile-section">
+                  <article className="auth-flow-panel client-dashboard-section">
                     <h2>Política de cancelación</h2>
                     <div className="we-cancel-table">
                       <div>
@@ -1645,28 +1526,30 @@ export default function ProDetailPage() {
                       </div>
 
                       <div className="pro-availability-shell public-availability-shell">
-                        <div className="pro-availability-overview public-availability-overview">
-                          <article className="availability-stat-card tone-indigo">
-                            <span>Hoy</span>
-                            <strong>{todaySlots.length}</strong>
-                            <p>bloque(s) abiertos hoy</p>
-                          </article>
-                          <article className="availability-stat-card tone-peach">
-                            <span>Disponibles</span>
-                            <strong>{availableSlotsCount}</strong>
-                            <p>horarios visibles para reserva</p>
-                          </article>
-                          <article className="availability-stat-card tone-sky">
-                            <span>Días activos</span>
-                            <strong>{daysWithSlotsCount}</strong>
-                            <p>días con agenda cargada</p>
-                          </article>
-                          <article className="availability-stat-card tone-mint">
-                            <span>Próximo</span>
-                            <strong>{nextAvailableSlot ? new Date(nextAvailableSlot.startsAt).toLocaleDateString("es-CL", { day: "2-digit", month: "2-digit" }) : "--"}</strong>
-                            <p>{nextAvailableSlot ? new Date(nextAvailableSlot.startsAt).toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" }) : "Sin bloques cercanos"}</p>
-                          </article>
-                        </div>
+                        <aside className="pro-availability-sidebar">
+                          <div className="pro-availability-overview">
+                            <article className="availability-stat-card tone-indigo">
+                              <span>Hoy</span>
+                              <strong>{todaySlots.length}</strong>
+                              <p>bloque(s) abiertos hoy</p>
+                            </article>
+                            <article className="availability-stat-card tone-peach">
+                              <span>Disponibles</span>
+                              <strong>{availableSlotsCount}</strong>
+                              <p>horarios visibles para reserva</p>
+                            </article>
+                            <article className="availability-stat-card tone-sky">
+                              <span>Días activos</span>
+                              <strong>{daysWithSlotsCount}</strong>
+                              <p>días con agenda cargada</p>
+                            </article>
+                            <article className="availability-stat-card tone-mint">
+                              <span>Próximo</span>
+                              <strong>{nextAvailableSlot ? new Date(nextAvailableSlot.startsAt).toLocaleDateString("es-CL", { day: "2-digit", month: "2-digit" }) : "--"}</strong>
+                              <p>{nextAvailableSlot ? new Date(nextAvailableSlot.startsAt).toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" }) : "Sin bloques cercanos"}</p>
+                            </article>
+                          </div>
+                        </aside>
 
                         <div className="availability-board-card">
                           <div className="availability-board-head">
@@ -1700,10 +1583,6 @@ export default function ProDetailPage() {
 
                           <div className="availability-month-grid">
                             {monthCalendarDays.map((day) => {
-                              if (day.isPlaceholder || !day.date) {
-                                return <div key={day.key} className="availability-day-card is-empty" aria-hidden />;
-                              }
-
                               const slotCount = slotsByDay.get(day.key)?.length ?? 0;
                               const isToday = day.key === todayKey;
                               const isSelected = day.key === selectedDay;
@@ -1735,7 +1614,7 @@ export default function ProDetailPage() {
                           </div>
                         </div>
 
-                        <div className="availability-task-panel public-availability-day-panel">
+                        <div className="availability-task-panel">
                           <div className="availability-task-head">
                             <div>
                               <p className="availability-eyebrow">Día elegido</p>
@@ -1786,7 +1665,7 @@ export default function ProDetailPage() {
                       <div className="public-rating-hero">
                         <div className="public-rating-hero-copy">
                           <span className="public-rating-stars public-rating-stars-large">{renderStars(rating)}</span>
-                          <strong>{data.ratingsCount > 0 ? ratingLabel(rating) : "Sin valoraciones aún"}</strong>
+                          <strong>{ratingLabel(rating)}</strong>
                           <p>
                             {rating.toFixed(1)} de 5 basado en {data.ratingsCount} valoraciones verificadas dentro de WeTask.
                           </p>
@@ -1840,7 +1719,6 @@ export default function ProDetailPage() {
                       </div>
                     </article>
                   ) : null}
-                  </div>
                 </div>
               </section>
             </div>

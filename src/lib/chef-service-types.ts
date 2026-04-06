@@ -1,115 +1,81 @@
 export const CHEF_SERVICE_DEFINITIONS = [
   {
-    slug: "cocina-gourmet",
-    name: "Cocina gourmet",
-    shortLabel: "Gourmet",
-    description: "Experiencia premium para cenas especiales, reuniones pequeñas y menús más elaborados.",
-    forClients: "Ideal para ocasiones especiales, platos sofisticados y presentación más cuidada.",
-    includes: [
-      "preparación de platos elaborados",
-      "presentación cuidada",
-      "menú acordado previamente",
-      "preparación en el domicilio o entrega según el modelo",
-      "limpieza básica del espacio usado"
-    ],
-    excludes: [
-      "decoración del evento",
-      "garzones",
-      "vajilla especial",
-      "compra de insumos salvo que se indique",
-      "torta o repostería aparte salvo que se contrate"
-    ],
-    recommendedMinClp: 26000,
-    recommendedMaxClp: 38000
+    slug: "cena-privada-2",
+    name: "Cena privada (2 personas)",
+    shortLabel: "Cena privada 2 personas",
+    description: "Servicio íntimo para una pareja o cena especial en casa.",
+    forClients: "Ideal para aniversarios, celebraciones privadas y una experiencia más cuidada en casa.",
+    includes: ["preparación", "cocción", "emplatado", "limpieza básica"],
+    excludes: ["compra de insumos", "garzones", "decoración del evento", "vajilla especial"],
+    estimatedDurationLabel: "2 a 3 horas",
+    estimatedDurationMinutes: 150,
+    recommendedMinClp: 50000,
+    recommendedMaxClp: 80000
   },
   {
-    slug: "cocina-casera",
-    name: "Cocina casera",
-    shortLabel: "Casera",
-    description: "Opción simple y masiva para familias, comida rica y apoyo doméstico en cocina.",
-    forClients: "Muy buena para almuerzos o cenas familiares, comida semanal y personas con poco tiempo.",
-    includes: [
-      "preparación de comida casera",
-      "platos definidos con el cliente",
-      "porciones para una o varias personas",
-      "orden y limpieza básica de la cocina usada",
-      "posibilidad de cocinar para el día o dejar comida lista"
-    ],
-    excludes: [
-      "servicio de mesa",
-      "decoración",
-      "eventos grandes",
-      "repostería especializada",
-      "compra de insumos salvo acuerdo"
-    ],
-    recommendedMinClp: 18000,
-    recommendedMaxClp: 26000
+    slug: "cena-privada-4",
+    name: "Cena privada (4 personas)",
+    shortLabel: "Cena privada 4 personas",
+    description: "Cena a domicilio para grupos pequeños con una experiencia más completa.",
+    forClients: "Pensado para reuniones pequeñas, celebraciones familiares y cenas especiales con amigos.",
+    includes: ["preparación", "cocción", "emplatado", "limpieza básica"],
+    excludes: ["garzones", "decoración", "vajilla especial", "compra de insumos si no se acuerda"],
+    estimatedDurationLabel: "3 a 4 horas",
+    estimatedDurationMinutes: 210,
+    recommendedMinClp: 80000,
+    recommendedMaxClp: 120000
+  },
+  {
+    slug: "meal-prep-semanal",
+    name: "Meal prep semanal",
+    shortLabel: "Meal prep semanal",
+    description: "Preparación de comidas para varios días con planificación previa.",
+    forClients: "Muy útil para familias, personas con poco tiempo o quienes quieren dejar comidas listas para la semana.",
+    includes: ["planificación simple", "preparación", "cocción", "porcionado", "limpieza básica"],
+    excludes: ["envases", "compra de supermercado", "dietas clínicas complejas"],
+    estimatedDurationLabel: "3 a 4 horas",
+    estimatedDurationMinutes: 210,
+    recommendedMinClp: 45000,
+    recommendedMaxClp: 85000
+  },
+  {
+    slug: "evento-cumpleanos",
+    name: "Evento / cumpleaños",
+    shortLabel: "Evento / cumpleaños",
+    description: "Servicio para celebraciones, cumpleaños y reuniones donde importa resolver cocina y servicio base.",
+    forClients: "Ideal para cumpleaños en casa, reuniones familiares y celebraciones pequeñas o medianas.",
+    includes: ["planificación básica", "preparación", "cocción", "montaje simple", "limpieza básica"],
+    excludes: ["decoración", "garzones", "mobiliario", "producción completa del evento"],
+    estimatedDurationLabel: "4 a 6 horas",
+    estimatedDurationMinutes: 300,
+    recommendedMinClp: 90000,
+    recommendedMaxClp: 160000
+  },
+  {
+    slug: "parrilla-asado",
+    name: "Parrilla / asado",
+    shortLabel: "Parrilla / asado",
+    description: "Chef o parrillero para asados, parrilla y servicio en torno al fuego.",
+    forClients: "Perfecto para reuniones familiares, asados de fin de semana y celebraciones al aire libre o terraza.",
+    includes: ["mise en place", "parrilla", "cocción", "servicio base", "limpieza básica"],
+    excludes: ["compra de carnes", "garzones", "vajilla", "producción completa"],
+    estimatedDurationLabel: "3 a 5 horas",
+    estimatedDurationMinutes: 240,
+    recommendedMinClp: 70000,
+    recommendedMaxClp: 130000
   },
   {
     slug: "reposteria",
     name: "Repostería",
     shortLabel: "Repostería",
-    description: "Preparaciones dulces, tortas, cupcakes, postres y encargos personalizados.",
-    forClients: "Pensado para tortas, mesas dulces pequeñas, postres y pedidos especiales.",
-    includes: [
-      "preparación del producto solicitado",
-      "decoración básica o personalizada",
-      "coordinación de sabor, tamaño y diseño",
-      "entrega o preparación en domicilio según el servicio"
-    ],
-    excludes: [
-      "montaje completo de evento",
-      "decoración del lugar",
-      "catering salado",
-      "delivery externo si no está contemplado"
-    ],
-    recommendedMinClp: 22000,
-    recommendedMaxClp: 34000
-  },
-  {
-    slug: "cocina-eventos",
-    name: "Cocina para eventos",
-    shortLabel: "Eventos",
-    description: "Servicio para celebraciones, reuniones de empresa pequeñas y comidas para grupos.",
-    forClients: "Ideal para brunch, almuerzos o cenas para varios invitados con planificación básica de menú.",
-    includes: [
-      "planificación básica del menú",
-      "preparación de comida para grupo",
-      "coordinación por cantidad de personas",
-      "montaje básico de comida si aplica",
-      "orden y limpieza básica del espacio utilizado"
-    ],
-    excludes: [
-      "decoración del evento",
-      "arriendo de mobiliario",
-      "garzones, bartenders o animación",
-      "torta salvo adicional",
-      "producción completa del evento"
-    ],
-    recommendedMinClp: 28000,
-    recommendedMaxClp: 42000
-  },
-  {
-    slug: "cumpleanos",
-    name: "Cumpleaños",
-    shortLabel: "Cumpleaños",
-    description: "Servicio pensado para cumpleaños infantiles, familiares y celebraciones en casa.",
-    forClients: "Muy útil para picoteo, menú especial para invitados y apoyo dulce o salado para la celebración.",
-    includes: [
-      "preparación de comida o picoteo",
-      "opciones dulces o saladas",
-      "coordinación según cantidad de invitados",
-      "opción de sumar torta o repostería como adicional"
-    ],
-    excludes: [
-      "decoración del cumpleaños",
-      "animación",
-      "garzones",
-      "mobiliario",
-      "cotillón o producción completa"
-    ],
-    recommendedMinClp: 25000,
-    recommendedMaxClp: 38000
+    description: "Preparaciones dulces, tortas, postres y encargos personalizados.",
+    forClients: "Pensado para tortas, mesas dulces pequeñas, postres especiales y pedidos a medida.",
+    includes: ["preparación", "horneado", "decoración básica", "limpieza básica"],
+    excludes: ["montaje de evento", "decoración del lugar", "delivery externo"],
+    estimatedDurationLabel: "2 a 4 horas",
+    estimatedDurationMinutes: 180,
+    recommendedMinClp: 30000,
+    recommendedMaxClp: 70000
   }
 ] as const;
 
@@ -122,4 +88,10 @@ export function isChefServiceSlug(value: string): value is ChefServiceSlug {
 
 export function getChefServiceDefinition(value: string) {
   return CHEF_SERVICE_DEFINITIONS.find((service) => service.slug === value) ?? null;
+}
+
+export function isChefServiceRateWithinRange(serviceSlug: string, value: number) {
+  const service = getChefServiceDefinition(serviceSlug);
+  if (!service) return false;
+  return value >= service.recommendedMinClp && value <= service.recommendedMaxClp;
 }

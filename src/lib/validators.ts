@@ -19,9 +19,7 @@ import {
   BABYSITTER_TASK_INCLUDED_OPTIONS
 } from "@/lib/babysitter-scope";
 import {
-  CHEF_SCOPE_SERVICE_OPTIONS,
-  CHEF_TASK_EXCLUDED_OPTIONS,
-  CHEF_TASK_INCLUDED_OPTIONS
+  CHEF_SCOPE_SERVICE_OPTIONS
 } from "@/lib/chef-scope";
 import {
   TRAINER_MODE_OPTIONS,
@@ -30,12 +28,7 @@ import {
   TRAINER_TASK_INCLUDED_OPTIONS
 } from "@/lib/trainer-scope";
 import {
-  TEACHER_BOOKING_NOTICE_OPTIONS,
-  TEACHER_DURATION_OPTIONS,
-  TEACHER_GENERAL_LEVEL_OPTIONS,
   TEACHER_LEVEL_OPTIONS,
-  TEACHER_MUSIC_INSTRUMENT_OPTIONS,
-  TEACHER_MUSIC_LEVEL_OPTIONS,
   TEACHER_MODE_OPTIONS,
   TEACHER_SCOPE_SERVICE_OPTIONS,
   TEACHER_TASK_EXCLUDED_OPTIONS,
@@ -48,9 +41,9 @@ import {
   PET_TASK_INCLUDED_OPTIONS
 } from "@/lib/pet-scope";
 import {
-  MAKEUP_BOOKING_NOTICE_OPTIONS,
-  MAKEUP_DURATION_OPTIONS,
   MAKEUP_SCOPE_SERVICE_OPTIONS,
+  MAKEUP_TASK_EXCLUDED_OPTIONS,
+  MAKEUP_TASK_INCLUDED_OPTIONS
 } from "@/lib/makeup-scope";
 import {
   IRONING_SCOPE_SERVICE_OPTIONS,
@@ -73,27 +66,22 @@ const babysitterAgeRangeEnum = z.enum(BABYSITTER_AGE_RANGE_OPTIONS.map((option) 
 const babysitterIncludedTaskEnum = z.enum(BABYSITTER_TASK_INCLUDED_OPTIONS.map((option) => option.value) as [string, ...string[]]);
 const babysitterExcludedTaskEnum = z.enum(BABYSITTER_TASK_EXCLUDED_OPTIONS.map((option) => option.value) as [string, ...string[]]);
 const chefScopeServiceEnum = z.enum(CHEF_SCOPE_SERVICE_OPTIONS.map((option) => option.value) as [string, ...string[]]);
-const chefIncludedTaskEnum = z.enum(CHEF_TASK_INCLUDED_OPTIONS.map((option) => option.value) as [string, ...string[]]);
-const chefExcludedTaskEnum = z.enum(CHEF_TASK_EXCLUDED_OPTIONS.map((option) => option.value) as [string, ...string[]]);
 const trainerScopeServiceEnum = z.enum(TRAINER_SCOPE_SERVICE_OPTIONS.map((option) => option.value) as [string, ...string[]]);
 const trainerModeEnum = z.enum(TRAINER_MODE_OPTIONS.map((option) => option.value) as [string, ...string[]]);
 const trainerIncludedTaskEnum = z.enum(TRAINER_TASK_INCLUDED_OPTIONS.map((option) => option.value) as [string, ...string[]]);
 const trainerExcludedTaskEnum = z.enum(TRAINER_TASK_EXCLUDED_OPTIONS.map((option) => option.value) as [string, ...string[]]);
 const teacherScopeServiceEnum = z.enum(TEACHER_SCOPE_SERVICE_OPTIONS.map((option) => option.value) as [string, ...string[]]);
-const teacherMusicInstrumentEnum = z.enum(TEACHER_MUSIC_INSTRUMENT_OPTIONS.map((option) => option.value) as [string, ...string[]]);
-const teacherLevelEnum = z.enum(
-  [...TEACHER_GENERAL_LEVEL_OPTIONS, ...TEACHER_MUSIC_LEVEL_OPTIONS].map((option) => option.value) as [string, ...string[]]
-);
+const teacherLevelEnum = z.enum(TEACHER_LEVEL_OPTIONS.map((option) => option.value) as [string, ...string[]]);
 const teacherModeEnum = z.enum(TEACHER_MODE_OPTIONS.map((option) => option.value) as [string, ...string[]]);
 const teacherIncludedTaskEnum = z.enum(TEACHER_TASK_INCLUDED_OPTIONS.map((option) => option.value) as [string, ...string[]]);
 const teacherExcludedTaskEnum = z.enum(TEACHER_TASK_EXCLUDED_OPTIONS.map((option) => option.value) as [string, ...string[]]);
-const teacherDurationEnum = z.enum(TEACHER_DURATION_OPTIONS.map((option) => String(option.value)) as [string, ...string[]]);
-const teacherBookingNoticeEnum = z.enum(TEACHER_BOOKING_NOTICE_OPTIONS.map((option) => String(option.value)) as [string, ...string[]]);
 const petScopeServiceEnum = z.enum(PET_SCOPE_SERVICE_OPTIONS.map((option) => option.value) as [string, ...string[]]);
 const petScopeAnimalEnum = z.enum(PET_SCOPE_ANIMAL_OPTIONS.map((option) => option.value) as [string, ...string[]]);
 const petIncludedTaskEnum = z.enum(PET_TASK_INCLUDED_OPTIONS.map((option) => option.value) as [string, ...string[]]);
 const petExcludedTaskEnum = z.enum(PET_TASK_EXCLUDED_OPTIONS.map((option) => option.value) as [string, ...string[]]);
 const makeupScopeServiceEnum = z.enum(MAKEUP_SCOPE_SERVICE_OPTIONS.map((option) => option.value) as [string, ...string[]]);
+const makeupIncludedTaskEnum = z.enum(MAKEUP_TASK_INCLUDED_OPTIONS.map((option) => option.value) as [string, ...string[]]);
+const makeupExcludedTaskEnum = z.enum(MAKEUP_TASK_EXCLUDED_OPTIONS.map((option) => option.value) as [string, ...string[]]);
 const ironingScopeServiceEnum = z.enum(IRONING_SCOPE_SERVICE_OPTIONS.map((option) => option.value) as [string, ...string[]]);
 const ironingIncludedTaskEnum = z.enum(IRONING_TASK_INCLUDED_OPTIONS.map((option) => option.value) as [string, ...string[]]);
 const ironingExcludedTaskEnum = z.enum(IRONING_TASK_EXCLUDED_OPTIONS.map((option) => option.value) as [string, ...string[]]);
@@ -222,12 +210,12 @@ export const marketplaceSearchProsSchema = z.object({
   longitude: z.coerce.number().min(-180).max(180).optional(),
   categoryId: z.string().min(1).optional(),
   serviceId: z.string().min(1).optional(),
-  classSubject: z.string().min(1).optional(),
-  classMusicType: z.string().min(1).optional(),
-  classMode: z.string().min(1).optional(),
-  classLevel: z.string().min(1).optional(),
-  classFrequency: z.string().min(1).optional(),
-  classNotes: z.string().max(800).optional(),
+  classSubject: z.string().min(1).max(120).optional(),
+  classMusicType: z.string().min(1).max(120).optional(),
+  classMode: z.enum(["presencial", "online", "flexible"]).optional(),
+  classLevel: z.string().min(1).max(120).optional(),
+  classFrequency: z.string().min(1).max(120).optional(),
+  classNotes: z.string().max(1000).optional(),
   tasks: z.preprocess(
     (value) => {
       if (typeof value !== "string") return [];
@@ -244,15 +232,18 @@ export const marketplaceSearchProsSchema = z.object({
 
 export const marketplaceProProfileUpdateSchema = z.object({
   proId: z.string().min(1).optional(),
-  bio: z.string().max(600).optional().nullable(),
   avatarUrl: z
     .string()
-    .startsWith("data:image/")
+    .startsWith("data:")
     .max(8_000_000, "Archivo demasiado grande para el MVP")
+    .refine((value) => /^data:image\/(png|jpe?g);base64,/i.test(value), {
+      message: "Debe ser una imagen JPG o PNG"
+    })
     .optional()
     .nullable(),
-  avatarPositionX: z.coerce.number().int().min(0).max(100).optional().nullable(),
-  avatarPositionY: z.coerce.number().int().min(0).max(100).optional().nullable(),
+  avatarPositionX: z.coerce.number().min(0).max(100).optional().nullable(),
+  avatarPositionY: z.coerce.number().min(0).max(100).optional().nullable(),
+  bio: z.string().max(600).optional().nullable(),
   coverageStreet: z.string().min(3).max(180).optional().nullable(),
   coverageComuna: activeCommuneInputSchema.optional().nullable(),
   serviceCommunes: z.array(activeCommuneInputSchema).min(1).optional().nullable(),
@@ -262,6 +253,14 @@ export const marketplaceProProfileUpdateSchema = z.object({
   coverageLongitude: z.coerce.number().min(-180).max(180).optional().nullable(),
   serviceRadiusKm: z.coerce.number().int().min(2).max(60).optional(),
   hourlyRateFromClp: z.coerce.number().int().min(5000).max(200000).optional().nullable()
+});
+
+export const taskerAdditionalCategorySchema = z.object({
+  categorySlug: z.string().min(2).max(120),
+  hourlyRateClp: z.coerce.number().int().min(5000).max(200000),
+  minBookingHours: z.coerce.number().int().min(1).max(12).optional(),
+  serviceCommunes: z.array(activeCommuneInputSchema).min(1),
+  scopeData: z.any()
 });
 
 export const marketplaceProSlotCreateSchema = z.object({
@@ -381,33 +380,6 @@ const cleaningAvailabilityBlockSchema = z
     message: "El bloque horario debe tener hora de término mayor que inicio"
   });
 
-function hasOverlappingAvailabilityBlocks(
-  blocks: Array<{
-    day: string;
-    start: string;
-    end: string;
-  }>
-) {
-  const grouped = new Map<string, Array<{ start: string; end: string }>>();
-
-  for (const block of blocks) {
-    const dayBlocks = grouped.get(block.day) ?? [];
-    dayBlocks.push({ start: block.start, end: block.end });
-    grouped.set(block.day, dayBlocks);
-  }
-
-  for (const [, dayBlocks] of grouped) {
-    const sorted = [...dayBlocks].sort((a, b) => a.start.localeCompare(b.start));
-    for (let index = 1; index < sorted.length; index += 1) {
-      if (sorted[index].start < sorted[index - 1].end) {
-        return true;
-      }
-    }
-  }
-
-  return false;
-}
-
 export const cleaningOnboardingStartSchema = z.object({
   fullName: z.string().min(3).max(120),
   phone: chileanMobilePhoneSchema,
@@ -418,8 +390,8 @@ export const cleaningOnboardingStartSchema = z.object({
   baseCommune: activeCommuneInputSchema,
   acceptTerms: z.boolean().optional().default(false),
   profilePhotoUrl: imageDataUrlSchema.optional(),
-  profilePhotoPositionX: z.coerce.number().int().min(0).max(100).optional().default(50),
-  profilePhotoPositionY: z.coerce.number().int().min(0).max(100).optional().default(34),
+  profilePhotoPositionX: z.coerce.number().min(0).max(100).optional(),
+  profilePhotoPositionY: z.coerce.number().min(0).max(100).optional(),
   documentId: chileanRutSchema.optional(),
   referenceAddress: z.string().min(5).max(240).optional()
 });
@@ -517,9 +489,7 @@ export const taskerOnboardingStep3Schema = z.object({
   documentId: chileanRutSchema,
   referenceAddress: z.string().min(5).max(240),
   baseCommune: activeCommuneInputSchema,
-  profilePhotoUrl: imageDataUrlSchema,
-  profilePhotoPositionX: z.coerce.number().int().min(0).max(100).default(50),
-  profilePhotoPositionY: z.coerce.number().int().min(0).max(100).default(34)
+  profilePhotoUrl: imageDataUrlSchema
 });
 
 export const taskerOnboardingStep4Schema = z.object({
@@ -562,29 +532,10 @@ export const taskerOnboardingStep7Schema = z.object({
   makeupScope: z
     .object({
       services_offered: z.array(makeupScopeServiceEnum).min(1),
-      service_configs: z.array(
-        z.object({
-          service_slug: makeupScopeServiceEnum,
-          custom_label: z.string().max(80).optional().default(""),
-          base_price_clp: z.coerce.number().int().min(5000).max(200000),
-          duration_min: z.coerce
-            .number()
-            .refine((value) => MAKEUP_DURATION_OPTIONS.some((option) => option.minutes === value), "Duración inválida"),
-          includes_travel: z.boolean().optional().default(true),
-          includes_lashes: z.boolean().optional().default(false),
-          includes_trial: z.boolean().optional().default(false),
-          includes_materials: z.boolean().optional().default(true)
-        })
-      ).min(1),
-      specialty: z.string().max(120).optional().default(""),
-      style_description: z.string().max(1200).optional().default(""),
-      portfolio_photos: z.array(imageDataUrlSchema).max(6).optional().default([]),
-      works_at_home: z.boolean().optional().nullable(),
-      booking_notice_hours: z.coerce
-        .number()
-        .refine((value) => MAKEUP_BOOKING_NOTICE_OPTIONS.some((option) => option.value === value), "Anticipación inválida"),
-      same_day_bookings: z.boolean().optional().default(false),
-      client_preparation: z.string().max(600).optional().default("")
+      includes_kit: z.boolean().optional().nullable(),
+      tasks_included: z.array(makeupIncludedTaskEnum).min(1),
+      tasks_excluded: z.array(makeupExcludedTaskEnum).optional().default([]),
+      special_conditions: z.string().max(600).optional().default("")
     })
     .optional()
     .nullable(),
@@ -613,8 +564,8 @@ export const taskerOnboardingStep7Schema = z.object({
   chefScope: z
     .object({
       services_offered: z.array(chefScopeServiceEnum).min(1),
-      tasks_included: z.array(chefIncludedTaskEnum).min(1),
-      tasks_excluded: z.array(chefExcludedTaskEnum).optional().default([]),
+      tasks_included: z.array(z.never()).optional().default([]),
+      tasks_excluded: z.array(z.never()).optional().default([]),
       special_conditions: z.string().max(600).optional().default("")
     })
     .optional()
@@ -633,32 +584,9 @@ export const taskerOnboardingStep7Schema = z.object({
   teacherScope: z
     .object({
       services_offered: z.array(teacherScopeServiceEnum).min(1),
-      music_instruments: z.array(teacherMusicInstrumentEnum).optional().default([]),
-      service_configs: z
-        .array(
-          z.object({
-            service_slug: z.string().min(1),
-            levels: z.array(teacherLevelEnum).min(1),
-            modes: z.array(teacherModeEnum).min(1),
-            hourly_rate_clp: z.coerce.number().int().min(5000).max(200000),
-            typical_duration_min: z
-              .preprocess((value) => String(value ?? ""), teacherDurationEnum)
-              .transform((value) => Number(value))
-          })
-        )
-        .min(1),
-      levels: z.array(teacherLevelEnum).optional().default([]),
-      modes: z.array(teacherModeEnum).optional().default([]),
-      years_experience: z.coerce.number().int().min(0).max(50).optional().nullable(),
-      specialty: z.string().max(120).optional().default(""),
-      teaching_style: z.string().max(1200).optional().default(""),
-      education_credentials: z.string().max(1200).optional().default(""),
-      support_materials: z.array(imageDataUrlSchema).max(6).optional().default([]),
-      works_at_home: z.boolean().optional().nullable(),
-      booking_notice_hours: z.preprocess((value) => String(value ?? "12"), teacherBookingNoticeEnum).transform((value) => Number(value)),
-      same_day_bookings: z.boolean().optional().default(false),
-      student_requirements: z.string().max(600).optional().default(""),
-      tasks_included: z.array(teacherIncludedTaskEnum).optional().default([]),
+      levels: z.array(teacherLevelEnum).min(1),
+      modes: z.array(teacherModeEnum).min(1),
+      tasks_included: z.array(teacherIncludedTaskEnum).min(1),
       tasks_excluded: z.array(teacherExcludedTaskEnum).optional().default([]),
       special_conditions: z.string().max(600).optional().default("")
     })
@@ -672,29 +600,14 @@ export const taskerOnboardingStep7Schema = z.object({
   bringsOwnTools: z.boolean().optional().nullable()
 });
 
-export const taskerOnboardingStep8Schema = z
-  .object({
-    availabilityMode: z.enum(["FIJA", "VARIABLE"]).default("FIJA"),
-    availabilityBlocks: z.array(cleaningAvailabilityBlockSchema).min(1).max(21)
-  })
-  .superRefine((value, ctx) => {
-    if (hasOverlappingAvailabilityBlocks(value.availabilityBlocks)) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "No puedes cruzar dos bloques horarios en el mismo día.",
-        path: ["availabilityBlocks"]
-      });
-    }
-  });
+export const taskerOnboardingStep8Schema = z.object({
+  availabilityMode: z.enum(["FIJA", "VARIABLE"]).default("FIJA"),
+  availabilityBlocks: z.array(cleaningAvailabilityBlockSchema).min(1).max(21)
+});
 
 const taskerServiceRateSchema = z.object({
   serviceSlug: z.string().min(1),
-  hourlyRateClp: z.coerce.number().int().min(5000).max(200000),
-  durationMin: z.coerce.number().int().min(45).max(180).optional(),
-  includesTravel: z.boolean().optional(),
-  includesLashes: z.boolean().optional(),
-  includesTrial: z.boolean().optional(),
-  includesMaterials: z.boolean().optional()
+  hourlyRateClp: z.coerce.number().int().min(5000).max(200000)
 });
 
 export const taskerOnboardingStep9Schema = z.object({
@@ -719,23 +632,6 @@ export const taskerOnboardingStep10Schema = z.object({
 
 export const taskerOnboardingStep11Schema = z.object({
   acceptTerms: z.boolean().refine((v) => v, { message: "Debes aceptar los términos y condiciones" })
-});
-
-export const taskerAdditionalCategorySchema = z.object({
-  categorySlug: z.enum([
-    "limpieza",
-    "mascotas",
-    "babysitter",
-    "profesor-particular",
-    "personal-trainer",
-    "chef",
-    "maquillaje",
-    "planchado"
-  ]),
-  hourlyRateClp: z.coerce.number().int().min(5000).max(200000),
-  minBookingHours: z.coerce.number().int().min(1).max(12).optional(),
-  serviceCommunes: z.array(activeCommuneInputSchema).min(1),
-  scopeData: z.record(z.any())
 });
 
 export const cleaningOnboardingPhoneSendSchema = z.object({

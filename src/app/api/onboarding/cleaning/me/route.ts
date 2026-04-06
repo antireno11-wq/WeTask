@@ -1,13 +1,12 @@
 import { CleaningOnboardingStatus, Prisma, UserRole } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { getRequestIdentity, hasRole } from "@/lib/auth";
-import { isChefServiceSlug } from "@/lib/chef-service-types";
+import { getChefServiceDefinition, isChefServiceRateWithinRange, isChefServiceSlug } from "@/lib/chef-service-types";
 import { isCleaningServiceSlug } from "@/lib/cleaning-service-types";
-import { findCoreServiceByOnboardingCategory } from "@/lib/core-services";
+import { CORE_SERVICES } from "@/lib/core-services";
 import { geocodeAddress } from "@/lib/geo";
 import { CLEANING_WEEK_DAYS } from "@/lib/cleaning-onboarding";
 import { normalizeCommune, normalizeCommuneList } from "@/lib/communes";
-import { getMakeupServiceSlugFromScopeValue, isMakeupScopeServiceSlug } from "@/lib/makeup-service-types";
 import {
   PUBLIC_ONBOARDING_PHONE_COOKIE,
   PUBLIC_ONBOARDING_PHONE_VERIFIED_COOKIE
@@ -104,22 +103,12 @@ async function upsertOnboardingTaskerServices(
     hourlyRateClp: number | null;
     minBookingHours: number | null;
   },
-  explicitServiceRates: Array<{
-    serviceSlug: string;
-    hourlyRateClp: number;
-    durationMin?: number;
-  }>
+  explicitServiceRates: Array<{ serviceSlug: string; hourlyRateClp: number }>
 ) {
-  const selectedCoreService = findCoreServiceByOnboardingCategory(onboarding.categorySlug);
+  const selectedCoreService = CORE_SERVICES.find((service) => service.slug === onboarding.categorySlug);
   if (!selectedCoreService) return;
 
-  const selectedServiceSlugs =
-    onboarding.categorySlug === "maquillaje"
-      ? getOnboardingServiceSlugs(onboarding.offeredServices)
-          .filter((item): item is string => isMakeupScopeServiceSlug(item))
-          .map((item) => getMakeupServiceSlugFromScopeValue(item))
-          .filter((item): item is NonNullable<typeof item> => Boolean(item))
-      : getOnboardingServiceSlugs(onboarding.offeredServices);
+  const selectedServiceSlugs = getOnboardingServiceSlugs(onboarding.offeredServices);
   if (selectedServiceSlugs.length === 0) return;
 
   const profile = await prisma.professionalProfile.findUnique({
@@ -149,12 +138,11 @@ async function upsertOnboardingTaskerServices(
       .filter((item) =>
         onboarding.categorySlug === "limpieza" ? isCleaningServiceSlug(item.serviceSlug) : onboarding.categorySlug === "chef" ? isChefServiceSlug(item.serviceSlug) : true
       )
-      .map((item) => [item.serviceSlug, item])
+      .map((item) => [item.serviceSlug, item.hourlyRateClp])
   );
 
   for (const service of services) {
-    const explicitRate = explicitRateMap.get(service.slug);
-    const nextRate = explicitRate?.hourlyRateClp ?? onboarding.hourlyRateClp ?? service.basePriceClp;
+    const nextRate = explicitRateMap.get(service.slug) ?? onboarding.hourlyRateClp ?? service.basePriceClp;
     await prisma.taskerService.upsert({
       where: {
         professionalProfileId_serviceId: {
@@ -165,10 +153,7 @@ async function upsertOnboardingTaskerServices(
       update: {
         categoryId: category.id,
         priceClp: nextRate,
-        minBooking:
-          explicitRate?.durationMin && explicitRate.durationMin > 0
-            ? Math.max(1, Math.ceil(explicitRate.durationMin / 60))
-            : onboarding.minBookingHours ?? 1,
+        minBooking: onboarding.minBookingHours ?? 1,
         isActive: true
       },
       create: {
@@ -176,10 +161,7 @@ async function upsertOnboardingTaskerServices(
         categoryId: category.id,
         serviceId: service.id,
         priceClp: nextRate,
-        minBooking:
-          explicitRate?.durationMin && explicitRate.durationMin > 0
-            ? Math.max(1, Math.ceil(explicitRate.durationMin / 60))
-            : onboarding.minBookingHours ?? 1,
+        minBooking: onboarding.minBookingHours ?? 1,
         isActive: true
       }
     });
@@ -195,9 +177,7 @@ async function upsertOnboardingTaskerServices(
     data: { isActive: false }
   });
 
-  const fallbackRate = Math.min(
-    ...services.map((service) => explicitRateMap.get(service.slug)?.hourlyRateClp ?? onboarding.hourlyRateClp ?? service.basePriceClp)
-  );
+  const fallbackRate = Math.min(...services.map((service) => explicitRateMap.get(service.slug) ?? onboarding.hourlyRateClp ?? service.basePriceClp));
   await prisma.professionalProfile.update({
     where: { userId },
     data: { hourlyRateFromClp: fallbackRate }
@@ -299,8 +279,6 @@ export async function PATCH(req: NextRequest) {
 
       data = {
         profilePhotoUrl: parsed.profilePhotoUrl,
-        profilePhotoPositionX: parsed.profilePhotoPositionX,
-        profilePhotoPositionY: parsed.profilePhotoPositionY,
         documentId: parsed.documentId.trim(),
         baseCommune: parsed.baseCommune,
         referenceAddress: parsed.referenceAddress.trim(),
@@ -327,8 +305,6 @@ export async function PATCH(req: NextRequest) {
         create: {
           userId,
           avatarUrl: parsed.profilePhotoUrl,
-          avatarPositionX: parsed.profilePhotoPositionX,
-          avatarPositionY: parsed.profilePhotoPositionY,
           coverageStreet: parsed.referenceAddress.trim(),
           coverageComuna: parsed.baseCommune,
           coverageCity: "Santiago",
@@ -338,8 +314,6 @@ export async function PATCH(req: NextRequest) {
         },
         update: {
           avatarUrl: parsed.profilePhotoUrl,
-          avatarPositionX: parsed.profilePhotoPositionX,
-          avatarPositionY: parsed.profilePhotoPositionY,
           coverageStreet: parsed.referenceAddress.trim(),
           coverageComuna: parsed.baseCommune,
           coverageCity: "Santiago",
@@ -410,7 +384,7 @@ export async function PATCH(req: NextRequest) {
         return NextResponse.json({ error: "Debes definir el alcance de tu servicio de personal trainer." }, { status: 400 });
       }
       if (onboarding.categorySlug === "profesor-particular" && !parsed.teacherScope) {
-        return NextResponse.json({ error: "Debes definir el alcance de tu servicio de clases particulares." }, { status: 400 });
+        return NextResponse.json({ error: "Debes definir el alcance de tu servicio de profesor particular." }, { status: 400 });
       }
       data = {
         offeredServices: parsed.offeredServices,
@@ -451,6 +425,24 @@ export async function PATCH(req: NextRequest) {
 
     if (input.step === 9) {
       const parsed = taskerOnboardingStep9Schema.parse(input.payload);
+      if (onboarding.categorySlug === "chef") {
+        const invalidChefRate = parsed.serviceRates.find((item) => {
+          if (!isChefServiceSlug(item.serviceSlug)) return true;
+          return !isChefServiceRateWithinRange(item.serviceSlug, item.hourlyRateClp);
+        });
+
+        if (invalidChefRate) {
+          const service = getChefServiceDefinition(invalidChefRate.serviceSlug);
+          return NextResponse.json(
+            {
+              error: service
+                ? `El precio de ${service.name} debe quedar entre $${service.recommendedMinClp.toLocaleString("es-CL")} y $${service.recommendedMaxClp.toLocaleString("es-CL")}.`
+                : "Uno de los precios de chef está fuera del rango permitido."
+            },
+            { status: 400 }
+          );
+        }
+      }
       data = {
         hourlyRateClp: parsed.hourlyRateClp,
         minBookingHours: parsed.minBookingHours,

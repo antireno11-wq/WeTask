@@ -5,7 +5,6 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { MarketNav } from "@/components/market-nav";
 import { BABYSITTER_TASK_INCLUDED_OPTIONS } from "@/lib/babysitter-scope";
-import { CHEF_TASK_INCLUDED_OPTIONS } from "@/lib/chef-scope";
 import { getChefServiceDefinition } from "@/lib/chef-service-types";
 import { CLEANING_TASK_INCLUDED_OPTIONS, getCleaningTaskOptionsForService } from "@/lib/cleaning-scope";
 import {
@@ -23,15 +22,9 @@ import {
 import { getCleaningServiceDefinition } from "@/lib/cleaning-service-types";
 import { COVERAGE_UNAVAILABLE_MESSAGE, inferCommuneFromAddress, normalizeCommune } from "@/lib/communes";
 import { estimateIroningDuration } from "@/lib/ironing-duration-estimator";
-import { getMakeupServiceDefinitionBySlug } from "@/lib/makeup-service-types";
+import { MAKEUP_TASK_INCLUDED_OPTIONS } from "@/lib/makeup-scope";
 import { PET_TASK_INCLUDED_OPTIONS } from "@/lib/pet-scope";
-import { getMarketplaceCategorySlugForTaskerCategory, normalizeTaskerCategorySlug } from "@/lib/tasker-category-profiles";
-import {
-  TEACHER_GENERAL_LEVEL_OPTIONS,
-  TEACHER_MUSIC_INSTRUMENT_OPTIONS,
-  TEACHER_MUSIC_LEVEL_OPTIONS,
-  TEACHER_SCOPE_SERVICE_OPTIONS
-} from "@/lib/teacher-scope";
+import { TEACHER_TASK_INCLUDED_OPTIONS } from "@/lib/teacher-scope";
 import { TRAINER_TASK_INCLUDED_OPTIONS } from "@/lib/trainer-scope";
 
 type Category = {
@@ -50,22 +43,16 @@ const TASK_FILTER_OPTIONS_BY_CATEGORY: Record<string, TaskFilterOption[]> = {
   limpieza: [...CLEANING_TASK_INCLUDED_OPTIONS],
   mascotas: [...PET_TASK_INCLUDED_OPTIONS],
   babysitter: [...BABYSITTER_TASK_INCLUDED_OPTIONS],
-  "profesor-particular": [],
+  "profesor-particular": [...TEACHER_TASK_INCLUDED_OPTIONS],
   "personal-trainer": [...TRAINER_TASK_INCLUDED_OPTIONS],
-  chef: [...CHEF_TASK_INCLUDED_OPTIONS],
-  maquillaje: [],
+  chef: [],
+  maquillaje: [...MAKEUP_TASK_INCLUDED_OPTIONS],
   planchado: []
 };
-
-function clp(value: number) {
-  return new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP", maximumFractionDigits: 0 }).format(value);
-}
 
 export default function ServicioCategoriaPage() {
   const params = useParams<{ categorySlug: string }>();
   const categorySlug = params?.categorySlug ?? "";
-  const normalizedRouteCategorySlug = normalizeTaskerCategorySlug(categorySlug);
-  const marketplaceRouteCategorySlug = getMarketplaceCategorySlugForTaskerCategory(categorySlug) ?? categorySlug;
   const router = useRouter();
   const query = useSearchParams();
 
@@ -120,38 +107,19 @@ export default function ServicioCategoriaPage() {
   const [ironingGarments, setIroningGarments] = useState(query.get("ironingGarments") ?? "");
   const [ironingBulkyItems, setIroningBulkyItems] = useState(query.get("ironingBulkyItems") ?? "");
   const [ironingDelicates, setIroningDelicates] = useState(query.get("ironingDelicates") === "true");
-  const [requestedDate, setRequestedDate] = useState(query.get("requestedDate") ?? "");
-  const [requestedTime, setRequestedTime] = useState(query.get("requestedTime") ?? "");
-  const [classSubject, setClassSubject] = useState(query.get("classSubject") ?? "");
-  const [classMusicType, setClassMusicType] = useState(query.get("classMusicType") ?? "");
-  const [classMode, setClassMode] = useState(query.get("classMode") ?? "");
-  const [classLevel, setClassLevel] = useState(query.get("classLevel") ?? "");
-  const [classFrequency, setClassFrequency] = useState(query.get("classFrequency") ?? "");
-  const [classNotes, setClassNotes] = useState(query.get("classNotes") ?? "");
-  const [makeupEventType, setMakeupEventType] = useState(query.get("makeupEventType") ?? "");
-  const [makeupEventTime, setMakeupEventTime] = useState(query.get("makeupEventTime") ?? "");
-  const [makeupStyleNotes, setMakeupStyleNotes] = useState(query.get("makeupStyleNotes") ?? "");
-  const [makeupLashes, setMakeupLashes] = useState(query.get("makeupLashes") === "true");
-  const [makeupTrial, setMakeupTrial] = useState(query.get("makeupTrial") === "true");
   const autoAdvanceCategorySlugs = new Set([
     "mascotas",
     "babysitter",
     "profesor-particular",
     "personal-trainer",
-    "chef"
+    "chef",
+    "maquillaje"
   ]);
   const autoAdvanceOnServiceSelect = category ? autoAdvanceCategorySlugs.has(category.slug) : false;
   const isCleaningCategory = category?.slug === "limpieza";
   const isIroningCategory = category?.slug === "planchado";
-  const isMakeupCategory = category?.slug === "maquillaje";
-  const isTeacherCategory = category?.slug === "profesor-particular";
   const isCustomerSession = sessionRole === "CUSTOMER";
   const skipAddressStep = query.get("skipAddress") === "1";
-  const teacherLevelOptions = useMemo(
-    () => (classSubject === "musica" ? TEACHER_MUSIC_LEVEL_OPTIONS : TEACHER_GENERAL_LEVEL_OPTIONS),
-    [classSubject]
-  );
-  const skipPhysicalAddress = isTeacherCategory && classMode === "online";
 
   useEffect(() => {
     const loadSession = async () => {
@@ -182,13 +150,7 @@ export default function ServicioCategoriaPage() {
           throw new Error(catalogData.detail || catalogData.error || "No se pudieron cargar las categorias");
         }
 
-        const match =
-          catalogData.categories.find(
-            (item) =>
-              item.slug === categorySlug ||
-              item.slug === marketplaceRouteCategorySlug ||
-              normalizeTaskerCategorySlug(item.slug) === normalizedRouteCategorySlug
-          ) ?? null;
+        const match = catalogData.categories.find((item) => item.slug === categorySlug) ?? null;
         if (!match) {
           throw new Error("Categoria no encontrada");
         }
@@ -201,7 +163,7 @@ export default function ServicioCategoriaPage() {
       }
     };
     if (categorySlug) void load();
-  }, [categorySlug, marketplaceRouteCategorySlug, normalizedRouteCategorySlug]);
+  }, [categorySlug]);
 
   useEffect(() => {
     const queryAddress = street.trim();
@@ -266,11 +228,6 @@ export default function ServicioCategoriaPage() {
   }, [street]);
 
   useEffect(() => {
-    if (classSubject === "musica") return;
-    setClassMusicType("");
-  }, [classSubject]);
-
-  useEffect(() => {
     if (street.trim()) return;
     try {
       const savedAddress = window.localStorage.getItem("wetask_customer_address")?.trim() ?? "";
@@ -302,11 +259,6 @@ export default function ServicioCategoriaPage() {
     if (!selectedCleaningServiceSlug) return null;
     return getCleaningServiceDefinition(selectedCleaningServiceSlug);
   }, [selectedCleaningServiceSlug]);
-  const selectedMakeupDefinition = useMemo(() => {
-    if (!isMakeupCategory || !category || !selectedServiceId) return null;
-    const service = category.services.find((item) => item.id === selectedServiceId);
-    return service ? getMakeupServiceDefinitionBySlug(service.slug) : null;
-  }, [category, isMakeupCategory, selectedServiceId]);
 
   const visibleServices = useMemo(() => {
     if (!category) return [];
@@ -425,29 +377,13 @@ export default function ServicioCategoriaPage() {
   const goToPros = (serviceIdOverride?: string) => {
     if (!category) return;
     setCoverageEmailStatus("");
-    if (!skipPhysicalAddress && !street.trim()) {
+    if (!street.trim()) {
       setCoverageNote("Completa el servicio y la dirección para ver taskers disponibles.");
       return;
     }
-    const commune = skipPhysicalAddress ? "" : detectedCommune ?? normalizeCommune(street) ?? inferCommuneFromAddress(street);
-    if (!skipPhysicalAddress && !commune) {
+    const commune = detectedCommune ?? normalizeCommune(street) ?? inferCommuneFromAddress(street);
+    if (!commune) {
       setCoverageNote(COVERAGE_UNAVAILABLE_MESSAGE);
-      return;
-    }
-    if (category?.slug === "profesor-particular" && !classSubject) {
-      setCoverageNote("Elige qué clase estás buscando para ver profesores relevantes.");
-      return;
-    }
-    if (category?.slug === "profesor-particular" && classSubject === "musica" && !classMusicType) {
-      setCoverageNote("Si buscas música, selecciona guitarra, piano o canto antes de continuar.");
-      return;
-    }
-    if (category?.slug === "profesor-particular" && !classMode) {
-      setCoverageNote("Cuéntanos cómo quieres tomar la clase antes de continuar.");
-      return;
-    }
-    if (category?.slug === "profesor-particular" && !classLevel) {
-      setCoverageNote("Selecciona el nivel que necesitas para ver profesores más precisos.");
       return;
     }
     if (category?.slug === "limpieza") {
@@ -470,37 +406,19 @@ export default function ServicioCategoriaPage() {
         return;
       }
     }
-    if (category?.slug === "maquillaje" && (!requestedDate || !requestedTime)) {
-      setCoverageNote("Cuéntanos para qué fecha y hora necesitas el maquillaje antes de continuar.");
-      return;
-    }
     setCoverageNote("");
 
-    const qs = new URLSearchParams();
-    qs.set("city", city.trim());
-    if (!skipPhysicalAddress) {
-      qs.set("address", street.trim());
-      qs.set("comuna", commune ?? "");
-      qs.set("commune", commune ?? "");
-    }
-    if (!skipPhysicalAddress && apartment.trim()) qs.set("apartment", apartment.trim());
-    if (!skipPhysicalAddress && reference.trim()) qs.set("reference", reference.trim());
+    const qs = new URLSearchParams({
+      address: street.trim(),
+      city: city.trim(),
+      comuna: commune,
+      commune
+    });
+    if (apartment.trim()) qs.set("apartment", apartment.trim());
+    if (reference.trim()) qs.set("reference", reference.trim());
     if (selectedTasks.length > 0) qs.set("tasks", selectedTasks.join(","));
     const nextServiceId = serviceIdOverride ?? selectedServiceId;
     if (nextServiceId) qs.set("serviceId", nextServiceId);
-    if (requestedDate) qs.set("requestedDate", requestedDate);
-    if (requestedTime) qs.set("requestedTime", requestedTime);
-    if (classSubject) qs.set("classSubject", classSubject);
-    if (classMusicType) qs.set("classMusicType", classMusicType);
-    if (classMode) qs.set("classMode", classMode);
-    if (classLevel) qs.set("classLevel", classLevel);
-    if (classFrequency) qs.set("classFrequency", classFrequency);
-    if (classNotes.trim()) qs.set("classNotes", classNotes.trim());
-    if (makeupEventType.trim()) qs.set("makeupEventType", makeupEventType.trim());
-    if (makeupEventTime.trim()) qs.set("makeupEventTime", makeupEventTime.trim());
-    if (makeupStyleNotes.trim()) qs.set("makeupStyleNotes", makeupStyleNotes.trim());
-    if (makeupLashes) qs.set("makeupLashes", "true");
-    if (makeupTrial) qs.set("makeupTrial", "true");
     if (category?.slug === "limpieza" && cleaningEstimate) {
       qs.set("cleaningBedrooms", cleaningBedrooms);
       qs.set("cleaningBathrooms", cleaningBathrooms);
@@ -554,11 +472,7 @@ export default function ServicioCategoriaPage() {
           <div className="auth-flow-copy">
             <p className="auth-flow-kicker">Servicio</p>
             <h1>{category?.name ?? "Cargando servicio..."}</h1>
-            <p>
-              {isTeacherCategory
-                ? "Cuéntanos qué quieres aprender y cómo quieres tomar la clase para mostrarte profesores realmente relevantes."
-                : "Elige una variante del servicio y tu dirección para ver taskers disponibles en tu zona."}
-            </p>
+            <p>Elige una variante del servicio y tu dirección para ver taskers disponibles en tu zona.</p>
 
             <div className="auth-flow-copy-list">
               <div className="auth-flow-meta-card">
@@ -580,89 +494,17 @@ export default function ServicioCategoriaPage() {
               <>
                 <div className="panel-head auth-flow-panel-head">
                   <h2>{category.name}</h2>
-                  <p>
-                    {isTeacherCategory
-                      ? "Configura tu búsqueda para encontrar clases particulares claras, comparables y relevantes."
-                      : "Completa los datos para continuar con una búsqueda real de taskers."}
-                  </p>
+                  <p>Completa los datos para continuar con una búsqueda real de taskers.</p>
                 </div>
 
                 <form className="grid-form auth-flow-form" onSubmit={openPros}>
-                  {isTeacherCategory ? (
-                    <>
-                      <div className="full service-prep-card">
-                        <div className="panel-head">
-                          <h3>¿Qué clase estás buscando?</h3>
-                          <p>Primero elige exactamente qué quieres aprender.</p>
-                        </div>
-                        <div className="auth-service-grid auth-service-grid-cleaning">
-                          {TEACHER_SCOPE_SERVICE_OPTIONS.map((option) => (
-                            <label key={option.value} className={`auth-service-card ${classSubject === option.value ? "active" : ""}`}>
-                              <input type="radio" name="teacherSubject" checked={classSubject === option.value} onChange={() => setClassSubject(option.value)} />
-                              <strong>{option.label}</strong>
-                              <span>{option.description}</span>
-                            </label>
-                          ))}
-                        </div>
-                      </div>
-
-                      {classSubject === "musica" ? (
-                        <div className="full service-prep-card">
-                          <div className="panel-head">
-                            <h3>¿Qué tipo de clase de música quieres?</h3>
-                          </div>
-                          <div className="onboarding-checkbox-grid onboarding-checkbox-grid-compact">
-                            {TEACHER_MUSIC_INSTRUMENT_OPTIONS.map((option) => (
-                              <label key={option.value} className={`onboarding-check-card ${classMusicType === option.value ? "active" : ""}`}>
-                                <input type="radio" name="teacherMusicType" checked={classMusicType === option.value} onChange={() => setClassMusicType(option.value)} />
-                                <span>{option.label}</span>
-                              </label>
-                            ))}
-                          </div>
-                        </div>
-                      ) : null}
-
-                      <div className="full service-prep-card">
-                        <div className="panel-head">
-                          <h3>¿Cómo quieres tomar la clase?</h3>
-                        </div>
-                        <div className="onboarding-checkbox-grid onboarding-checkbox-grid-compact">
-                          {[
-                            { value: "presencial", label: "Presencial" },
-                            { value: "online", label: "Online" },
-                            { value: "flexible", label: "Me da lo mismo" }
-                          ].map((option) => (
-                            <label key={option.value} className={`onboarding-check-card ${classMode === option.value ? "active" : ""}`}>
-                              <input type="radio" name="teacherMode" checked={classMode === option.value} onChange={() => setClassMode(option.value)} />
-                              <span>{option.label}</span>
-                            </label>
-                          ))}
-                        </div>
-                      </div>
-
-                      <div className="full service-prep-card">
-                        <div className="panel-head">
-                          <h3>¿Qué nivel necesitas?</h3>
-                        </div>
-                        <div className="onboarding-checkbox-grid onboarding-checkbox-grid-compact">
-                          {teacherLevelOptions.map((option) => (
-                            <label key={option.value} className={`onboarding-check-card ${classLevel === option.value ? "active" : ""}`}>
-                              <input type="radio" name="teacherLevel" checked={classLevel === option.value} onChange={() => setClassLevel(option.value)} />
-                              <span>{option.label}</span>
-                            </label>
-                          ))}
-                        </div>
-                      </div>
-                    </>
-                  ) : null}
-
                   {isCustomerSession && street.trim() ? (
                     <div className="full auth-flow-note-card auth-flow-note-card-compact">
                       <strong>Usaremos tu dirección guardada</strong>
                       <span>{street}</span>
                       <span>{detectedCommune ? `Comuna detectada: ${detectedCommune}` : "Si quieres cambiarla, edítala desde tu panel cliente."}</span>
                     </div>
-                  ) : !skipPhysicalAddress ? (
+                  ) : (
                     <>
                       <label>
                         Dirección
@@ -714,68 +556,59 @@ export default function ServicioCategoriaPage() {
                         <span>{detectedCommune ?? "Aún no detectamos una comuna válida."}</span>
                       </div>
                     </>
-                  ) : (
-                    <div className="full auth-flow-note-card auth-flow-note-card-compact">
-                      <strong>Clase online</strong>
-                      <span>No te pediremos dirección para mostrarte profesores que dan clases online.</span>
-                    </div>
                   )}
-                  {!isTeacherCategory ? (
-                    <label className="full">
-                      {isCleaningCategory ? "Elige el tipo de limpieza" : "Tipo de servicio"}
-                      <div className={`auth-service-grid ${autoAdvanceOnServiceSelect ? "auth-service-grid-compact" : "auth-service-grid-cleaning"}`}>
-                        {visibleServices.map((service) => {
-                          const cleaningDefinition = category.slug === "limpieza" ? getCleaningServiceDefinition(service.slug) : null;
-                          const chefDefinition = category.slug === "chef" ? getChefServiceDefinition(service.slug) : null;
-                          const makeupDefinition = category.slug === "maquillaje" ? getMakeupServiceDefinitionBySlug(service.slug) : null;
-                          const isActive = selectedServiceId === service.id;
-                          return (
-                            <label
-                              key={service.id}
-                              className={`auth-service-card ${isActive ? "active" : ""} ${autoAdvanceOnServiceSelect ? "auth-service-card-collapsible" : ""}`}
-                            >
-                              <input
-                                type="radio"
-                                name="selectedService"
-                                value={service.id}
-                                checked={isActive}
-                                onChange={() => {
-                                  setSelectedServiceId(service.id);
-                                  if (autoAdvanceOnServiceSelect) {
-                                    goToPros(service.id);
-                                  }
-                                }}
-                                required
-                              />
-                              <div className="auth-service-card-head">
-                                <strong>{service.name}</strong>
-                                <span className="auth-service-price-inline">
-                                  Desde <strong>${new Intl.NumberFormat("es-CL").format(service.basePriceClp)}</strong>
-                                  {makeupDefinition ? "" : "/h"}
-                                </span>
+                  <label className="full">
+                    {isCleaningCategory ? "Elige el tipo de limpieza" : "Tipo de servicio"}
+                    <div className={`auth-service-grid ${autoAdvanceOnServiceSelect ? "auth-service-grid-compact" : "auth-service-grid-cleaning"}`}>
+                      {visibleServices.map((service) => {
+                        const cleaningDefinition = category.slug === "limpieza" ? getCleaningServiceDefinition(service.slug) : null;
+                        const chefDefinition = category.slug === "chef" ? getChefServiceDefinition(service.slug) : null;
+                        const isActive = selectedServiceId === service.id;
+                        return (
+                          <label
+                            key={service.id}
+                            className={`auth-service-card ${isActive ? "active" : ""} ${autoAdvanceOnServiceSelect ? "auth-service-card-collapsible" : ""}`}
+                          >
+                            <input
+                              type="radio"
+                              name="selectedService"
+                              value={service.id}
+                              checked={isActive}
+                              onChange={() => {
+                                setSelectedServiceId(service.id);
+                                if (autoAdvanceOnServiceSelect) {
+                                  goToPros(service.id);
+                                }
+                              }}
+                              required
+                            />
+                            <div className="auth-service-card-head">
+                              <strong>{service.name}</strong>
+                              <span className="auth-service-price-inline">
+                                Desde <strong>${new Intl.NumberFormat("es-CL").format(service.basePriceClp)}</strong>
+                                {chefDefinition ? "" : "/h"}
+                              </span>
+                            </div>
+                            <span>{cleaningDefinition?.forClients ?? chefDefinition?.forClients ?? service.description}</span>
+                            {isActive ? (
+                              <div className="auth-service-card-detail">
+                                {isCleaningCategory && cleaningEstimate ? (
+                                  <span>
+                                    Tiempo sugerido: {cleaningEstimate.minHours} a {cleaningEstimate.maxHours} horas · Recomendado: {cleaningEstimate.recommendedHours} h.
+                                  </span>
+                                ) : null}
+                                {cleaningDefinition ? <span>Incluye: {cleaningDefinition.includes.slice(0, 4).join(", ")}.</span> : null}
+                                {chefDefinition ? <span>Incluye: {chefDefinition.includes.slice(0, 4).join(", ")}.</span> : null}
+                                {chefDefinition ? <span>Duración estimada: {chefDefinition.estimatedDurationLabel}.</span> : null}
+                                {cleaningDefinition?.excludes?.length ? <span>No incluye: {cleaningDefinition.excludes.slice(0, 3).join(", ")}.</span> : null}
+                                {chefDefinition?.excludes?.length ? <span>No incluye: {chefDefinition.excludes.slice(0, 3).join(", ")}.</span> : null}
                               </div>
-                              <span>{cleaningDefinition?.forClients ?? chefDefinition?.forClients ?? makeupDefinition?.forClients ?? service.description}</span>
-                              {isActive ? (
-                                <div className="auth-service-card-detail">
-                                  {isCleaningCategory && cleaningEstimate ? (
-                                    <span>
-                                      Tiempo sugerido: {cleaningEstimate.minHours} a {cleaningEstimate.maxHours} horas · Recomendado: {cleaningEstimate.recommendedHours} h.
-                                    </span>
-                                  ) : null}
-                                  {makeupDefinition ? <span>Duración estimada: {makeupDefinition.durationLabel}.</span> : null}
-                                  {cleaningDefinition ? <span>Incluye: {cleaningDefinition.includes.slice(0, 4).join(", ")}.</span> : null}
-                                  {chefDefinition ? <span>Incluye: {chefDefinition.includes.slice(0, 4).join(", ")}.</span> : null}
-                                  {makeupDefinition ? <span>{makeupDefinition.idealFor}</span> : null}
-                                  {cleaningDefinition?.excludes?.length ? <span>No incluye: {cleaningDefinition.excludes.slice(0, 3).join(", ")}.</span> : null}
-                                  {chefDefinition?.excludes?.length ? <span>No incluye: {chefDefinition.excludes.slice(0, 3).join(", ")}.</span> : null}
-                                </div>
-                              ) : null}
-                            </label>
-                          );
-                        })}
-                      </div>
-                    </label>
-                  ) : null}
+                            ) : null}
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </label>
                   {isCleaningCategory && !selectedCleaningDefinition ? (
                     <div className="full auth-flow-note-card auth-flow-note-card-compact">
                       <strong>Primero elige el tipo de limpieza</strong>
@@ -975,118 +808,6 @@ export default function ServicioCategoriaPage() {
                             : "Te mostraremos un rango sugerido antes de buscar taskers."}
                         </span>
                       </div>
-                    </div>
-                  ) : null}
-                  {isMakeupCategory && selectedMakeupDefinition ? (
-                    <div className="full service-prep-card" id="task-focos">
-                      <div className="panel-head">
-                        <h3>Cuéntanos qué resultado necesitas</h3>
-                        <p>En maquillaje la búsqueda se orienta al look final, no a horas sueltas. Luego te mostraremos maquilladoras según servicio, comuna y disponibilidad.</p>
-                      </div>
-
-                      <div className="service-prep-summary">
-                        <strong>{selectedMakeupDefinition.name}</strong>
-                        <span>
-                          Desde {clp(category.services.find((item) => item.id === selectedServiceId)?.basePriceClp ?? selectedMakeupDefinition.recommendedMinClp)} ·
-                          {" "}Duración estimada: {selectedMakeupDefinition.durationLabel}
-                        </span>
-                        <span>{selectedMakeupDefinition.idealFor}</span>
-                      </div>
-
-                      <div className="service-duration-grid">
-                        <label>
-                          ¿Para cuándo lo necesitas?
-                          <input type="date" value={requestedDate} onChange={(event) => setRequestedDate(event.target.value)} required />
-                        </label>
-                        <label>
-                          Hora estimada
-                          <input type="time" value={requestedTime} onChange={(event) => setRequestedTime(event.target.value)} required />
-                        </label>
-                      </div>
-
-                      <div className="service-duration-grid">
-                        <label>
-                          Tipo de evento
-                          <input
-                            value={makeupEventType}
-                            onChange={(event) => setMakeupEventType(event.target.value)}
-                            placeholder="Ej: matrimonio, fiesta, sesión de fotos"
-                          />
-                        </label>
-                        <label>
-                          Hora del evento
-                          <input type="time" value={makeupEventTime} onChange={(event) => setMakeupEventTime(event.target.value)} />
-                        </label>
-                      </div>
-
-                      <label className="full">
-                        Preferencias o detalles opcionales
-                        <textarea
-                          value={makeupStyleNotes}
-                          rows={3}
-                          onChange={(event) => setMakeupStyleNotes(event.target.value)}
-                          placeholder="Cuéntanos si buscas algo más natural, glam, si tienes referencias de estilo o alguna preferencia especial."
-                        />
-                      </label>
-
-                      <div className="service-duration-toggles">
-                        <label className={`onboarding-check-card ${makeupLashes ? "active" : ""}`}>
-                          <input type="checkbox" checked={makeupLashes} onChange={() => setMakeupLashes((current) => !current)} />
-                          <span>Quiero agregar pestañas</span>
-                        </label>
-                        <label className={`onboarding-check-card ${makeupTrial ? "active" : ""}`}>
-                          <input type="checkbox" checked={makeupTrial} onChange={() => setMakeupTrial((current) => !current)} />
-                          <span>Quiero opción con prueba previa</span>
-                        </label>
-                      </div>
-
-                      <div className="auth-flow-note-card auth-flow-note-card-compact">
-                        <strong>Qué verás en resultados</strong>
-                        <span>Fotos de trabajos, tipo de maquillaje, precio base y duración estimada. No te mostraremos el servicio como una tarifa por hora.</span>
-                      </div>
-                    </div>
-                  ) : null}
-                  {isTeacherCategory ? (
-                    <div className="full service-prep-card" id="task-focos">
-                      <div className="panel-head">
-                        <h3>Cuéntanos un poco más</h3>
-                        <p>Esto nos ayuda a mostrar profesores particulares mejor alineados a lo que necesitas.</p>
-                      </div>
-
-                      <div className="service-duration-grid">
-                        <label>
-                          ¿Para cuándo la necesitas?
-                          <input type="date" value={requestedDate} onChange={(event) => setRequestedDate(event.target.value)} />
-                        </label>
-                        <label>
-                          Hora estimada
-                          <input type="time" value={requestedTime} onChange={(event) => setRequestedTime(event.target.value)} />
-                        </label>
-                      </div>
-
-                      <div className="onboarding-checkbox-grid onboarding-checkbox-grid-compact">
-                        {[
-                          { value: "una_vez", label: "Una vez" },
-                          { value: "varias_veces_semana", label: "Varias veces por semana" },
-                          { value: "una_vez_semana", label: "1 vez por semana" },
-                          { value: "no_lo_se", label: "Aún no lo sé" }
-                        ].map((option) => (
-                          <label key={option.value} className={`onboarding-check-card ${classFrequency === option.value ? "active" : ""}`}>
-                            <input type="radio" name="classFrequency" checked={classFrequency === option.value} onChange={() => setClassFrequency(option.value)} />
-                            <span>{option.label}</span>
-                          </label>
-                        ))}
-                      </div>
-
-                      <label className="full">
-                        Cuéntanos qué necesitas aprender
-                        <textarea
-                          rows={4}
-                          value={classNotes}
-                          onChange={(event) => setClassNotes(event.target.value)}
-                          placeholder="Ejemplo: reforzamiento para prueba, clases para niño de 10 años, aprender guitarra desde cero o mejorar conversación en inglés."
-                        />
-                      </label>
                     </div>
                   ) : null}
                   {!isCleaningCategory && availableTaskOptions.length > 0 ? (

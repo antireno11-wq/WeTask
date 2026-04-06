@@ -5,14 +5,12 @@ import { useParams, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { MarketNav } from "@/components/market-nav";
 import { BABYSITTER_TASK_INCLUDED_OPTIONS } from "@/lib/babysitter-scope";
-import { CHEF_TASK_INCLUDED_OPTIONS } from "@/lib/chef-scope";
+import { getChefServiceDefinition } from "@/lib/chef-service-types";
 import { copyCleaningEstimateParams, parseCleaningRecommendedHours, parseCleaningServiceSlug } from "@/lib/cleaning-duration-estimator";
 import { CLEANING_TASK_INCLUDED_OPTIONS, getCleaningTaskOptionsForService } from "@/lib/cleaning-scope";
-import { getMakeupDurationSummary, getMakeupServiceConfig, getMakeupServiceHeadline, normalizeMakeupScope } from "@/lib/makeup-scope";
-import { getMakeupServiceDefinitionBySlug } from "@/lib/makeup-service-types";
+import { MAKEUP_TASK_INCLUDED_OPTIONS } from "@/lib/makeup-scope";
 import { PET_TASK_INCLUDED_OPTIONS } from "@/lib/pet-scope";
-import { getMarketplaceCategorySlugForTaskerCategory, normalizeTaskerCategorySlug } from "@/lib/tasker-category-profiles";
-import { getTeacherLevelLabel, getTeacherModeLabel, getTeacherPublicServiceSlugs, getTeacherServiceLabel, normalizeTeacherScope } from "@/lib/teacher-scope";
+import { TEACHER_TASK_INCLUDED_OPTIONS } from "@/lib/teacher-scope";
 import { TRAINER_TASK_INCLUDED_OPTIONS } from "@/lib/trainer-scope";
 
 type Category = {
@@ -34,17 +32,12 @@ type Professional = {
   coverageComuna?: string | null;
   serviceRadiusKm: number;
   avatarUrl?: string | null;
-  avatarPositionX?: number | null;
-  avatarPositionY?: number | null;
+  cleaningScope?: unknown;
   user: {
     fullName: string;
     cleaningOnboarding?: {
       profilePhotoUrl?: string | null;
-      profilePhotoPositionX?: number | null;
-      profilePhotoPositionY?: number | null;
       baseCommune?: string | null;
-      makeupScope?: unknown;
-      teacherScope?: unknown;
     } | null;
   };
   slots: Array<{ id: string; startsAt: string }>;
@@ -59,9 +52,9 @@ const TASK_FILTER_OPTIONS_BY_CATEGORY: Record<string, TaskFilterOption[]> = {
   mascotas: [...PET_TASK_INCLUDED_OPTIONS],
   babysitter: [...BABYSITTER_TASK_INCLUDED_OPTIONS],
   "personal-trainer": [...TRAINER_TASK_INCLUDED_OPTIONS],
-  "profesor-particular": [],
-  chef: [...CHEF_TASK_INCLUDED_OPTIONS],
-  maquillaje: [],
+  "profesor-particular": [...TEACHER_TASK_INCLUDED_OPTIONS],
+  chef: [],
+  maquillaje: [...MAKEUP_TASK_INCLUDED_OPTIONS],
   planchado: []
 };
 
@@ -80,12 +73,6 @@ function initials(name: string) {
 
 function profileSnippet(categoryName: string) {
   return `Tasker verificado para ${categoryName.toLowerCase()}, con agenda activa y servicios a domicilio en tu zona.`;
-}
-
-function avatarObjectPosition(x?: number | null, y?: number | null) {
-  const nextX = typeof x === "number" ? Math.min(Math.max(x, 0), 100) : 50;
-  const nextY = typeof y === "number" ? Math.min(Math.max(y, 0), 100) : 34;
-  return `${nextX}% ${nextY}%`;
 }
 
 function localYmd(date: Date) {
@@ -117,8 +104,6 @@ export default function ServiceProsPage() {
   const params = useParams<{ categorySlug: string }>();
   const search = useSearchParams();
   const categorySlug = params?.categorySlug ?? "";
-  const normalizedRouteCategorySlug = normalizeTaskerCategorySlug(categorySlug);
-  const marketplaceRouteCategorySlug = getMarketplaceCategorySlugForTaskerCategory(categorySlug) ?? categorySlug;
 
   const [category, setCategory] = useState<Category | null>(null);
   const [allPros, setAllPros] = useState<Professional[]>([]);
@@ -136,12 +121,6 @@ export default function ServiceProsPage() {
   const city = search.get("city") ?? "Santiago";
   const requestedDate = search.get("requestedDate") ?? "";
   const requestedTime = search.get("requestedTime") ?? "";
-  const classSubject = search.get("classSubject") ?? "";
-  const classMusicType = search.get("classMusicType") ?? "";
-  const classMode = search.get("classMode") ?? "";
-  const classLevel = search.get("classLevel") ?? "";
-  const classFrequency = search.get("classFrequency") ?? "";
-  const classNotes = search.get("classNotes") ?? "";
   const categoryTaskOptions = useMemo(() => TASK_FILTER_OPTIONS_BY_CATEGORY[categorySlug] ?? [], [categorySlug]);
   const initialRequestedTasks = (search.get("tasks") ?? "")
     .split(",")
@@ -169,24 +148,14 @@ export default function ServiceProsPage() {
     if (city) qs.set("city", city);
     if (requestedDate) qs.set("date", requestedDate);
     if (requestedTime) qs.set("requestedTime", requestedTime);
-    if (classSubject) qs.set("classSubject", classSubject);
-    if (classMusicType) qs.set("classMusicType", classMusicType);
-    if (classMode) qs.set("classMode", classMode);
-    if (classLevel) qs.set("classLevel", classLevel);
-    if (classFrequency) qs.set("classFrequency", classFrequency);
-    if (classNotes) qs.set("classNotes", classNotes);
     if (selectedServiceId) qs.set("serviceId", selectedServiceId);
     if (selectedTasks.length > 0) qs.set("tasks", selectedTasks.join(","));
     copyCleaningEstimateParams(search, qs);
     return qs.toString();
-  }, [address, apartment, city, classFrequency, classLevel, classMode, classMusicType, classNotes, classSubject, comuna, reference, requestedDate, requestedTime, search, selectedServiceId, selectedTasks]);
+  }, [address, apartment, city, comuna, reference, requestedDate, requestedTime, search, selectedServiceId, selectedTasks]);
   const selectedService = useMemo(
     () => category?.services.find((service) => service.id === selectedServiceId) ?? null,
     [category, selectedServiceId]
-  );
-  const selectedMakeupDefinition = useMemo(
-    () => (category?.slug === "maquillaje" && selectedService ? getMakeupServiceDefinitionBySlug(selectedService.slug) : null),
-    [category?.slug, selectedService]
   );
   const selectedCleaningServiceSlug = useMemo(() => parseCleaningServiceSlug(selectedService?.slug), [selectedService?.slug]);
   const availableTaskOptions = useMemo(() => {
@@ -212,13 +181,7 @@ export default function ServiceProsPage() {
           throw new Error(catalogData.detail || catalogData.error || "No se pudo cargar catálogo");
         }
 
-        const match =
-          catalogData.categories.find(
-            (item) =>
-              item.slug === categorySlug ||
-              item.slug === marketplaceRouteCategorySlug ||
-              normalizeTaskerCategorySlug(item.slug) === normalizedRouteCategorySlug
-          ) ?? null;
+        const match = catalogData.categories.find((item) => item.slug === categorySlug) ?? null;
         if (!match) throw new Error("Categoria no encontrada");
         setCategory(match);
 
@@ -232,10 +195,6 @@ export default function ServiceProsPage() {
           if (address.trim()) qs.set("street", address.trim());
           if (comuna) qs.set("commune", comuna);
           if (requestedIso) qs.set("date", requestedIso);
-          if (classSubject) qs.set("classSubject", classSubject);
-          if (classMusicType) qs.set("classMusicType", classMusicType);
-          if (classMode) qs.set("classMode", classMode);
-          if (classLevel) qs.set("classLevel", classLevel);
           if (selectedTasks.length > 0) qs.set("tasks", selectedTasks.join(","));
 
           const response = await fetch(`/api/marketplace/search-professionals?${qs.toString()}`);
@@ -271,7 +230,7 @@ export default function ServiceProsPage() {
     };
 
     if (categorySlug) void load();
-  }, [address, categorySlug, city, classLevel, classMode, classMusicType, classSubject, comuna, marketplaceRouteCategorySlug, normalizedRouteCategorySlug, requestedIso, selectedServiceId, selectedTasks]);
+  }, [address, categorySlug, city, comuna, requestedIso, selectedServiceId, selectedTasks]);
 
   const professionals = useMemo(() => {
     let filtered = [...allPros];
@@ -334,15 +293,17 @@ export default function ServiceProsPage() {
             <p className="auth-flow-kicker">Taskers disponibles</p>
             <h1>{category?.name ?? "Servicio"} en {comuna || city}</h1>
             <p>
-              {category?.slug === "profesor-particular"
-                ? "Compara profesores por tipo de clase, nivel, modalidad, duración típica y precio por hora."
-                : `${selectedService ? `Mostrando resultados para ${selectedService.name.toLowerCase()}. ` : ""}Compara perfiles, agenda y precios antes de confirmar tu reserva.`}
+              {selectedService ? `Mostrando resultados para ${selectedService.name.toLowerCase()}. ` : ""}
+              Compara perfiles, agenda y precios antes de confirmar tu reserva.
             </p>
 
             <div className="auth-flow-copy-list">
               <div className="auth-flow-meta-card">
-                <strong>{category?.slug === "profesor-particular" && classMode === "online" ? "Modalidad" : "Dirección"}</strong>
-                <span>{category?.slug === "profesor-particular" && classMode === "online" ? "Clase online" : `${address || "Sin dirección"}${comuna ? `, ${comuna}` : ""}`}</span>
+                <strong>Dirección</strong>
+                <span>
+                  {address || "Sin dirección"}
+                  {comuna ? `, ${comuna}` : ""}
+                </span>
               </div>
               <div className="auth-flow-meta-card">
                 <strong>Detalles</strong>
@@ -352,14 +313,8 @@ export default function ServiceProsPage() {
                 </span>
               </div>
               <div className="auth-flow-meta-card">
-                <strong>{category?.slug === "profesor-particular" ? "Clase buscada" : "Horario"}</strong>
-                <span>
-                  {category?.slug === "profesor-particular"
-                    ? [classMusicType || classSubject, classLevel, classMode].filter(Boolean).join(" · ") || "Aún no definido"
-                    : requestedDate && requestedTime
-                      ? `${requestedDate} a las ${requestedTime}`
-                      : "Aún no definido"}
-                </span>
+                <strong>Horario</strong>
+                <span>{requestedDate && requestedTime ? `${requestedDate} a las ${requestedTime}` : "Aún no definido"}</span>
               </div>
               {recommendedHours ? (
                 <div className="auth-flow-meta-card">
@@ -419,52 +374,16 @@ export default function ServiceProsPage() {
 
             <section className="we-results-list">
               {professionals.map((pro) => {
-                const profilePhotoUrl = pro.avatarUrl?.trim() || pro.user.cleaningOnboarding?.profilePhotoUrl?.trim() || "";
-                const profilePhotoObjectPosition = avatarObjectPosition(
-                  pro.avatarPositionX ?? pro.user.cleaningOnboarding?.profilePhotoPositionX,
-                  pro.avatarPositionY ?? pro.user.cleaningOnboarding?.profilePhotoPositionY
-                );
+                const profilePhotoUrl = pro.user.cleaningOnboarding?.profilePhotoUrl?.trim() || pro.avatarUrl?.trim() || "";
                 const communeLabel = pro.coverageComuna ?? pro.user.cleaningOnboarding?.baseCommune ?? comuna ?? city;
                 const agendaLabel = getAgendaLabel(pro.slots);
-                const makeupScope = normalizeMakeupScope(pro.user.cleaningOnboarding?.makeupScope);
-                const makeupScopeValue = selectedMakeupDefinition?.scopeValue ?? null;
-                const makeupConfig =
-                  makeupScopeValue && makeupScope.services_offered.includes(makeupScopeValue)
-                    ? getMakeupServiceConfig(makeupScope, makeupScopeValue)
-                    : null;
-                const makeupHeadline =
-                  makeupScopeValue && makeupScope.services_offered.includes(makeupScopeValue)
-                    ? getMakeupServiceHeadline(makeupScope, makeupScopeValue)
-                    : selectedMakeupDefinition?.name ?? selectedService?.name ?? category?.name ?? "Maquillaje";
-                const makeupDuration =
-                  makeupScopeValue && makeupScope.services_offered.includes(makeupScopeValue)
-                    ? getMakeupDurationSummary(makeupScope, makeupScopeValue)
-                    : selectedMakeupDefinition?.durationLabel ?? "Duración por confirmar";
-                const makeupAudience =
-                  selectedMakeupDefinition && "idealFor" in selectedMakeupDefinition && typeof selectedMakeupDefinition.idealFor === "string"
-                    ? selectedMakeupDefinition.idealFor
-                    : profileSnippet(category?.name ?? "servicios");
-                const teacherScope = normalizeTeacherScope(pro.user.cleaningOnboarding?.teacherScope);
-                const teacherRelevantServices = getTeacherPublicServiceSlugs(teacherScope)
-                  .filter((serviceSlug) => (classMusicType ? serviceSlug === classMusicType : classSubject === "musica" ? ["guitarra", "piano", "canto"].includes(serviceSlug) : classSubject ? serviceSlug === classSubject : true))
-                  .map(getTeacherServiceLabel);
-                const teacherRelevantConfig =
-                  teacherScope.service_configs.find((config) =>
-                    classMusicType ? config.service_slug === classMusicType : classSubject && classSubject !== "musica" ? config.service_slug === classSubject : true
-                  ) ?? teacherScope.service_configs[0] ?? null;
-                const teacherLevels = teacherRelevantConfig?.levels?.length
-                  ? teacherRelevantConfig.levels.map(getTeacherLevelLabel)
-                  : teacherScope.levels.map(getTeacherLevelLabel);
-                const teacherModes = teacherRelevantConfig?.modes?.length
-                  ? teacherRelevantConfig.modes.map(getTeacherModeLabel)
-                  : teacherScope.modes.map(getTeacherModeLabel);
-                const priceLabel = pro.hourlyRateFromClp ? clp(pro.hourlyRateFromClp) : "Por definir";
+                const chefDefinition = categorySlug === "chef" && selectedService?.slug ? getChefServiceDefinition(selectedService.slug) : null;
 
                 return (
                   <article className="we-pro-card" key={pro.id}>
                     <div className="we-pro-main">
                       <div className="we-pro-avatar" aria-hidden>
-                        {profilePhotoUrl ? <img src={profilePhotoUrl} alt="" className="we-pro-avatar-image" style={{ objectPosition: profilePhotoObjectPosition }} /> : initials(pro.user.fullName)}
+                        {profilePhotoUrl ? <img src={profilePhotoUrl} alt="" className="we-pro-avatar-image" /> : initials(pro.user.fullName)}
                       </div>
 
                       <div className="we-pro-content">
@@ -481,51 +400,7 @@ export default function ServiceProsPage() {
                           <span className="we-tag">{agendaLabel}</span>
                         </div>
 
-                        <p className="we-pro-snippet">
-                          {category?.slug === "maquillaje"
-                            ? `${makeupHeadline}. ${makeupAudience}`
-                            : category?.slug === "profesor-particular"
-                              ? `Clases de ${teacherRelevantServices.join(", ") || "clases particulares"}${teacherModes.length > 0 ? ` · ${teacherModes.join(" / ")}` : ""}.`
-                              : profileSnippet(category?.name ?? "servicios")}
-                        </p>
-
-                        {category?.slug === "maquillaje" ? (
-                          <div className="auth-flow-copy-list">
-                            <div className="auth-flow-meta-card">
-                              <strong>Servicio</strong>
-                              <span>{makeupHeadline}</span>
-                            </div>
-                            <div className="auth-flow-meta-card">
-                              <strong>Duración estimada</strong>
-                              <span>{makeupDuration}</span>
-                            </div>
-                            <div className="auth-flow-meta-card">
-                              <strong>Cobertura</strong>
-                              <span>{communeLabel}</span>
-                            </div>
-                          </div>
-                        ) : null}
-
-                        {category?.slug === "profesor-particular" ? (
-                          <div className="auth-flow-copy-list">
-                            <div className="auth-flow-meta-card">
-                              <strong>Clase</strong>
-                              <span>{teacherRelevantServices.join(", ") || "Clases particulares"}</span>
-                            </div>
-                            <div className="auth-flow-meta-card">
-                              <strong>Nivel</strong>
-                              <span>{teacherLevels.length > 0 ? teacherLevels.join(", ") : "Por confirmar"}</span>
-                            </div>
-                            <div className="auth-flow-meta-card">
-                              <strong>Modalidad</strong>
-                              <span>{teacherModes.length > 0 ? teacherModes.join(" / ") : "Por confirmar"}</span>
-                            </div>
-                            <div className="auth-flow-meta-card">
-                              <strong>Duración típica</strong>
-                              <span>{teacherRelevantConfig?.typical_duration_min ? `${teacherRelevantConfig.typical_duration_min / 60} h` : "Por confirmar"}</span>
-                            </div>
-                          </div>
-                        ) : null}
+                        <p className="we-pro-snippet">{profileSnippet(category?.name ?? "servicios")}</p>
 
                         <div className="cta-row we-pro-actions">
                           <Link className="cta small" href={`/pro/${pro.userId}${contextQuery ? `?${contextQuery}` : ""}`}>
@@ -542,12 +417,9 @@ export default function ServiceProsPage() {
                     </div>
 
                     <aside className="we-pro-price">
-                      <strong>{priceLabel}</strong>
-                      <span>{category?.slug === "maquillaje" ? "precio base" : "por hora"}</span>
-                      {category?.slug === "maquillaje" ? <small>{makeupConfig ? `Duración: ${makeupDuration}` : "Duración por confirmar"}</small> : null}
-                      {category?.slug === "profesor-particular" ? (
-                        <small>{teacherRelevantConfig?.typical_duration_min ? `Duración típica: ${teacherRelevantConfig.typical_duration_min / 60} h` : "Duración por confirmar"}</small>
-                      ) : null}
+                      <strong>{pro.hourlyRateFromClp ? clp(pro.hourlyRateFromClp) : "Por definir"}</strong>
+                      <span>{chefDefinition ? "por servicio" : "por hora"}</span>
+                      {chefDefinition ? <span>Duración: {chefDefinition.estimatedDurationLabel}</span> : null}
                     </aside>
                   </article>
                 );

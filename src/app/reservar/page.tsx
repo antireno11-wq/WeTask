@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { MarketNav } from "@/components/market-nav";
+import { getChefServiceDefinition } from "@/lib/chef-service-types";
 import { parseCleaningRecommendedHours } from "@/lib/cleaning-duration-estimator";
 import { COVERAGE_UNAVAILABLE_MESSAGE, inferCommuneFromAddress, normalizeCommune } from "@/lib/communes";
 
@@ -210,7 +211,7 @@ export default function ReservarPage() {
 
   const selectedPro = useMemo(() => matches.find((pro) => pro.userId === selectedProId) ?? null, [matches, selectedProId]);
   const selectedService = useMemo(() => services.find((service) => service.id === filters.serviceId) ?? null, [services, filters.serviceId]);
-  const isChefService = Boolean(selectedService?.slug?.startsWith("cocina-") || selectedService?.slug === "reposteria" || selectedService?.slug === "cumpleanos");
+  const isChefService = Boolean(selectedService?.slug && getChefServiceDefinition(selectedService.slug));
   const quickCheckoutMode = false;
 
   const dayGroups = useMemo(() => {

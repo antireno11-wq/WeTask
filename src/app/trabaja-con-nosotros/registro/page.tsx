@@ -8,15 +8,13 @@ import {
   CHEF_SERVICE_DEFINITIONS,
   type ChefServiceDefinition,
   type ChefServiceSlug,
+  getChefServiceDefinition,
+  isChefServiceRateWithinRange,
   isChefServiceSlug
 } from "@/lib/chef-service-types";
 import {
   CHEF_SCOPE_SERVICE_OPTIONS,
-  CHEF_TASK_EXCLUDED_OPTIONS,
-  CHEF_TASK_INCLUDED_OPTIONS,
   emptyChefScope,
-  getChefExcludedTaskLabel,
-  getChefIncludedTaskLabel,
   getChefScopeServiceLabel,
   normalizeChefScope,
   type ChefScopeData
@@ -72,35 +70,21 @@ import {
   type TrainerScopeServiceSlug
 } from "@/lib/trainer-scope";
 import {
-  TEACHER_BOOKING_NOTICE_OPTIONS,
-  TEACHER_DURATION_OPTIONS,
-  TEACHER_GENERAL_LEVEL_OPTIONS,
   TEACHER_LEVEL_OPTIONS,
-  TEACHER_MUSIC_INSTRUMENT_OPTIONS,
-  TEACHER_MUSIC_LEVEL_OPTIONS,
   TEACHER_MODE_OPTIONS,
   TEACHER_SCOPE_SERVICE_OPTIONS,
   TEACHER_TASK_EXCLUDED_OPTIONS,
   TEACHER_TASK_INCLUDED_OPTIONS,
-  createTeacherServiceConfig,
   emptyTeacherScope,
   getTeacherExcludedTaskLabel,
   getTeacherIncludedTaskLabel,
-  getTeacherMusicInstrumentLabel,
   getTeacherLevelLabel,
   getTeacherModeLabel,
   getTeacherServiceLabel,
-  getTeacherLevelOptionsForService,
-  getTeacherPublicServiceSlugs,
-  getTeacherDurationLabel,
-  getTeacherBookingNoticeLabel,
   normalizeTeacherScope,
-  syncTeacherServiceConfigs,
+  type TeacherAnyLevelSlug,
   type TeacherLevelSlug,
-  type TeacherMusicInstrumentSlug,
   type TeacherModeSlug,
-  type TeacherPublicServiceSlug,
-  type TeacherServiceConfig,
   type TeacherScopeData,
   type TeacherScopeServiceSlug
 } from "@/lib/teacher-scope";
@@ -120,26 +104,15 @@ import {
 } from "@/lib/pet-scope";
 import {
   MAKEUP_SCOPE_SERVICE_OPTIONS,
-  MAKEUP_SPECIALTY_OPTIONS,
-  emptyMakeupServiceConfig,
+  MAKEUP_TASK_EXCLUDED_OPTIONS,
+  MAKEUP_TASK_INCLUDED_OPTIONS,
   emptyMakeupScope,
-  getMakeupDurationSummary,
-  getMakeupServiceConfig,
-  getMakeupServiceHeadline,
+  getMakeupExcludedTaskLabel,
+  getMakeupIncludedTaskLabel,
   getMakeupServiceLabel,
   normalizeMakeupScope,
-  type MakeupScopeData,
-  type MakeupServiceConfig
+  type MakeupScopeData
 } from "@/lib/makeup-scope";
-import {
-  MAKEUP_DURATION_OPTIONS,
-  MAKEUP_SERVICE_DEFINITIONS,
-  getMakeupDurationLabel,
-  getMakeupServiceDefinitionByScopeValue,
-  getMakeupServiceSlugFromScopeValue,
-  isMakeupScopeServiceSlug,
-  type MakeupScopeServiceSlug
-} from "@/lib/makeup-service-types";
 import {
   IRONING_SCOPE_SERVICE_OPTIONS,
   IRONING_TASK_EXCLUDED_OPTIONS,
@@ -172,8 +145,6 @@ type OnboardingPayload = {
   referenceAddress: string | null;
   documentId: string | null;
   profilePhotoUrl: string | null;
-  profilePhotoPositionX: number | null;
-  profilePhotoPositionY: number | null;
   yearsExperience: number | null;
   workMode: "SOLO" | "EQUIPO" | null;
   offeredServices: unknown;
@@ -260,15 +231,10 @@ type DraftState = {
   firstName: string;
   lastName: string;
   email: string;
-  password: string;
-  confirmPassword: string;
   rut: string;
   address: string;
-  apartment: string;
   homeCommune: ActiveMvpCommune;
   profilePhotoUrl: string;
-  profilePhotoPositionX: number;
-  profilePhotoPositionY: number;
   coverageCommunes: ActiveMvpCommune[];
   category: CategorySlug;
   yearsExperience: string;
@@ -291,14 +257,16 @@ type DraftState = {
   babysitterFirstAid: boolean | null;
   babysitterMultiChild: boolean | null;
   babysitterScope: BabysitterScopeData;
-  teacherSubject: "matematicas" | "ingles" | "apoyo_escolar" | "musica";
-  teacherLevel: TeacherLevelSlug;
+  teacherSubject: TeacherScopeServiceSlug;
+  teacherLevel: TeacherAnyLevelSlug;
   teacherMode: "presencial" | "online" | "ambas";
   teacherScope: TeacherScopeData;
   trainerServiceType: "funcional" | "fuerza" | "perdida_peso" | "movilidad";
   trainerMode: "presencial" | "online" | "ambas";
   trainerBringsEquipment: boolean | null;
   trainerScope: TrainerScopeData;
+  makeupType: Array<(typeof MAKEUP_SCOPE_SERVICE_OPTIONS)[number]["value"]>;
+  makeupKit: boolean | null;
   ironingType: "casa_cliente" | "retiro_entrega";
   ironingDelicate: boolean | null;
   ironingPricing: "por_hora" | "por_prenda";
@@ -322,10 +290,11 @@ type DraftState = {
 
 type CleaningScopeScreen = 1 | 2 | 3 | 4 | 5;
 type PetScopeScreen = 1 | 2 | 3 | 4 | 5 | 6;
+type MakeupScopeScreen = 1 | 2 | 3 | 4 | 5;
 type IroningScopeScreen = 1 | 2 | 3 | 4 | 5;
 type BabysitterScopeScreen = 1 | 2 | 3 | 4 | 5 | 6;
-type ChefScopeScreen = 1 | 2 | 3 | 4 | 5;
-type TeacherScopeScreen = 1 | 2 | 3 | 4 | 5;
+type ChefScopeScreen = 1;
+type TeacherScopeScreen = 1 | 2 | 3 | 4 | 5 | 6;
 type TrainerScopeScreen = 1 | 2 | 3 | 4 | 5 | 6;
 type MissingFieldItem = {
   field: string;
@@ -336,13 +305,6 @@ type MissingFieldItem = {
 const TOTAL_STEPS = 12;
 const STORAGE_KEY = "wetask_tasker_wizard_v2";
 const CHILE_MOBILE_PREFIX = "+569";
-const MAX_UPLOAD_BYTES = 6 * 1024 * 1024;
-const STORAGE_BINARY_FIELDS = [
-  "profilePhotoUrl",
-  "identityDocumentFrontFile",
-  "identityDocumentBackFile",
-  "criminalRecordFile"
-] as const;
 const COMMUNE_OPTIONS: ActiveMvpCommune[] = [
   "Vitacura",
   "Lo Barnechea",
@@ -356,7 +318,7 @@ const CATEGORY_OPTIONS: Array<{ slug: CategorySlug; label: string; icon: string;
   { slug: "limpieza", label: "Limpieza", icon: "🧹", description: "Limpieza hogar, profunda y post mudanza." },
   { slug: "mascotas", label: "Cuidado de mascotas", icon: "🐾", description: "Paseos y cuidado diario para perros y gatos." },
   { slug: "babysitter", label: "Babysitter", icon: "👶", description: "Cuidado infantil responsable en casa del cliente." },
-  { slug: "profesor-particular", label: "Clases particulares", icon: "📚", description: "Matemáticas, inglés, apoyo escolar y música." },
+  { slug: "profesor-particular", label: "Profesor particular", icon: "📚", description: "Clases personalizadas presenciales u online." },
   { slug: "personal-trainer", label: "Personal trainer", icon: "🏋️", description: "Entrenamiento personalizado según objetivo y modalidad." },
   { slug: "chef", label: "Chef", icon: "👨‍🍳", description: "Cocina gourmet, casera, repostería, eventos y cumpleaños." },
   { slug: "maquillaje", label: "Maquillaje", icon: "💄", description: "Servicios sociales, eventos y novias." },
@@ -418,7 +380,7 @@ const SUBMIT_REQUIRED_FIELDS: Record<string, { label: string; step: WizardStep }
   ironingScope: { label: "Alcance del servicio de planchado", step: 7 },
   babysitterScope: { label: "Alcance del servicio de babysitter", step: 7 },
   chefScope: { label: "Alcance del servicio de chef", step: 7 },
-  teacherScope: { label: "Alcance del servicio de clases particulares", step: 7 },
+  teacherScope: { label: "Alcance del servicio de profesor particular", step: 7 },
   trainerScope: { label: "Alcance del servicio de personal trainer", step: 7 },
   serviceCommunes: { label: "Comunas de cobertura", step: 4 },
   coverageLatitude: { label: "Ubicación validada desde la dirección", step: 3 },
@@ -487,67 +449,15 @@ function formatClp(value: number) {
 }
 
 function getPricingGuide(draft: DraftState) {
-  const baseByCategory: Record<
-    CategorySlug,
-    {
-      min: number;
-      max: number;
-      note: string;
-      unit: string;
-      inputLabel?: string;
-      placeholder?: string;
-      communeAdjustments?: Array<{
-        tone: "green" | "amber";
-        title: string;
-        communes: string[];
-        min: number;
-        max: number;
-      }>;
-    }
-  > = {
-    limpieza: {
-      min: 12000,
-      max: 16000,
-      note: "Referencia habitual para limpieza estándar en comunas del MVP.",
-      unit: "por hora",
-      communeAdjustments: [
-        {
-          tone: "green",
-          title: "Sector oriente",
-          communes: ["Las Condes", "Vitacura", "Providencia"],
-          min: 6000,
-          max: 8000
-        },
-        {
-          tone: "amber",
-          title: "Sector medio",
-          communes: ["Nuñoa", "La Florida", "Macul"],
-          min: 4500,
-          max: 6500
-        }
-      ]
-    },
-    mascotas: {
-      min: 5000,
-      max: 9000,
-      note: "Referencia sugerida para paseo de mascotas dentro del rango más liviano del servicio.",
-      unit: "por hora",
-      inputLabel: "Tarifa por hora",
-      placeholder: "7000"
-    },
-    babysitter: { min: 12000, max: 18000, note: "Suele variar según experiencia, cantidad de niños y horario.", unit: "por hora" },
-    "profesor-particular": { min: 15000, max: 25000, note: "Las clases especializadas y universitarias suelen cobrar más.", unit: "por hora" },
-    "personal-trainer": { min: 18000, max: 30000, note: "Depende del tipo de entrenamiento, modalidad e implementos.", unit: "por hora" },
-    chef: { min: 18000, max: 42000, note: "Varía según el tipo de cocina, la cantidad de personas y la complejidad del servicio.", unit: "por hora" },
-    maquillaje: {
-      min: 25000,
-      max: 90000,
-      note: "En maquillaje importa más el resultado final, el tipo de look y el tiempo estimado que una tarifa por hora suelta.",
-      unit: "por servicio",
-      inputLabel: "Precio base desde",
-      placeholder: "35000"
-    },
-    planchado: { min: 10000, max: 14000, note: "Se recomienda cobrar por hora según volumen y delicadeza.", unit: "por hora" }
+  const baseByCategory: Record<CategorySlug, { min: number; max: number; note: string }> = {
+    limpieza: { min: 12000, max: 16000, note: "Referencia habitual para limpieza estándar en comunas del MVP." },
+    mascotas: { min: 10000, max: 14000, note: "Útil para paseos, visitas y cuidado básico por hora." },
+    babysitter: { min: 12000, max: 18000, note: "Suele variar según experiencia, cantidad de niños y horario." },
+    "profesor-particular": { min: 15000, max: 25000, note: "Las clases especializadas y universitarias suelen cobrar más." },
+    "personal-trainer": { min: 18000, max: 30000, note: "Depende del tipo de entrenamiento, modalidad e implementos." },
+    chef: { min: 18000, max: 42000, note: "Varía según el tipo de cocina, la cantidad de personas y la complejidad del servicio." },
+    maquillaje: { min: 18000, max: 30000, note: "Novias y eventos suelen estar en el tramo alto." },
+    planchado: { min: 10000, max: 14000, note: "Se recomienda cobrar por hora según volumen y delicadeza." }
   };
 
   const base = baseByCategory[draft.category];
@@ -563,8 +473,10 @@ function getPricingGuide(draft: DraftState) {
     if (draft.cleaningBringsEquipment) extras.push("Si llevas aspiradora o equipo propio, también puedes posicionarte en el tramo alto.");
   }
 
-  if (draft.category === "maquillaje") {
-    extras.push("En maquillaje conviene mostrar precio base por servicio y duración estimada para que el cliente reserve por resultado.");
+  if (draft.category === "maquillaje" && draft.makeupKit) {
+    min += 3000;
+    max += 5000;
+    extras.push("Si incluyes tu kit de maquillaje, conviene cobrar un extra por hora.");
   }
 
   if (draft.category === "personal-trainer" && draft.trainerBringsEquipment) {
@@ -578,13 +490,7 @@ function getPricingGuide(draft: DraftState) {
     if (chefDefinitions.length > 0) {
       min = Math.min(...chefDefinitions.map((service) => service.recommendedMinClp));
       max = Math.max(...chefDefinitions.map((service) => service.recommendedMaxClp));
-      extras.push("En chef puedes definir una tarifa distinta por hora para cada tipo de servicio que ofrezcas.");
-    }
-    if (draft.chefServiceType.includes("cocina-gourmet")) {
-      extras.push("Cocina gourmet suele quedar en la parte alta del rango por presentación y complejidad.");
-    }
-    if (draft.chefServiceType.includes("cocina-eventos") || draft.chefServiceType.includes("cumpleanos")) {
-      extras.push("Eventos y cumpleaños suelen requerir más coordinación, por lo que pueden cobrar más por hora.");
+      extras.push("En Chef a domicilio defines un precio por servicio dentro del rango permitido por WeTask.");
     }
   }
 
@@ -593,11 +499,7 @@ function getPricingGuide(draft: DraftState) {
     min,
     max,
     note: base.note,
-    extras,
-    unit: base.unit,
-    inputLabel: base.inputLabel ?? "Tarifa por hora",
-    placeholder: base.placeholder ?? "15000",
-    communeAdjustments: base.communeAdjustments ?? []
+    extras
   };
 }
 
@@ -625,12 +527,18 @@ function selectedChefServiceDefinitions(draft: DraftState): ChefServiceDefinitio
   return CHEF_SERVICE_DEFINITIONS.filter((service) => draft.chefServiceType.includes(service.slug));
 }
 
-function normalizeMakeupTypes(value: unknown): MakeupScopeServiceSlug[] {
+function normalizeMakeupTypes(value: unknown): Array<(typeof MAKEUP_SCOPE_SERVICE_OPTIONS)[number]["value"]> {
+  const allowed = new Set<(typeof MAKEUP_SCOPE_SERVICE_OPTIONS)[number]["value"]>(
+    MAKEUP_SCOPE_SERVICE_OPTIONS.map((option) => option.value)
+  );
   if (Array.isArray(value)) {
-    return value.filter((item): item is MakeupScopeServiceSlug => typeof item === "string" && isMakeupScopeServiceSlug(item));
+    return value.filter(
+      (item): item is (typeof MAKEUP_SCOPE_SERVICE_OPTIONS)[number]["value"] =>
+        typeof item === "string" && allowed.has(item as (typeof MAKEUP_SCOPE_SERVICE_OPTIONS)[number]["value"])
+    );
   }
-  if (typeof value === "string" && isMakeupScopeServiceSlug(value)) {
-    return [value];
+  if (typeof value === "string" && allowed.has(value as (typeof MAKEUP_SCOPE_SERVICE_OPTIONS)[number]["value"])) {
+    return [value as (typeof MAKEUP_SCOPE_SERVICE_OPTIONS)[number]["value"]];
   }
   return [];
 }
@@ -656,20 +564,6 @@ function normalizePetServiceTypes(value: unknown): PetScopeServiceSlug[] {
   return [];
 }
 
-function selectedMakeupDefinitions(draft: DraftState) {
-  return MAKEUP_SERVICE_DEFINITIONS.filter((service) => draft.makeupScope.services_offered.includes(service.scopeValue));
-}
-
-function syncMakeupServiceConfigs(
-  currentConfigs: MakeupServiceConfig[],
-  selectedServices: MakeupScopeServiceSlug[]
-): MakeupServiceConfig[] {
-  return selectedServices.map((serviceSlug) => {
-    const existing = currentConfigs.find((item) => item.service_slug === serviceSlug);
-    return existing ? existing : emptyMakeupServiceConfig(serviceSlug);
-  });
-}
-
 function createInitialDraft(): DraftState {
   return {
     phone: CHILE_MOBILE_PREFIX,
@@ -678,15 +572,10 @@ function createInitialDraft(): DraftState {
     firstName: "",
     lastName: "",
     email: "",
-    password: "",
-    confirmPassword: "",
     rut: "",
     address: "",
-    apartment: "",
     homeCommune: "Las Condes",
     profilePhotoUrl: "",
-    profilePhotoPositionX: 50,
-    profilePhotoPositionY: 34,
     coverageCommunes: ["Las Condes"],
     category: "limpieza",
     yearsExperience: "1",
@@ -717,6 +606,8 @@ function createInitialDraft(): DraftState {
     trainerMode: "presencial",
     trainerBringsEquipment: null,
     trainerScope: emptyTrainerScope(),
+    makeupType: [],
+    makeupKit: null,
     ironingType: "casa_cliente",
     ironingDelicate: null,
     ironingPricing: "por_hora",
@@ -762,50 +653,6 @@ function fileToDataUrl(file: File): Promise<string> {
     reader.onerror = () => reject(new Error("No se pudo leer el archivo"));
     reader.readAsDataURL(file);
   });
-}
-
-function composeReferenceAddress(address: string, apartment: string) {
-  const cleanAddress = address.trim();
-  const cleanApartment = apartment.trim();
-  if (!cleanApartment) return cleanAddress;
-  return `${cleanAddress} · Depto ${cleanApartment}`;
-}
-
-function clp(value: number) {
-  return new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP", maximumFractionDigits: 0 }).format(value);
-}
-
-function splitReferenceAddress(referenceAddress: string | null | undefined) {
-  const raw = referenceAddress?.trim() ?? "";
-  if (!raw) return { address: "", apartment: "" };
-  const separator = " · Depto ";
-  if (!raw.includes(separator)) {
-    return { address: raw, apartment: "" };
-  }
-  const [address, apartment] = raw.split(separator);
-  return {
-    address: address?.trim() ?? raw,
-    apartment: apartment?.trim() ?? ""
-  };
-}
-
-function blocksOverlap(a: AvailabilityBlock, b: AvailabilityBlock) {
-  if (a.day !== b.day) return false;
-  return a.start < b.end && b.start < a.end;
-}
-
-function hasAvailabilityOverlap(blocks: AvailabilityBlock[]) {
-  return blocks.some((block, index) =>
-    blocks.some((candidate, candidateIndex) => candidateIndex !== index && blocksOverlap(block, candidate))
-  );
-}
-
-function stripBinaryFieldsForStorage(draft: DraftState) {
-  const nextDraft = { ...draft };
-  for (const key of STORAGE_BINARY_FIELDS) {
-    nextDraft[key] = "";
-  }
-  return nextDraft;
 }
 
 function normalizeRut(rawRut: string) {
@@ -884,20 +731,11 @@ function buildStep7Payload(draft: DraftState) {
         acceptsHomesWithChildren: draft.babysitterMultiChild
       };
     case "profesor-particular":
-      const syncedTeacherScope = normalizeTeacherScope({
-        ...draft.teacherScope,
-        service_configs: syncTeacherServiceConfigs(
-          draft.teacherScope.service_configs,
-          draft.teacherScope.services_offered,
-          draft.teacherScope.music_instruments
-        ),
-        years_experience: Number(draft.yearsExperience || 0)
-      });
       return {
-        offeredServices: getTeacherPublicServiceSlugs(syncedTeacherScope),
-        experienceTypes: [...syncedTeacherScope.levels, ...syncedTeacherScope.modes],
+        offeredServices: draft.teacherScope.services_offered,
+        experienceTypes: [...draft.teacherScope.levels, ...draft.teacherScope.modes],
         teacherScope: {
-          ...syncedTeacherScope
+          ...draft.teacherScope
         }
       };
     case "personal-trainer":
@@ -924,9 +762,9 @@ function buildStep7Payload(draft: DraftState) {
         offeredServices: draft.makeupScope.services_offered,
         makeupScope: {
           ...draft.makeupScope,
-          service_configs: syncMakeupServiceConfigs(draft.makeupScope.service_configs, draft.makeupScope.services_offered)
+          includes_kit: draft.makeupKit
         },
-        bringsOwnProducts: draft.makeupScope.service_configs.some((item) => item.includes_materials),
+        bringsOwnProducts: draft.makeupKit,
         worksWithClientProducts: true
       };
     case "planchado":
@@ -977,11 +815,10 @@ function CleaningOnboardingPageContent() {
   const [error, setError] = useState("");
   const [feedback, setFeedback] = useState("");
   const [submitMissingFields, setSubmitMissingFields] = useState<MissingFieldItem[]>([]);
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [smsPreview, setSmsPreview] = useState("");
   const [cleaningScopeScreen, setCleaningScopeScreen] = useState<CleaningScopeScreen>(1);
   const [petScopeScreen, setPetScopeScreen] = useState<PetScopeScreen>(1);
+  const [makeupScopeScreen, setMakeupScopeScreen] = useState<MakeupScopeScreen>(1);
   const [ironingScopeScreen, setIroningScopeScreen] = useState<IroningScopeScreen>(1);
   const [babysitterScopeScreen, setBabysitterScopeScreen] = useState<BabysitterScopeScreen>(1);
   const [chefScopeScreen, setChefScopeScreen] = useState<ChefScopeScreen>(1);
@@ -1001,6 +838,7 @@ function CleaningOnboardingPageContent() {
   const addressValidationRequestRef = useRef(0);
   const availabilityTaskPanelRef = useRef<HTMLDivElement | null>(null);
 
+  const chicureoSelected = draft.homeCommune === "Chicureo" || draft.coverageCommunes.includes("Chicureo");
   const selectedCategoryLabel = CATEGORY_OPTIONS.find((option) => option.slug === draft.category)?.label ?? "Limpieza";
   const cleaningScopeServicesPreview = draft.cleaningScope.services_offered.map(getCleaningScopeServiceLabel);
   const cleaningScopeIncludedPreview = draft.cleaningScope.tasks_included.map(getCleaningIncludedTaskLabel);
@@ -1009,28 +847,20 @@ function CleaningOnboardingPageContent() {
   const petScopeAnimalsPreview = draft.petAnimals.map(getPetScopeAnimalLabel);
   const petScopeIncludedPreview = draft.petScope.tasks_included.map(getPetIncludedTaskLabel);
   const petScopeExcludedPreview = draft.petScope.tasks_excluded.map(getPetExcludedTaskLabel);
-  const makeupScopeConfigsPreview = syncMakeupServiceConfigs(draft.makeupScope.service_configs, draft.makeupScope.services_offered);
+  const makeupScopeServicesPreview = draft.makeupScope.services_offered.map(getMakeupServiceLabel);
+  const makeupScopeIncludedPreview = draft.makeupScope.tasks_included.map(getMakeupIncludedTaskLabel);
+  const makeupScopeExcludedPreview = draft.makeupScope.tasks_excluded.map(getMakeupExcludedTaskLabel);
   const ironingScopeServicesPreview = draft.ironingScope.services_offered.map(getIroningServiceLabel);
   const babysitterScopeServicesPreview = draft.babysitterScope.services_offered.map(getBabysitterServiceLabel);
   const babysitterScopeAgePreview = draft.babysitterScope.age_ranges.map(getBabysitterAgeRangeLabel);
   const babysitterScopeIncludedPreview = draft.babysitterScope.tasks_included.map(getBabysitterIncludedTaskLabel);
   const babysitterScopeExcludedPreview = draft.babysitterScope.tasks_excluded.map(getBabysitterExcludedTaskLabel);
   const chefScopeServicesPreview = draft.chefScope.services_offered.map(getChefScopeServiceLabel);
-  const chefScopeIncludedPreview = draft.chefScope.tasks_included.map(getChefIncludedTaskLabel);
-  const chefScopeExcludedPreview = draft.chefScope.tasks_excluded.map(getChefExcludedTaskLabel);
-  const normalizedTeacherScope = useMemo(
-    () =>
-      normalizeTeacherScope({
-        ...draft.teacherScope,
-        years_experience: Number(draft.yearsExperience || 0)
-      }),
-    [draft.teacherScope, draft.yearsExperience]
-  );
-  const teacherScopeServicesPreview = getTeacherPublicServiceSlugs(normalizedTeacherScope).map(getTeacherServiceLabel);
-  const teacherScopeLevelsPreview = normalizedTeacherScope.levels.map(getTeacherLevelLabel);
-  const teacherScopeModesPreview = normalizedTeacherScope.modes.map(getTeacherModeLabel);
-  const teacherScopeMusicPreview = normalizedTeacherScope.music_instruments.map(getTeacherMusicInstrumentLabel);
-  const teacherScopeConfigsPreview = normalizedTeacherScope.service_configs;
+  const teacherScopeServicesPreview = draft.teacherScope.services_offered.map(getTeacherServiceLabel);
+  const teacherScopeLevelsPreview = draft.teacherScope.levels.map(getTeacherLevelLabel);
+  const teacherScopeModesPreview = draft.teacherScope.modes.map(getTeacherModeLabel);
+  const teacherScopeIncludedPreview = draft.teacherScope.tasks_included.map(getTeacherIncludedTaskLabel);
+  const teacherScopeExcludedPreview = draft.teacherScope.tasks_excluded.map(getTeacherExcludedTaskLabel);
   const trainerScopeServicesPreview = draft.trainerScope.services_offered.map(getTrainerServiceLabel);
   const trainerScopeModesPreview = draft.trainerScope.modes.map(getTrainerModeLabel);
   const trainerScopeIncludedPreview = draft.trainerScope.tasks_included.map(getTrainerIncludedTaskLabel);
@@ -1074,7 +904,8 @@ function CleaningOnboardingPageContent() {
         ironingScope: normalizeIroningScope(parsed.ironingScope ?? current.ironingScope),
         babysitterScope: normalizeBabysitterScope(parsed.babysitterScope ?? current.babysitterScope),
         teacherScope: normalizeTeacherScope(parsed.teacherScope ?? current.teacherScope),
-        trainerScope: normalizeTrainerScope(parsed.trainerScope ?? current.trainerScope)
+        trainerScope: normalizeTrainerScope(parsed.trainerScope ?? current.trainerScope),
+        makeupType: normalizeMakeupTypes(parsed.makeupType)
       }));
       if (parsed.activeStep && parsed.activeStep >= 1 && parsed.activeStep <= 12) {
         setActiveStep(parsed.activeStep);
@@ -1085,18 +916,7 @@ function CleaningOnboardingPageContent() {
   }, []);
 
   useEffect(() => {
-    try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...draft, activeStep }));
-    } catch {
-      try {
-        window.localStorage.setItem(
-          STORAGE_KEY,
-          JSON.stringify({ ...stripBinaryFieldsForStorage(draft), activeStep })
-        );
-      } catch {
-        // noop
-      }
-    }
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...draft, activeStep }));
   }, [draft, activeStep]);
 
   useEffect(() => {
@@ -1232,22 +1052,19 @@ function CleaningOnboardingPageContent() {
 
   useEffect(() => {
     if (draft.category !== "maquillaje") return;
-    const normalizedServices = normalizeMakeupTypes(draft.makeupScope.services_offered);
-    const syncedConfigs = syncMakeupServiceConfigs(draft.makeupScope.service_configs, normalizedServices);
-    const servicesChanged = normalizedServices.join("|") !== draft.makeupScope.services_offered.join("|");
-    const configsChanged = JSON.stringify(syncedConfigs) !== JSON.stringify(draft.makeupScope.service_configs);
+    const scope = draft.makeupScope;
+    const normalizedServices = normalizeMakeupTypes(scope.services_offered);
+    const servicesChanged = normalizedServices.join("|") !== draft.makeupType.join("|");
+    const kitChanged = scope.includes_kit !== draft.makeupKit;
 
-    if (!servicesChanged && !configsChanged) return;
+    if (!servicesChanged && !kitChanged) return;
 
     setDraft((current) => ({
       ...current,
-      makeupScope: {
-        ...current.makeupScope,
-        services_offered: normalizeMakeupTypes(current.makeupScope.services_offered),
-        service_configs: syncMakeupServiceConfigs(current.makeupScope.service_configs, normalizeMakeupTypes(current.makeupScope.services_offered))
-      }
+      makeupType: normalizeMakeupTypes(current.makeupScope.services_offered),
+      makeupKit: current.makeupScope.includes_kit
     }));
-  }, [draft.category, draft.makeupScope]);
+  }, [draft.category, draft.makeupKit, draft.makeupScope, draft.makeupType]);
 
   useEffect(() => {
     if (draft.category !== "planchado") return;
@@ -1302,32 +1119,6 @@ function CleaningOnboardingPageContent() {
       chefServiceType: normalizeChefServiceTypes(current.chefScope.services_offered)
     }));
   }, [draft.category, draft.chefScope, draft.chefServiceType]);
-
-  useEffect(() => {
-    if (draft.category !== "profesor-particular") return;
-    const syncedScope = normalizeTeacherScope({
-      ...draft.teacherScope,
-      service_configs: syncTeacherServiceConfigs(
-        draft.teacherScope.service_configs,
-        draft.teacherScope.services_offered,
-        draft.teacherScope.music_instruments
-      ),
-      years_experience: Number(draft.yearsExperience || 0)
-    });
-    if (JSON.stringify(syncedScope) === JSON.stringify(draft.teacherScope)) return;
-    setDraft((current) => ({
-      ...current,
-      teacherScope: normalizeTeacherScope({
-        ...current.teacherScope,
-        service_configs: syncTeacherServiceConfigs(
-          current.teacherScope.service_configs,
-          current.teacherScope.services_offered,
-          current.teacherScope.music_instruments
-        ),
-        years_experience: Number(current.yearsExperience || 0)
-      })
-    }));
-  }, [draft.category, draft.teacherScope, draft.yearsExperience]);
 
   useEffect(() => {
     if (draft.category !== "profesor-particular") return;
@@ -1431,6 +1222,12 @@ function CleaningOnboardingPageContent() {
   }, [activeStep, draft.category]);
 
   useEffect(() => {
+    if (activeStep !== 7 || draft.category !== "maquillaje") {
+      setMakeupScopeScreen(1);
+    }
+  }, [activeStep, draft.category]);
+
+  useEffect(() => {
     if (activeStep !== 7 || draft.category !== "planchado") {
       setIroningScopeScreen(1);
     }
@@ -1462,7 +1259,6 @@ function CleaningOnboardingPageContent() {
 
   const hydrateFromServer = (nextOnboarding: OnboardingPayload, user?: { fullName?: string | null; email?: string | null; phone?: string | null }) => {
     const { firstName, lastName } = splitFullName(user?.fullName ?? session?.fullName ?? "");
-    const parsedReferenceAddress = splitReferenceAddress(nextOnboarding.referenceAddress);
     setOnboarding(nextOnboarding);
     setDraft((current) => ({
       ...current,
@@ -1472,12 +1268,9 @@ function CleaningOnboardingPageContent() {
       lastName: lastName || current.lastName,
       email: user?.email ?? current.email,
       rut: formatRutInput(nextOnboarding.documentId ?? current.rut),
-      address: parsedReferenceAddress.address || current.address,
-      apartment: parsedReferenceAddress.apartment || current.apartment,
+      address: nextOnboarding.referenceAddress ?? current.address,
       homeCommune: (nextOnboarding.baseCommune as ActiveMvpCommune) ?? current.homeCommune,
       profilePhotoUrl: nextOnboarding.profilePhotoUrl ?? current.profilePhotoUrl,
-      profilePhotoPositionX: nextOnboarding.profilePhotoPositionX ?? current.profilePhotoPositionX,
-      profilePhotoPositionY: nextOnboarding.profilePhotoPositionY ?? current.profilePhotoPositionY,
       coverageCommunes:
         Array.isArray(nextOnboarding.serviceCommunes) && nextOnboarding.serviceCommunes.length > 0
           ? (nextOnboarding.serviceCommunes as ActiveMvpCommune[])
@@ -1512,13 +1305,13 @@ function CleaningOnboardingPageContent() {
         nextOnboarding.categorySlug === "maquillaje"
           ? (() => {
               const normalizedScope = normalizeMakeupScope(nextOnboarding.makeupScope);
-              if (normalizedScope.services_offered.length > 0 || normalizedScope.service_configs.length > 0) {
+              if (normalizedScope.services_offered.length > 0 || normalizedScope.tasks_included.length > 0) {
                 return normalizedScope;
               }
               return {
                 ...normalizedScope,
                 services_offered: normalizeMakeupTypes(nextOnboarding.offeredServices),
-                service_configs: syncMakeupServiceConfigs([], normalizeMakeupTypes(nextOnboarding.offeredServices))
+                includes_kit: nextOnboarding.bringsOwnProducts ?? current.makeupKit
               };
             })()
           : current.makeupScope,
@@ -1591,48 +1384,35 @@ function CleaningOnboardingPageContent() {
               const normalizedScope = normalizeTeacherScope(nextOnboarding.teacherScope);
               if (
                 normalizedScope.services_offered.length > 0 ||
-                normalizedScope.service_configs.length > 0
+                normalizedScope.levels.length > 0 ||
+                normalizedScope.modes.length > 0 ||
+                normalizedScope.tasks_included.length > 0
               ) {
                 return normalizedScope;
               }
-              const legacyServices = Array.isArray(nextOnboarding.offeredServices)
-                ? nextOnboarding.offeredServices.filter(
-                    (item): item is TeacherScopeServiceSlug =>
-                      typeof item === "string" &&
-                      (item === "matematicas" ||
-                        item === "ingles" ||
-                        item === "apoyo_escolar" ||
-                        item === "musica" ||
-                        item === "lenguaje" ||
-                        item === "ciencias" ||
-                        item === "otra")
-                  )
-                : [];
-              const fallbackLevels = Array.isArray(nextOnboarding.experienceTypes)
-                ? nextOnboarding.experienceTypes.filter((item): item is TeacherLevelSlug => typeof item === "string")
-                : [];
-              const fallbackModes = Array.isArray(nextOnboarding.experienceTypes)
-                ? nextOnboarding.experienceTypes.filter((item): item is TeacherModeSlug => item === "presencial" || item === "online")
-                : [];
-              const fallbackServices = normalizeTeacherScope({ services_offered: legacyServices }).services_offered;
               return {
-                ...normalizeTeacherScope({
-                  ...normalizedScope,
-                  services_offered: fallbackServices,
-                  levels: fallbackLevels,
-                  modes: fallbackModes,
-                  service_configs: getTeacherPublicServiceSlugs(
-                    normalizeTeacherScope({
-                      services_offered: fallbackServices
-                    })
-                  ).map((serviceSlug) => ({
-                    ...createTeacherServiceConfig(serviceSlug),
-                    levels: getTeacherLevelOptionsForService(serviceSlug)
-                      .map((option) => option.value)
-                      .filter((value) => fallbackLevels.includes(value as TeacherLevelSlug)),
-                    modes: fallbackModes
-                  }))
-                })
+                ...normalizedScope,
+                services_offered: Array.isArray(nextOnboarding.offeredServices)
+                  ? nextOnboarding.offeredServices.filter(
+                      (item): item is TeacherScopeServiceSlug =>
+                        typeof item === "string" &&
+                        TEACHER_SCOPE_SERVICE_OPTIONS.some((option) => option.value === item)
+                    )
+                  : [],
+                levels: Array.isArray(nextOnboarding.experienceTypes)
+                  ? nextOnboarding.experienceTypes.filter(
+                      (item): item is TeacherLevelSlug =>
+                        typeof item === "string" &&
+                        TEACHER_LEVEL_OPTIONS.some((option) => option.value === item)
+                    )
+                  : [],
+                modes: Array.isArray(nextOnboarding.experienceTypes)
+                  ? nextOnboarding.experienceTypes.filter(
+                      (item): item is TeacherModeSlug =>
+                        typeof item === "string" &&
+                        TEACHER_MODE_OPTIONS.some((option) => option.value === item)
+                    )
+                  : []
               };
             })()
           : current.teacherScope,
@@ -1668,6 +1448,11 @@ function CleaningOnboardingPageContent() {
             })()
           : current.trainerScope,
       chefServiceType: nextOnboarding.categorySlug === "chef" ? normalizeChefServiceTypes(nextOnboarding.offeredServices) : current.chefServiceType,
+      makeupType: nextOnboarding.categorySlug === "maquillaje" ? normalizeMakeupTypes(nextOnboarding.offeredServices) : current.makeupType,
+      makeupKit:
+        nextOnboarding.categorySlug === "maquillaje"
+          ? normalizeMakeupScope(nextOnboarding.makeupScope).includes_kit ?? nextOnboarding.bringsOwnProducts ?? current.makeupKit
+          : current.makeupKit,
       ironingType:
         nextOnboarding.categorySlug === "planchado"
           ? normalizeIroningScope(nextOnboarding.ironingScope).services_offered[0] ?? current.ironingType
@@ -1789,7 +1574,7 @@ function CleaningOnboardingPageContent() {
                 return acc;
               }, { ...current.chefServiceRates }),
               hourlyRate: serviceRates.find((item) => isCleaningServiceSlug(item.serviceSlug) && item.serviceSlug === "limpieza-hogar")?.hourlyRateClp?.toString() ??
-                serviceRates.find((item) => isChefServiceSlug(item.serviceSlug) && item.serviceSlug === "cocina-casera")?.hourlyRateClp?.toString() ??
+                serviceRates.find((item) => isChefServiceSlug(item.serviceSlug) && item.serviceSlug === "meal-prep-semanal")?.hourlyRateClp?.toString() ??
                 serviceRates[0]?.hourlyRateClp?.toString() ??
                 current.hourlyRate
             }));
@@ -1807,128 +1592,6 @@ function CleaningOnboardingPageContent() {
 
   const updateDraft = <K extends keyof DraftState>(key: K, value: DraftState[K]) => {
     setDraft((current) => ({ ...current, [key]: value }));
-  };
-
-  const handleDraftFileUpload = async (
-    field: "profilePhotoUrl" | "identityDocumentFrontFile" | "identityDocumentBackFile" | "criminalRecordFile",
-    file: File | null,
-    label: string
-  ) => {
-    if (!file) return;
-    if (file.size > MAX_UPLOAD_BYTES) {
-      setError(`${label}: el archivo supera los 6 MB. Súbelo más liviano para continuar.`);
-      return;
-    }
-    try {
-      setError("");
-      const content = await fileToDataUrl(file);
-      updateDraft(field, content);
-      if (field === "profilePhotoUrl") {
-        updateDraft("profilePhotoPositionX", 50);
-        updateDraft("profilePhotoPositionY", 34);
-      }
-    } catch (eventualError) {
-      setError(eventualError instanceof Error ? eventualError.message : `No se pudo cargar ${label.toLowerCase()}.`);
-    }
-  };
-
-  const updateMakeupServiceConfig = (
-    serviceSlug: MakeupScopeServiceSlug,
-    updater: (current: MakeupServiceConfig) => MakeupServiceConfig
-  ) => {
-    setDraft((current) => {
-      const syncedConfigs = syncMakeupServiceConfigs(current.makeupScope.service_configs, current.makeupScope.services_offered);
-      return {
-        ...current,
-        makeupScope: {
-          ...current.makeupScope,
-          service_configs: syncedConfigs.map((config) => (config.service_slug === serviceSlug ? updater(config) : config))
-        }
-      };
-    });
-  };
-
-  const updateTeacherScope = (updater: (current: TeacherScopeData) => TeacherScopeData) => {
-    setDraft((current) => {
-      const nextScope = normalizeTeacherScope(updater(current.teacherScope));
-      return {
-        ...current,
-        teacherScope: {
-          ...nextScope,
-          years_experience: Number(current.yearsExperience || 0)
-        }
-      };
-    });
-  };
-
-  const updateTeacherServiceConfig = (
-    serviceSlug: TeacherPublicServiceSlug,
-    updater: (current: TeacherServiceConfig) => TeacherServiceConfig
-  ) => {
-    updateTeacherScope((current) => ({
-      ...current,
-      service_configs: syncTeacherServiceConfigs(current.service_configs, current.services_offered, current.music_instruments).map((config) =>
-        config.service_slug === serviceSlug ? updater(config) : config
-      )
-    }));
-  };
-
-  const handleTeacherSupportMaterialUpload = async (file: File | null) => {
-    if (!file) return;
-    if (file.size > MAX_UPLOAD_BYTES) {
-      setError("Material de apoyo: el archivo supera los 6 MB. Súbelo más liviano para continuar.");
-      return;
-    }
-
-    try {
-      setError("");
-      const content = await fileToDataUrl(file);
-      updateTeacherScope((current) => ({
-        ...current,
-        support_materials: [...current.support_materials, content].slice(0, 6)
-      }));
-    } catch (eventualError) {
-      setError(eventualError instanceof Error ? eventualError.message : "No se pudo cargar el material de apoyo.");
-    }
-  };
-
-  const removeTeacherSupportMaterial = (index: number) => {
-    updateTeacherScope((current) => ({
-      ...current,
-      support_materials: current.support_materials.filter((_, currentIndex) => currentIndex !== index)
-    }));
-  };
-
-  const handleMakeupPortfolioUpload = async (file: File | null) => {
-    if (!file) return;
-    if (file.size > MAX_UPLOAD_BYTES) {
-      setError("Portafolio de maquillaje: la foto supera los 6 MB. Súbela más liviana para continuar.");
-      return;
-    }
-
-    try {
-      setError("");
-      const content = await fileToDataUrl(file);
-      setDraft((current) => ({
-        ...current,
-        makeupScope: {
-          ...current.makeupScope,
-          portfolio_photos: [...current.makeupScope.portfolio_photos, content].slice(0, 6)
-        }
-      }));
-    } catch (eventualError) {
-      setError(eventualError instanceof Error ? eventualError.message : "No se pudo cargar la foto del portafolio.");
-    }
-  };
-
-  const removeMakeupPortfolioPhoto = (index: number) => {
-    setDraft((current) => ({
-      ...current,
-      makeupScope: {
-        ...current.makeupScope,
-        portfolio_photos: current.makeupScope.portfolio_photos.filter((_, currentIndex) => currentIndex !== index)
-      }
-    }));
   };
 
   const selectAddressSuggestion = (suggestion: string) => {
@@ -2013,25 +1676,6 @@ function CleaningOnboardingPageContent() {
       throw new Error(data.detail || data.error || "No se pudo guardar el paso");
     }
     setOnboarding(data.onboarding);
-    if (data.onboarding.phoneValidatedAt) {
-      setDraft((current) => ({ ...current, phoneVerified: true }));
-    }
-  };
-
-  const ensurePhoneVerificationLinked = async () => {
-    if (!draft.phoneVerified || onboarding?.phoneValidatedAt || !session || (session.role !== "PRO" && session.role !== "ADMIN")) {
-      return onboarding;
-    }
-
-    const claimResponse = await fetch("/api/onboarding/cleaning/phone/claim", { method: "POST" });
-    const claimData = (await claimResponse.json()) as { ok?: boolean; onboarding?: OnboardingPayload; error?: string; detail?: string };
-    if (!claimResponse.ok || !claimData.ok || !claimData.onboarding) {
-      throw new Error(claimData.detail || claimData.error || "No pudimos asociar la verificación del teléfono.");
-    }
-
-    setOnboarding(claimData.onboarding);
-    setDraft((current) => ({ ...current, phoneVerified: true }));
-    return claimData.onboarding;
   };
 
   const phoneVerificationBasePath =
@@ -2168,16 +1812,6 @@ function CleaningOnboardingPageContent() {
       setError("La foto de perfil es obligatoria.");
       return;
     }
-    if (session?.role !== "PRO" && session?.role !== "ADMIN") {
-      if (!draft.password.trim() || draft.password.trim().length < 8) {
-        setError("Crea una contraseña de al menos 8 caracteres.");
-        return;
-      }
-      if (draft.confirmPassword !== draft.password) {
-        setError("La confirmación de contraseña no coincide.");
-        return;
-      }
-    }
 
     setSaving(true);
     setError("");
@@ -2192,11 +1826,9 @@ function CleaningOnboardingPageContent() {
           email: draft.email.trim().toLowerCase(),
           phone: draft.phone.trim(),
           documentId: draft.rut.trim(),
-          referenceAddress: composeReferenceAddress(draft.address, draft.apartment),
+          referenceAddress: draft.address.trim(),
           baseCommune: draft.homeCommune,
-          profilePhotoUrl: draft.profilePhotoUrl,
-          profilePhotoPositionX: draft.profilePhotoPositionX,
-          profilePhotoPositionY: draft.profilePhotoPositionY
+          profilePhotoUrl: draft.profilePhotoUrl
         });
       } else {
         const response = await fetch("/api/onboarding/cleaning/start", {
@@ -2206,14 +1838,11 @@ function CleaningOnboardingPageContent() {
             fullName: `${draft.firstName.trim()} ${draft.lastName.trim()}`,
             email: draft.email.trim().toLowerCase(),
             phone: draft.phone.trim(),
-            password: draft.password.trim(),
             categorySlug: draft.category,
             baseCommune: draft.homeCommune,
-            referenceAddress: composeReferenceAddress(draft.address, draft.apartment),
+            referenceAddress: draft.address.trim(),
             documentId: draft.rut.trim(),
-            profilePhotoUrl: draft.profilePhotoUrl,
-            profilePhotoPositionX: draft.profilePhotoPositionX,
-            profilePhotoPositionY: draft.profilePhotoPositionY
+            profilePhotoUrl: draft.profilePhotoUrl
           })
         });
         const data = (await response.json()) as {
@@ -2341,6 +1970,24 @@ function CleaningOnboardingPageContent() {
     setPetScopeScreen((current) => (Math.max(1, current - 1) as PetScopeScreen));
   };
 
+  const continueMakeupScopeScreen = () => {
+    if (makeupScopeScreen === 1 && draft.makeupScope.services_offered.length === 0) {
+      setError("Selecciona al menos un tipo de maquillaje que ofreces.");
+      return;
+    }
+    if (makeupScopeScreen === 2 && draft.makeupScope.tasks_included.length === 0) {
+      setError("Selecciona al menos una tarea que sí realizas.");
+      return;
+    }
+    setError("");
+    setMakeupScopeScreen((current) => (Math.min(5, current + 1) as MakeupScopeScreen));
+  };
+
+  const previousMakeupScopeScreen = () => {
+    setError("");
+    setMakeupScopeScreen((current) => (Math.max(1, current - 1) as MakeupScopeScreen));
+  };
+
   const continueIroningScopeScreen = () => {
     if (ironingScopeScreen === 1 && draft.ironingScope.services_offered.length === 0) {
       setError("Selecciona al menos una modalidad de planchado que ofreces.");
@@ -2378,47 +2025,38 @@ function CleaningOnboardingPageContent() {
   };
 
   const continueChefScopeScreen = () => {
-    if (chefScopeScreen === 1 && draft.chefScope.services_offered.length === 0) {
+    if (draft.chefScope.services_offered.length === 0) {
       setError("Selecciona al menos un tipo de servicio de chef que ofreces.");
       return;
     }
-    if (chefScopeScreen === 2 && draft.chefScope.tasks_included.length === 0) {
-      setError("Selecciona al menos una tarea que sí realizas.");
-      return;
-    }
     setError("");
-    setChefScopeScreen((current) => (Math.min(5, current + 1) as ChefScopeScreen));
+    void continueStep7();
   };
 
   const previousChefScopeScreen = () => {
     setError("");
-    setChefScopeScreen((current) => (Math.max(1, current - 1) as ChefScopeScreen));
+    previousStep();
   };
 
   const continueTeacherScopeScreen = () => {
-    const syncedConfigs = syncTeacherServiceConfigs(
-      draft.teacherScope.service_configs,
-      draft.teacherScope.services_offered,
-      draft.teacherScope.music_instruments
-    );
     if (teacherScopeScreen === 1 && draft.teacherScope.services_offered.length === 0) {
-      setError("Selecciona al menos una clase que ofreces.");
+      setError("Selecciona al menos una asignatura que ofreces.");
       return;
     }
-    if (teacherScopeScreen === 1 && draft.teacherScope.services_offered.includes("musica") && draft.teacherScope.music_instruments.length === 0) {
-      setError("Si enseñas música, marca al menos guitarra, piano o canto.");
+    if (teacherScopeScreen === 2 && draft.teacherScope.levels.length === 0) {
+      setError("Selecciona al menos un nivel con el que trabajas.");
       return;
     }
-    if (teacherScopeScreen === 2 && syncedConfigs.some((config) => config.levels.length === 0 || config.modes.length === 0 || !config.hourly_rate_clp || !config.typical_duration_min)) {
-      setError("Completa nivel, modalidad, precio por hora y duración típica para cada clase que ofreces.");
+    if (teacherScopeScreen === 2 && draft.teacherScope.modes.length === 0) {
+      setError("Selecciona al menos una modalidad de clases.");
       return;
     }
-    if (teacherScopeScreen === 3 && !draft.teacherScope.teaching_style.trim()) {
-      setError("Describe tu estilo de enseñanza para que el alumno entienda tu propuesta.");
+    if (teacherScopeScreen === 3 && draft.teacherScope.tasks_included.length === 0) {
+      setError("Selecciona al menos una tarea que sí realizas.");
       return;
     }
     setError("");
-    setTeacherScopeScreen((current) => (Math.min(5, current + 1) as TeacherScopeScreen));
+    setTeacherScopeScreen((current) => (Math.min(6, current + 1) as TeacherScopeScreen));
   };
 
   const previousTeacherScopeScreen = () => {
@@ -2450,11 +2088,6 @@ function CleaningOnboardingPageContent() {
 
   const continueStep7 = async () => {
     const payload = buildStep7Payload(draft);
-    const syncedTeacherConfigs = syncTeacherServiceConfigs(
-      draft.teacherScope.service_configs,
-      draft.teacherScope.services_offered,
-      draft.teacherScope.music_instruments
-    );
     if (!payload.offeredServices || payload.offeredServices.length === 0) {
       setError("Responde las preguntas de tu categoría para continuar.");
       return;
@@ -2485,23 +2118,9 @@ function CleaningOnboardingPageContent() {
       setError("Selecciona al menos un tipo de maquillaje que ofreces.");
       return;
     }
-    if (draft.category === "maquillaje") {
-      const syncedConfigs = syncMakeupServiceConfigs(draft.makeupScope.service_configs, draft.makeupScope.services_offered);
-      const invalidConfig = syncedConfigs.find(
-        (config) => !config.base_price_clp || !config.duration_min || (config.service_slug === "otro" && !config.custom_label.trim())
-      );
-      if (invalidConfig) {
-        setError("Completa precio base, duración y nombre del servicio cuando marques 'Otro'.");
-        return;
-      }
-      if (!draft.makeupScope.style_description.trim()) {
-        setError("Describe tu estilo de maquillaje para que el cliente entienda tu propuesta.");
-        return;
-      }
-      if (draft.makeupScope.portfolio_photos.length === 0) {
-        setError("Sube al menos una foto de trabajos anteriores.");
-        return;
-      }
+    if (draft.category === "maquillaje" && draft.makeupScope.tasks_included.length === 0) {
+      setError("Selecciona al menos una tarea que sí realizas.");
+      return;
     }
     if (draft.category === "planchado" && draft.ironingScope.services_offered.length === 0) {
       setError("Selecciona al menos una modalidad de planchado que ofreces.");
@@ -2523,31 +2142,20 @@ function CleaningOnboardingPageContent() {
       setError("Selecciona al menos un tipo de servicio de chef que ofreces.");
       return;
     }
-    if (draft.category === "chef" && draft.chefScope.tasks_included.length === 0) {
-      setError("Selecciona al menos una tarea que sí realizas.");
-      return;
-    }
     if (draft.category === "profesor-particular" && draft.teacherScope.services_offered.length === 0) {
-      setError("Selecciona al menos una clase que ofreces.");
+      setError("Selecciona al menos una asignatura que ofreces.");
       return;
     }
-    if (
-      draft.category === "profesor-particular" &&
-      draft.teacherScope.services_offered.includes("musica") &&
-      draft.teacherScope.music_instruments.length === 0
-    ) {
-      setError("Si ofreces música, selecciona al menos guitarra, piano o canto.");
+    if (draft.category === "profesor-particular" && draft.teacherScope.levels.length === 0) {
+      setError("Selecciona al menos un nivel con el que trabajas.");
       return;
     }
-    if (
-      draft.category === "profesor-particular" &&
-      syncedTeacherConfigs.some((config) => config.levels.length === 0 || config.modes.length === 0 || !config.hourly_rate_clp || !config.typical_duration_min)
-    ) {
-      setError("Completa nivel, modalidad, precio por hora y duración típica en cada clase particular.");
+    if (draft.category === "profesor-particular" && draft.teacherScope.modes.length === 0) {
+      setError("Selecciona al menos una modalidad de clases.");
       return;
     }
-    if (draft.category === "profesor-particular" && !draft.teacherScope.teaching_style.trim()) {
-      setError("Describe tu estilo de enseñanza para que el cliente entienda tu propuesta.");
+    if (draft.category === "profesor-particular" && draft.teacherScope.tasks_included.length === 0) {
+      setError("Selecciona al menos una tarea que sí realizas.");
       return;
     }
     if (draft.category === "personal-trainer" && draft.trainerScope.services_offered.length === 0) {
@@ -2580,10 +2188,6 @@ function CleaningOnboardingPageContent() {
       setError("Configura al menos un bloque horario válido.");
       return;
     }
-    if (hasAvailabilityOverlap(validBlocks)) {
-      setError("No puedes cruzar dos bloques horarios en el mismo día.");
-      return;
-    }
     setSaving(true);
     setError("");
     try {
@@ -2611,28 +2215,27 @@ function CleaningOnboardingPageContent() {
             hourlyRateClp: Number(draft.chefServiceRates[service.slug] || 0)
           }))
         : [];
-    const makeupRates =
-      draft.category === "maquillaje"
-        ? syncMakeupServiceConfigs(draft.makeupScope.service_configs, draft.makeupScope.services_offered).map((config) => ({
-            serviceSlug: getMakeupServiceSlugFromScopeValue(config.service_slug) ?? config.service_slug,
-            hourlyRateClp: Number(config.base_price_clp || 0),
-            durationMin: Number(config.duration_min || 0),
-            includesTravel: config.includes_travel,
-            includesLashes: config.includes_lashes,
-            includesTrial: config.includes_trial,
-            includesMaterials: config.includes_materials
-          }))
-        : [];
-    const categoryRates =
-      draft.category === "limpieza" ? cleaningRates : draft.category === "chef" ? chefRates : draft.category === "maquillaje" ? makeupRates : [];
+    const categoryRates = draft.category === "limpieza" ? cleaningRates : draft.category === "chef" ? chefRates : [];
+
+    if (draft.category === "chef") {
+      const invalidChefRate = chefRates.find((item) => !isChefServiceRateWithinRange(item.serviceSlug, item.hourlyRateClp));
+      if (invalidChefRate) {
+        const service = getChefServiceDefinition(invalidChefRate.serviceSlug);
+        setError(
+          service
+            ? `${service.name} debe quedar entre $${formatClp(service.recommendedMinClp)} y $${formatClp(service.recommendedMaxClp)}.`
+            : "Uno de los precios de chef está fuera del rango permitido."
+        );
+        return;
+      }
+    }
 
     if (
-      ((draft.category === "limpieza" || draft.category === "chef" || draft.category === "maquillaje") &&
-        categoryRates.some((item) => !item.hourlyRateClp)) ||
-      (draft.category !== "limpieza" && draft.category !== "chef" && draft.category !== "maquillaje" && !draft.hourlyRate.trim()) ||
-      !draft.minimumHours.trim()
+      ((draft.category === "limpieza" || draft.category === "chef") && categoryRates.some((item) => !item.hourlyRateClp)) ||
+      (draft.category !== "limpieza" && draft.category !== "chef" && !draft.hourlyRate.trim()) ||
+      (draft.category !== "chef" && !draft.minimumHours.trim())
     ) {
-      setError(draft.category === "maquillaje" ? "Completa precio base, duración y mínimo de reserva." : "Completa tu tarifa y mínimo de horas.");
+      setError("Completa tu tarifa y mínimo de horas.");
       return;
     }
     setSaving(true);
@@ -2644,25 +2247,17 @@ function CleaningOnboardingPageContent() {
             cleaningRates[0]?.hourlyRateClp ??
             Number(draft.hourlyRate || 0)
           : draft.category === "chef"
-            ? chefRates.find((item) => item.serviceSlug === "cocina-casera")?.hourlyRateClp ??
+            ? chefRates.find((item) => item.serviceSlug === "meal-prep-semanal")?.hourlyRateClp ??
               chefRates[0]?.hourlyRateClp ??
               Number(draft.hourlyRate || 0)
-            : draft.category === "maquillaje"
-              ? makeupRates[0]?.hourlyRateClp ?? Number(draft.hourlyRate || 0)
             : Number(draft.hourlyRate);
       await persistServerStep(9, {
         hourlyRateClp: fallbackRate,
         serviceRates: categoryRates,
-        minBookingHours:
-          draft.category === "maquillaje"
-            ? Math.max(
-                1,
-                ...makeupRates.map((item) => (item.durationMin ? Math.ceil(item.durationMin / 60) : 1))
-              )
-            : Number(draft.minimumHours),
+        minBookingHours: draft.category === "chef" ? 1 : Number(draft.minimumHours),
         weekendSurchargePct: draft.hasWeekendSurcharge ? Number(draft.weekendSurchargePct || 0) : 0,
         holidaySurchargePct: draft.hasHolidaySurcharge ? Number(draft.holidaySurchargePct || 0) : 0,
-        remoteCommuneSurchargeClp: onboarding?.remoteCommuneSurchargeClp ?? 0
+        remoteCommuneSurchargeClp: chicureoSelected ? 5000 : 0
       });
       setActiveStep(10);
     } catch (eventualError) {
@@ -2713,29 +2308,10 @@ function CleaningOnboardingPageContent() {
     setFeedback("");
     setSubmitMissingFields([]);
     try {
-      await ensurePhoneVerificationLinked();
       await persistServerStep(11, { acceptTerms: true });
       const response = await fetch("/api/onboarding/cleaning/submit", { method: "POST" });
       const data = (await response.json()) as { ok?: boolean; onboarding?: OnboardingPayload; error?: string; detail?: string; missingFields?: string[] };
       if (!response.ok || !data.ok || !data.onboarding) {
-        if (Array.isArray(data.missingFields) && data.missingFields.includes("phoneValidatedAt") && draft.phoneVerified) {
-          await ensurePhoneVerificationLinked();
-          const retryResponse = await fetch("/api/onboarding/cleaning/submit", { method: "POST" });
-          const retryData = (await retryResponse.json()) as {
-            ok?: boolean;
-            onboarding?: OnboardingPayload;
-            error?: string;
-            detail?: string;
-            missingFields?: string[];
-          };
-          if (retryResponse.ok && retryData.ok && retryData.onboarding) {
-            setOnboarding(retryData.onboarding);
-            setActiveStep(12);
-            setFeedback("Registro completado. Tu perfil será revisado antes de activarse.");
-            window.localStorage.removeItem(STORAGE_KEY);
-            return;
-          }
-        }
         if (Array.isArray(data.missingFields) && data.missingFields.length > 0) {
           setSubmitMissingFields(
             data.missingFields.map((field) => ({
@@ -2805,18 +2381,10 @@ function CleaningOnboardingPageContent() {
   };
 
   const updateAvailabilityBlock = (index: number, patch: Partial<AvailabilityBlock>) => {
-    setDraft((current) => {
-      const nextBlocks = current.availabilityBlocks.map((block, blockIndex) => (blockIndex === index ? { ...block, ...patch } : block));
-      if (hasAvailabilityOverlap(nextBlocks)) {
-        setError("No puedes cruzar dos bloques horarios en el mismo día.");
-        return current;
-      }
-      setError("");
-      return {
-        ...current,
-        availabilityBlocks: nextBlocks
-      };
-    });
+    setDraft((current) => ({
+      ...current,
+      availabilityBlocks: current.availabilityBlocks.map((block, blockIndex) => (blockIndex === index ? { ...block, ...patch } : block))
+    }));
   };
 
   const addAvailabilityBlock = (days: DayKey[]) => {
@@ -2831,26 +2399,19 @@ function CleaningOnboardingPageContent() {
       setError("Define un rango horario válido para crear el bloque.");
       return;
     }
-    const candidateBlocks = uniqueDays.map((day) => ({ day, start, end }));
+    setError("");
     setSelectedAvailabilityDay(uniqueDays[0]);
-    setDraft((current) => {
-      const dedupedCandidates = candidateBlocks.filter(
-        (candidate) =>
-          !current.availabilityBlocks.some(
-            (block) => block.day === candidate.day && block.start === candidate.start && block.end === candidate.end
+    setDraft((current) => ({
+      ...current,
+      availabilityBlocks: [
+        ...current.availabilityBlocks,
+        ...uniqueDays
+          .filter(
+            (day) => !current.availabilityBlocks.some((block) => block.day === day && block.start === start && block.end === end)
           )
-      );
-      const nextBlocks = [...current.availabilityBlocks, ...dedupedCandidates];
-      if (hasAvailabilityOverlap(nextBlocks)) {
-        setError("No puedes cruzar dos bloques horarios en el mismo día.");
-        return current;
-      }
-      setError("");
-      return {
-        ...current,
-        availabilityBlocks: nextBlocks
-      };
-    });
+          .map((day) => ({ day, start, end }))
+      ]
+    }));
     revealAvailabilityDetail(true);
   };
 
@@ -3072,44 +2633,6 @@ function CleaningOnboardingPageContent() {
                     Email
                     <input type="email" value={draft.email} onChange={(event) => updateDraft("email", event.target.value)} />
                   </label>
-                  {session?.role !== "PRO" && session?.role !== "ADMIN" ? (
-                    <>
-                      <label>
-                        Contraseña
-                        <div className="password-field">
-                          <input
-                            type={showPassword ? "text" : "password"}
-                            value={draft.password}
-                            onChange={(event) => updateDraft("password", event.target.value)}
-                            minLength={8}
-                            placeholder="Mínimo 8 caracteres"
-                          />
-                          <button type="button" className="password-toggle" onClick={() => setShowPassword((current) => !current)}>
-                            {showPassword ? "Ocultar" : "Mostrar"}
-                          </button>
-                        </div>
-                      </label>
-                      <label>
-                        Confirmar contraseña
-                        <div className="password-field">
-                          <input
-                            type={showConfirmPassword ? "text" : "password"}
-                            value={draft.confirmPassword}
-                            onChange={(event) => updateDraft("confirmPassword", event.target.value)}
-                            minLength={8}
-                            placeholder="Repite tu contraseña"
-                          />
-                          <button
-                            type="button"
-                            className="password-toggle"
-                            onClick={() => setShowConfirmPassword((current) => !current)}
-                          >
-                            {showConfirmPassword ? "Ocultar" : "Mostrar"}
-                          </button>
-                        </div>
-                      </label>
-                    </>
-                  ) : null}
                   <label>
                     RUT
                     <input
@@ -3155,64 +2678,22 @@ function CleaningOnboardingPageContent() {
                     </p>
                   </label>
                   <label>
-                    Departamento
-                    <input
-                      value={draft.apartment}
-                      onChange={(event) => updateDraft("apartment", event.target.value)}
-                      placeholder="Ej: 504, Torre B, Oficina 12"
-                    />
-                    <p className="input-hint">Opcional. Lo guardaremos junto a la dirección para futuras reservas.</p>
-                  </label>
-                  <label>
                     Foto de perfil
                     <input
                       type="file"
                       accept="image/png,image/jpeg"
                       onChange={async (event) => {
-                        await handleDraftFileUpload("profilePhotoUrl", event.target.files?.[0] ?? null, "Foto de perfil");
+                        const file = event.target.files?.[0];
+                        if (!file) return;
+                        const content = await fileToDataUrl(file);
+                        updateDraft("profilePhotoUrl", content);
                       }}
                     />
-                    <p className="input-hint">Sube una foto clara y luego ajusta el encuadre para que se vea bien tu cara.</p>
                   </label>
-                  {draft.profilePhotoUrl ? (
-                    <div className="full avatar-focus-editor">
-                      <div className="avatar-focus-layout">
-                        <div className="avatar-focus-preview-frame" aria-hidden>
-                          <img
-                            src={draft.profilePhotoUrl}
-                            alt=""
-                            className="avatar-focus-preview-image"
-                            style={{ objectPosition: `${draft.profilePhotoPositionX}% ${draft.profilePhotoPositionY}%` }}
-                          />
-                        </div>
-                        <div className="avatar-focus-controls">
-                          <label>
-                            Centrar horizontalmente
-                            <input
-                              type="range"
-                              min={0}
-                              max={100}
-                              value={draft.profilePhotoPositionX}
-                              onChange={(event) => updateDraft("profilePhotoPositionX", Number(event.target.value))}
-                            />
-                          </label>
-                          <label>
-                            Centrar verticalmente
-                            <input
-                              type="range"
-                              min={0}
-                              max={100}
-                              value={draft.profilePhotoPositionY}
-                              onChange={(event) => updateDraft("profilePhotoPositionY", Number(event.target.value))}
-                            />
-                          </label>
-                        </div>
-                      </div>
-                    </div>
-                  ) : null}
                 </div>
                 {addressValidationMessage ? <p className="feedback ok">{addressValidationMessage}</p> : null}
                 {addressValidationError ? <p className="feedback error">{addressValidationError}</p> : null}
+                {draft.homeCommune === "Chicureo" ? <p className="onboarding-warning">Chicureo puede tener recargo por distancia.</p> : null}
                 <div className="auth-flow-actions">
                   <button type="button" className="cta ghost" onClick={previousStep}>
                     Volver
@@ -3244,6 +2725,7 @@ function CleaningOnboardingPageContent() {
                     </label>
                   ))}
                 </div>
+                {chicureoSelected ? <p className="onboarding-warning">Chicureo puede tener recargo por distancia.</p> : null}
                 <div className="auth-flow-actions">
                   <button type="button" className="cta ghost" onClick={previousStep}>
                     Volver
@@ -3957,391 +3439,217 @@ function CleaningOnboardingPageContent() {
                 {draft.category === "profesor-particular" ? (
                   <div className="grid-form auth-flow-form">
                     <div className="full onboarding-scope-progress">
-                      <span className={teacherScopeScreen >= 1 ? "active" : ""}>Qué enseñas</span>
-                      <span className={teacherScopeScreen >= 2 ? "active" : ""}>Configura tus clases</span>
-                      <span className={teacherScopeScreen >= 3 ? "active" : ""}>Experiencia y estilo</span>
-                      <span className={teacherScopeScreen >= 4 ? "active" : ""}>Reserva e info</span>
-                      <span className={teacherScopeScreen >= 5 ? "active" : ""}>Revisión</span>
+                      <span className={teacherScopeScreen >= 1 ? "active" : ""}>Asignaturas</span>
+                      <span className={teacherScopeScreen >= 2 ? "active" : ""}>Nivel y modalidad</span>
+                      <span className={teacherScopeScreen >= 3 ? "active" : ""}>Sí realiza</span>
+                      <span className={teacherScopeScreen >= 4 ? "active" : ""}>No realiza</span>
+                      <span className={teacherScopeScreen >= 5 ? "active" : ""}>Condiciones</span>
+                      <span className={teacherScopeScreen >= 6 ? "active" : ""}>Revisión</span>
                     </div>
 
                     {teacherScopeScreen === 1 ? (
-                      <>
-                        <div className="full">
-                          <p className="field-label">¿Qué clases ofreces?</p>
-                          <div className="auth-service-grid auth-service-grid-cleaning">
-                            {TEACHER_SCOPE_SERVICE_OPTIONS.map((service) => (
-                              <label
-                                key={service.value}
-                                className={`auth-service-card auth-service-card-scope ${draft.teacherScope.services_offered.includes(service.value) ? "active" : ""}`}
-                              >
-                                <input
-                                  type="checkbox"
-                                  checked={draft.teacherScope.services_offered.includes(service.value)}
-                                  onChange={(event) => {
-                                    updateTeacherScope((current) => {
-                                      const nextServices = event.target.checked
-                                        ? Array.from(new Set([...current.services_offered, service.value]))
-                                        : current.services_offered.filter((item) => item !== service.value);
-                                      const nextMusicInstruments = nextServices.includes("musica") ? current.music_instruments : [];
-                                      return {
-                                        ...current,
-                                        services_offered: nextServices,
-                                        music_instruments: nextMusicInstruments,
-                                        service_configs: syncTeacherServiceConfigs(current.service_configs, nextServices, nextMusicInstruments)
-                                      };
-                                    });
-                                  }}
-                                />
-                                <strong>{service.label}</strong>
-                                <span>{service.description}</span>
-                              </label>
-                            ))}
-                          </div>
-                        </div>
-
-                        {draft.teacherScope.services_offered.includes("musica") ? (
-                          <div className="full">
-                            <p className="field-label">Si enseñas música, ¿qué tipo de clase ofreces?</p>
-                            <div className="onboarding-checkbox-grid onboarding-checkbox-grid-compact">
-                              {TEACHER_MUSIC_INSTRUMENT_OPTIONS.map((instrument) => (
-                                <label key={instrument.value} className="onboarding-check-card">
-                                  <input
-                                    type="checkbox"
-                                    checked={draft.teacherScope.music_instruments.includes(instrument.value)}
-                                    onChange={() =>
-                                      updateTeacherScope((current) => {
-                                        const nextInstruments = current.music_instruments.includes(instrument.value)
-                                          ? current.music_instruments.filter((item) => item !== instrument.value)
-                                          : [...current.music_instruments, instrument.value];
-                                        return {
-                                          ...current,
-                                          music_instruments: nextInstruments,
-                                          service_configs: syncTeacherServiceConfigs(current.service_configs, current.services_offered, nextInstruments)
-                                        };
-                                      })
+                      <div className="full">
+                        <p className="field-label">¿Qué asignaturas ofreces?</p>
+                        <div className="auth-service-grid auth-service-grid-cleaning">
+                          {TEACHER_SCOPE_SERVICE_OPTIONS.map((service) => (
+                            <label
+                              key={service.value}
+                              className={`auth-service-card auth-service-card-scope ${draft.teacherScope.services_offered.includes(service.value) ? "active" : ""}`}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={draft.teacherScope.services_offered.includes(service.value)}
+                                onChange={(event) => {
+                                  setDraft((current) => ({
+                                    ...current,
+                                    teacherScope: {
+                                      ...current.teacherScope,
+                                      services_offered: event.target.checked
+                                        ? Array.from(new Set([...current.teacherScope.services_offered, service.value]))
+                                        : current.teacherScope.services_offered.filter((item) => item !== service.value)
                                     }
-                                  />
-                                  <span>{instrument.label}</span>
-                                </label>
-                              ))}
-                            </div>
-                          </div>
-                        ) : null}
-                      </>
+                                  }));
+                                }}
+                              />
+                              <strong>{service.label}</strong>
+                              <span>{service.description}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
                     ) : null}
 
                     {teacherScopeScreen === 2 ? (
                       <>
                         <div className="full">
-                          <strong>Configura cada clase</strong>
-                          <span className="input-hint">Así el cliente verá qué enseñas, para qué nivel, en qué formato y cuánto cuesta por hora.</span>
-                        </div>
-
-                        <div className="full onboarding-scope-review-grid">
-                          {syncTeacherServiceConfigs(
-                            draft.teacherScope.service_configs,
-                            draft.teacherScope.services_offered,
-                            draft.teacherScope.music_instruments
-                          ).map((config) => (
-                            <article key={config.service_slug} className="auth-flow-note-card">
-                              <strong>{getTeacherServiceLabel(config.service_slug)}</strong>
-
-                              <div className="onboarding-inline-stack">
-                                <p className="field-label">Nivel que enseñas</p>
-                                <div className="onboarding-checkbox-grid onboarding-checkbox-grid-compact">
-                                  {getTeacherLevelOptionsForService(config.service_slug).map((option) => (
-                                    <label key={`${config.service_slug}-${option.value}`} className="onboarding-check-card">
-                                      <input
-                                        type="checkbox"
-                                        checked={config.levels.includes(option.value)}
-                                        onChange={() =>
-                                          updateTeacherServiceConfig(config.service_slug, (current) => ({
-                                            ...current,
-                                            levels: current.levels.includes(option.value)
-                                              ? current.levels.filter((item) => item !== option.value)
-                                              : [...current.levels, option.value]
-                                          }))
-                                        }
-                                      />
-                                      <span>{option.label}</span>
-                                    </label>
-                                  ))}
-                                </div>
-                              </div>
-
-                              <div className="onboarding-inline-stack">
-                                <p className="field-label">Modalidad</p>
-                                <div className="onboarding-checkbox-grid onboarding-checkbox-grid-compact">
-                                  {TEACHER_MODE_OPTIONS.map((option) => (
-                                    <label key={`${config.service_slug}-${option.value}`} className="onboarding-check-card">
-                                      <input
-                                        type="checkbox"
-                                        checked={config.modes.includes(option.value)}
-                                        onChange={() =>
-                                          updateTeacherServiceConfig(config.service_slug, (current) => ({
-                                            ...current,
-                                            modes: current.modes.includes(option.value)
-                                              ? current.modes.filter((item) => item !== option.value)
-                                              : [...current.modes, option.value]
-                                          }))
-                                        }
-                                      />
-                                      <span>{option.label}</span>
-                                    </label>
-                                  ))}
-                                </div>
-                              </div>
-
-                              <label>
-                                Precio por hora
+                          <p className="field-label">¿Con qué niveles trabajas?</p>
+                          <div className="onboarding-checkbox-grid onboarding-checkbox-grid-compact">
+                            {TEACHER_LEVEL_OPTIONS.map((option) => (
+                              <label key={option.value} className="onboarding-check-card">
                                 <input
-                                  inputMode="numeric"
-                                  value={config.hourly_rate_clp ? String(config.hourly_rate_clp) : ""}
-                                  onChange={(event) =>
-                                    updateTeacherServiceConfig(config.service_slug, (current) => ({
+                                  type="checkbox"
+                                  checked={draft.teacherScope.levels.includes(option.value)}
+                                  onChange={() =>
+                                    setDraft((current) => ({
                                       ...current,
-                                      hourly_rate_clp: Number(event.target.value.replace(/\D/g, "")) || null
+                                      teacherScope: {
+                                        ...current.teacherScope,
+                                        levels: current.teacherScope.levels.includes(option.value)
+                                          ? current.teacherScope.levels.filter((item) => item !== option.value)
+                                          : [...current.teacherScope.levels, option.value]
+                                      }
                                     }))
                                   }
-                                  placeholder="15000"
                                 />
+                                <span>{option.label}</span>
                               </label>
-
-                              <label>
-                                Duración típica
-                                <select
-                                  value={config.typical_duration_min ? String(config.typical_duration_min) : ""}
-                                  onChange={(event) =>
-                                    updateTeacherServiceConfig(config.service_slug, (current) => ({
+                            ))}
+                          </div>
+                        </div>
+                        <div className="full">
+                          <p className="field-label">¿En qué modalidad haces clases?</p>
+                          <div className="onboarding-checkbox-grid onboarding-checkbox-grid-compact">
+                            {TEACHER_MODE_OPTIONS.map((option) => (
+                              <label key={option.value} className="onboarding-check-card">
+                                <input
+                                  type="checkbox"
+                                  checked={draft.teacherScope.modes.includes(option.value)}
+                                  onChange={() =>
+                                    setDraft((current) => ({
                                       ...current,
-                                      typical_duration_min: (Number(event.target.value) || 60) as TeacherServiceConfig["typical_duration_min"]
+                                      teacherScope: {
+                                        ...current.teacherScope,
+                                        modes: current.teacherScope.modes.includes(option.value)
+                                          ? current.teacherScope.modes.filter((item) => item !== option.value)
+                                          : [...current.teacherScope.modes, option.value]
+                                      }
                                     }))
                                   }
-                                >
-                                  <option value="">Selecciona</option>
-                                  {TEACHER_DURATION_OPTIONS.map((option) => (
-                                    <option key={`${config.service_slug}-${option.value}`} value={option.value}>
-                                      {option.label}
-                                    </option>
-                                  ))}
-                                </select>
+                                />
+                                <span>{option.label}</span>
                               </label>
-                            </article>
-                          ))}
+                            ))}
+                          </div>
                         </div>
                       </>
                     ) : null}
 
                     {teacherScopeScreen === 3 ? (
-                      <>
-                        <label>
-                          Años de experiencia
-                          <input
-                            inputMode="numeric"
-                            value={draft.yearsExperience}
-                            onChange={(event) => {
-                              const nextValue = event.target.value.replace(/\D/g, "").slice(0, 2);
-                              setDraft((current) => ({
-                                ...current,
-                                yearsExperience: nextValue,
-                                teacherScope: {
-                                  ...current.teacherScope,
-                                  years_experience: nextValue ? Number(nextValue) : null
-                                }
-                              }));
-                            }}
-                            placeholder="3"
-                          />
-                        </label>
-
-                        <label>
-                          Especialidad principal
-                          <input
-                            value={draft.teacherScope.specialty}
-                            onChange={(event) =>
-                              updateTeacherScope((current) => ({
-                                ...current,
-                                specialty: event.target.value
-                              }))
-                            }
-                            placeholder="Ejemplo: reforzamiento PAES, conversación en inglés o guitarra para principiantes"
-                          />
-                        </label>
-
-                        <label className="full">
-                          Describe tu estilo de enseñanza
-                          <textarea
-                            rows={5}
-                            value={draft.teacherScope.teaching_style}
-                            onChange={(event) =>
-                              updateTeacherScope((current) => ({
-                                ...current,
-                                teaching_style: event.target.value
-                              }))
-                            }
-                            placeholder="Cuéntale al alumno cómo enseñas, cómo preparas la clase y cómo adaptas el contenido."
-                          />
-                        </label>
-
-                        <label className="full">
-                          Estudios, certificaciones o formación
-                          <textarea
-                            rows={4}
-                            value={draft.teacherScope.education_credentials}
-                            onChange={(event) =>
-                              updateTeacherScope((current) => ({
-                                ...current,
-                                education_credentials: event.target.value
-                              }))
-                            }
-                            placeholder="Ejemplo: Pedagogía en Inglés, Licenciatura en Matemáticas, conservatorio, certificación internacional."
-                          />
-                        </label>
-
-                        <label>
-                          ¿Trabajas a domicilio?
-                          <select
-                            value={draft.teacherScope.works_at_home == null ? "" : draft.teacherScope.works_at_home ? "si" : "no"}
-                            onChange={(event) =>
-                              updateTeacherScope((current) => ({
-                                ...current,
-                                works_at_home: event.target.value === "" ? null : event.target.value === "si"
-                              }))
-                            }
-                          >
-                            <option value="">Selecciona</option>
-                            <option value="si">Sí</option>
-                            <option value="no">No</option>
-                          </select>
-                        </label>
-
-                        <div className="full">
-                          <p className="field-label">Material o imágenes de apoyo (opcional)</p>
-                          <label className="upload-card">
-                            <input type="file" accept="image/*" onChange={(event) => void handleTeacherSupportMaterialUpload(event.target.files?.[0] ?? null)} />
-                            <span>Subir imagen de apoyo</span>
-                          </label>
-                          {draft.teacherScope.support_materials.length > 0 ? (
-                            <div className="we-gallery-grid">
-                              {draft.teacherScope.support_materials.map((photo, index) => (
-                                <div key={`${photo.slice(0, 24)}-${index}`} className="tasker-gallery-item">
-                                  <img src={photo} alt={`Material de apoyo ${index + 1}`} />
-                                  <button type="button" className="we-text-link" onClick={() => removeTeacherSupportMaterial(index)}>
-                                    Quitar
-                                  </button>
-                                </div>
-                              ))}
-                            </div>
-                          ) : null}
+                      <div className="full">
+                        <p className="field-label">¿Qué tareas sí realizas?</p>
+                        <div className="onboarding-task-checklist">
+                          {TEACHER_TASK_INCLUDED_OPTIONS.map((task) => (
+                            <label key={task.value} className={`onboarding-task-checklist-row ${draft.teacherScope.tasks_included.includes(task.value) ? "checked" : ""}`}>
+                              <div>
+                                <strong>{task.label}</strong>
+                              </div>
+                              <span className="onboarding-task-checklist-control">
+                                <input
+                                  type="checkbox"
+                                  checked={draft.teacherScope.tasks_included.includes(task.value)}
+                                  onChange={(event) => {
+                                    setDraft((current) => ({
+                                      ...current,
+                                      teacherScope: {
+                                        ...current.teacherScope,
+                                        tasks_included: event.target.checked
+                                          ? Array.from(new Set([...current.teacherScope.tasks_included, task.value]))
+                                          : current.teacherScope.tasks_included.filter((item) => item !== task.value)
+                                      }
+                                    }));
+                                  }}
+                                />
+                                <span className="onboarding-task-checklist-box" aria-hidden />
+                              </span>
+                            </label>
+                          ))}
                         </div>
-                      </>
+                      </div>
                     ) : null}
 
                     {teacherScopeScreen === 4 ? (
-                      <>
-                        <label>
-                          Tiempo mínimo de anticipación para reservar
-                          <select
-                            value={String(draft.teacherScope.booking_notice_hours)}
-                            onChange={(event) =>
-                              updateTeacherScope((current) => ({
-                                ...current,
-                                booking_notice_hours: Number(event.target.value) as typeof current.booking_notice_hours
-                              }))
-                            }
-                          >
-                            {TEACHER_BOOKING_NOTICE_OPTIONS.map((option) => (
-                              <option key={option.value} value={option.value}>
-                                {option.label}
-                              </option>
-                            ))}
-                          </select>
-                        </label>
-
-                        <label>
-                          ¿Aceptas reservas el mismo día?
-                          <select
-                            value={draft.teacherScope.same_day_bookings ? "si" : "no"}
-                            onChange={(event) =>
-                              updateTeacherScope((current) => ({
-                                ...current,
-                                same_day_bookings: event.target.value === "si"
-                              }))
-                            }
-                          >
-                            <option value="no">No</option>
-                            <option value="si">Sí</option>
-                          </select>
-                        </label>
-
-                        <label className="full">
-                          ¿Qué necesita tener preparado el alumno?
-                          <textarea
-                            rows={4}
-                            value={draft.teacherScope.student_requirements}
-                            onChange={(event) =>
-                              updateTeacherScope((current) => ({
-                                ...current,
-                                student_requirements: event.target.value
-                              }))
-                            }
-                            placeholder="Ejemplo: cuaderno, instrumento afinado, computador con cámara o conexión estable."
-                          />
-                        </label>
-
-                        <div className="full auth-flow-note-card">
-                          <strong>Presencial y online</strong>
-                          <span>
-                            La dirección base y las comunas donde trabajas se configuran antes. Si marcas clases online en tus
-                            servicios, el cliente podrá encontrarte sin exigir dirección obligatoria.
-                          </span>
+                      <div className="full">
+                        <p className="field-label">¿Qué tareas no realizas?</p>
+                        <div className="onboarding-task-checklist">
+                          {TEACHER_TASK_EXCLUDED_OPTIONS.map((task) => (
+                            <label
+                              key={task.value}
+                              className={`onboarding-task-checklist-row onboarding-task-checklist-row-warning ${draft.teacherScope.tasks_excluded.includes(task.value) ? "checked" : ""}`}
+                            >
+                              <div>
+                                <strong>{task.label}</strong>
+                              </div>
+                              <span className="onboarding-task-checklist-control">
+                                <input
+                                  type="checkbox"
+                                  checked={draft.teacherScope.tasks_excluded.includes(task.value)}
+                                  onChange={(event) => {
+                                    setDraft((current) => ({
+                                      ...current,
+                                      teacherScope: {
+                                        ...current.teacherScope,
+                                        tasks_excluded: event.target.checked
+                                          ? Array.from(new Set([...current.teacherScope.tasks_excluded, task.value]))
+                                          : current.teacherScope.tasks_excluded.filter((item) => item !== task.value)
+                                      }
+                                    }));
+                                  }}
+                                />
+                                <span className="onboarding-task-checklist-box" aria-hidden />
+                              </span>
+                            </label>
+                          ))}
                         </div>
-                      </>
+                      </div>
                     ) : null}
 
                     {teacherScopeScreen === 5 ? (
+                      <div className="full">
+                        <label>
+                          Condiciones especiales de tu servicio
+                          <textarea
+                            value={draft.teacherScope.special_conditions}
+                            rows={4}
+                            placeholder="Ejemplo: solo hago clases individuales, no preparo PAES y no hago clases grupales."
+                            onChange={(event) =>
+                              setDraft((current) => ({
+                                ...current,
+                                teacherScope: {
+                                  ...current.teacherScope,
+                                  special_conditions: event.target.value
+                                }
+                              }))
+                            }
+                          />
+                        </label>
+                      </div>
+                    ) : null}
+
+                    {teacherScopeScreen === 6 ? (
                       <div className="full onboarding-scope-review-grid">
                         <div className="auth-flow-note-card">
-                          <strong>Clases que ofrece</strong>
+                          <strong>Asignaturas</strong>
                           <span>{teacherScopeServicesPreview.length > 0 ? teacherScopeServicesPreview.join(", ") : "Sin información aún."}</span>
                         </div>
                         <div className="auth-flow-note-card">
-                          <strong>Especialidad</strong>
-                          <span>{draft.teacherScope.specialty.trim() || "Aún no informada."}</span>
+                          <strong>Niveles</strong>
+                          <span>{teacherScopeLevelsPreview.length > 0 ? teacherScopeLevelsPreview.join(", ") : "Sin información aún."}</span>
                         </div>
                         <div className="auth-flow-note-card">
-                          <strong>Experiencia</strong>
-                          <span>{draft.yearsExperience ? `${draft.yearsExperience} año(s)` : "Aún no informada."}</span>
+                          <strong>Modalidades</strong>
+                          <span>{teacherScopeModesPreview.length > 0 ? teacherScopeModesPreview.join(", ") : "Sin información aún."}</span>
                         </div>
                         <div className="auth-flow-note-card">
-                          <strong>Reserva</strong>
-                          <span>
-                            {getTeacherBookingNoticeLabel(draft.teacherScope.booking_notice_hours)}
-                            {draft.teacherScope.same_day_bookings ? " · acepta el mismo día" : ""}
-                          </span>
-                        </div>
-                        {teacherScopeMusicPreview.length > 0 ? (
-                          <div className="auth-flow-note-card">
-                            <strong>Música</strong>
-                            <span>{teacherScopeMusicPreview.join(", ")}</span>
-                          </div>
-                        ) : null}
-                        {teacherScopeConfigsPreview.map((config) => (
-                          <div key={`teacher-config-${config.service_slug}`} className="auth-flow-note-card">
-                            <strong>{getTeacherServiceLabel(config.service_slug)}</strong>
-                            <span>{config.levels.length > 0 ? config.levels.map(getTeacherLevelLabel).join(", ") : "Nivel por definir"}</span>
-                            <span>{config.modes.length > 0 ? config.modes.map(getTeacherModeLabel).join(" / ") : "Modalidad por definir"}</span>
-                            <span>{config.hourly_rate_clp ? `${clp(config.hourly_rate_clp)} por hora` : "Precio por definir"}</span>
-                            <span>Duración típica: {getTeacherDurationLabel(config.typical_duration_min)}</span>
-                          </div>
-                        ))}
-                        <div className="auth-flow-note-card">
-                          <strong>Qué necesita el alumno</strong>
-                          <span>{draft.teacherScope.student_requirements.trim() || "No agregaste requisitos previos."}</span>
+                          <strong>Tareas que sí realiza</strong>
+                          <span>{teacherScopeIncludedPreview.length > 0 ? teacherScopeIncludedPreview.join(", ") : "Sin información aún."}</span>
                         </div>
                         <div className="auth-flow-note-card">
-                          <strong>Estilo de enseñanza</strong>
-                          <span>{draft.teacherScope.teaching_style.trim() || "Aún no informado."}</span>
+                          <strong>Tareas que no realiza</strong>
+                          <span>{teacherScopeExcludedPreview.length > 0 ? teacherScopeExcludedPreview.join(", ") : "No marcaste exclusiones."}</span>
+                        </div>
+                        <div className="auth-flow-note-card">
+                          <strong>Condiciones especiales</strong>
+                          <span>{draft.teacherScope.special_conditions.trim() || "No agregaste condiciones especiales."}</span>
                         </div>
                       </div>
                     ) : null}
@@ -4564,107 +3872,213 @@ function CleaningOnboardingPageContent() {
 
                 {draft.category === "chef" ? (
                   <div className="grid-form auth-flow-form">
-                    {chefScopeScreen === 1 ? (
-                      <div className="full">
-                        <p className="field-label">¿Qué tipos de servicio ofreces?</p>
-                        <p className="input-hint">Esto define en qué búsquedas vas a aparecer. El detalle del alcance lo completas en los pasos siguientes.</p>
-                        <div className="auth-service-grid auth-service-grid-cleaning">
-                          {CHEF_SERVICE_DEFINITIONS.map((service) => (
-                            <label
-                              key={service.slug}
-                              className={`auth-service-card auth-service-card-scope ${draft.chefScope.services_offered.includes(service.slug) ? "active" : ""}`}
-                            >
-                              <input
-                                type="checkbox"
-                                checked={draft.chefScope.services_offered.includes(service.slug)}
-                                onChange={(event) => {
-                                  setDraft((current) => ({
-                                    ...current,
-                                    chefScope: {
-                                      ...current.chefScope,
-                                      services_offered: event.target.checked
-                                        ? Array.from(new Set([...current.chefScope.services_offered, service.slug]))
-                                        : current.chefScope.services_offered.filter((item) => item !== service.slug)
-                                    }
-                                  }));
-                                }}
-                              />
-                              <strong>{service.name}</strong>
-                              <span>{service.description} {service.forClients}</span>
-                            </label>
-                          ))}
-                        </div>
+                    <div className="full">
+                      <p className="field-label">¿Qué servicios de chef quieres ofrecer?</p>
+                      <div className="auth-service-grid auth-service-grid-cleaning">
+                        {CHEF_SERVICE_DEFINITIONS.map((service) => (
+                          <label
+                            key={service.slug}
+                            className={`auth-service-card auth-service-card-scope ${draft.chefScope.services_offered.includes(service.slug) ? "active" : ""}`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={draft.chefScope.services_offered.includes(service.slug)}
+                              onChange={(event) => {
+                                setDraft((current) => ({
+                                  ...current,
+                                  chefScope: {
+                                    ...current.chefScope,
+                                    services_offered: event.target.checked
+                                      ? Array.from(new Set([...current.chefScope.services_offered, service.slug]))
+                                      : current.chefScope.services_offered.filter((item) => item !== service.slug)
+                                  }
+                                }));
+                              }}
+                            />
+                            <strong>{service.name}</strong>
+                            <span>{service.forClients}</span>
+                            <span>Duración estimada: {service.estimatedDurationLabel}</span>
+                            <span>
+                              Rango WeTask: <strong>${formatClp(service.recommendedMinClp)}</strong> a <strong>${formatClp(service.recommendedMaxClp)}</strong>
+                            </span>
+                            <span>Incluye: {service.includes.join(", ")}.</span>
+                          </label>
+                        ))}
                       </div>
-                    ) : null}
+                      <div className="auth-flow-note-card" style={{ marginTop: 16 }}>
+                        <strong>Servicios estandarizados por WeTask</strong>
+                        <span>El cliente verá estos servicios con duración estimada, qué incluye y un precio claro desde tu valor configurado.</span>
+                      </div>
+                    </div>
 
-                    {chefScopeScreen === 2 ? (
-                      <div className="full">
-                        <p className="field-label">¿Qué tareas sí realizas?</p>
-                        <p className="input-hint">Esto se mostrará en tu perfil y se usará para filtrar reservas con necesidades específicas.</p>
-                        <div className="onboarding-task-checklist">
-                          <div className="onboarding-task-checklist-head">
-                            <span>Lista de tareas</span>
-                            <span>Sí realizo</span>
-                          </div>
-                          {CHEF_TASK_INCLUDED_OPTIONS.map((task) => (
-                            <label key={task.value} className={`onboarding-task-checklist-row ${draft.chefScope.tasks_included.includes(task.value) ? "checked" : ""}`}>
-                              <span className="onboarding-task-checklist-label">{task.label}</span>
-                              <span className="onboarding-task-checklist-control">
-                                <span className="onboarding-task-checklist-box" aria-hidden />
+                    <div className="full">
+                      <label>
+                        Información importante para el cliente
+                        <textarea
+                          value={draft.chefScope.special_conditions}
+                          rows={4}
+                          placeholder="Ejemplo: los insumos se coordinan por separado, necesito cocina despejada y acceso a horno o parrilla según el servicio."
+                          onChange={(event) =>
+                            setDraft((current) => ({
+                              ...current,
+                              chefScope: {
+                                ...current.chefScope,
+                                special_conditions: event.target.value
+                              }
+                            }))
+                          }
+                        />
+                      </label>
+                    </div>
+
+                    <div className="full onboarding-scope-review-grid">
+                      <div className="auth-flow-note-card">
+                        <strong>Servicios elegidos</strong>
+                        <span>{chefScopeServicesPreview.length > 0 ? chefScopeServicesPreview.join(", ") : "Sin información aún."}</span>
+                      </div>
+                      <div className="auth-flow-note-card">
+                        <strong>Modelo de precios</strong>
+                        <span>En el siguiente paso definirás un precio por servicio dentro del rango permitido por WeTask.</span>
+                      </div>
+                      <div className="auth-flow-note-card">
+                        <strong>Información importante</strong>
+                        <span>{draft.chefScope.special_conditions.trim() || "No agregaste observaciones por ahora."}</span>
+                      </div>
+                    </div>
+                  </div>
+                ) : null}
+
+                {draft.category === "maquillaje" ? (
+                  <div className="grid-form auth-flow-form">
+                    <div className="full onboarding-scope-progress">
+                      <span className={makeupScopeScreen >= 1 ? "active" : ""}>Servicios</span>
+                      <span className={makeupScopeScreen >= 2 ? "active" : ""}>Sí realiza</span>
+                      <span className={makeupScopeScreen >= 3 ? "active" : ""}>No realiza</span>
+                      <span className={makeupScopeScreen >= 4 ? "active" : ""}>Condiciones</span>
+                      <span className={makeupScopeScreen >= 5 ? "active" : ""}>Revisión</span>
+                    </div>
+
+                    {makeupScopeScreen === 1 ? (
+                      <>
+                        <div className="full">
+                          <p className="field-label">¿Qué tipos de maquillaje ofreces?</p>
+                          <div className="auth-service-grid auth-service-grid-cleaning">
+                            {MAKEUP_SCOPE_SERVICE_OPTIONS.map((option) => (
+                              <label
+                                key={option.value}
+                                className={`auth-service-card auth-service-card-scope ${draft.makeupScope.services_offered.includes(option.value) ? "active" : ""}`}
+                              >
                                 <input
                                   type="checkbox"
-                                  checked={draft.chefScope.tasks_included.includes(task.value)}
+                                  checked={draft.makeupScope.services_offered.includes(option.value)}
                                   onChange={(event) => {
                                     setDraft((current) => ({
                                       ...current,
-                                      chefScope: {
-                                        ...current.chefScope,
-                                        tasks_included: event.target.checked
-                                          ? Array.from(new Set([...current.chefScope.tasks_included, task.value]))
-                                          : current.chefScope.tasks_included.filter((item) => item !== task.value)
+                                      makeupScope: {
+                                        ...current.makeupScope,
+                                        services_offered: event.target.checked
+                                          ? Array.from(new Set([...current.makeupScope.services_offered, option.value]))
+                                          : current.makeupScope.services_offered.filter((item) => item !== option.value)
                                       }
                                     }));
                                   }}
                                 />
-                              </span>
-                            </label>
-                          ))}
+                                <strong>{option.label}</strong>
+                                <span>{option.description}</span>
+                              </label>
+                            ))}
+                          </div>
                         </div>
-                      </div>
+                        <div className="full auth-flow-note-card">
+                          <strong>Atención a domicilio</strong>
+                          <span>En WeTask, maquillaje se considera siempre un servicio a domicilio.</span>
+                        </div>
+                      </>
                     ) : null}
 
-                    {chefScopeScreen === 3 ? (
+                    {makeupScopeScreen === 2 ? (
+                      <>
+                        <div className="full">
+                          <p className="field-label">¿Qué tareas sí realizas?</p>
+                          <div className="onboarding-task-checklist">
+                            {MAKEUP_TASK_INCLUDED_OPTIONS.map((task) => (
+                              <label key={task.value} className={`onboarding-task-checklist-row ${draft.makeupScope.tasks_included.includes(task.value) ? "checked" : ""}`}>
+                                <div>
+                                  <strong>{task.label}</strong>
+                                </div>
+                                <span className="onboarding-task-checklist-control">
+                                  <input
+                                    type="checkbox"
+                                    checked={draft.makeupScope.tasks_included.includes(task.value)}
+                                    onChange={(event) => {
+                                      setDraft((current) => ({
+                                        ...current,
+                                        makeupScope: {
+                                          ...current.makeupScope,
+                                          tasks_included: event.target.checked
+                                            ? Array.from(new Set([...current.makeupScope.tasks_included, task.value]))
+                                            : current.makeupScope.tasks_included.filter((item) => item !== task.value)
+                                        }
+                                      }));
+                                    }}
+                                  />
+                                  <span className="onboarding-task-checklist-box" aria-hidden />
+                                </span>
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+                        <label>
+                          ¿Incluye kit de maquillaje?
+                          <select
+                            value={draft.makeupScope.includes_kit == null ? "" : draft.makeupScope.includes_kit ? "si" : "no"}
+                            onChange={(event) =>
+                              setDraft((current) => ({
+                                ...current,
+                                makeupScope: {
+                                  ...current.makeupScope,
+                                  includes_kit: event.target.value === "" ? null : event.target.value === "si"
+                                }
+                              }))
+                            }
+                          >
+                            <option value="">Selecciona</option>
+                            <option value="si">Sí</option>
+                            <option value="no">No</option>
+                          </select>
+                        </label>
+                      </>
+                    ) : null}
+
+                    {makeupScopeScreen === 3 ? (
                       <div className="full">
                         <p className="field-label">¿Qué tareas no realizas?</p>
-                        <p className="input-hint">Así evitamos malos entendidos con clientes antes de reservar.</p>
                         <div className="onboarding-task-checklist">
-                          <div className="onboarding-task-checklist-head onboarding-task-checklist-head-warning">
-                            <span>Lista de tareas</span>
-                            <span>No realizo</span>
-                          </div>
-                          {CHEF_TASK_EXCLUDED_OPTIONS.map((task) => (
+                          {MAKEUP_TASK_EXCLUDED_OPTIONS.map((task) => (
                             <label
                               key={task.value}
-                              className={`onboarding-task-checklist-row onboarding-task-checklist-row-warning ${draft.chefScope.tasks_excluded.includes(task.value) ? "checked" : ""}`}
+                              className={`onboarding-task-checklist-row onboarding-task-checklist-row-warning ${draft.makeupScope.tasks_excluded.includes(task.value) ? "checked" : ""}`}
                             >
-                              <span className="onboarding-task-checklist-label">{task.label}</span>
+                              <div>
+                                <strong>{task.label}</strong>
+                              </div>
                               <span className="onboarding-task-checklist-control">
-                                <span className="onboarding-task-checklist-box" aria-hidden />
                                 <input
                                   type="checkbox"
-                                  checked={draft.chefScope.tasks_excluded.includes(task.value)}
+                                  checked={draft.makeupScope.tasks_excluded.includes(task.value)}
                                   onChange={(event) => {
                                     setDraft((current) => ({
                                       ...current,
-                                      chefScope: {
-                                        ...current.chefScope,
+                                      makeupScope: {
+                                        ...current.makeupScope,
                                         tasks_excluded: event.target.checked
-                                          ? Array.from(new Set([...current.chefScope.tasks_excluded, task.value]))
-                                          : current.chefScope.tasks_excluded.filter((item) => item !== task.value)
+                                          ? Array.from(new Set([...current.makeupScope.tasks_excluded, task.value]))
+                                          : current.makeupScope.tasks_excluded.filter((item) => item !== task.value)
                                       }
                                     }));
                                   }}
                                 />
+                                <span className="onboarding-task-checklist-box" aria-hidden />
                               </span>
                             </label>
                           ))}
@@ -4672,19 +4086,19 @@ function CleaningOnboardingPageContent() {
                       </div>
                     ) : null}
 
-                    {chefScopeScreen === 4 ? (
+                    {makeupScopeScreen === 4 ? (
                       <div className="full">
                         <label>
                           Condiciones especiales de tu servicio
                           <textarea
-                            value={draft.chefScope.special_conditions}
+                            value={draft.makeupScope.special_conditions}
                             rows={4}
-                            placeholder="Ejemplo: no compro insumos, no hago eventos sobre cierta cantidad de personas y la repostería se cotiza aparte."
+                            placeholder="Ejemplo: las pruebas de novia se agendan aparte, no hago grupos grandes y el traslado fuera de comuna tiene recargo."
                             onChange={(event) =>
                               setDraft((current) => ({
                                 ...current,
-                                chefScope: {
-                                  ...current.chefScope,
+                                makeupScope: {
+                                  ...current.makeupScope,
                                   special_conditions: event.target.value
                                 }
                               }))
@@ -4694,362 +4108,31 @@ function CleaningOnboardingPageContent() {
                       </div>
                     ) : null}
 
-                    {chefScopeScreen === 5 ? (
+                    {makeupScopeScreen === 5 ? (
                       <div className="full onboarding-scope-review-grid">
                         <div className="auth-flow-note-card">
-                          <strong>Servicios de chef</strong>
-                          <span>{chefScopeServicesPreview.length > 0 ? chefScopeServicesPreview.join(", ") : "Sin información aún."}</span>
+                          <strong>Tipos de maquillaje</strong>
+                          <span>{makeupScopeServicesPreview.length > 0 ? makeupScopeServicesPreview.join(", ") : "Sin información aún."}</span>
                         </div>
                         <div className="auth-flow-note-card">
                           <strong>Tareas que sí realiza</strong>
-                          <span>{chefScopeIncludedPreview.length > 0 ? chefScopeIncludedPreview.join(", ") : "Sin información aún."}</span>
+                          <span>{makeupScopeIncludedPreview.length > 0 ? makeupScopeIncludedPreview.join(", ") : "Sin información aún."}</span>
                         </div>
                         <div className="auth-flow-note-card">
                           <strong>Tareas que no realiza</strong>
-                          <span>{chefScopeExcludedPreview.length > 0 ? chefScopeExcludedPreview.join(", ") : "No marcaste exclusiones."}</span>
+                          <span>{makeupScopeExcludedPreview.length > 0 ? makeupScopeExcludedPreview.join(", ") : "No marcaste exclusiones."}</span>
+                        </div>
+                        <div className="auth-flow-note-card">
+                          <strong>Incluye kit</strong>
+                          <span>{draft.makeupScope.includes_kit == null ? "No informado." : draft.makeupScope.includes_kit ? "Sí" : "No"}</span>
                         </div>
                         <div className="auth-flow-note-card">
                           <strong>Condiciones especiales</strong>
-                          <span>{draft.chefScope.special_conditions.trim() || "No agregaste condiciones especiales."}</span>
+                          <span>{draft.makeupScope.special_conditions.trim() || "No agregaste condiciones especiales."}</span>
                         </div>
                       </div>
                     ) : null}
                   </div>
-                ) : null}
-
-                {draft.category === "maquillaje" ? (
-                  <div className="grid-form auth-flow-form">
-                    <div className="full service-prep-card">
-                      <div className="panel-head">
-                        <h3>Configura tus servicios de maquillaje</h3>
-                        <p>En maquillaje el cliente reserva un resultado final. Define tus tipos de maquillaje, precio base, duración estimada y lo que incluyes para que tu perfil se vea claro y premium.</p>
-                      </div>
-
-                      <div className="full">
-                        <p className="field-label">¿Qué tipos de maquillaje ofreces?</p>
-                        <div className="auth-service-grid auth-service-grid-cleaning">
-                          {MAKEUP_SCOPE_SERVICE_OPTIONS.map((option) => (
-                            <label
-                              key={option.value}
-                              className={`auth-service-card auth-service-card-scope ${draft.makeupScope.services_offered.includes(option.value) ? "active" : ""}`}
-                            >
-                              <input
-                                type="checkbox"
-                                checked={draft.makeupScope.services_offered.includes(option.value)}
-                                onChange={(event) => {
-                                  setDraft((current) => {
-                                    const nextServices = event.target.checked
-                                      ? Array.from(new Set([...current.makeupScope.services_offered, option.value]))
-                                      : current.makeupScope.services_offered.filter((item) => item !== option.value);
-                                    return {
-                                      ...current,
-                                      makeupScope: {
-                                        ...current.makeupScope,
-                                        services_offered: nextServices,
-                                        service_configs: syncMakeupServiceConfigs(current.makeupScope.service_configs, nextServices)
-                                      }
-                                    };
-                                  });
-                                }}
-                              />
-                              <strong>{option.label}</strong>
-                              <span>{option.description}</span>
-                            </label>
-                          ))}
-                        </div>
-                      </div>
-
-                      {selectedMakeupDefinitions(draft).length > 0 ? (
-                        <div className="full onboarding-scope-review-grid">
-                          {selectedMakeupDefinitions(draft).map((service) => {
-                            const config = getMakeupServiceConfig(draft.makeupScope, service.scopeValue);
-                            return (
-                              <div key={service.scopeValue} className="auth-flow-note-card">
-                                <strong>{getMakeupServiceHeadline(draft.makeupScope, service.scopeValue)}</strong>
-                                <span>{service.forClients}</span>
-                                {service.scopeValue === "otro" ? (
-                                  <label>
-                                    Nombre del servicio
-                                    <input
-                                      value={config.custom_label}
-                                      onChange={(event) =>
-                                        updateMakeupServiceConfig(service.scopeValue, (current) => ({
-                                          ...current,
-                                          custom_label: event.target.value.slice(0, 80)
-                                        }))
-                                      }
-                                      placeholder="Ej: maquillaje editorial suave"
-                                    />
-                                  </label>
-                                ) : null}
-                                <label>
-                                  Precio base
-                                  <input
-                                    type="number"
-                                    min={5000}
-                                    step={1000}
-                                    value={config.base_price_clp ?? ""}
-                                    onChange={(event) =>
-                                      updateMakeupServiceConfig(service.scopeValue, (current) => ({
-                                        ...current,
-                                        base_price_clp: event.target.value ? Number(event.target.value) : null
-                                      }))
-                                    }
-                                    placeholder={String(service.recommendedMinClp)}
-                                  />
-                                </label>
-                                <label>
-                                  Duración estimada
-                                  <select
-                                    value={config.duration_min ?? ""}
-                                    onChange={(event) =>
-                                      updateMakeupServiceConfig(service.scopeValue, (current) => ({
-                                        ...current,
-                                        duration_min: event.target.value ? Number(event.target.value) as (typeof current.duration_min) : null
-                                      }))
-                                    }
-                                  >
-                                    <option value="">Selecciona</option>
-                                    {MAKEUP_DURATION_OPTIONS.map((option) => (
-                                      <option key={option.minutes} value={option.minutes}>
-                                        {option.label}
-                                      </option>
-                                    ))}
-                                  </select>
-                                </label>
-                                <div className="service-duration-toggles">
-                                  <label className={`onboarding-check-card ${config.includes_travel ? "active" : ""}`}>
-                                    <input
-                                      type="checkbox"
-                                      checked={config.includes_travel}
-                                      onChange={(event) =>
-                                        updateMakeupServiceConfig(service.scopeValue, (current) => ({
-                                          ...current,
-                                          includes_travel: event.target.checked
-                                        }))
-                                      }
-                                    />
-                                    <span>Incluye traslado</span>
-                                  </label>
-                                  <label className={`onboarding-check-card ${config.includes_lashes ? "active" : ""}`}>
-                                    <input
-                                      type="checkbox"
-                                      checked={config.includes_lashes}
-                                      onChange={(event) =>
-                                        updateMakeupServiceConfig(service.scopeValue, (current) => ({
-                                          ...current,
-                                          includes_lashes: event.target.checked
-                                        }))
-                                      }
-                                    />
-                                    <span>Incluye pestañas</span>
-                                  </label>
-                                  <label className={`onboarding-check-card ${config.includes_trial ? "active" : ""}`}>
-                                    <input
-                                      type="checkbox"
-                                      checked={config.includes_trial}
-                                      onChange={(event) =>
-                                        updateMakeupServiceConfig(service.scopeValue, (current) => ({
-                                          ...current,
-                                          includes_trial: event.target.checked
-                                        }))
-                                      }
-                                    />
-                                    <span>Incluye prueba previa</span>
-                                  </label>
-                                  <label className={`onboarding-check-card ${config.includes_materials ? "active" : ""}`}>
-                                    <input
-                                      type="checkbox"
-                                      checked={config.includes_materials}
-                                      onChange={(event) =>
-                                        updateMakeupServiceConfig(service.scopeValue, (current) => ({
-                                          ...current,
-                                          includes_materials: event.target.checked
-                                        }))
-                                      }
-                                    />
-                                    <span>Incluye materiales</span>
-                                  </label>
-                                </div>
-                                <div className="auth-flow-note-card auth-flow-note-card-compact">
-                                  <strong>Cómo se verá en tu perfil</strong>
-                                  <span>
-                                    {getMakeupServiceHeadline(draft.makeupScope, service.scopeValue)} · Desde{" "}
-                                    {config.base_price_clp ? clp(config.base_price_clp) : "por definir"} · Duración estimada:{" "}
-                                    {getMakeupDurationSummary(draft.makeupScope, service.scopeValue)}
-                                  </span>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      ) : null}
-
-                      <div className="full onboarding-scope-review-grid">
-                        <label className="auth-flow-note-card">
-                          <strong>Especialidad principal</strong>
-                          <select
-                            value={draft.makeupScope.specialty}
-                            onChange={(event) =>
-                              setDraft((current) => ({
-                                ...current,
-                                makeupScope: {
-                                  ...current.makeupScope,
-                                  specialty: event.target.value
-                                }
-                              }))
-                            }
-                          >
-                            <option value="">Selecciona tu foco principal</option>
-                            {MAKEUP_SPECIALTY_OPTIONS.map((option) => (
-                              <option key={option} value={option}>
-                                {option}
-                              </option>
-                            ))}
-                          </select>
-                        </label>
-
-                        <label className="auth-flow-note-card">
-                          <strong>¿Trabajas a domicilio?</strong>
-                          <select
-                            value={draft.makeupScope.works_at_home == null ? "" : draft.makeupScope.works_at_home ? "si" : "no"}
-                            onChange={(event) =>
-                              setDraft((current) => ({
-                                ...current,
-                                makeupScope: {
-                                  ...current.makeupScope,
-                                  works_at_home: event.target.value === "" ? null : event.target.value === "si"
-                                }
-                              }))
-                            }
-                          >
-                            <option value="">Selecciona</option>
-                            <option value="si">Sí, trabajo a domicilio</option>
-                            <option value="no">No, recibo en punto acordado</option>
-                          </select>
-                        </label>
-
-                        <label className="auth-flow-note-card">
-                          <strong>Tiempo mínimo de anticipación</strong>
-                          <select
-                            value={draft.makeupScope.booking_notice_hours ?? 4}
-                            onChange={(event) =>
-                              setDraft((current) => ({
-                                ...current,
-                                makeupScope: {
-                                  ...current.makeupScope,
-                                  booking_notice_hours: Number(event.target.value)
-                                }
-                              }))
-                            }
-                          >
-                            {[
-                              { value: 2, label: "2 horas" },
-                              { value: 4, label: "4 horas" },
-                              { value: 8, label: "8 horas" },
-                              { value: 12, label: "12 horas" },
-                              { value: 24, label: "24 horas" }
-                            ].map((option) => (
-                              <option key={option.value} value={option.value}>
-                                {option.label}
-                              </option>
-                            ))}
-                          </select>
-                        </label>
-
-                        <label className={`auth-flow-note-card onboarding-check-card ${draft.makeupScope.same_day_bookings ? "active" : ""}`}>
-                          <input
-                            type="checkbox"
-                            checked={draft.makeupScope.same_day_bookings === true}
-                            onChange={(event) =>
-                              setDraft((current) => ({
-                                ...current,
-                                makeupScope: {
-                                  ...current.makeupScope,
-                                  same_day_bookings: event.target.checked
-                                }
-                              }))
-                            }
-                          />
-                          <strong>Acepto reservas el mismo día</strong>
-                          <span>Actívalo si te acomoda recibir reservas más urgentes dentro de tu agenda.</span>
-                        </label>
-                      </div>
-
-                      <label className="full">
-                        Describe tu estilo de maquillaje
-                        <textarea
-                          value={draft.makeupScope.style_description}
-                          rows={4}
-                          placeholder="Ej: me enfoco en piel luminosa, ojos definidos y resultados elegantes para eventos. Trabajo buscando que la clienta se vea como ella, pero más pulida."
-                          onChange={(event) =>
-                            setDraft((current) => ({
-                              ...current,
-                              makeupScope: {
-                                ...current.makeupScope,
-                                style_description: event.target.value
-                              }
-                            }))
-                          }
-                        />
-                      </label>
-
-                      <label className="full">
-                        Qué debe tener preparado el cliente antes del servicio
-                        <textarea
-                          value={draft.makeupScope.client_preparation}
-                          rows={3}
-                          placeholder="Ej: rostro limpio e hidratado, buena luz cerca del espejo, mesa pequeña disponible y referencia visual si tiene una idea de look."
-                          onChange={(event) =>
-                            setDraft((current) => ({
-                              ...current,
-                              makeupScope: {
-                                ...current.makeupScope,
-                                client_preparation: event.target.value
-                              }
-                            }))
-                          }
-                        />
-                      </label>
-
-                      <div className="full service-prep-card service-prep-card-tight">
-                        <div className="panel-head">
-                          <h3>Portafolio de trabajos</h3>
-                          <p>Sube fotos reales de maquillajes que hayas realizado. Esto pesa mucho en la decisión del cliente.</p>
-                        </div>
-
-                        <label>
-                          Subir foto
-                          <input
-                            type="file"
-                            accept="image/*"
-                            onChange={async (event) => {
-                              await handleMakeupPortfolioUpload(event.target.files?.[0] ?? null);
-                              event.currentTarget.value = "";
-                            }}
-                          />
-                        </label>
-
-                        {draft.makeupScope.portfolio_photos.length > 0 ? (
-                          <div className="we-gallery-grid">
-                            {draft.makeupScope.portfolio_photos.map((photo, index) => (
-                              <div key={`${photo.slice(0, 32)}-${index}`} className="tasker-gallery-item tasker-gallery-item-tight">
-                                <img src={photo} alt={`Trabajo de maquillaje ${index + 1}`} />
-                                <button type="button" className="we-text-link" onClick={() => removeMakeupPortfolioPhoto(index)}>
-                                  Eliminar
-                                </button>
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <div className="auth-flow-note-card auth-flow-note-card-compact">
-                            <strong>Sin fotos aún</strong>
-                            <span>Sube al menos una foto para que el cliente vea tu estilo y resultado final.</span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                    </div>
                 ) : null}
 
                 {draft.category === "planchado" ? (
@@ -5128,12 +4211,12 @@ function CleaningOnboardingPageContent() {
                     <button type="button" className="cta ghost" onClick={previousPetScopeScreen}>
                       Volver
                     </button>
-                  ) : draft.category === "babysitter" && babysitterScopeScreen > 1 ? (
-                    <button type="button" className="cta ghost" onClick={previousBabysitterScopeScreen}>
+                  ) : draft.category === "maquillaje" && makeupScopeScreen > 1 ? (
+                    <button type="button" className="cta ghost" onClick={previousMakeupScopeScreen}>
                       Volver
                     </button>
-                  ) : draft.category === "chef" && chefScopeScreen > 1 ? (
-                    <button type="button" className="cta ghost" onClick={previousChefScopeScreen}>
+                  ) : draft.category === "babysitter" && babysitterScopeScreen > 1 ? (
+                    <button type="button" className="cta ghost" onClick={previousBabysitterScopeScreen}>
                       Volver
                     </button>
                   ) : draft.category === "profesor-particular" && teacherScopeScreen > 1 ? (
@@ -5157,15 +4240,15 @@ function CleaningOnboardingPageContent() {
                     <button type="button" className="cta" onClick={continuePetScopeScreen}>
                       Siguiente
                     </button>
+                  ) : draft.category === "maquillaje" && makeupScopeScreen < 5 ? (
+                    <button type="button" className="cta" onClick={continueMakeupScopeScreen}>
+                      Siguiente
+                    </button>
                   ) : draft.category === "babysitter" && babysitterScopeScreen < 6 ? (
                     <button type="button" className="cta" onClick={continueBabysitterScopeScreen}>
                       Siguiente
                     </button>
-                  ) : draft.category === "chef" && chefScopeScreen < 5 ? (
-                    <button type="button" className="cta" onClick={continueChefScopeScreen}>
-                      Siguiente
-                    </button>
-                  ) : draft.category === "profesor-particular" && teacherScopeScreen < 5 ? (
+                  ) : draft.category === "profesor-particular" && teacherScopeScreen < 6 ? (
                     <button type="button" className="cta" onClick={continueTeacherScopeScreen}>
                       Siguiente
                     </button>
@@ -5357,26 +4440,21 @@ function CleaningOnboardingPageContent() {
                 <div className="auth-flow-note-card">
                   <strong>Referencia para {pricingGuide.title}</strong>
                   <span>
-                    En WeTask, para este servicio suele funcionar un rango de <strong>${formatClp(pricingGuide.min)}</strong> a{" "}
-                    <strong>${formatClp(pricingGuide.max)}</strong> {pricingGuide.unit}.
+                    {draft.category === "chef"
+                      ? (
+                        <>
+                          En Chef a domicilio trabajas con servicios estandarizados por WeTask. Cada uno tiene un rango permitido entre{" "}
+                          <strong>${formatClp(pricingGuide.min)}</strong> y <strong>${formatClp(pricingGuide.max)}</strong> por servicio.
+                        </>
+                      )
+                      : (
+                        <>
+                          En WeTask, para este servicio suele funcionar un rango de <strong>${formatClp(pricingGuide.min)}</strong> a{" "}
+                          <strong>${formatClp(pricingGuide.max)}</strong> por hora.
+                        </>
+                      )}
                   </span>
                   <span>{pricingGuide.note}</span>
-                  {pricingGuide.communeAdjustments.length > 0 ? (
-                    <div className="pricing-commune-guide">
-                      <strong>Ajuste por comuna</strong>
-                      <div className="pricing-commune-grid">
-                        {pricingGuide.communeAdjustments.map((adjustment) => (
-                          <article key={adjustment.title} className={`pricing-commune-card tone-${adjustment.tone}`}>
-                            <strong>{adjustment.title}</strong>
-                            <span>({adjustment.communes.join(", ")})</span>
-                            <span>
-                              <strong>${formatClp(adjustment.min)}</strong> a <strong>${formatClp(adjustment.max)}</strong>
-                            </span>
-                          </article>
-                        ))}
-                      </div>
-                    </div>
-                  ) : null}
                   {pricingGuide.extras.length > 0 ? (
                     <span>{pricingGuide.extras.join(" ")}</span>
                   ) : null}
@@ -5417,8 +4495,12 @@ function CleaningOnboardingPageContent() {
                           <strong>{service.name}</strong>
                           <span>{service.forClients}</span>
                           <span>
-                            Rango sugerido: <strong>${formatClp(service.recommendedMinClp)}</strong> a{" "}
-                            <strong>${formatClp(service.recommendedMaxClp)}</strong> por hora.
+                            Incluye: {service.includes.join(", ")}.
+                          </span>
+                          <span>Duración estimada: {service.estimatedDurationLabel}</span>
+                          <span>
+                            Rango permitido: <strong>${formatClp(service.recommendedMinClp)}</strong> a{" "}
+                            <strong>${formatClp(service.recommendedMaxClp)}</strong> por servicio.
                           </span>
                           <input
                             value={draft.chefServiceRates[service.slug] ?? ""}
@@ -5430,24 +4512,27 @@ function CleaningOnboardingPageContent() {
                                   ...current.chefServiceRates,
                                   [service.slug]: value
                                 },
-                                hourlyRate: service.slug === "cocina-casera" ? value : current.hourlyRate
+                                hourlyRate: service.slug === "meal-prep-semanal" ? value : current.hourlyRate
                               }));
                             }}
                             placeholder={String(service.recommendedMinClp)}
                           />
+                          <small className="input-hint">Tu precio debe quedar dentro de ese rango para publicar este servicio.</small>
                         </label>
                       ))}
                     </div>
                   ) : (
                     <label>
-                      {pricingGuide.inputLabel}
-                      <input value={draft.hourlyRate} onChange={(event) => updateDraft("hourlyRate", event.target.value.replace(/\D/g, ""))} placeholder={pricingGuide.placeholder} />
+                      Tarifa por hora
+                      <input value={draft.hourlyRate} onChange={(event) => updateDraft("hourlyRate", event.target.value.replace(/\D/g, ""))} placeholder="15000" />
                     </label>
                   )}
-                  <label>
-                    Mínimo de horas por servicio
-                    <input value={draft.minimumHours} onChange={(event) => updateDraft("minimumHours", event.target.value.replace(/\D/g, ""))} placeholder="2" />
-                  </label>
+                  {draft.category !== "chef" ? (
+                    <label>
+                      Mínimo de horas por servicio
+                      <input value={draft.minimumHours} onChange={(event) => updateDraft("minimumHours", event.target.value.replace(/\D/g, ""))} placeholder="2" />
+                    </label>
+                  ) : null}
                   <label>
                     Recargo fin de semana
                     <select value={draft.hasWeekendSurcharge ? "si" : "no"} onChange={(event) => updateDraft("hasWeekendSurcharge", event.target.value === "si")}>
@@ -5489,6 +4574,7 @@ function CleaningOnboardingPageContent() {
                     </label>
                   ) : null}
                 </div>
+                {chicureoSelected ? <p className="onboarding-warning">Se aplicará un recargo fijo sugerido para Chicureo.</p> : null}
                 <div className="auth-flow-actions">
                   <button type="button" className="cta ghost" onClick={previousStep}>
                     Volver
@@ -5551,11 +4637,10 @@ function CleaningOnboardingPageContent() {
                       type="file"
                       accept="image/png,image/jpeg"
                       onChange={async (event) => {
-                        await handleDraftFileUpload(
-                          "identityDocumentFrontFile",
-                          event.target.files?.[0] ?? null,
-                          "Carnet por delante"
-                        );
+                        const file = event.target.files?.[0];
+                        if (!file) return;
+                        const content = await fileToDataUrl(file);
+                        updateDraft("identityDocumentFrontFile", content);
                       }}
                     />
                     {draft.identityDocumentFrontFile ? <p className="input-hint">Archivo cargado correctamente.</p> : null}
@@ -5566,11 +4651,10 @@ function CleaningOnboardingPageContent() {
                       type="file"
                       accept="image/png,image/jpeg"
                       onChange={async (event) => {
-                        await handleDraftFileUpload(
-                          "identityDocumentBackFile",
-                          event.target.files?.[0] ?? null,
-                          "Carnet por atrás"
-                        );
+                        const file = event.target.files?.[0];
+                        if (!file) return;
+                        const content = await fileToDataUrl(file);
+                        updateDraft("identityDocumentBackFile", content);
                       }}
                     />
                     {draft.identityDocumentBackFile ? <p className="input-hint">Archivo cargado correctamente.</p> : null}
@@ -5581,11 +4665,10 @@ function CleaningOnboardingPageContent() {
                       type="file"
                       accept=".pdf,image/png,image/jpeg"
                       onChange={async (event) => {
-                        await handleDraftFileUpload(
-                          "criminalRecordFile",
-                          event.target.files?.[0] ?? null,
-                          "Certificado de antecedentes"
-                        );
+                        const file = event.target.files?.[0];
+                        if (!file) return;
+                        const content = await fileToDataUrl(file);
+                        updateDraft("criminalRecordFile", content);
                       }}
                     />
                     {draft.criminalRecordFile ? <p className="input-hint">Archivo cargado correctamente.</p> : null}
@@ -5614,11 +4697,6 @@ function CleaningOnboardingPageContent() {
                   <input type="checkbox" checked={draft.acceptedTerms} onChange={(event) => updateDraft("acceptedTerms", event.target.checked)} />
                   <span>Acepto los términos y condiciones de WeTask</span>
                 </label>
-                <div className="auth-flow-inline-links">
-                  <Link href="/legal" target="_blank" rel="noreferrer">
-                    Leer términos y condiciones
-                  </Link>
-                </div>
                 <div className="auth-flow-actions">
                   <button type="button" className="cta ghost" onClick={previousStep}>
                     Volver

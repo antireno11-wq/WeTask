@@ -24,6 +24,25 @@ export const MAKEUP_SPECIALTY_OPTIONS = [
   "Look editorial suave"
 ] as const;
 
+export const MAKEUP_TASK_INCLUDED_OPTIONS = [
+  { value: "preparacion_piel", label: "Preparación de la piel" },
+  { value: "maquillaje_completo", label: "Maquillaje completo" },
+  { value: "retoques_basicos", label: "Retoques básicos si se acuerdan" },
+  { value: "pestanas_postizas", label: "Aplicación de pestañas postizas" },
+  { value: "prueba_maquillaje", label: "Prueba previa para novias o eventos" },
+  { value: "traslado_domicilio", label: "Atención a domicilio" },
+  { value: "uso_kit_propio", label: "Uso de kit propio" }
+] as const;
+
+export const MAKEUP_TASK_EXCLUDED_OPTIONS = [
+  { value: "peinado", label: "Peinado" },
+  { value: "manicure", label: "Manicure o uñas" },
+  { value: "maquillaje_fx", label: "Maquillaje FX o artístico especializado" },
+  { value: "grupos_grandes", label: "Grupos grandes si no se acuerda antes" },
+  { value: "produccion_editorial", label: "Producción editorial completa" },
+  { value: "kit_regalo_cliente", label: "Entrega de productos o kit al cliente" }
+] as const;
+
 export const MAKEUP_BOOKING_NOTICE_OPTIONS = [
   { value: 2, label: "2 horas" },
   { value: 4, label: "4 horas" },
@@ -43,9 +62,16 @@ export type MakeupServiceConfig = {
   includes_materials: boolean;
 };
 
+export type MakeupTaskIncludedSlug = (typeof MAKEUP_TASK_INCLUDED_OPTIONS)[number]["value"];
+export type MakeupTaskExcludedSlug = (typeof MAKEUP_TASK_EXCLUDED_OPTIONS)[number]["value"];
+
 export type MakeupScopeData = {
   services_offered: MakeupScopeServiceSlug[];
   service_configs: MakeupServiceConfig[];
+  includes_kit: boolean | null;
+  tasks_included: MakeupTaskIncludedSlug[];
+  tasks_excluded: MakeupTaskExcludedSlug[];
+  special_conditions: string;
   specialty: string;
   style_description: string;
   portfolio_photos: string[];
@@ -59,6 +85,9 @@ function normalizePortfolioPhotos(value: unknown) {
   if (!Array.isArray(value)) return [];
   return value.filter((item): item is string => typeof item === "string" && item.trim().length > 0).slice(0, 6);
 }
+
+const includedTaskMap = new Map(MAKEUP_TASK_INCLUDED_OPTIONS.map((option) => [option.value, option]));
+const excludedTaskMap = new Map(MAKEUP_TASK_EXCLUDED_OPTIONS.map((option) => [option.value, option]));
 
 export function emptyMakeupServiceConfig(serviceSlug: MakeupScopeServiceSlug): MakeupServiceConfig {
   const definition = getMakeupServiceDefinitionByScopeValue(serviceSlug);
@@ -78,6 +107,10 @@ export function emptyMakeupScope(): MakeupScopeData {
   return {
     services_offered: [],
     service_configs: [],
+    includes_kit: true,
+    tasks_included: [],
+    tasks_excluded: [],
+    special_conditions: "",
     specialty: "",
     style_description: "",
     portfolio_photos: [],
@@ -135,6 +168,18 @@ export function normalizeMakeupScope(value: unknown): MakeupScopeData {
   return {
     services_offered: Array.from(new Set(servicesOffered)),
     service_configs: Array.from(configMap.values()).filter((config) => servicesOffered.includes(config.service_slug)),
+    includes_kit: typeof candidate.includes_kit === "boolean" ? candidate.includes_kit : true,
+    tasks_included: Array.isArray(candidate.tasks_included)
+      ? candidate.tasks_included.filter(
+          (item): item is MakeupTaskIncludedSlug => typeof item === "string" && includedTaskMap.has(item as MakeupTaskIncludedSlug)
+        )
+      : [],
+    tasks_excluded: Array.isArray(candidate.tasks_excluded)
+      ? candidate.tasks_excluded.filter(
+          (item): item is MakeupTaskExcludedSlug => typeof item === "string" && excludedTaskMap.has(item as MakeupTaskExcludedSlug)
+        )
+      : [],
+    special_conditions: typeof candidate.special_conditions === "string" ? candidate.special_conditions.trim().slice(0, 600) : "",
     specialty: typeof candidate.specialty === "string" ? candidate.specialty.trim().slice(0, 120) : "",
     style_description: typeof candidate.style_description === "string" ? candidate.style_description.trim().slice(0, 1200) : "",
     portfolio_photos: normalizePortfolioPhotos(candidate.portfolio_photos),
@@ -152,6 +197,14 @@ export function normalizeMakeupScope(value: unknown): MakeupScopeData {
 
 export function getMakeupServiceLabel(value: string) {
   return getMakeupServiceDefinitionByScopeValue(value)?.name ?? value;
+}
+
+export function getMakeupIncludedTaskLabel(value: string) {
+  return includedTaskMap.get(value as MakeupTaskIncludedSlug)?.label ?? value;
+}
+
+export function getMakeupExcludedTaskLabel(value: string) {
+  return excludedTaskMap.get(value as MakeupTaskExcludedSlug)?.label ?? value;
 }
 
 export function getMakeupServiceConfig(scope: MakeupScopeData, serviceSlug: MakeupScopeServiceSlug) {
@@ -173,9 +226,19 @@ export function getMakeupDurationSummary(scope: MakeupScopeData, serviceSlug: Ma
 export function supportsMakeupRequestedTasks(scope: unknown, requestedTasks: string[]) {
   const normalizedScope = normalizeMakeupScope(scope);
   const requestedServices = requestedTasks.filter(isMakeupScopeServiceSlug);
-  if (requestedServices.length === 0) return true;
-  const offered = new Set(normalizedScope.services_offered);
-  return requestedServices.every((service) => offered.has(service));
+  if (requestedServices.length > 0) {
+    const offered = new Set(normalizedScope.services_offered);
+    return requestedServices.every((service) => offered.has(service));
+  }
+
+  const requestedIncludedTasks = requestedTasks.filter(
+    (task): task is MakeupTaskIncludedSlug => includedTaskMap.has(task as MakeupTaskIncludedSlug)
+  );
+  if (requestedIncludedTasks.length === 0) return true;
+
+  const included = new Set<string>(normalizedScope.tasks_included);
+  const excluded = new Set<string>(normalizedScope.tasks_excluded);
+  return requestedIncludedTasks.every((task) => included.has(task) && !excluded.has(task));
 }
 
 export { MAKEUP_DURATION_OPTIONS };

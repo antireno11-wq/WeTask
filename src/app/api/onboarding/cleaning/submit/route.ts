@@ -18,7 +18,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   limpieza: "Limpieza",
   mascotas: "Paseo y cuidado de mascotas",
   babysitter: "Babysitter",
-  "profesor-particular": "Clases particulares",
+  "profesor-particular": "Profesor particular",
   "personal-trainer": "Personal trainer",
   chef: "Chef",
   maquillaje: "Maquillaje",
@@ -85,18 +85,9 @@ function listMissingFields(onboarding: Awaited<ReturnType<typeof prisma.cleaning
 
   if (onboarding.categorySlug === "maquillaje") {
     const makeupScope = normalizeMakeupScope(onboarding.makeupScope);
-    const hasConfiguredServices =
-      makeupScope.services_offered.length > 0 &&
-      makeupScope.service_configs.length === makeupScope.services_offered.length &&
-      makeupScope.service_configs.every(
-        (config) =>
-          config.base_price_clp &&
-          config.duration_min &&
-          (config.service_slug !== "otro" || config.custom_label.trim().length > 0)
-      );
     required.splice(8, 0, [
       "makeupScope",
-      hasConfiguredServices && makeupScope.style_description.trim().length > 0 && makeupScope.portfolio_photos.length > 0 ? makeupScope : null
+      makeupScope.services_offered.length > 0 && makeupScope.tasks_included.length > 0 ? makeupScope : null
     ]);
   }
 
@@ -122,7 +113,7 @@ function listMissingFields(onboarding: Awaited<ReturnType<typeof prisma.cleaning
     const chefScope = normalizeChefScope(onboarding.chefScope);
     required.splice(8, 0, [
       "chefScope",
-      chefScope.services_offered.length > 0 && chefScope.tasks_included.length > 0 ? chefScope : null
+      chefScope.services_offered.length > 0 ? chefScope : null
     ]);
   }
 
@@ -139,12 +130,9 @@ function listMissingFields(onboarding: Awaited<ReturnType<typeof prisma.cleaning
     required.splice(8, 0, [
       "teacherScope",
       teacherScope.services_offered.length > 0 &&
-      (!teacherScope.services_offered.includes("musica") || teacherScope.music_instruments.length > 0) &&
-      teacherScope.service_configs.length > 0 &&
-      teacherScope.service_configs.every(
-        (config) => config.levels.length > 0 && config.modes.length > 0 && Boolean(config.hourly_rate_clp) && Boolean(config.typical_duration_min)
-      ) &&
-      teacherScope.teaching_style.trim().length > 0
+      teacherScope.levels.length > 0 &&
+      teacherScope.modes.length > 0 &&
+      teacherScope.tasks_included.length > 0
         ? teacherScope
         : null
     ]);

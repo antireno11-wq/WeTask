@@ -2,7 +2,6 @@ import { PaymentStatus, UserRole } from "@prisma/client";
 import { CHEF_SERVICE_DEFINITIONS } from "@/lib/chef-service-types";
 import { CLEANING_SERVICE_DEFINITIONS } from "@/lib/cleaning-service-types";
 import { type CleaningScopeData } from "@/lib/cleaning-scope";
-import { MAKEUP_SERVICE_DEFINITIONS } from "@/lib/makeup-service-types";
 import { prisma } from "@/lib/prisma";
 
 const DEMO_PASSWORD_HASH = "$2a$12$LX3eD21fpfkg/xsBDNBrkeBrgQdo9iLcWaG1jOOMonHmBMChElxva";
@@ -693,23 +692,21 @@ export async function ensureMarketplaceDemoData() {
       name: service.name,
       description: service.forClients,
       basePriceClp: service.recommendedMinClp,
-      durationMin: 60,
-      categoryId: categories.chefDomicilio.id
+      categoryId: categories.chefDomicilio.id,
+      durationMin: service.estimatedDurationMinutes
     })),
-    ...MAKEUP_SERVICE_DEFINITIONS.map((service) => ({
-      slug: service.slug,
-      name: service.name,
-      description: `${service.forClients} ${service.idealFor}`,
-      basePriceClp: service.recommendedMinClp,
-      durationMin: service.defaultDurationMin,
+    {
+      slug: "maquillaje-a-domicilio-sesion",
+      name: "Maquillaje a domicilio por sesión",
+      description: "Maquillaje social, de día o de noche en tu domicilio",
+      basePriceClp: 26000,
       categoryId: categories.maquillajeDomicilio.id
-    })),
+    },
     {
       slug: "planchado-por-hora",
       name: "Planchado por hora",
       description: "Planchado, doblado y orden de prendas",
       basePriceClp: 14000,
-      durationMin: 60,
       categoryId: categories.planchado.id
     }
   ];
@@ -721,7 +718,7 @@ export async function ensureMarketplaceDemoData() {
         name: spec.name,
         description: spec.description,
         basePriceClp: spec.basePriceClp,
-        durationMin: spec.durationMin ?? 60,
+        durationMin: "durationMin" in spec ? spec.durationMin : 60,
         categoryId: spec.categoryId,
         isActive: true
       },
@@ -730,7 +727,7 @@ export async function ensureMarketplaceDemoData() {
         name: spec.name,
         description: spec.description,
         basePriceClp: spec.basePriceClp,
-        durationMin: spec.durationMin ?? 60,
+        durationMin: "durationMin" in spec ? spec.durationMin : 60,
         categoryId: spec.categoryId,
         isActive: true
       }
@@ -779,8 +776,8 @@ export async function ensureMarketplaceDemoData() {
         "limpieza-hogar",
         "limpieza-oficina",
         "paseo-cuidado-mascotas",
-        "cocina-casera",
-        "cocina-eventos",
+        "meal-prep-semanal",
+        "evento-cumpleanos",
         "maquillaje-a-domicilio-sesion",
         "planchado-por-hora"
       ],
@@ -788,8 +785,8 @@ export async function ensureMarketplaceDemoData() {
         "limpieza-hogar": 15000,
         "limpieza-oficina": 16000,
         "paseo-cuidado-mascotas": 15000,
-        "cocina-casera": 22000,
-        "cocina-eventos": 32000,
+        "meal-prep-semanal": 65000,
+        "evento-cumpleanos": 120000,
         "maquillaje-a-domicilio-sesion": 15000,
         "planchado-por-hora": 15000
       }
@@ -862,18 +859,18 @@ export async function ensureMarketplaceDemoData() {
         "babysitter-por-horas-standard",
         "profesor-particular-clase",
         "personal-trainer-sesion",
-        "cocina-gourmet",
+        "cena-privada-4",
         "reposteria",
-        "cumpleanos",
+        "parrilla-asado",
         "maquillaje-a-domicilio-sesion"
       ],
       serviceRates: {
         "babysitter-por-horas-standard": 21000,
         "profesor-particular-clase": 21000,
         "personal-trainer-sesion": 21000,
-        "cocina-gourmet": 34000,
-        "reposteria": 28000,
-        "cumpleanos": 30000,
+        "cena-privada-4": 95000,
+        "reposteria": 45000,
+        "parrilla-asado": 95000,
         "maquillaje-a-domicilio-sesion": 21000
       }
     }
