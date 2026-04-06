@@ -18,7 +18,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   limpieza: "Limpieza",
   mascotas: "Paseo y cuidado de mascotas",
   babysitter: "Babysitter",
-  "profesor-particular": "Profesor particular",
+  "profesor-particular": "Clases particulares",
   "personal-trainer": "Personal trainer",
   chef: "Chef",
   maquillaje: "Maquillaje",
@@ -139,9 +139,12 @@ function listMissingFields(onboarding: Awaited<ReturnType<typeof prisma.cleaning
     required.splice(8, 0, [
       "teacherScope",
       teacherScope.services_offered.length > 0 &&
-      teacherScope.levels.length > 0 &&
-      teacherScope.modes.length > 0 &&
-      teacherScope.tasks_included.length > 0
+      (!teacherScope.services_offered.includes("musica") || teacherScope.music_instruments.length > 0) &&
+      teacherScope.service_configs.length > 0 &&
+      teacherScope.service_configs.every(
+        (config) => config.levels.length > 0 && config.modes.length > 0 && Boolean(config.hourly_rate_clp) && Boolean(config.typical_duration_min)
+      ) &&
+      teacherScope.teaching_style.trim().length > 0
         ? teacherScope
         : null
     ]);

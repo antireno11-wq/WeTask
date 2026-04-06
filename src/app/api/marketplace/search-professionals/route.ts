@@ -21,7 +21,7 @@ import {
   syncTaskerAvailabilitySlotsFromOnboarding,
   syncTaskerMarketplaceServicesFromOnboarding
 } from "@/lib/tasker-publication";
-import { supportsTeacherRequestedTasks } from "@/lib/teacher-scope";
+import { matchesTeacherFilters, supportsTeacherRequestedTasks } from "@/lib/teacher-scope";
 import { supportsTrainerRequestedTasks } from "@/lib/trainer-scope";
 import { hasAssignedRole } from "@/lib/user-roles";
 import { marketplaceSearchProsSchema } from "@/lib/validators";
@@ -93,6 +93,12 @@ export async function GET(req: NextRequest) {
       longitude: req.nextUrl.searchParams.get("longitude") ?? undefined,
       categoryId: req.nextUrl.searchParams.get("categoryId") ?? undefined,
       serviceId: req.nextUrl.searchParams.get("serviceId") ?? undefined,
+      classSubject: req.nextUrl.searchParams.get("classSubject") ?? undefined,
+      classMusicType: req.nextUrl.searchParams.get("classMusicType") ?? undefined,
+      classMode: req.nextUrl.searchParams.get("classMode") ?? undefined,
+      classLevel: req.nextUrl.searchParams.get("classLevel") ?? undefined,
+      classFrequency: req.nextUrl.searchParams.get("classFrequency") ?? undefined,
+      classNotes: req.nextUrl.searchParams.get("classNotes") ?? undefined,
       tasks: req.nextUrl.searchParams.get("tasks") ?? undefined,
       date: req.nextUrl.searchParams.get("date") ?? undefined,
       limit: req.nextUrl.searchParams.get("limit") ?? undefined
@@ -101,25 +107,6 @@ export async function GET(req: NextRequest) {
     const clientCommune =
       normalizeCommune(input.commune) ??
       inferCommuneFromAddress(`${input.street ?? ""}, ${input.city ?? ""}, Chile`);
-
-    if (!clientCommune) {
-      return NextResponse.json(
-        {
-          error: COVERAGE_UNAVAILABLE_MESSAGE
-        },
-        { status: 400 }
-      );
-    }
-
-    const customerCoords =
-      typeof input.latitude === "number" && typeof input.longitude === "number"
-        ? { lat: input.latitude, lng: input.longitude }
-        : geocodeAddress({
-            city: input.city,
-            postalCode: input.postalCode,
-            street: input.street,
-            commune: clientCommune
-          });
 
     const [requestedService, requestedCategory] = await Promise.all([
       input.serviceId
@@ -137,6 +124,30 @@ export async function GET(req: NextRequest) {
     ]);
 
     const requestedCategorySlug = normalizeTaskerCategorySlug(requestedService?.category?.slug ?? requestedCategory?.slug ?? null);
+    const onlineTeacherSearch =
+      requestedCategorySlug === "profesor-particular" &&
+      (input.classMode === "online" || input.classMode === "flexible");
+
+    if (!clientCommune && !onlineTeacherSearch) {
+      return NextResponse.json(
+        {
+          error: COVERAGE_UNAVAILABLE_MESSAGE
+        },
+        { status: 400 }
+      );
+    }
+
+    const customerCoords =
+      typeof input.latitude === "number" && typeof input.longitude === "number"
+        ? { lat: input.latitude, lng: input.longitude }
+        : onlineTeacherSearch
+          ? null
+          : geocodeAddress({
+              city: input.city,
+              postalCode: input.postalCode,
+              street: input.street,
+              commune: clientCommune ?? undefined
+            });
 
     const slotFilters = buildSlotFiltersForCategory(input.categoryId, input.serviceId);
 
@@ -399,13 +410,16 @@ export async function GET(req: NextRequest) {
                   coverageComuna: profile.coverageComuna ?? profile.user.cleaningOnboarding?.baseCommune
                 };
 
-        const servesCommune = taskerServesCommune(
-          {
-            serviceCommunes: communeSource.serviceCommunes,
-            coverageComuna: communeSource.coverageComuna
-          },
-          clientCommune
-        );
+          const servesCommune =
+            onlineTeacherSearch && !clientCommune
+              ? true
+              : taskerServesCommune(
+                  {
+                    serviceCommunes: communeSource.serviceCommunes,
+                    coverageComuna: communeSource.coverageComuna
+                  },
+                  clientCommune
+                );
           if (!servesCommune) {
             filterStats.communeMismatch += 1;
             return null;
@@ -423,8 +437,27 @@ export async function GET(req: NextRequest) {
             return null;
           }
 
+          if (selectedCategorySlug === "profesor-particular") {
+            const teacherScopeSource =
+              selectedAdditionalCategory && canPublishTaskerCategoryProfile(selectedAdditionalCategory)
+                ? selectedAdditionalCategory.scopeData
+                : profile.user.cleaningOnboarding?.teacherScope;
+
+            const matchesStructuredTeacherFilters = matchesTeacherFilters(teacherScopeSource, {
+              subject: input.classSubject ?? null,
+              musicType: input.classMusicType ?? null,
+              mode: input.classMode === "flexible" ? null : input.classMode ?? null,
+              level: input.classLevel ?? null
+            });
+
+            if (!matchesStructuredTeacherFilters) {
+              filterStats.tasksMismatch += 1;
+              return null;
+            }
+          }
+
           const distance =
-            profile.coverageLatitude != null && profile.coverageLongitude != null
+            customerCoords && profile.coverageLatitude != null && profile.coverageLongitude != null
               ? distanceKm(customerCoords, {
                   lat: profile.coverageLatitude,
                   lng: profile.coverageLongitude
@@ -474,6 +507,10 @@ export async function GET(req: NextRequest) {
     console.info("[tasker-search] search audit", {
       categoryId: input.categoryId ?? null,
       serviceId: input.serviceId ?? null,
+      classSubject: input.classSubject ?? null,
+      classMusicType: input.classMusicType ?? null,
+      classMode: input.classMode ?? null,
+      classLevel: input.classLevel ?? null,
       commune: clientCommune,
       requestedTasks: input.tasks,
       profilesLoaded: profiles.length,

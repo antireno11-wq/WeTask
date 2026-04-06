@@ -12,7 +12,7 @@ import { getMakeupDurationSummary, getMakeupServiceConfig, getMakeupServiceHeadl
 import { getMakeupServiceDefinitionBySlug } from "@/lib/makeup-service-types";
 import { PET_TASK_INCLUDED_OPTIONS } from "@/lib/pet-scope";
 import { getMarketplaceCategorySlugForTaskerCategory, normalizeTaskerCategorySlug } from "@/lib/tasker-category-profiles";
-import { TEACHER_TASK_INCLUDED_OPTIONS } from "@/lib/teacher-scope";
+import { getTeacherLevelLabel, getTeacherModeLabel, getTeacherPublicServiceSlugs, getTeacherServiceLabel, normalizeTeacherScope } from "@/lib/teacher-scope";
 import { TRAINER_TASK_INCLUDED_OPTIONS } from "@/lib/trainer-scope";
 
 type Category = {
@@ -44,6 +44,7 @@ type Professional = {
       profilePhotoPositionY?: number | null;
       baseCommune?: string | null;
       makeupScope?: unknown;
+      teacherScope?: unknown;
     } | null;
   };
   slots: Array<{ id: string; startsAt: string }>;
@@ -58,7 +59,7 @@ const TASK_FILTER_OPTIONS_BY_CATEGORY: Record<string, TaskFilterOption[]> = {
   mascotas: [...PET_TASK_INCLUDED_OPTIONS],
   babysitter: [...BABYSITTER_TASK_INCLUDED_OPTIONS],
   "personal-trainer": [...TRAINER_TASK_INCLUDED_OPTIONS],
-  "profesor-particular": [...TEACHER_TASK_INCLUDED_OPTIONS],
+  "profesor-particular": [],
   chef: [...CHEF_TASK_INCLUDED_OPTIONS],
   maquillaje: [],
   planchado: []
@@ -135,6 +136,12 @@ export default function ServiceProsPage() {
   const city = search.get("city") ?? "Santiago";
   const requestedDate = search.get("requestedDate") ?? "";
   const requestedTime = search.get("requestedTime") ?? "";
+  const classSubject = search.get("classSubject") ?? "";
+  const classMusicType = search.get("classMusicType") ?? "";
+  const classMode = search.get("classMode") ?? "";
+  const classLevel = search.get("classLevel") ?? "";
+  const classFrequency = search.get("classFrequency") ?? "";
+  const classNotes = search.get("classNotes") ?? "";
   const categoryTaskOptions = useMemo(() => TASK_FILTER_OPTIONS_BY_CATEGORY[categorySlug] ?? [], [categorySlug]);
   const initialRequestedTasks = (search.get("tasks") ?? "")
     .split(",")
@@ -162,11 +169,17 @@ export default function ServiceProsPage() {
     if (city) qs.set("city", city);
     if (requestedDate) qs.set("date", requestedDate);
     if (requestedTime) qs.set("requestedTime", requestedTime);
+    if (classSubject) qs.set("classSubject", classSubject);
+    if (classMusicType) qs.set("classMusicType", classMusicType);
+    if (classMode) qs.set("classMode", classMode);
+    if (classLevel) qs.set("classLevel", classLevel);
+    if (classFrequency) qs.set("classFrequency", classFrequency);
+    if (classNotes) qs.set("classNotes", classNotes);
     if (selectedServiceId) qs.set("serviceId", selectedServiceId);
     if (selectedTasks.length > 0) qs.set("tasks", selectedTasks.join(","));
     copyCleaningEstimateParams(search, qs);
     return qs.toString();
-  }, [address, apartment, city, comuna, reference, requestedDate, requestedTime, search, selectedServiceId, selectedTasks]);
+  }, [address, apartment, city, classFrequency, classLevel, classMode, classMusicType, classNotes, classSubject, comuna, reference, requestedDate, requestedTime, search, selectedServiceId, selectedTasks]);
   const selectedService = useMemo(
     () => category?.services.find((service) => service.id === selectedServiceId) ?? null,
     [category, selectedServiceId]
@@ -219,6 +232,10 @@ export default function ServiceProsPage() {
           if (address.trim()) qs.set("street", address.trim());
           if (comuna) qs.set("commune", comuna);
           if (requestedIso) qs.set("date", requestedIso);
+          if (classSubject) qs.set("classSubject", classSubject);
+          if (classMusicType) qs.set("classMusicType", classMusicType);
+          if (classMode) qs.set("classMode", classMode);
+          if (classLevel) qs.set("classLevel", classLevel);
           if (selectedTasks.length > 0) qs.set("tasks", selectedTasks.join(","));
 
           const response = await fetch(`/api/marketplace/search-professionals?${qs.toString()}`);
@@ -254,7 +271,7 @@ export default function ServiceProsPage() {
     };
 
     if (categorySlug) void load();
-  }, [address, categorySlug, city, comuna, marketplaceRouteCategorySlug, normalizedRouteCategorySlug, requestedIso, selectedServiceId, selectedTasks]);
+  }, [address, categorySlug, city, classLevel, classMode, classMusicType, classSubject, comuna, marketplaceRouteCategorySlug, normalizedRouteCategorySlug, requestedIso, selectedServiceId, selectedTasks]);
 
   const professionals = useMemo(() => {
     let filtered = [...allPros];
@@ -317,17 +334,15 @@ export default function ServiceProsPage() {
             <p className="auth-flow-kicker">Taskers disponibles</p>
             <h1>{category?.name ?? "Servicio"} en {comuna || city}</h1>
             <p>
-              {selectedService ? `Mostrando resultados para ${selectedService.name.toLowerCase()}. ` : ""}
-              Compara perfiles, agenda y precios antes de confirmar tu reserva.
+              {category?.slug === "profesor-particular"
+                ? "Compara profesores por tipo de clase, nivel, modalidad, duración típica y precio por hora."
+                : `${selectedService ? `Mostrando resultados para ${selectedService.name.toLowerCase()}. ` : ""}Compara perfiles, agenda y precios antes de confirmar tu reserva.`}
             </p>
 
             <div className="auth-flow-copy-list">
               <div className="auth-flow-meta-card">
-                <strong>Dirección</strong>
-                <span>
-                  {address || "Sin dirección"}
-                  {comuna ? `, ${comuna}` : ""}
-                </span>
+                <strong>{category?.slug === "profesor-particular" && classMode === "online" ? "Modalidad" : "Dirección"}</strong>
+                <span>{category?.slug === "profesor-particular" && classMode === "online" ? "Clase online" : `${address || "Sin dirección"}${comuna ? `, ${comuna}` : ""}`}</span>
               </div>
               <div className="auth-flow-meta-card">
                 <strong>Detalles</strong>
@@ -337,8 +352,14 @@ export default function ServiceProsPage() {
                 </span>
               </div>
               <div className="auth-flow-meta-card">
-                <strong>Horario</strong>
-                <span>{requestedDate && requestedTime ? `${requestedDate} a las ${requestedTime}` : "Aún no definido"}</span>
+                <strong>{category?.slug === "profesor-particular" ? "Clase buscada" : "Horario"}</strong>
+                <span>
+                  {category?.slug === "profesor-particular"
+                    ? [classMusicType || classSubject, classLevel, classMode].filter(Boolean).join(" · ") || "Aún no definido"
+                    : requestedDate && requestedTime
+                      ? `${requestedDate} a las ${requestedTime}`
+                      : "Aún no definido"}
+                </span>
               </div>
               {recommendedHours ? (
                 <div className="auth-flow-meta-card">
@@ -423,6 +444,20 @@ export default function ServiceProsPage() {
                   selectedMakeupDefinition && "idealFor" in selectedMakeupDefinition && typeof selectedMakeupDefinition.idealFor === "string"
                     ? selectedMakeupDefinition.idealFor
                     : profileSnippet(category?.name ?? "servicios");
+                const teacherScope = normalizeTeacherScope(pro.user.cleaningOnboarding?.teacherScope);
+                const teacherRelevantServices = getTeacherPublicServiceSlugs(teacherScope)
+                  .filter((serviceSlug) => (classMusicType ? serviceSlug === classMusicType : classSubject === "musica" ? ["guitarra", "piano", "canto"].includes(serviceSlug) : classSubject ? serviceSlug === classSubject : true))
+                  .map(getTeacherServiceLabel);
+                const teacherRelevantConfig =
+                  teacherScope.service_configs.find((config) =>
+                    classMusicType ? config.service_slug === classMusicType : classSubject && classSubject !== "musica" ? config.service_slug === classSubject : true
+                  ) ?? teacherScope.service_configs[0] ?? null;
+                const teacherLevels = teacherRelevantConfig?.levels?.length
+                  ? teacherRelevantConfig.levels.map(getTeacherLevelLabel)
+                  : teacherScope.levels.map(getTeacherLevelLabel);
+                const teacherModes = teacherRelevantConfig?.modes?.length
+                  ? teacherRelevantConfig.modes.map(getTeacherModeLabel)
+                  : teacherScope.modes.map(getTeacherModeLabel);
                 const priceLabel = pro.hourlyRateFromClp ? clp(pro.hourlyRateFromClp) : "Por definir";
 
                 return (
@@ -447,7 +482,11 @@ export default function ServiceProsPage() {
                         </div>
 
                         <p className="we-pro-snippet">
-                          {category?.slug === "maquillaje" ? `${makeupHeadline}. ${makeupAudience}` : profileSnippet(category?.name ?? "servicios")}
+                          {category?.slug === "maquillaje"
+                            ? `${makeupHeadline}. ${makeupAudience}`
+                            : category?.slug === "profesor-particular"
+                              ? `Clases de ${teacherRelevantServices.join(", ") || "clases particulares"}${teacherModes.length > 0 ? ` · ${teacherModes.join(" / ")}` : ""}.`
+                              : profileSnippet(category?.name ?? "servicios")}
                         </p>
 
                         {category?.slug === "maquillaje" ? (
@@ -463,6 +502,27 @@ export default function ServiceProsPage() {
                             <div className="auth-flow-meta-card">
                               <strong>Cobertura</strong>
                               <span>{communeLabel}</span>
+                            </div>
+                          </div>
+                        ) : null}
+
+                        {category?.slug === "profesor-particular" ? (
+                          <div className="auth-flow-copy-list">
+                            <div className="auth-flow-meta-card">
+                              <strong>Clase</strong>
+                              <span>{teacherRelevantServices.join(", ") || "Clases particulares"}</span>
+                            </div>
+                            <div className="auth-flow-meta-card">
+                              <strong>Nivel</strong>
+                              <span>{teacherLevels.length > 0 ? teacherLevels.join(", ") : "Por confirmar"}</span>
+                            </div>
+                            <div className="auth-flow-meta-card">
+                              <strong>Modalidad</strong>
+                              <span>{teacherModes.length > 0 ? teacherModes.join(" / ") : "Por confirmar"}</span>
+                            </div>
+                            <div className="auth-flow-meta-card">
+                              <strong>Duración típica</strong>
+                              <span>{teacherRelevantConfig?.typical_duration_min ? `${teacherRelevantConfig.typical_duration_min / 60} h` : "Por confirmar"}</span>
                             </div>
                           </div>
                         ) : null}
@@ -485,6 +545,9 @@ export default function ServiceProsPage() {
                       <strong>{priceLabel}</strong>
                       <span>{category?.slug === "maquillaje" ? "precio base" : "por hora"}</span>
                       {category?.slug === "maquillaje" ? <small>{makeupConfig ? `Duración: ${makeupDuration}` : "Duración por confirmar"}</small> : null}
+                      {category?.slug === "profesor-particular" ? (
+                        <small>{teacherRelevantConfig?.typical_duration_min ? `Duración típica: ${teacherRelevantConfig.typical_duration_min / 60} h` : "Duración por confirmar"}</small>
+                      ) : null}
                     </aside>
                   </article>
                 );

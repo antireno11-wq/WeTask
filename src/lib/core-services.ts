@@ -28,11 +28,11 @@ export const CORE_SERVICES = [
   },
   {
     slug: "profesor-particular",
-    label: "Profesor particular",
+    label: "Clases particulares",
     icon: "📚",
-    requestService: "Profesor particular",
+    requestService: "Clases particulares",
     categorySlug: "profesor-particular",
-    taskerDescription: "Refuerzo escolar y apoyo personalizado a domicilio o en línea.",
+    taskerDescription: "Matemáticas, inglés, apoyo escolar y música en formato particular.",
     image: "/services/profesor-particular-opt.jpg"
   },
   {

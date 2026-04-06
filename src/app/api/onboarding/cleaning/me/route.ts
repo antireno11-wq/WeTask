@@ -410,7 +410,7 @@ export async function PATCH(req: NextRequest) {
         return NextResponse.json({ error: "Debes definir el alcance de tu servicio de personal trainer." }, { status: 400 });
       }
       if (onboarding.categorySlug === "profesor-particular" && !parsed.teacherScope) {
-        return NextResponse.json({ error: "Debes definir el alcance de tu servicio de profesor particular." }, { status: 400 });
+        return NextResponse.json({ error: "Debes definir el alcance de tu servicio de clases particulares." }, { status: 400 });
       }
       data = {
         offeredServices: parsed.offeredServices,

@@ -55,10 +55,11 @@ import {
   normalizeTrainerScope
 } from "@/lib/trainer-scope";
 import {
-  getTeacherExcludedTaskLabel,
-  getTeacherIncludedTaskLabel,
+  getTeacherBookingNoticeLabel,
+  getTeacherDurationLabel,
   getTeacherLevelLabel,
   getTeacherModeLabel,
+  getTeacherPublicServiceSlugs,
   getTeacherServiceLabel,
   normalizeTeacherScope
 } from "@/lib/teacher-scope";
@@ -270,7 +271,7 @@ function categoryLabel(value: string | null | undefined) {
     case "babysitter":
       return "Babysitter";
     case "profesor-particular":
-      return "Profesor particular";
+      return "Clases particulares";
     case "personal-trainer":
       return "Personal trainer";
     case "chef":
@@ -948,7 +949,7 @@ export default function ProDetailPage() {
       return normalized;
     }
 
-    return {
+    return normalizeTeacherScope({
       ...normalized,
       services_offered: Array.isArray(onboarding?.offeredServices)
         ? onboarding.offeredServices.filter(
@@ -967,7 +968,7 @@ export default function ProDetailPage() {
             (item): item is "presencial" | "online" => item === "presencial" || item === "online"
           )
         : []
-    };
+    });
   }, [normalizedPrimaryCategorySlug, onboarding?.teacherScope, onboarding?.offeredServices, onboarding?.experienceTypes, selectedScopeSource]);
   const relevantServiceCategories = useMemo(() => {
     if (!normalizedPrimaryCategorySlug) return serviceCategories;
@@ -1064,11 +1065,10 @@ export default function ProDetailPage() {
   const trainerScopeModes = trainerScope.modes.map(getTrainerModeLabel);
   const trainerScopeIncludedTasks = trainerScope.tasks_included.map(getTrainerIncludedTaskLabel);
   const trainerScopeExcludedTasks = trainerScope.tasks_excluded.map(getTrainerExcludedTaskLabel);
-  const teacherScopeServices = teacherScope.services_offered.map(getTeacherServiceLabel);
+  const teacherScopeServices = getTeacherPublicServiceSlugs(teacherScope).map(getTeacherServiceLabel);
   const teacherScopeLevels = teacherScope.levels.map(getTeacherLevelLabel);
   const teacherScopeModes = teacherScope.modes.map(getTeacherModeLabel);
-  const teacherScopeIncludedTasks = teacherScope.tasks_included.map(getTeacherIncludedTaskLabel);
-  const teacherScopeExcludedTasks = teacherScope.tasks_excluded.map(getTeacherExcludedTaskLabel);
+  const teacherServiceConfigs = teacherScope.service_configs;
   const defaultReserveServiceId =
     requestedServiceId ||
     (data?.taskerServices ?? []).find((item) =>
@@ -1519,10 +1519,10 @@ export default function ProDetailPage() {
 
                   {normalizedPrimaryCategorySlug === "profesor-particular" ? (
                     <article className="auth-flow-panel client-dashboard-section tasker-profile-section">
-                      <h2>Alcance del servicio</h2>
+                      <h2>Clases particulares</h2>
                       <div className="we-info-grid tasker-profile-detail-grid">
                         <div>
-                          <h3>Asignaturas que ofrece</h3>
+                          <h3>Qué enseña</h3>
                           <p>{teacherScopeServices.length > 0 ? teacherScopeServices.join(", ") : "Aún no informado."}</p>
                         </div>
                         <div>
@@ -1530,23 +1530,44 @@ export default function ProDetailPage() {
                           <p>{teacherScopeLevels.length > 0 ? teacherScopeLevels.join(", ") : "Aún no informado."}</p>
                         </div>
                         <div>
-                          <h3>Modalidades</h3>
+                          <h3>Modalidad</h3>
                           <p>{teacherScopeModes.length > 0 ? teacherScopeModes.join(", ") : "Aún no informado."}</p>
                         </div>
                         <div>
-                          <h3>Tareas que sí realiza</h3>
-                          <p>{teacherScopeIncludedTasks.length > 0 ? teacherScopeIncludedTasks.join(", ") : "Aún no informado."}</p>
+                          <h3>Experiencia</h3>
+                          <p>{teacherScope.years_experience != null ? `${teacherScope.years_experience} año(s)` : "Aún no informada."}</p>
                         </div>
                         <div>
-                          <h3>Tareas que no realiza</h3>
-                          <p>{teacherScopeExcludedTasks.length > 0 ? teacherScopeExcludedTasks.join(", ") : "No reporta exclusiones."}</p>
+                          <h3>Formación</h3>
+                          <p>{teacherScope.education_credentials || "Aún no informada."}</p>
                         </div>
                         <div>
-                          <h3>Condiciones especiales</h3>
-                          <p>{teacherScope.special_conditions || "Sin condiciones especiales reportadas."}</p>
+                          <h3>Qué necesita el alumno</h3>
+                          <p>{teacherScope.student_requirements || "Sin requisitos especiales por ahora."}</p>
                         </div>
                       </div>
-                      <p className="minimal-note">Si necesitas algo fuera de este alcance base, revísalo antes de reservar para evitar malos entendidos.</p>
+                      {teacherScope.teaching_style ? (
+                        <div className="auth-flow-note-card auth-flow-note-card-compact">
+                          <strong>Estilo de enseñanza</strong>
+                          <span>{teacherScope.teaching_style}</span>
+                        </div>
+                      ) : null}
+                      {teacherServiceConfigs.length > 0 ? (
+                        <div className="onboarding-scope-review-grid">
+                          {teacherServiceConfigs.map((config) => (
+                            <div key={config.service_slug} className="auth-flow-note-card">
+                              <strong>{getTeacherServiceLabel(config.service_slug)}</strong>
+                              <span>{config.levels.length > 0 ? config.levels.map(getTeacherLevelLabel).join(", ") : "Nivel por definir"}</span>
+                              <span>{config.modes.length > 0 ? config.modes.map(getTeacherModeLabel).join(" / ") : "Modalidad por definir"}</span>
+                              <span>{config.hourly_rate_clp ? `${clp(config.hourly_rate_clp)} por hora` : "Precio por definir"}</span>
+                              <span>Duración típica: {getTeacherDurationLabel(config.typical_duration_min)}</span>
+                            </div>
+                          ))}
+                        </div>
+                      ) : null}
+                      <p className="minimal-note">
+                        Reserva según tipo de clase, nivel y modalidad. Si necesitas algo muy específico, conviene explicarlo antes de confirmar.
+                      </p>
                     </article>
                   ) : null}
 

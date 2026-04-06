@@ -108,7 +108,7 @@ export default function ServiciosPage() {
             <div className="auth-flow-copy-list">
               <div className="auth-flow-meta-card">
                 <strong>Servicios activos</strong>
-                <span>Limpieza, mascotas, babysitter, profesor particular, personal trainer, chef, maquillaje y planchado.</span>
+                <span>Limpieza, mascotas, babysitter, clases particulares, personal trainer, chef, maquillaje y planchado.</span>
               </div>
               <div className="auth-flow-meta-card">
                 <strong>Flujo simple</strong>

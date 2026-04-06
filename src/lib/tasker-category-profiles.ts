@@ -50,6 +50,7 @@ import {
 } from "@/lib/pet-scope";
 import {
   emptyTeacherScope,
+  getTeacherPublicServiceSlugs,
   normalizeTeacherScope,
   supportsTeacherRequestedTasks,
   TEACHER_LEVEL_OPTIONS,
@@ -153,7 +154,7 @@ const CATEGORY_CONFIGS: Record<SupportedTaskerCategorySlug, TaskerCategoryConfig
   },
   "profesor-particular": {
     slug: "profesor-particular",
-    label: "Profesor particular",
+    label: "Clases particulares",
     marketplaceCategorySlug: "profesor-particular",
     serviceOptions: TEACHER_SCOPE_SERVICE_OPTIONS,
     includedTaskOptions: TEACHER_TASK_INCLUDED_OPTIONS,
@@ -314,14 +315,31 @@ export function validateScopeForTaskerCategory(categorySlug: string | null | und
       }
       break;
     case "profesor-particular":
-      if (!Array.isArray(scope.levels) || scope.levels.length === 0) {
-        return { ok: false as const, error: "Selecciona al menos un nivel", scope };
+      if (Array.isArray(scope.services_offered) && scope.services_offered.includes("musica")) {
+        if (!Array.isArray(scope.music_instruments) || scope.music_instruments.length === 0) {
+          return { ok: false as const, error: "Selecciona al menos un tipo de clase de música", scope };
+        }
       }
-      if (!Array.isArray(scope.modes) || scope.modes.length === 0) {
-        return { ok: false as const, error: "Selecciona al menos una modalidad", scope };
+      if (!Array.isArray(scope.service_configs) || scope.service_configs.length === 0) {
+        return { ok: false as const, error: "Configura al menos una clase con precio, nivel y modalidad", scope };
       }
-      if (tasksIncluded.length === 0) {
-        return { ok: false as const, error: "Selecciona al menos una tarea que sí realizas", scope };
+      if (
+        !scope.service_configs.every(
+          (item) =>
+            item &&
+            typeof item === "object" &&
+            Array.isArray((item as { levels?: unknown[] }).levels) &&
+            (item as { levels?: unknown[] }).levels!.length > 0 &&
+            Array.isArray((item as { modes?: unknown[] }).modes) &&
+            (item as { modes?: unknown[] }).modes!.length > 0 &&
+            typeof (item as { hourly_rate_clp?: unknown }).hourly_rate_clp === "number" &&
+            typeof (item as { typical_duration_min?: unknown }).typical_duration_min === "number"
+        )
+      ) {
+        return { ok: false as const, error: "Completa nivel, modalidad, precio y duración típica en cada clase", scope };
+      }
+      if (typeof scope.teaching_style !== "string" || scope.teaching_style.trim().length === 0) {
+        return { ok: false as const, error: "Describe tu estilo de enseñanza", scope };
       }
       break;
     case "personal-trainer":
@@ -348,6 +366,9 @@ export function validateScopeForTaskerCategory(categorySlug: string | null | und
 
 export function extractOfferedServicesForTaskerCategory(categorySlug: string | null | undefined, scopeData: unknown) {
   const scope = normalizeScopeForTaskerCategory(categorySlug, scopeData) as Record<string, unknown>;
+  if (normalizeTaskerCategorySlug(categorySlug) === "profesor-particular") {
+    return getTeacherPublicServiceSlugs(scope as ReturnType<typeof normalizeTeacherScope>);
+  }
   return Array.isArray(scope.services_offered) ? scope.services_offered.filter((item): item is string => typeof item === "string") : [];
 }
 
@@ -359,8 +380,9 @@ export function extractExperienceTypesForTaskerCategory(categorySlug: string | n
     case "babysitter":
       return Array.isArray(scope.age_ranges) ? scope.age_ranges.filter((item): item is string => typeof item === "string") : [];
     case "profesor-particular": {
-      const levels = Array.isArray(scope.levels) ? scope.levels.filter((item): item is string => typeof item === "string") : [];
-      const modes = Array.isArray(scope.modes) ? scope.modes.filter((item): item is string => typeof item === "string") : [];
+      const normalizedScope = normalizeTeacherScope(scopeData);
+      const levels = normalizedScope.levels;
+      const modes = normalizedScope.modes;
       return [...levels, ...modes];
     }
     case "personal-trainer":

@@ -72,20 +72,35 @@ import {
   type TrainerScopeServiceSlug
 } from "@/lib/trainer-scope";
 import {
+  TEACHER_BOOKING_NOTICE_OPTIONS,
+  TEACHER_DURATION_OPTIONS,
+  TEACHER_GENERAL_LEVEL_OPTIONS,
   TEACHER_LEVEL_OPTIONS,
+  TEACHER_MUSIC_INSTRUMENT_OPTIONS,
+  TEACHER_MUSIC_LEVEL_OPTIONS,
   TEACHER_MODE_OPTIONS,
   TEACHER_SCOPE_SERVICE_OPTIONS,
   TEACHER_TASK_EXCLUDED_OPTIONS,
   TEACHER_TASK_INCLUDED_OPTIONS,
+  createTeacherServiceConfig,
   emptyTeacherScope,
   getTeacherExcludedTaskLabel,
   getTeacherIncludedTaskLabel,
+  getTeacherMusicInstrumentLabel,
   getTeacherLevelLabel,
   getTeacherModeLabel,
   getTeacherServiceLabel,
+  getTeacherLevelOptionsForService,
+  getTeacherPublicServiceSlugs,
+  getTeacherDurationLabel,
+  getTeacherBookingNoticeLabel,
   normalizeTeacherScope,
+  syncTeacherServiceConfigs,
   type TeacherLevelSlug,
+  type TeacherMusicInstrumentSlug,
   type TeacherModeSlug,
+  type TeacherPublicServiceSlug,
+  type TeacherServiceConfig,
   type TeacherScopeData,
   type TeacherScopeServiceSlug
 } from "@/lib/teacher-scope";
@@ -276,8 +291,8 @@ type DraftState = {
   babysitterFirstAid: boolean | null;
   babysitterMultiChild: boolean | null;
   babysitterScope: BabysitterScopeData;
-  teacherSubject: "matematicas" | "ingles" | "lenguaje" | "ciencias" | "otra";
-  teacherLevel: "basica" | "media" | "universitario";
+  teacherSubject: "matematicas" | "ingles" | "apoyo_escolar" | "musica";
+  teacherLevel: TeacherLevelSlug;
   teacherMode: "presencial" | "online" | "ambas";
   teacherScope: TeacherScopeData;
   trainerServiceType: "funcional" | "fuerza" | "perdida_peso" | "movilidad";
@@ -310,7 +325,7 @@ type PetScopeScreen = 1 | 2 | 3 | 4 | 5 | 6;
 type IroningScopeScreen = 1 | 2 | 3 | 4 | 5;
 type BabysitterScopeScreen = 1 | 2 | 3 | 4 | 5 | 6;
 type ChefScopeScreen = 1 | 2 | 3 | 4 | 5;
-type TeacherScopeScreen = 1 | 2 | 3 | 4 | 5 | 6;
+type TeacherScopeScreen = 1 | 2 | 3 | 4 | 5;
 type TrainerScopeScreen = 1 | 2 | 3 | 4 | 5 | 6;
 type MissingFieldItem = {
   field: string;
@@ -341,7 +356,7 @@ const CATEGORY_OPTIONS: Array<{ slug: CategorySlug; label: string; icon: string;
   { slug: "limpieza", label: "Limpieza", icon: "🧹", description: "Limpieza hogar, profunda y post mudanza." },
   { slug: "mascotas", label: "Cuidado de mascotas", icon: "🐾", description: "Paseos y cuidado diario para perros y gatos." },
   { slug: "babysitter", label: "Babysitter", icon: "👶", description: "Cuidado infantil responsable en casa del cliente." },
-  { slug: "profesor-particular", label: "Profesor particular", icon: "📚", description: "Clases personalizadas presenciales u online." },
+  { slug: "profesor-particular", label: "Clases particulares", icon: "📚", description: "Matemáticas, inglés, apoyo escolar y música." },
   { slug: "personal-trainer", label: "Personal trainer", icon: "🏋️", description: "Entrenamiento personalizado según objetivo y modalidad." },
   { slug: "chef", label: "Chef", icon: "👨‍🍳", description: "Cocina gourmet, casera, repostería, eventos y cumpleaños." },
   { slug: "maquillaje", label: "Maquillaje", icon: "💄", description: "Servicios sociales, eventos y novias." },
@@ -403,7 +418,7 @@ const SUBMIT_REQUIRED_FIELDS: Record<string, { label: string; step: WizardStep }
   ironingScope: { label: "Alcance del servicio de planchado", step: 7 },
   babysitterScope: { label: "Alcance del servicio de babysitter", step: 7 },
   chefScope: { label: "Alcance del servicio de chef", step: 7 },
-  teacherScope: { label: "Alcance del servicio de profesor particular", step: 7 },
+  teacherScope: { label: "Alcance del servicio de clases particulares", step: 7 },
   trainerScope: { label: "Alcance del servicio de personal trainer", step: 7 },
   serviceCommunes: { label: "Comunas de cobertura", step: 4 },
   coverageLatitude: { label: "Ubicación validada desde la dirección", step: 3 },
@@ -869,11 +884,20 @@ function buildStep7Payload(draft: DraftState) {
         acceptsHomesWithChildren: draft.babysitterMultiChild
       };
     case "profesor-particular":
+      const syncedTeacherScope = normalizeTeacherScope({
+        ...draft.teacherScope,
+        service_configs: syncTeacherServiceConfigs(
+          draft.teacherScope.service_configs,
+          draft.teacherScope.services_offered,
+          draft.teacherScope.music_instruments
+        ),
+        years_experience: Number(draft.yearsExperience || 0)
+      });
       return {
-        offeredServices: draft.teacherScope.services_offered,
-        experienceTypes: [...draft.teacherScope.levels, ...draft.teacherScope.modes],
+        offeredServices: getTeacherPublicServiceSlugs(syncedTeacherScope),
+        experienceTypes: [...syncedTeacherScope.levels, ...syncedTeacherScope.modes],
         teacherScope: {
-          ...draft.teacherScope
+          ...syncedTeacherScope
         }
       };
     case "personal-trainer":
@@ -994,11 +1018,19 @@ function CleaningOnboardingPageContent() {
   const chefScopeServicesPreview = draft.chefScope.services_offered.map(getChefScopeServiceLabel);
   const chefScopeIncludedPreview = draft.chefScope.tasks_included.map(getChefIncludedTaskLabel);
   const chefScopeExcludedPreview = draft.chefScope.tasks_excluded.map(getChefExcludedTaskLabel);
-  const teacherScopeServicesPreview = draft.teacherScope.services_offered.map(getTeacherServiceLabel);
-  const teacherScopeLevelsPreview = draft.teacherScope.levels.map(getTeacherLevelLabel);
-  const teacherScopeModesPreview = draft.teacherScope.modes.map(getTeacherModeLabel);
-  const teacherScopeIncludedPreview = draft.teacherScope.tasks_included.map(getTeacherIncludedTaskLabel);
-  const teacherScopeExcludedPreview = draft.teacherScope.tasks_excluded.map(getTeacherExcludedTaskLabel);
+  const normalizedTeacherScope = useMemo(
+    () =>
+      normalizeTeacherScope({
+        ...draft.teacherScope,
+        years_experience: Number(draft.yearsExperience || 0)
+      }),
+    [draft.teacherScope, draft.yearsExperience]
+  );
+  const teacherScopeServicesPreview = getTeacherPublicServiceSlugs(normalizedTeacherScope).map(getTeacherServiceLabel);
+  const teacherScopeLevelsPreview = normalizedTeacherScope.levels.map(getTeacherLevelLabel);
+  const teacherScopeModesPreview = normalizedTeacherScope.modes.map(getTeacherModeLabel);
+  const teacherScopeMusicPreview = normalizedTeacherScope.music_instruments.map(getTeacherMusicInstrumentLabel);
+  const teacherScopeConfigsPreview = normalizedTeacherScope.service_configs;
   const trainerScopeServicesPreview = draft.trainerScope.services_offered.map(getTrainerServiceLabel);
   const trainerScopeModesPreview = draft.trainerScope.modes.map(getTrainerModeLabel);
   const trainerScopeIncludedPreview = draft.trainerScope.tasks_included.map(getTrainerIncludedTaskLabel);
@@ -1273,6 +1305,32 @@ function CleaningOnboardingPageContent() {
 
   useEffect(() => {
     if (draft.category !== "profesor-particular") return;
+    const syncedScope = normalizeTeacherScope({
+      ...draft.teacherScope,
+      service_configs: syncTeacherServiceConfigs(
+        draft.teacherScope.service_configs,
+        draft.teacherScope.services_offered,
+        draft.teacherScope.music_instruments
+      ),
+      years_experience: Number(draft.yearsExperience || 0)
+    });
+    if (JSON.stringify(syncedScope) === JSON.stringify(draft.teacherScope)) return;
+    setDraft((current) => ({
+      ...current,
+      teacherScope: normalizeTeacherScope({
+        ...current.teacherScope,
+        service_configs: syncTeacherServiceConfigs(
+          current.teacherScope.service_configs,
+          current.teacherScope.services_offered,
+          current.teacherScope.music_instruments
+        ),
+        years_experience: Number(current.yearsExperience || 0)
+      })
+    }));
+  }, [draft.category, draft.teacherScope, draft.yearsExperience]);
+
+  useEffect(() => {
+    if (draft.category !== "profesor-particular") return;
     const scope = draft.teacherScope;
     const nextSubject = scope.services_offered[0] ?? draft.teacherSubject;
     const nextLevel = scope.levels[0] ?? draft.teacherLevel;
@@ -1533,35 +1591,48 @@ function CleaningOnboardingPageContent() {
               const normalizedScope = normalizeTeacherScope(nextOnboarding.teacherScope);
               if (
                 normalizedScope.services_offered.length > 0 ||
-                normalizedScope.levels.length > 0 ||
-                normalizedScope.modes.length > 0 ||
-                normalizedScope.tasks_included.length > 0
+                normalizedScope.service_configs.length > 0
               ) {
                 return normalizedScope;
               }
+              const legacyServices = Array.isArray(nextOnboarding.offeredServices)
+                ? nextOnboarding.offeredServices.filter(
+                    (item): item is TeacherScopeServiceSlug =>
+                      typeof item === "string" &&
+                      (item === "matematicas" ||
+                        item === "ingles" ||
+                        item === "apoyo_escolar" ||
+                        item === "musica" ||
+                        item === "lenguaje" ||
+                        item === "ciencias" ||
+                        item === "otra")
+                  )
+                : [];
+              const fallbackLevels = Array.isArray(nextOnboarding.experienceTypes)
+                ? nextOnboarding.experienceTypes.filter((item): item is TeacherLevelSlug => typeof item === "string")
+                : [];
+              const fallbackModes = Array.isArray(nextOnboarding.experienceTypes)
+                ? nextOnboarding.experienceTypes.filter((item): item is TeacherModeSlug => item === "presencial" || item === "online")
+                : [];
+              const fallbackServices = normalizeTeacherScope({ services_offered: legacyServices }).services_offered;
               return {
-                ...normalizedScope,
-                services_offered: Array.isArray(nextOnboarding.offeredServices)
-                  ? nextOnboarding.offeredServices.filter(
-                      (item): item is TeacherScopeServiceSlug =>
-                        typeof item === "string" &&
-                        TEACHER_SCOPE_SERVICE_OPTIONS.some((option) => option.value === item)
-                    )
-                  : [],
-                levels: Array.isArray(nextOnboarding.experienceTypes)
-                  ? nextOnboarding.experienceTypes.filter(
-                      (item): item is TeacherLevelSlug =>
-                        typeof item === "string" &&
-                        TEACHER_LEVEL_OPTIONS.some((option) => option.value === item)
-                    )
-                  : [],
-                modes: Array.isArray(nextOnboarding.experienceTypes)
-                  ? nextOnboarding.experienceTypes.filter(
-                      (item): item is TeacherModeSlug =>
-                        typeof item === "string" &&
-                        TEACHER_MODE_OPTIONS.some((option) => option.value === item)
-                    )
-                  : []
+                ...normalizeTeacherScope({
+                  ...normalizedScope,
+                  services_offered: fallbackServices,
+                  levels: fallbackLevels,
+                  modes: fallbackModes,
+                  service_configs: getTeacherPublicServiceSlugs(
+                    normalizeTeacherScope({
+                      services_offered: fallbackServices
+                    })
+                  ).map((serviceSlug) => ({
+                    ...createTeacherServiceConfig(serviceSlug),
+                    levels: getTeacherLevelOptionsForService(serviceSlug)
+                      .map((option) => option.value)
+                      .filter((value) => fallbackLevels.includes(value as TeacherLevelSlug)),
+                    modes: fallbackModes
+                  }))
+                })
               };
             })()
           : current.teacherScope,
@@ -1775,6 +1846,57 @@ function CleaningOnboardingPageContent() {
         }
       };
     });
+  };
+
+  const updateTeacherScope = (updater: (current: TeacherScopeData) => TeacherScopeData) => {
+    setDraft((current) => {
+      const nextScope = normalizeTeacherScope(updater(current.teacherScope));
+      return {
+        ...current,
+        teacherScope: {
+          ...nextScope,
+          years_experience: Number(current.yearsExperience || 0)
+        }
+      };
+    });
+  };
+
+  const updateTeacherServiceConfig = (
+    serviceSlug: TeacherPublicServiceSlug,
+    updater: (current: TeacherServiceConfig) => TeacherServiceConfig
+  ) => {
+    updateTeacherScope((current) => ({
+      ...current,
+      service_configs: syncTeacherServiceConfigs(current.service_configs, current.services_offered, current.music_instruments).map((config) =>
+        config.service_slug === serviceSlug ? updater(config) : config
+      )
+    }));
+  };
+
+  const handleTeacherSupportMaterialUpload = async (file: File | null) => {
+    if (!file) return;
+    if (file.size > MAX_UPLOAD_BYTES) {
+      setError("Material de apoyo: el archivo supera los 6 MB. Súbelo más liviano para continuar.");
+      return;
+    }
+
+    try {
+      setError("");
+      const content = await fileToDataUrl(file);
+      updateTeacherScope((current) => ({
+        ...current,
+        support_materials: [...current.support_materials, content].slice(0, 6)
+      }));
+    } catch (eventualError) {
+      setError(eventualError instanceof Error ? eventualError.message : "No se pudo cargar el material de apoyo.");
+    }
+  };
+
+  const removeTeacherSupportMaterial = (index: number) => {
+    updateTeacherScope((current) => ({
+      ...current,
+      support_materials: current.support_materials.filter((_, currentIndex) => currentIndex !== index)
+    }));
   };
 
   const handleMakeupPortfolioUpload = async (file: File | null) => {
@@ -2274,24 +2396,29 @@ function CleaningOnboardingPageContent() {
   };
 
   const continueTeacherScopeScreen = () => {
+    const syncedConfigs = syncTeacherServiceConfigs(
+      draft.teacherScope.service_configs,
+      draft.teacherScope.services_offered,
+      draft.teacherScope.music_instruments
+    );
     if (teacherScopeScreen === 1 && draft.teacherScope.services_offered.length === 0) {
-      setError("Selecciona al menos una asignatura que ofreces.");
+      setError("Selecciona al menos una clase que ofreces.");
       return;
     }
-    if (teacherScopeScreen === 2 && draft.teacherScope.levels.length === 0) {
-      setError("Selecciona al menos un nivel con el que trabajas.");
+    if (teacherScopeScreen === 1 && draft.teacherScope.services_offered.includes("musica") && draft.teacherScope.music_instruments.length === 0) {
+      setError("Si enseñas música, marca al menos guitarra, piano o canto.");
       return;
     }
-    if (teacherScopeScreen === 2 && draft.teacherScope.modes.length === 0) {
-      setError("Selecciona al menos una modalidad de clases.");
+    if (teacherScopeScreen === 2 && syncedConfigs.some((config) => config.levels.length === 0 || config.modes.length === 0 || !config.hourly_rate_clp || !config.typical_duration_min)) {
+      setError("Completa nivel, modalidad, precio por hora y duración típica para cada clase que ofreces.");
       return;
     }
-    if (teacherScopeScreen === 3 && draft.teacherScope.tasks_included.length === 0) {
-      setError("Selecciona al menos una tarea que sí realizas.");
+    if (teacherScopeScreen === 3 && !draft.teacherScope.teaching_style.trim()) {
+      setError("Describe tu estilo de enseñanza para que el alumno entienda tu propuesta.");
       return;
     }
     setError("");
-    setTeacherScopeScreen((current) => (Math.min(6, current + 1) as TeacherScopeScreen));
+    setTeacherScopeScreen((current) => (Math.min(5, current + 1) as TeacherScopeScreen));
   };
 
   const previousTeacherScopeScreen = () => {
@@ -2323,6 +2450,11 @@ function CleaningOnboardingPageContent() {
 
   const continueStep7 = async () => {
     const payload = buildStep7Payload(draft);
+    const syncedTeacherConfigs = syncTeacherServiceConfigs(
+      draft.teacherScope.service_configs,
+      draft.teacherScope.services_offered,
+      draft.teacherScope.music_instruments
+    );
     if (!payload.offeredServices || payload.offeredServices.length === 0) {
       setError("Responde las preguntas de tu categoría para continuar.");
       return;
@@ -2396,19 +2528,26 @@ function CleaningOnboardingPageContent() {
       return;
     }
     if (draft.category === "profesor-particular" && draft.teacherScope.services_offered.length === 0) {
-      setError("Selecciona al menos una asignatura que ofreces.");
+      setError("Selecciona al menos una clase que ofreces.");
       return;
     }
-    if (draft.category === "profesor-particular" && draft.teacherScope.levels.length === 0) {
-      setError("Selecciona al menos un nivel con el que trabajas.");
+    if (
+      draft.category === "profesor-particular" &&
+      draft.teacherScope.services_offered.includes("musica") &&
+      draft.teacherScope.music_instruments.length === 0
+    ) {
+      setError("Si ofreces música, selecciona al menos guitarra, piano o canto.");
       return;
     }
-    if (draft.category === "profesor-particular" && draft.teacherScope.modes.length === 0) {
-      setError("Selecciona al menos una modalidad de clases.");
+    if (
+      draft.category === "profesor-particular" &&
+      syncedTeacherConfigs.some((config) => config.levels.length === 0 || config.modes.length === 0 || !config.hourly_rate_clp || !config.typical_duration_min)
+    ) {
+      setError("Completa nivel, modalidad, precio por hora y duración típica en cada clase particular.");
       return;
     }
-    if (draft.category === "profesor-particular" && draft.teacherScope.tasks_included.length === 0) {
-      setError("Selecciona al menos una tarea que sí realizas.");
+    if (draft.category === "profesor-particular" && !draft.teacherScope.teaching_style.trim()) {
+      setError("Describe tu estilo de enseñanza para que el cliente entienda tu propuesta.");
       return;
     }
     if (draft.category === "personal-trainer" && draft.trainerScope.services_offered.length === 0) {
@@ -3818,217 +3957,391 @@ function CleaningOnboardingPageContent() {
                 {draft.category === "profesor-particular" ? (
                   <div className="grid-form auth-flow-form">
                     <div className="full onboarding-scope-progress">
-                      <span className={teacherScopeScreen >= 1 ? "active" : ""}>Asignaturas</span>
-                      <span className={teacherScopeScreen >= 2 ? "active" : ""}>Nivel y modalidad</span>
-                      <span className={teacherScopeScreen >= 3 ? "active" : ""}>Sí realiza</span>
-                      <span className={teacherScopeScreen >= 4 ? "active" : ""}>No realiza</span>
-                      <span className={teacherScopeScreen >= 5 ? "active" : ""}>Condiciones</span>
-                      <span className={teacherScopeScreen >= 6 ? "active" : ""}>Revisión</span>
+                      <span className={teacherScopeScreen >= 1 ? "active" : ""}>Qué enseñas</span>
+                      <span className={teacherScopeScreen >= 2 ? "active" : ""}>Configura tus clases</span>
+                      <span className={teacherScopeScreen >= 3 ? "active" : ""}>Experiencia y estilo</span>
+                      <span className={teacherScopeScreen >= 4 ? "active" : ""}>Reserva e info</span>
+                      <span className={teacherScopeScreen >= 5 ? "active" : ""}>Revisión</span>
                     </div>
 
                     {teacherScopeScreen === 1 ? (
-                      <div className="full">
-                        <p className="field-label">¿Qué asignaturas ofreces?</p>
-                        <div className="auth-service-grid auth-service-grid-cleaning">
-                          {TEACHER_SCOPE_SERVICE_OPTIONS.map((service) => (
-                            <label
-                              key={service.value}
-                              className={`auth-service-card auth-service-card-scope ${draft.teacherScope.services_offered.includes(service.value) ? "active" : ""}`}
-                            >
-                              <input
-                                type="checkbox"
-                                checked={draft.teacherScope.services_offered.includes(service.value)}
-                                onChange={(event) => {
-                                  setDraft((current) => ({
-                                    ...current,
-                                    teacherScope: {
-                                      ...current.teacherScope,
-                                      services_offered: event.target.checked
-                                        ? Array.from(new Set([...current.teacherScope.services_offered, service.value]))
-                                        : current.teacherScope.services_offered.filter((item) => item !== service.value)
-                                    }
-                                  }));
-                                }}
-                              />
-                              <strong>{service.label}</strong>
-                              <span>{service.description}</span>
-                            </label>
-                          ))}
+                      <>
+                        <div className="full">
+                          <p className="field-label">¿Qué clases ofreces?</p>
+                          <div className="auth-service-grid auth-service-grid-cleaning">
+                            {TEACHER_SCOPE_SERVICE_OPTIONS.map((service) => (
+                              <label
+                                key={service.value}
+                                className={`auth-service-card auth-service-card-scope ${draft.teacherScope.services_offered.includes(service.value) ? "active" : ""}`}
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={draft.teacherScope.services_offered.includes(service.value)}
+                                  onChange={(event) => {
+                                    updateTeacherScope((current) => {
+                                      const nextServices = event.target.checked
+                                        ? Array.from(new Set([...current.services_offered, service.value]))
+                                        : current.services_offered.filter((item) => item !== service.value);
+                                      const nextMusicInstruments = nextServices.includes("musica") ? current.music_instruments : [];
+                                      return {
+                                        ...current,
+                                        services_offered: nextServices,
+                                        music_instruments: nextMusicInstruments,
+                                        service_configs: syncTeacherServiceConfigs(current.service_configs, nextServices, nextMusicInstruments)
+                                      };
+                                    });
+                                  }}
+                                />
+                                <strong>{service.label}</strong>
+                                <span>{service.description}</span>
+                              </label>
+                            ))}
+                          </div>
                         </div>
-                      </div>
+
+                        {draft.teacherScope.services_offered.includes("musica") ? (
+                          <div className="full">
+                            <p className="field-label">Si enseñas música, ¿qué tipo de clase ofreces?</p>
+                            <div className="onboarding-checkbox-grid onboarding-checkbox-grid-compact">
+                              {TEACHER_MUSIC_INSTRUMENT_OPTIONS.map((instrument) => (
+                                <label key={instrument.value} className="onboarding-check-card">
+                                  <input
+                                    type="checkbox"
+                                    checked={draft.teacherScope.music_instruments.includes(instrument.value)}
+                                    onChange={() =>
+                                      updateTeacherScope((current) => {
+                                        const nextInstruments = current.music_instruments.includes(instrument.value)
+                                          ? current.music_instruments.filter((item) => item !== instrument.value)
+                                          : [...current.music_instruments, instrument.value];
+                                        return {
+                                          ...current,
+                                          music_instruments: nextInstruments,
+                                          service_configs: syncTeacherServiceConfigs(current.service_configs, current.services_offered, nextInstruments)
+                                        };
+                                      })
+                                    }
+                                  />
+                                  <span>{instrument.label}</span>
+                                </label>
+                              ))}
+                            </div>
+                          </div>
+                        ) : null}
+                      </>
                     ) : null}
 
                     {teacherScopeScreen === 2 ? (
                       <>
                         <div className="full">
-                          <p className="field-label">¿Con qué niveles trabajas?</p>
-                          <div className="onboarding-checkbox-grid onboarding-checkbox-grid-compact">
-                            {TEACHER_LEVEL_OPTIONS.map((option) => (
-                              <label key={option.value} className="onboarding-check-card">
-                                <input
-                                  type="checkbox"
-                                  checked={draft.teacherScope.levels.includes(option.value)}
-                                  onChange={() =>
-                                    setDraft((current) => ({
-                                      ...current,
-                                      teacherScope: {
-                                        ...current.teacherScope,
-                                        levels: current.teacherScope.levels.includes(option.value)
-                                          ? current.teacherScope.levels.filter((item) => item !== option.value)
-                                          : [...current.teacherScope.levels, option.value]
-                                      }
-                                    }))
-                                  }
-                                />
-                                <span>{option.label}</span>
-                              </label>
-                            ))}
-                          </div>
+                          <strong>Configura cada clase</strong>
+                          <span className="input-hint">Así el cliente verá qué enseñas, para qué nivel, en qué formato y cuánto cuesta por hora.</span>
                         </div>
-                        <div className="full">
-                          <p className="field-label">¿En qué modalidad haces clases?</p>
-                          <div className="onboarding-checkbox-grid onboarding-checkbox-grid-compact">
-                            {TEACHER_MODE_OPTIONS.map((option) => (
-                              <label key={option.value} className="onboarding-check-card">
+
+                        <div className="full onboarding-scope-review-grid">
+                          {syncTeacherServiceConfigs(
+                            draft.teacherScope.service_configs,
+                            draft.teacherScope.services_offered,
+                            draft.teacherScope.music_instruments
+                          ).map((config) => (
+                            <article key={config.service_slug} className="auth-flow-note-card">
+                              <strong>{getTeacherServiceLabel(config.service_slug)}</strong>
+
+                              <div className="onboarding-inline-stack">
+                                <p className="field-label">Nivel que enseñas</p>
+                                <div className="onboarding-checkbox-grid onboarding-checkbox-grid-compact">
+                                  {getTeacherLevelOptionsForService(config.service_slug).map((option) => (
+                                    <label key={`${config.service_slug}-${option.value}`} className="onboarding-check-card">
+                                      <input
+                                        type="checkbox"
+                                        checked={config.levels.includes(option.value)}
+                                        onChange={() =>
+                                          updateTeacherServiceConfig(config.service_slug, (current) => ({
+                                            ...current,
+                                            levels: current.levels.includes(option.value)
+                                              ? current.levels.filter((item) => item !== option.value)
+                                              : [...current.levels, option.value]
+                                          }))
+                                        }
+                                      />
+                                      <span>{option.label}</span>
+                                    </label>
+                                  ))}
+                                </div>
+                              </div>
+
+                              <div className="onboarding-inline-stack">
+                                <p className="field-label">Modalidad</p>
+                                <div className="onboarding-checkbox-grid onboarding-checkbox-grid-compact">
+                                  {TEACHER_MODE_OPTIONS.map((option) => (
+                                    <label key={`${config.service_slug}-${option.value}`} className="onboarding-check-card">
+                                      <input
+                                        type="checkbox"
+                                        checked={config.modes.includes(option.value)}
+                                        onChange={() =>
+                                          updateTeacherServiceConfig(config.service_slug, (current) => ({
+                                            ...current,
+                                            modes: current.modes.includes(option.value)
+                                              ? current.modes.filter((item) => item !== option.value)
+                                              : [...current.modes, option.value]
+                                          }))
+                                        }
+                                      />
+                                      <span>{option.label}</span>
+                                    </label>
+                                  ))}
+                                </div>
+                              </div>
+
+                              <label>
+                                Precio por hora
                                 <input
-                                  type="checkbox"
-                                  checked={draft.teacherScope.modes.includes(option.value)}
-                                  onChange={() =>
-                                    setDraft((current) => ({
+                                  inputMode="numeric"
+                                  value={config.hourly_rate_clp ? String(config.hourly_rate_clp) : ""}
+                                  onChange={(event) =>
+                                    updateTeacherServiceConfig(config.service_slug, (current) => ({
                                       ...current,
-                                      teacherScope: {
-                                        ...current.teacherScope,
-                                        modes: current.teacherScope.modes.includes(option.value)
-                                          ? current.teacherScope.modes.filter((item) => item !== option.value)
-                                          : [...current.teacherScope.modes, option.value]
-                                      }
+                                      hourly_rate_clp: Number(event.target.value.replace(/\D/g, "")) || null
                                     }))
                                   }
+                                  placeholder="15000"
                                 />
-                                <span>{option.label}</span>
                               </label>
-                            ))}
-                          </div>
+
+                              <label>
+                                Duración típica
+                                <select
+                                  value={config.typical_duration_min ? String(config.typical_duration_min) : ""}
+                                  onChange={(event) =>
+                                    updateTeacherServiceConfig(config.service_slug, (current) => ({
+                                      ...current,
+                                      typical_duration_min: (Number(event.target.value) || 60) as TeacherServiceConfig["typical_duration_min"]
+                                    }))
+                                  }
+                                >
+                                  <option value="">Selecciona</option>
+                                  {TEACHER_DURATION_OPTIONS.map((option) => (
+                                    <option key={`${config.service_slug}-${option.value}`} value={option.value}>
+                                      {option.label}
+                                    </option>
+                                  ))}
+                                </select>
+                              </label>
+                            </article>
+                          ))}
                         </div>
                       </>
                     ) : null}
 
                     {teacherScopeScreen === 3 ? (
-                      <div className="full">
-                        <p className="field-label">¿Qué tareas sí realizas?</p>
-                        <div className="onboarding-task-checklist">
-                          {TEACHER_TASK_INCLUDED_OPTIONS.map((task) => (
-                            <label key={task.value} className={`onboarding-task-checklist-row ${draft.teacherScope.tasks_included.includes(task.value) ? "checked" : ""}`}>
-                              <div>
-                                <strong>{task.label}</strong>
-                              </div>
-                              <span className="onboarding-task-checklist-control">
-                                <input
-                                  type="checkbox"
-                                  checked={draft.teacherScope.tasks_included.includes(task.value)}
-                                  onChange={(event) => {
-                                    setDraft((current) => ({
-                                      ...current,
-                                      teacherScope: {
-                                        ...current.teacherScope,
-                                        tasks_included: event.target.checked
-                                          ? Array.from(new Set([...current.teacherScope.tasks_included, task.value]))
-                                          : current.teacherScope.tasks_included.filter((item) => item !== task.value)
-                                      }
-                                    }));
-                                  }}
-                                />
-                                <span className="onboarding-task-checklist-box" aria-hidden />
-                              </span>
-                            </label>
-                          ))}
+                      <>
+                        <label>
+                          Años de experiencia
+                          <input
+                            inputMode="numeric"
+                            value={draft.yearsExperience}
+                            onChange={(event) => {
+                              const nextValue = event.target.value.replace(/\D/g, "").slice(0, 2);
+                              setDraft((current) => ({
+                                ...current,
+                                yearsExperience: nextValue,
+                                teacherScope: {
+                                  ...current.teacherScope,
+                                  years_experience: nextValue ? Number(nextValue) : null
+                                }
+                              }));
+                            }}
+                            placeholder="3"
+                          />
+                        </label>
+
+                        <label>
+                          Especialidad principal
+                          <input
+                            value={draft.teacherScope.specialty}
+                            onChange={(event) =>
+                              updateTeacherScope((current) => ({
+                                ...current,
+                                specialty: event.target.value
+                              }))
+                            }
+                            placeholder="Ejemplo: reforzamiento PAES, conversación en inglés o guitarra para principiantes"
+                          />
+                        </label>
+
+                        <label className="full">
+                          Describe tu estilo de enseñanza
+                          <textarea
+                            rows={5}
+                            value={draft.teacherScope.teaching_style}
+                            onChange={(event) =>
+                              updateTeacherScope((current) => ({
+                                ...current,
+                                teaching_style: event.target.value
+                              }))
+                            }
+                            placeholder="Cuéntale al alumno cómo enseñas, cómo preparas la clase y cómo adaptas el contenido."
+                          />
+                        </label>
+
+                        <label className="full">
+                          Estudios, certificaciones o formación
+                          <textarea
+                            rows={4}
+                            value={draft.teacherScope.education_credentials}
+                            onChange={(event) =>
+                              updateTeacherScope((current) => ({
+                                ...current,
+                                education_credentials: event.target.value
+                              }))
+                            }
+                            placeholder="Ejemplo: Pedagogía en Inglés, Licenciatura en Matemáticas, conservatorio, certificación internacional."
+                          />
+                        </label>
+
+                        <label>
+                          ¿Trabajas a domicilio?
+                          <select
+                            value={draft.teacherScope.works_at_home == null ? "" : draft.teacherScope.works_at_home ? "si" : "no"}
+                            onChange={(event) =>
+                              updateTeacherScope((current) => ({
+                                ...current,
+                                works_at_home: event.target.value === "" ? null : event.target.value === "si"
+                              }))
+                            }
+                          >
+                            <option value="">Selecciona</option>
+                            <option value="si">Sí</option>
+                            <option value="no">No</option>
+                          </select>
+                        </label>
+
+                        <div className="full">
+                          <p className="field-label">Material o imágenes de apoyo (opcional)</p>
+                          <label className="upload-card">
+                            <input type="file" accept="image/*" onChange={(event) => void handleTeacherSupportMaterialUpload(event.target.files?.[0] ?? null)} />
+                            <span>Subir imagen de apoyo</span>
+                          </label>
+                          {draft.teacherScope.support_materials.length > 0 ? (
+                            <div className="we-gallery-grid">
+                              {draft.teacherScope.support_materials.map((photo, index) => (
+                                <div key={`${photo.slice(0, 24)}-${index}`} className="tasker-gallery-item">
+                                  <img src={photo} alt={`Material de apoyo ${index + 1}`} />
+                                  <button type="button" className="we-text-link" onClick={() => removeTeacherSupportMaterial(index)}>
+                                    Quitar
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          ) : null}
                         </div>
-                      </div>
+                      </>
                     ) : null}
 
                     {teacherScopeScreen === 4 ? (
-                      <div className="full">
-                        <p className="field-label">¿Qué tareas no realizas?</p>
-                        <div className="onboarding-task-checklist">
-                          {TEACHER_TASK_EXCLUDED_OPTIONS.map((task) => (
-                            <label
-                              key={task.value}
-                              className={`onboarding-task-checklist-row onboarding-task-checklist-row-warning ${draft.teacherScope.tasks_excluded.includes(task.value) ? "checked" : ""}`}
-                            >
-                              <div>
-                                <strong>{task.label}</strong>
-                              </div>
-                              <span className="onboarding-task-checklist-control">
-                                <input
-                                  type="checkbox"
-                                  checked={draft.teacherScope.tasks_excluded.includes(task.value)}
-                                  onChange={(event) => {
-                                    setDraft((current) => ({
-                                      ...current,
-                                      teacherScope: {
-                                        ...current.teacherScope,
-                                        tasks_excluded: event.target.checked
-                                          ? Array.from(new Set([...current.teacherScope.tasks_excluded, task.value]))
-                                          : current.teacherScope.tasks_excluded.filter((item) => item !== task.value)
-                                      }
-                                    }));
-                                  }}
-                                />
-                                <span className="onboarding-task-checklist-box" aria-hidden />
-                              </span>
-                            </label>
-                          ))}
+                      <>
+                        <label>
+                          Tiempo mínimo de anticipación para reservar
+                          <select
+                            value={String(draft.teacherScope.booking_notice_hours)}
+                            onChange={(event) =>
+                              updateTeacherScope((current) => ({
+                                ...current,
+                                booking_notice_hours: Number(event.target.value) as typeof current.booking_notice_hours
+                              }))
+                            }
+                          >
+                            {TEACHER_BOOKING_NOTICE_OPTIONS.map((option) => (
+                              <option key={option.value} value={option.value}>
+                                {option.label}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+
+                        <label>
+                          ¿Aceptas reservas el mismo día?
+                          <select
+                            value={draft.teacherScope.same_day_bookings ? "si" : "no"}
+                            onChange={(event) =>
+                              updateTeacherScope((current) => ({
+                                ...current,
+                                same_day_bookings: event.target.value === "si"
+                              }))
+                            }
+                          >
+                            <option value="no">No</option>
+                            <option value="si">Sí</option>
+                          </select>
+                        </label>
+
+                        <label className="full">
+                          ¿Qué necesita tener preparado el alumno?
+                          <textarea
+                            rows={4}
+                            value={draft.teacherScope.student_requirements}
+                            onChange={(event) =>
+                              updateTeacherScope((current) => ({
+                                ...current,
+                                student_requirements: event.target.value
+                              }))
+                            }
+                            placeholder="Ejemplo: cuaderno, instrumento afinado, computador con cámara o conexión estable."
+                          />
+                        </label>
+
+                        <div className="full auth-flow-note-card">
+                          <strong>Presencial y online</strong>
+                          <span>
+                            La dirección base y las comunas donde trabajas se configuran antes. Si marcas clases online en tus
+                            servicios, el cliente podrá encontrarte sin exigir dirección obligatoria.
+                          </span>
                         </div>
-                      </div>
+                      </>
                     ) : null}
 
                     {teacherScopeScreen === 5 ? (
-                      <div className="full">
-                        <label>
-                          Condiciones especiales de tu servicio
-                          <textarea
-                            value={draft.teacherScope.special_conditions}
-                            rows={4}
-                            placeholder="Ejemplo: solo hago clases individuales, no preparo PAES y no hago clases grupales."
-                            onChange={(event) =>
-                              setDraft((current) => ({
-                                ...current,
-                                teacherScope: {
-                                  ...current.teacherScope,
-                                  special_conditions: event.target.value
-                                }
-                              }))
-                            }
-                          />
-                        </label>
-                      </div>
-                    ) : null}
-
-                    {teacherScopeScreen === 6 ? (
                       <div className="full onboarding-scope-review-grid">
                         <div className="auth-flow-note-card">
-                          <strong>Asignaturas</strong>
+                          <strong>Clases que ofrece</strong>
                           <span>{teacherScopeServicesPreview.length > 0 ? teacherScopeServicesPreview.join(", ") : "Sin información aún."}</span>
                         </div>
                         <div className="auth-flow-note-card">
-                          <strong>Niveles</strong>
-                          <span>{teacherScopeLevelsPreview.length > 0 ? teacherScopeLevelsPreview.join(", ") : "Sin información aún."}</span>
+                          <strong>Especialidad</strong>
+                          <span>{draft.teacherScope.specialty.trim() || "Aún no informada."}</span>
                         </div>
                         <div className="auth-flow-note-card">
-                          <strong>Modalidades</strong>
-                          <span>{teacherScopeModesPreview.length > 0 ? teacherScopeModesPreview.join(", ") : "Sin información aún."}</span>
+                          <strong>Experiencia</strong>
+                          <span>{draft.yearsExperience ? `${draft.yearsExperience} año(s)` : "Aún no informada."}</span>
                         </div>
                         <div className="auth-flow-note-card">
-                          <strong>Tareas que sí realiza</strong>
-                          <span>{teacherScopeIncludedPreview.length > 0 ? teacherScopeIncludedPreview.join(", ") : "Sin información aún."}</span>
+                          <strong>Reserva</strong>
+                          <span>
+                            {getTeacherBookingNoticeLabel(draft.teacherScope.booking_notice_hours)}
+                            {draft.teacherScope.same_day_bookings ? " · acepta el mismo día" : ""}
+                          </span>
+                        </div>
+                        {teacherScopeMusicPreview.length > 0 ? (
+                          <div className="auth-flow-note-card">
+                            <strong>Música</strong>
+                            <span>{teacherScopeMusicPreview.join(", ")}</span>
+                          </div>
+                        ) : null}
+                        {teacherScopeConfigsPreview.map((config) => (
+                          <div key={`teacher-config-${config.service_slug}`} className="auth-flow-note-card">
+                            <strong>{getTeacherServiceLabel(config.service_slug)}</strong>
+                            <span>{config.levels.length > 0 ? config.levels.map(getTeacherLevelLabel).join(", ") : "Nivel por definir"}</span>
+                            <span>{config.modes.length > 0 ? config.modes.map(getTeacherModeLabel).join(" / ") : "Modalidad por definir"}</span>
+                            <span>{config.hourly_rate_clp ? `${clp(config.hourly_rate_clp)} por hora` : "Precio por definir"}</span>
+                            <span>Duración típica: {getTeacherDurationLabel(config.typical_duration_min)}</span>
+                          </div>
+                        ))}
+                        <div className="auth-flow-note-card">
+                          <strong>Qué necesita el alumno</strong>
+                          <span>{draft.teacherScope.student_requirements.trim() || "No agregaste requisitos previos."}</span>
                         </div>
                         <div className="auth-flow-note-card">
-                          <strong>Tareas que no realiza</strong>
-                          <span>{teacherScopeExcludedPreview.length > 0 ? teacherScopeExcludedPreview.join(", ") : "No marcaste exclusiones."}</span>
-                        </div>
-                        <div className="auth-flow-note-card">
-                          <strong>Condiciones especiales</strong>
-                          <span>{draft.teacherScope.special_conditions.trim() || "No agregaste condiciones especiales."}</span>
+                          <strong>Estilo de enseñanza</strong>
+                          <span>{draft.teacherScope.teaching_style.trim() || "Aún no informado."}</span>
                         </div>
                       </div>
                     ) : null}
@@ -4852,7 +5165,7 @@ function CleaningOnboardingPageContent() {
                     <button type="button" className="cta" onClick={continueChefScopeScreen}>
                       Siguiente
                     </button>
-                  ) : draft.category === "profesor-particular" && teacherScopeScreen < 6 ? (
+                  ) : draft.category === "profesor-particular" && teacherScopeScreen < 5 ? (
                     <button type="button" className="cta" onClick={continueTeacherScopeScreen}>
                       Siguiente
                     </button>

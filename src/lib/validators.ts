@@ -30,7 +30,12 @@ import {
   TRAINER_TASK_INCLUDED_OPTIONS
 } from "@/lib/trainer-scope";
 import {
+  TEACHER_BOOKING_NOTICE_OPTIONS,
+  TEACHER_DURATION_OPTIONS,
+  TEACHER_GENERAL_LEVEL_OPTIONS,
   TEACHER_LEVEL_OPTIONS,
+  TEACHER_MUSIC_INSTRUMENT_OPTIONS,
+  TEACHER_MUSIC_LEVEL_OPTIONS,
   TEACHER_MODE_OPTIONS,
   TEACHER_SCOPE_SERVICE_OPTIONS,
   TEACHER_TASK_EXCLUDED_OPTIONS,
@@ -75,10 +80,15 @@ const trainerModeEnum = z.enum(TRAINER_MODE_OPTIONS.map((option) => option.value
 const trainerIncludedTaskEnum = z.enum(TRAINER_TASK_INCLUDED_OPTIONS.map((option) => option.value) as [string, ...string[]]);
 const trainerExcludedTaskEnum = z.enum(TRAINER_TASK_EXCLUDED_OPTIONS.map((option) => option.value) as [string, ...string[]]);
 const teacherScopeServiceEnum = z.enum(TEACHER_SCOPE_SERVICE_OPTIONS.map((option) => option.value) as [string, ...string[]]);
-const teacherLevelEnum = z.enum(TEACHER_LEVEL_OPTIONS.map((option) => option.value) as [string, ...string[]]);
+const teacherMusicInstrumentEnum = z.enum(TEACHER_MUSIC_INSTRUMENT_OPTIONS.map((option) => option.value) as [string, ...string[]]);
+const teacherLevelEnum = z.enum(
+  [...TEACHER_GENERAL_LEVEL_OPTIONS, ...TEACHER_MUSIC_LEVEL_OPTIONS].map((option) => option.value) as [string, ...string[]]
+);
 const teacherModeEnum = z.enum(TEACHER_MODE_OPTIONS.map((option) => option.value) as [string, ...string[]]);
 const teacherIncludedTaskEnum = z.enum(TEACHER_TASK_INCLUDED_OPTIONS.map((option) => option.value) as [string, ...string[]]);
 const teacherExcludedTaskEnum = z.enum(TEACHER_TASK_EXCLUDED_OPTIONS.map((option) => option.value) as [string, ...string[]]);
+const teacherDurationEnum = z.enum(TEACHER_DURATION_OPTIONS.map((option) => String(option.value)) as [string, ...string[]]);
+const teacherBookingNoticeEnum = z.enum(TEACHER_BOOKING_NOTICE_OPTIONS.map((option) => String(option.value)) as [string, ...string[]]);
 const petScopeServiceEnum = z.enum(PET_SCOPE_SERVICE_OPTIONS.map((option) => option.value) as [string, ...string[]]);
 const petScopeAnimalEnum = z.enum(PET_SCOPE_ANIMAL_OPTIONS.map((option) => option.value) as [string, ...string[]]);
 const petIncludedTaskEnum = z.enum(PET_TASK_INCLUDED_OPTIONS.map((option) => option.value) as [string, ...string[]]);
@@ -212,6 +222,12 @@ export const marketplaceSearchProsSchema = z.object({
   longitude: z.coerce.number().min(-180).max(180).optional(),
   categoryId: z.string().min(1).optional(),
   serviceId: z.string().min(1).optional(),
+  classSubject: z.string().min(1).optional(),
+  classMusicType: z.string().min(1).optional(),
+  classMode: z.string().min(1).optional(),
+  classLevel: z.string().min(1).optional(),
+  classFrequency: z.string().min(1).optional(),
+  classNotes: z.string().max(800).optional(),
   tasks: z.preprocess(
     (value) => {
       if (typeof value !== "string") return [];
@@ -617,9 +633,32 @@ export const taskerOnboardingStep7Schema = z.object({
   teacherScope: z
     .object({
       services_offered: z.array(teacherScopeServiceEnum).min(1),
-      levels: z.array(teacherLevelEnum).min(1),
-      modes: z.array(teacherModeEnum).min(1),
-      tasks_included: z.array(teacherIncludedTaskEnum).min(1),
+      music_instruments: z.array(teacherMusicInstrumentEnum).optional().default([]),
+      service_configs: z
+        .array(
+          z.object({
+            service_slug: z.string().min(1),
+            levels: z.array(teacherLevelEnum).min(1),
+            modes: z.array(teacherModeEnum).min(1),
+            hourly_rate_clp: z.coerce.number().int().min(5000).max(200000),
+            typical_duration_min: z
+              .preprocess((value) => String(value ?? ""), teacherDurationEnum)
+              .transform((value) => Number(value))
+          })
+        )
+        .min(1),
+      levels: z.array(teacherLevelEnum).optional().default([]),
+      modes: z.array(teacherModeEnum).optional().default([]),
+      years_experience: z.coerce.number().int().min(0).max(50).optional().nullable(),
+      specialty: z.string().max(120).optional().default(""),
+      teaching_style: z.string().max(1200).optional().default(""),
+      education_credentials: z.string().max(1200).optional().default(""),
+      support_materials: z.array(imageDataUrlSchema).max(6).optional().default([]),
+      works_at_home: z.boolean().optional().nullable(),
+      booking_notice_hours: z.preprocess((value) => String(value ?? "12"), teacherBookingNoticeEnum).transform((value) => Number(value)),
+      same_day_bookings: z.boolean().optional().default(false),
+      student_requirements: z.string().max(600).optional().default(""),
+      tasks_included: z.array(teacherIncludedTaskEnum).optional().default([]),
       tasks_excluded: z.array(teacherExcludedTaskEnum).optional().default([]),
       special_conditions: z.string().max(600).optional().default("")
     })
