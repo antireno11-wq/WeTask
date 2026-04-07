@@ -1,162 +1,219 @@
-"use client";
-
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { notFound } from "next/navigation";
 import { AdminHeroShell } from "@/components/admin-hero-shell";
-import { formatPaymentRejectionReason } from "@/lib/payment-rejection";
+import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
-type UserDetailPayload = {
-  user: {
-    id: string;
-    fullName: string;
-    email: string;
-    phone: string | null;
-    role: "CUSTOMER" | "PRO" | "ADMIN";
-    roleLabel: string;
-    authProvider: string;
-    createdAt: string;
-    updatedAt: string;
-    termsAcceptedAt: string | null;
-    emailVerifiedAt: string | null;
-    roleAssignments: Array<{ code: "CUSTOMER" | "PRO" | "ADMIN"; label: string }>;
-    addresses: Array<{
-      id: string;
-      label: string | null;
-      street: string;
-      city: string;
-      postalCode: string;
-      region: string | null;
-      country: string;
-      updatedAt: string;
-    }>;
-    _count: {
-      bookings: number;
-      proBookings: number;
-      notifications: number;
-      paymentMethods: number;
-    };
-    bookings: Array<{
-      id: string;
-      updatedAt: string;
-      scheduledAt: string;
-      status: string;
-      totalPriceClp: number;
-      paymentStatus: string;
-      payment: {
-        providerStatus: string | null;
-        errorCode: string | null;
-        errorMessage: string | null;
-      } | null;
-      service: { name: string };
-    }>;
-    proBookings: Array<{
-      id: string;
-      updatedAt: string;
-      scheduledAt: string;
-      status: string;
-      totalPriceClp: number;
-      paymentStatus: string;
-      payment: {
-        providerStatus: string | null;
-        errorCode: string | null;
-        errorMessage: string | null;
-      } | null;
-      service: { name: string };
-    }>;
-    notifications: Array<{
-      id: string;
-      title: string;
-      body: string;
-      createdAt: string;
-      isRead: boolean;
-    }>;
-    professionalProfile: {
-      id: string;
-      avatarUrl: string | null;
-      bio: string | null;
-      isVerified: boolean;
-      verificationStatus: string;
-      coverageStreet: string | null;
-      coverageComuna: string | null;
-      coverageCity: string | null;
-      hourlyRateFromClp: number | null;
-      taskerServices: Array<{
-        priceClp: number;
-        service: { id: string; name: string };
-      }>;
-    } | null;
-    cleaningOnboarding: {
-      status: string;
-      categorySlug: string | null;
-      baseCommune: string | null;
-      serviceCommunes: unknown;
-      profilePhotoUrl: string | null;
-      submittedAt: string | null;
-    } | null;
+function dateLabel(value: Date | string | null | undefined) {
+  if (!value) return "-";
+  const date = typeof value === "string" ? new Date(value) : value;
+  return Number.isNaN(date.getTime())
+    ? "-"
+    : date.toLocaleDateString("es-CL", {
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit"
+      });
+}
+
+function dateTimeLabel(value: Date | string | null | undefined) {
+  if (!value) return "-";
+  const date = typeof value === "string" ? new Date(value) : value;
+  return Number.isNaN(date.getTime())
+    ? "-"
+    : date.toLocaleString("es-CL", {
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit"
+      });
+}
+
+function money(value: number | null | undefined) {
+  if (value == null) return "-";
+  return `$${value.toLocaleString("es-CL")}`;
+}
+
+function bookingStatusLabel(status: string) {
+  if (status === "COMPLETED") return "Completado";
+  if (status === "IN_PROGRESS") return "En curso";
+  if (status === "CONFIRMED") return "Confirmado";
+  if (status === "ACCEPTED") return "Aceptado";
+  if (status === "ASSIGNED") return "Asignado";
+  if (status === "CANCELLED") return "Cancelado";
+  if (status === "REFUNDED") return "Reembolsado";
+  if (status === "PAYMENT_FAILED") return "Pago rechazado";
+  if (status === "PENDING") return "Pendiente";
+  return status.toLowerCase().replace(/_/g, " ");
+}
+
+function roleLabel(code: "CUSTOMER" | "PRO" | "ADMIN") {
+  if (code === "ADMIN") return "Admin";
+  if (code === "PRO") return "Tasker";
+  return "Cliente";
+}
+
+type PageProps = {
+  params: {
+    userId: string;
   };
 };
 
-function formatDate(value?: string | null) {
-  if (!value) return "-";
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? "-" : date.toLocaleString("es-CL");
-}
-
-function clp(value?: number | null) {
-  if (!value) return "-";
-  return new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP", maximumFractionDigits: 0 }).format(value);
-}
-
-function communeListLabel(value: unknown) {
-  if (!Array.isArray(value)) return "-";
-  const items = value.filter((item): item is string => typeof item === "string" && item.trim().length > 0);
-  return items.length > 0 ? items.join(", ") : "-";
-}
-
-function roleLabelList(roleAssignments: Array<{ label: string }>, fallback: string) {
-  return roleAssignments.length > 0 ? roleAssignments.map((role) => role.label).join(", ") : fallback;
-}
-
-export default function AdminUserProfilePage({ params }: { params: { userId: string } }) {
-  const [payload, setPayload] = useState<UserDetailPayload | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-
-  useEffect(() => {
-    let cancelled = false;
-
-    const load = async () => {
-      setLoading(true);
-      setError("");
-      try {
-        const response = await fetch(`/api/admin/users/${params.userId}`);
-        const data = (await response.json()) as UserDetailPayload & { error?: string };
-        if (!response.ok || !data.user) throw new Error(data.error || "No se pudo cargar el perfil del usuario");
-        if (!cancelled) setPayload(data);
-      } catch (e) {
-        if (!cancelled) setError(e instanceof Error ? e.message : "Error inesperado");
-      } finally {
-        if (!cancelled) setLoading(false);
+export default async function AdminUserDetailPage({ params }: PageProps) {
+  const user = await prisma.user.findUnique({
+    where: { id: params.userId },
+    select: {
+      id: true,
+      fullName: true,
+      email: true,
+      phone: true,
+      role: true,
+      authProvider: true,
+      emailVerifiedAt: true,
+      createdAt: true,
+      updatedAt: true,
+      roleAssignments: {
+        select: {
+          role: {
+            select: {
+              code: true,
+              label: true
+            }
+          }
+        }
+      },
+      addresses: {
+        orderBy: [{ updatedAt: "desc" }],
+        take: 3,
+        select: {
+          id: true,
+          label: true,
+          street: true,
+          city: true,
+          postalCode: true,
+          region: true,
+          country: true,
+          updatedAt: true
+        }
+      },
+      professionalProfile: {
+        select: {
+          avatarUrl: true,
+          bio: true,
+          isVerified: true,
+          verificationStatus: true,
+          coverageStreet: true,
+          coverageComuna: true,
+          coverageCity: true,
+          serviceRadiusKm: true,
+          hourlyRateFromClp: true,
+          ratingAvg: true,
+          ratingsCount: true,
+          updatedAt: true,
+          taskerServices: {
+            where: { isActive: true },
+            orderBy: [{ updatedAt: "desc" }],
+            select: {
+              priceClp: true,
+              minBooking: true,
+              service: {
+                select: {
+                  name: true
+                }
+              },
+              category: {
+                select: {
+                  name: true
+                }
+              }
+            }
+          }
+        }
+      },
+      cleaningOnboarding: {
+        select: {
+          status: true,
+          categorySlug: true,
+          baseCommune: true,
+          referenceAddress: true,
+          serviceCommunes: true,
+          submittedAt: true,
+          adminReviewNotes: true,
+          updatedAt: true
+        }
+      },
+      bookings: {
+        orderBy: [{ createdAt: "desc" }],
+        take: 5,
+        select: {
+          id: true,
+          status: true,
+          totalPriceClp: true,
+          scheduledAt: true,
+          createdAt: true,
+          service: {
+            select: {
+              name: true
+            }
+          },
+          pro: {
+            select: {
+              fullName: true
+            }
+          }
+        }
+      },
+      proBookings: {
+        orderBy: [{ createdAt: "desc" }],
+        take: 5,
+        select: {
+          id: true,
+          status: true,
+          totalPriceClp: true,
+          scheduledAt: true,
+          createdAt: true,
+          service: {
+            select: {
+              name: true
+            }
+          },
+          customer: {
+            select: {
+              fullName: true
+            }
+          }
+        }
+      },
+      notifications: {
+        orderBy: [{ createdAt: "desc" }],
+        take: 5,
+        select: {
+          id: true,
+          title: true,
+          body: true,
+          isRead: true,
+          createdAt: true
+        }
       }
-    };
+    }
+  });
 
-    void load();
-    return () => {
-      cancelled = true;
-    };
-  }, [params.userId]);
+  if (!user) notFound();
 
-  const user = payload?.user;
+  const roleAssignments =
+    user.roleAssignments.length > 0
+      ? user.roleAssignments.map((assignment) => assignment.role.label)
+      : [roleLabel(user.role)];
 
   return (
     <AdminHeroShell>
       <div className="panel-head admin-page-head">
         <div>
           <span className="eyebrow">Backoffice WeTask</span>
-          <h2>Ficha de usuario</h2>
-          <p>Resumen completo del usuario seleccionado dentro de la plataforma.</p>
+          <h2>{user.fullName}</h2>
+          <p>Ficha interna del usuario para revisar cuenta, actividad, reservas y perfil tasker si existe.</p>
         </div>
         <div className="cta-row">
           <Link href="/admin/users" className="cta ghost small">
@@ -165,238 +222,248 @@ export default function AdminUserProfilePage({ params }: { params: { userId: str
         </div>
       </div>
 
-      {loading ? <p className="empty">Cargando perfil...</p> : null}
-      {error ? <p className="feedback error">{error}</p> : null}
-
-      {user ? (
-        <div className="admin-detail-grid">
-          <section className="admin-section-card">
-            <div className="admin-section-head">
-              <div>
-                <h3>{user.fullName}</h3>
-                <p>{user.email}</p>
-              </div>
-              <span className="status status-approved">{roleLabelList(user.roleAssignments, user.roleLabel)}</span>
-            </div>
-            <div className="admin-user-facts">
-              <p>
-                <strong>Teléfono:</strong> {user.phone || "Sin teléfono"}
-              </p>
-              <p>
-                <strong>Proveedor de acceso:</strong> {user.authProvider}
-              </p>
-              <p>
-                <strong>Creado:</strong> {formatDate(user.createdAt)}
-              </p>
-              <p>
-                <strong>Última actualización:</strong> {formatDate(user.updatedAt)}
-              </p>
-              <p>
-                <strong>Correo verificado:</strong> {user.emailVerifiedAt ? formatDate(user.emailVerifiedAt) : "No"}
-              </p>
-              <p>
-                <strong>Términos aceptados:</strong> {user.termsAcceptedAt ? formatDate(user.termsAcceptedAt) : "No"}
-              </p>
-            </div>
-          </section>
-
-          <section className="admin-section-card">
-            <div className="admin-section-head">
-              <div>
-                <h3>Actividad</h3>
-                <p>Conteos rápidos asociados a la cuenta.</p>
-              </div>
-            </div>
-            <div className="admin-user-facts">
-              <p>
-                <strong>Reservas como cliente:</strong> {user._count.bookings}
-              </p>
-              <p>
-                <strong>Reservas como tasker:</strong> {user._count.proBookings}
-              </p>
-              <p>
-                <strong>Notificaciones:</strong> {user._count.notifications}
-              </p>
-              <p>
-                <strong>Medios de pago:</strong> {user._count.paymentMethods}
-              </p>
-            </div>
-          </section>
-
-          <section className="admin-section-card">
-            <div className="admin-section-head">
-              <div>
-                <h3>Direcciones</h3>
-                <p>Últimas direcciones guardadas en la cuenta.</p>
-              </div>
-            </div>
-            <div className="admin-team-list">
-              {user.addresses.length === 0 ? (
-                <p className="empty">Sin direcciones guardadas.</p>
-              ) : (
-                user.addresses.map((address) => (
-                  <article key={address.id} className="admin-team-row">
-                    <div>
-                      <h4>{address.label || "Dirección guardada"}</h4>
-                      <p>{[address.street, address.city, address.region, address.country].filter(Boolean).join(", ")}</p>
-                      <p>Código postal: {address.postalCode || "-"}</p>
-                    </div>
-                    <div className="admin-team-row-actions">
-                      <span className="status status-pending">{formatDate(address.updatedAt)}</span>
-                    </div>
-                  </article>
-                ))
-              )}
-            </div>
-          </section>
-
-          <section className="admin-section-card">
-            <div className="admin-section-head">
-              <div>
-                <h3>Perfil tasker</h3>
-                <p>Visible si esta cuenta también trabaja en la plataforma.</p>
-              </div>
-            </div>
-            {user.professionalProfile ? (
-              <div className="admin-user-facts">
-                <p>
-                  <strong>Estado del perfil:</strong> {user.professionalProfile.verificationStatus}
-                </p>
-                <p>
-                  <strong>Verificado:</strong> {user.professionalProfile.isVerified ? "Sí" : "No"}
-                </p>
-                <p>
-                  <strong>Tarifa desde:</strong> {clp(user.professionalProfile.hourlyRateFromClp)}
-                </p>
-                <p>
-                  <strong>Cobertura base:</strong>{" "}
-                  {[user.professionalProfile.coverageStreet, user.professionalProfile.coverageComuna, user.professionalProfile.coverageCity]
-                    .filter(Boolean)
-                    .join(", ") || "-"}
-                </p>
-                <p>
-                  <strong>Servicios:</strong>{" "}
-                  {user.professionalProfile.taskerServices.length > 0
-                    ? user.professionalProfile.taskerServices.map((item) => item.service.name).join(", ")
-                    : "Sin servicios activos"}
-                </p>
-                <p>
-                  <strong>Bio:</strong> {user.professionalProfile.bio || "Sin bio"}
-                </p>
-                {user.role === "PRO" ? (
-                  <div className="cta-row">
-                    <Link href={`/pro/${user.id}`} className="cta ghost small">
-                      Ver perfil público
-                    </Link>
-                  </div>
-                ) : null}
-              </div>
-            ) : (
-              <p className="empty">Esta cuenta no tiene perfil tasker.</p>
-            )}
-          </section>
-
-          <section className="admin-section-card">
-            <div className="admin-section-head">
-              <div>
-                <h3>Onboarding tasker</h3>
-                <p>Estado del onboarding si la cuenta pasó por ese flujo.</p>
-              </div>
-            </div>
-            {user.cleaningOnboarding ? (
-              <div className="admin-user-facts">
-                <p>
-                  <strong>Estado:</strong> {user.cleaningOnboarding.status}
-                </p>
-                <p>
-                  <strong>Categoría:</strong> {user.cleaningOnboarding.categorySlug || "-"}
-                </p>
-                <p>
-                  <strong>Comuna base:</strong> {user.cleaningOnboarding.baseCommune || "-"}
-                </p>
-                <p>
-                  <strong>Comunas de servicio:</strong> {communeListLabel(user.cleaningOnboarding.serviceCommunes)}
-                </p>
-                <p>
-                  <strong>Enviado a revisión:</strong> {formatDate(user.cleaningOnboarding.submittedAt)}
-                </p>
-              </div>
-            ) : (
-              <p className="empty">No tiene onboarding tasker asociado.</p>
-            )}
-          </section>
-
-          <section className="admin-section-card">
-            <div className="admin-section-head">
-              <div>
-                <h3>Últimas reservas</h3>
-                <p>Actividad reciente como cliente y como tasker.</p>
-              </div>
-            </div>
-            <div className="admin-team-list">
-              {[...user.bookings.map((booking) => ({ ...booking, kind: "cliente" as const })), ...user.proBookings.map((booking) => ({ ...booking, kind: "tasker" as const }))].length === 0 ? (
-                <p className="empty">Sin reservas registradas.</p>
-              ) : (
-                [...user.bookings.map((booking) => ({ ...booking, kind: "cliente" as const })), ...user.proBookings.map((booking) => ({ ...booking, kind: "tasker" as const }))]
-                  .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
-                  .slice(0, 6)
-                  .map((booking) => (
-                    <article key={`${booking.kind}-${booking.id}`} className="admin-team-row">
-                      <div>
-                        <h4>{booking.service.name}</h4>
-                        <p>Rol: {booking.kind}</p>
-                        <p>Estado: {booking.status}</p>
-                        <p>Fecha: {formatDate(booking.scheduledAt)}</p>
-                        {booking.paymentStatus === "FAILED" || booking.status === "PAYMENT_FAILED" ? (
-                          <p>
-                            <strong>Motivo rechazo:</strong>{" "}
-                            {formatPaymentRejectionReason({
-                              errorCode: booking.payment?.errorCode,
-                              errorMessage: booking.payment?.errorMessage,
-                              providerStatus: booking.payment?.providerStatus
-                            }).friendly || "Pago rechazado por el proveedor"}
-                            {booking.payment?.errorCode ? ` (${booking.payment.errorCode})` : ""}
-                          </p>
-                        ) : null}
-                      </div>
-                      <div className="admin-team-row-actions">
-                        <span className="status status-approved">{clp(booking.totalPriceClp)}</span>
-                      </div>
-                    </article>
-                  ))
-              )}
-            </div>
-          </section>
-
-          <section className="admin-section-card">
-            <div className="admin-section-head">
-              <div>
-                <h3>Notificaciones recientes</h3>
-                <p>Últimos avisos enviados a esta cuenta.</p>
-              </div>
-            </div>
-            <div className="admin-team-list">
-              {user.notifications.length === 0 ? (
-                <p className="empty">Sin notificaciones recientes.</p>
-              ) : (
-                user.notifications.map((notification) => (
-                  <article key={notification.id} className="admin-team-row">
-                    <div>
-                      <h4>{notification.title}</h4>
-                      <p>{notification.body}</p>
-                    </div>
-                    <div className="admin-team-row-actions">
-                      <span className={`status ${notification.isRead ? "status-approved" : "status-pending"}`}>
-                        {notification.isRead ? "Leída" : "No leída"}
-                      </span>
-                    </div>
-                  </article>
-                ))
-              )}
-            </div>
-          </section>
+      <section className="admin-section-card">
+        <div className="admin-kv-grid">
+          <div>
+            <strong>Correo</strong>
+            <span>{user.email}</span>
+          </div>
+          <div>
+            <strong>Teléfono</strong>
+            <span>{user.phone || "Sin teléfono guardado"}</span>
+          </div>
+          <div>
+            <strong>Roles</strong>
+            <span>{roleAssignments.join(", ")}</span>
+          </div>
+          <div>
+            <strong>Proveedor acceso</strong>
+            <span>{user.authProvider}</span>
+          </div>
+          <div>
+            <strong>Correo verificado</strong>
+            <span>{user.emailVerifiedAt ? dateTimeLabel(user.emailVerifiedAt) : "No verificado"}</span>
+          </div>
+          <div>
+            <strong>Creado</strong>
+            <span>{dateTimeLabel(user.createdAt)}</span>
+          </div>
         </div>
+      </section>
+
+      {user.professionalProfile ? (
+        <section className="admin-section-card">
+          <div className="admin-section-head">
+            <div>
+              <h3>Perfil tasker</h3>
+              <p>Estado del perfil profesional publicado dentro de WeTask.</p>
+            </div>
+            <span className={`status ${user.professionalProfile.isVerified ? "status-approved" : "status-pending"}`}>
+              {user.professionalProfile.isVerified ? "Verificado" : "Pendiente"}
+            </span>
+          </div>
+
+          <div className="admin-kv-grid">
+            <div>
+              <strong>Estado</strong>
+              <span>{user.professionalProfile.verificationStatus}</span>
+            </div>
+            <div>
+              <strong>Tarifa desde</strong>
+              <span>{money(user.professionalProfile.hourlyRateFromClp)}</span>
+            </div>
+            <div>
+              <strong>Rating</strong>
+              <span>{Number(user.professionalProfile.ratingAvg).toFixed(1)} ({user.professionalProfile.ratingsCount} reseñas)</span>
+            </div>
+            <div>
+              <strong>Cobertura</strong>
+              <span>
+                {[user.professionalProfile.coverageStreet, user.professionalProfile.coverageComuna, user.professionalProfile.coverageCity]
+                  .filter(Boolean)
+                  .join(", ") || "Sin cobertura guardada"}
+              </span>
+            </div>
+          </div>
+
+          {user.professionalProfile.bio ? (
+            <div className="admin-note-block">
+              <strong>Bio</strong>
+              <p>{user.professionalProfile.bio}</p>
+            </div>
+          ) : null}
+
+          {user.professionalProfile.taskerServices.length > 0 ? (
+            <div className="admin-doc-grid">
+              {user.professionalProfile.taskerServices.map((item, index) => (
+                <article key={`${item.service.name}-${index}`} className="admin-doc-card">
+                  <div className="admin-doc-head">
+                    <strong>{item.service.name}</strong>
+                    <span className="status status-approved">{item.category.name}</span>
+                  </div>
+                  <p>{money(item.priceClp)} · mínimo {item.minBooking}h</p>
+                </article>
+              ))}
+            </div>
+          ) : null}
+        </section>
       ) : null}
+
+      {user.cleaningOnboarding ? (
+        <section className="admin-section-card">
+          <div className="admin-section-head">
+            <div>
+              <h3>Onboarding</h3>
+              <p>Estado interno del onboarding tasker.</p>
+            </div>
+            <span className="status status-approved">{user.cleaningOnboarding.status}</span>
+          </div>
+
+          <div className="admin-kv-grid">
+            <div>
+              <strong>Categoría</strong>
+              <span>{user.cleaningOnboarding.categorySlug}</span>
+            </div>
+            <div>
+              <strong>Comuna base</strong>
+              <span>{user.cleaningOnboarding.baseCommune || "Sin comuna base"}</span>
+            </div>
+            <div>
+              <strong>Dirección referencia</strong>
+              <span>{user.cleaningOnboarding.referenceAddress || "Sin dirección guardada"}</span>
+            </div>
+            <div>
+              <strong>Enviado</strong>
+              <span>{dateLabel(user.cleaningOnboarding.submittedAt)}</span>
+            </div>
+          </div>
+
+          {Array.isArray(user.cleaningOnboarding.serviceCommunes) && user.cleaningOnboarding.serviceCommunes.length > 0 ? (
+            <div className="admin-note-block">
+              <strong>Comunas de trabajo</strong>
+              <p>{user.cleaningOnboarding.serviceCommunes.filter((item): item is string => typeof item === "string").join(", ")}</p>
+            </div>
+          ) : null}
+
+          {user.cleaningOnboarding.adminReviewNotes ? (
+            <div className="admin-note-block">
+              <strong>Notas admin</strong>
+              <p>{user.cleaningOnboarding.adminReviewNotes}</p>
+            </div>
+          ) : null}
+        </section>
+      ) : null}
+
+      {user.addresses.length > 0 ? (
+        <section className="admin-section-card">
+          <div className="admin-section-head">
+            <div>
+              <h3>Direcciones</h3>
+              <p>Últimas direcciones guardadas por el usuario.</p>
+            </div>
+          </div>
+          <div className="admin-doc-grid">
+            {user.addresses.map((address) => (
+              <article key={address.id} className="admin-doc-card">
+                <strong>{address.label || "Dirección"}</strong>
+                <p>{[address.street, address.city, address.region, address.postalCode].filter(Boolean).join(", ")}</p>
+                <span>Actualizada: {dateLabel(address.updatedAt)}</span>
+              </article>
+            ))}
+          </div>
+        </section>
+      ) : null}
+
+      <div className="admin-users-grid">
+        <section className="admin-section-card">
+          <div className="admin-section-head">
+            <div>
+              <h3>Reservas como cliente</h3>
+              <p>Últimas reservas hechas por este usuario como cliente.</p>
+            </div>
+          </div>
+          <div className="admin-team-list">
+            {user.bookings.length > 0 ? (
+              user.bookings.map((booking) => (
+                <article key={booking.id} className="admin-team-row">
+                  <div className="admin-team-row-copy">
+                    <h4>{booking.service.name}</h4>
+                    <p>{booking.pro?.fullName || "Sin tasker asignado"}</p>
+                    <div className="admin-user-meta-row">
+                      <span className="status status-approved">{bookingStatusLabel(booking.status)}</span>
+                      <span className="admin-email-chip">{money(booking.totalPriceClp)}</span>
+                    </div>
+                  </div>
+                  <div className="cta-row admin-team-row-actions">
+                    <span>{dateTimeLabel(booking.scheduledAt)}</span>
+                  </div>
+                </article>
+              ))
+            ) : (
+              <p className="empty">No tiene reservas como cliente todavía.</p>
+            )}
+          </div>
+        </section>
+
+        <section className="admin-section-card">
+          <div className="admin-section-head">
+            <div>
+              <h3>Reservas como tasker</h3>
+              <p>Últimas reservas atendidas por este usuario como tasker.</p>
+            </div>
+          </div>
+          <div className="admin-team-list">
+            {user.proBookings.length > 0 ? (
+              user.proBookings.map((booking) => (
+                <article key={booking.id} className="admin-team-row">
+                  <div className="admin-team-row-copy">
+                    <h4>{booking.service.name}</h4>
+                    <p>{booking.customer?.fullName || "Cliente sin nombre"}</p>
+                    <div className="admin-user-meta-row">
+                      <span className="status status-approved">{bookingStatusLabel(booking.status)}</span>
+                      <span className="admin-email-chip">{money(booking.totalPriceClp)}</span>
+                    </div>
+                  </div>
+                  <div className="cta-row admin-team-row-actions">
+                    <span>{dateTimeLabel(booking.scheduledAt)}</span>
+                  </div>
+                </article>
+              ))
+            ) : (
+              <p className="empty">No tiene reservas como tasker todavía.</p>
+            )}
+          </div>
+        </section>
+      </div>
+
+      <section className="admin-section-card">
+        <div className="admin-section-head">
+          <div>
+            <h3>Notificaciones recientes</h3>
+            <p>Últimos avisos generados para esta cuenta.</p>
+          </div>
+        </div>
+        <div className="admin-team-list">
+          {user.notifications.length > 0 ? (
+            user.notifications.map((notification) => (
+              <article key={notification.id} className="admin-team-row">
+                <div className="admin-team-row-copy">
+                  <h4>{notification.title}</h4>
+                  <p>{notification.body}</p>
+                </div>
+                <div className="cta-row admin-team-row-actions">
+                  <span className={`status ${notification.isRead ? "status-approved" : "status-pending"}`}>
+                    {notification.isRead ? "Leída" : "No leída"}
+                  </span>
+                  <span>{dateTimeLabel(notification.createdAt)}</span>
+                </div>
+              </article>
+            ))
+          ) : (
+            <p className="empty">No hay notificaciones recientes para esta cuenta.</p>
+          )}
+        </div>
+      </section>
     </AdminHeroShell>
   );
 }

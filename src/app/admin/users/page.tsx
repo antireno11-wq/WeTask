@@ -197,6 +197,9 @@ export default function AdminUsersPage() {
                   </div>
                 </div>
                 <div className="cta-row admin-team-row-actions">
+                  <Link href={`/admin/users/${user.id}`} className="cta ghost small">
+                    Ver perfil
+                  </Link>
                   {!user.roleAssignments.some((role) => role.code === "ADMIN") ? (
                     <button
                       type="button"
@@ -252,6 +255,9 @@ export default function AdminUsersPage() {
                   <p>{assignmentLabelList(user.roleAssignments, user.role)}</p>
                 </div>
                 <div className="cta-row admin-team-row-actions">
+                  <Link href={`/admin/users/${user.id}`} className="cta ghost small">
+                    Ver perfil
+                  </Link>
                   {!user.roleAssignments.some((role) => role.code === "ADMIN") ? (
                     <button
                       type="button"
