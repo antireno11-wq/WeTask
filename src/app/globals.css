@@ -5405,12 +5405,13 @@ textarea {
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(246, 251, 255, 0.94) 100%);
   box-shadow: 0 28px 60px rgba(8, 32, 74, 0.18);
+  overflow: hidden;
 }
 
 .pro-dashboard-hero-main {
-  display: grid;
-  grid-template-columns: minmax(320px, 0.92fr) minmax(420px, 1.08fr);
-  gap: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
   align-items: stretch;
 }
 
@@ -5426,10 +5427,18 @@ textarea {
 
 .pro-dashboard-hero-summary {
   min-width: 0;
+  width: 100%;
+  padding: 20px 22px 22px;
+  border-radius: 24px;
+  border: 1px solid #d8e6f2;
+  background: linear-gradient(180deg, #fbfdff 0%, #f2f8ff 100%);
+  box-shadow: 0 14px 34px rgba(15, 47, 88, 0.08);
 }
 
 .pro-dashboard-hero-head {
   margin: 0;
+  display: grid;
+  gap: 6px;
 }
 
 .pro-dashboard-hero-head h2,
@@ -5442,6 +5451,7 @@ textarea {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
   max-width: none;
+  width: 100%;
 }
 
 .pro-dashboard-summary-cards .auth-flow-meta-card {
@@ -5495,6 +5505,7 @@ textarea {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
+  width: 100%;
 }
 
 .pro-dashboard-shortcut {
