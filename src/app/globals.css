@@ -5413,12 +5413,14 @@ textarea {
   flex-direction: column;
   gap: 22px;
   align-items: stretch;
+  width: 100%;
 }
 
 .pro-dashboard-hero-identity,
 .pro-dashboard-hero-summary {
   display: grid;
   gap: 16px;
+  width: 100%;
 }
 
 .pro-dashboard-hero-identity {
@@ -5505,6 +5507,10 @@ textarea {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
+  width: 100%;
+}
+
+.pro-dashboard-profile-box {
   width: 100%;
 }
 
