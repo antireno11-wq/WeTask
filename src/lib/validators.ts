@@ -244,6 +244,15 @@ export const marketplaceProProfileUpdateSchema = z.object({
   avatarPositionX: z.coerce.number().min(0).max(100).optional().nullable(),
   avatarPositionY: z.coerce.number().min(0).max(100).optional().nullable(),
   bio: z.string().max(600).optional().nullable(),
+  profilePhotoUrl: z
+    .string()
+    .startsWith("data:")
+    .max(8_000_000, "Archivo demasiado grande para el MVP")
+    .refine((value) => /^data:image\/(png|jpe?g);base64,/i.test(value), {
+      message: "Debe ser una imagen JPG o PNG"
+    })
+    .optional()
+    .nullable(),
   coverageStreet: z.string().min(3).max(180).optional().nullable(),
   coverageComuna: activeCommuneInputSchema.optional().nullable(),
   serviceCommunes: z.array(activeCommuneInputSchema).min(1).optional().nullable(),
@@ -260,7 +269,14 @@ export const taskerAdditionalCategorySchema = z.object({
   hourlyRateClp: z.coerce.number().int().min(5000).max(200000),
   minBookingHours: z.coerce.number().int().min(1).max(12).optional(),
   serviceCommunes: z.array(activeCommuneInputSchema).min(1),
-  scopeData: z.any()
+  scopeData: z.any(),
+  bio: z.string().max(600).optional().nullable(),
+  coverageStreet: z.string().min(3).max(180).optional().nullable(),
+  coverageComuna: activeCommuneInputSchema.optional().nullable(),
+  coverageCity: z.string().min(2).max(120).optional().nullable(),
+  coveragePostal: z.string().min(4).max(12).optional().nullable(),
+  coverageLatitude: z.coerce.number().min(-90).max(90).optional().nullable(),
+  coverageLongitude: z.coerce.number().min(-180).max(180).optional().nullable()
 });
 
 export const marketplaceProSlotCreateSchema = z.object({

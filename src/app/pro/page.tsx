@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState, type ChangeEvent, type PointerEvent as ReactPointerEvent } from "react";
 import { MarketNav } from "@/components/market-nav";
 import { ACTIVE_MVP_COMMUNES, inferCommuneFromAddress, normalizeCommune, normalizeCommuneList } from "@/lib/communes";
 import { geocodeAddress } from "@/lib/geo";
@@ -202,6 +202,46 @@ function localDraftProfilePhoto() {
   }
 }
 
+function fileToDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ""));
+    reader.onerror = () => reject(new Error("No se pudo leer el archivo"));
+    reader.readAsDataURL(file);
+  });
+}
+
+function loadImageElement(src: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => resolve(image);
+    image.onerror = () => reject(new Error("No se pudo procesar la foto"));
+    image.src = src;
+  });
+}
+
+async function createCenteredProfilePhoto(dataUrl: string, focusX: number, focusY: number) {
+  if (!dataUrl) return dataUrl;
+  const image = await loadImageElement(dataUrl);
+  const size = 720;
+  const canvas = document.createElement("canvas");
+  canvas.width = size;
+  canvas.height = size;
+  const context = canvas.getContext("2d");
+  if (!context) return dataUrl;
+
+  const scale = Math.max(size / image.width, size / image.height);
+  const drawWidth = image.width * scale;
+  const drawHeight = image.height * scale;
+  const normalizedX = Math.min(100, Math.max(0, focusX));
+  const normalizedY = Math.min(100, Math.max(0, focusY));
+  const offsetX = (size - drawWidth) * (normalizedX / 100);
+  const offsetY = (size - drawHeight) * (normalizedY / 100);
+
+  context.drawImage(image, offsetX, offsetY, drawWidth, drawHeight);
+  return canvas.toDataURL("image/jpeg", 0.92);
+}
+
 export default function ProPage() {
   const [proId, setProId] = useState("");
   const [proName, setProName] = useState("");
@@ -215,6 +255,8 @@ export default function ProPage() {
 
   const [profile, setProfile] = useState<ProProfile | null>(null);
   const [profilePhotoUrl, setProfilePhotoUrl] = useState("");
+  const [photoFocus, setPhotoFocus] = useState({ x: 50, y: 34 });
+  const [photoDragging, setPhotoDragging] = useState(false);
   const [availabilityMode, setAvailabilityMode] = useState<"FIJA" | "VARIABLE" | null>(null);
   const [onboardingAvailabilityBlocks, setOnboardingAvailabilityBlocks] = useState<AvailabilityBlock[]>([]);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
@@ -237,6 +279,10 @@ export default function ProPage() {
   const [slotTime, setSlotTime] = useState("09:00");
   const [slotDurationMin, setSlotDurationMin] = useState(60);
   const [slotServiceId, setSlotServiceId] = useState("");
+  const [weeklyDayKey, setWeeklyDayKey] = useState<DayKey>("lunes");
+  const [weeklyStart, setWeeklyStart] = useState("09:00");
+  const [weeklyEnd, setWeeklyEnd] = useState("13:00");
+  const [editingWeeklyIndex, setEditingWeeklyIndex] = useState<number | null>(null);
 
   const [feedback, setFeedback] = useState("");
   const [error, setError] = useState("");
@@ -262,6 +308,8 @@ export default function ProPage() {
   const [validatedAddress, setValidatedAddress] = useState("");
   const [addressValidationMessage, setAddressValidationMessage] = useState("");
   const [addressValidationError, setAddressValidationError] = useState("");
+  const photoInputRef = useRef<HTMLInputElement | null>(null);
+  const photoPreviewRef = useRef<HTMLDivElement | null>(null);
   const cityOptions = useMemo(
     () => (coverageCity && !CHILE_CITIES.includes(coverageCity) ? [coverageCity, ...CHILE_CITIES] : CHILE_CITIES),
     [coverageCity]
@@ -353,6 +401,7 @@ export default function ProPage() {
     [onboardingAvailabilityBlocks]
   );
   const weeklyBlocksCount = useMemo(() => onboardingAvailabilityBlocks.length, [onboardingAvailabilityBlocks]);
+  const weeklyVisibleWindowLabel = "WeTask replica tu semana base y genera disponibilidad real para las próximas 8 semanas. En este panel ves 14 a 21 días a la vez.";
 
   const upcomingBookings = useMemo(
     () => bookings.filter((item) => new Date(item.scheduledAt).getTime() >= Date.now() && item.status !== "COMPLETED"),
@@ -523,6 +572,7 @@ export default function ProPage() {
     setCategorySlug(profileData.categorySlug ?? "");
     const nextProfilePhoto = profileData.profilePhotoUrl?.trim() || profileData.profile?.avatarUrl?.trim() || localDraftProfilePhoto();
     setProfilePhotoUrl(nextProfilePhoto);
+    setPhotoFocus({ x: 50, y: 34 });
     setAvailabilityMode(profileData.availabilityMode ?? null);
     setOnboardingAvailabilityBlocks(nextOnboardingAvailabilityBlocks);
     applyProfile(profileData.profile ?? null, profileData.serviceCommunes ?? []);
@@ -562,6 +612,149 @@ export default function ProPage() {
 
   const removeServiceCommune = (commune: string) => {
     setServiceCommunes((current) => current.filter((item) => item !== commune));
+  };
+
+  const updatePhotoFocusFromPointer = (clientX: number, clientY: number) => {
+    const preview = photoPreviewRef.current;
+    if (!preview) return;
+    const rect = preview.getBoundingClientRect();
+    const x = Math.min(100, Math.max(0, ((clientX - rect.left) / rect.width) * 100));
+    const y = Math.min(100, Math.max(0, ((clientY - rect.top) / rect.height) * 100));
+    setPhotoFocus({ x, y });
+  };
+
+  const startPhotoDrag = (event: ReactPointerEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+    setPhotoDragging(true);
+    updatePhotoFocusFromPointer(event.clientX, event.clientY);
+  };
+
+  const movePhotoDrag = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (!photoDragging) return;
+    updatePhotoFocusFromPointer(event.clientX, event.clientY);
+  };
+
+  const stopPhotoDrag = () => {
+    setPhotoDragging(false);
+  };
+
+  const openPhotoPicker = () => {
+    photoInputRef.current?.click();
+  };
+
+  const onPhotoFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.currentTarget.value = "";
+    if (!file) return;
+    try {
+      const dataUrl = await fileToDataUrl(file);
+      setProfilePhotoUrl(dataUrl);
+      setPhotoFocus({ x: 50, y: 34 });
+      setIsEditingProfile(true);
+      setFeedback("Foto cargada. Muévela dentro del marco y luego guarda el perfil.");
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "No se pudo cargar la foto");
+    }
+  };
+
+  const resetWeeklyComposer = () => {
+    setWeeklyDayKey("lunes");
+    setWeeklyStart("09:00");
+    setWeeklyEnd("13:00");
+    setEditingWeeklyIndex(null);
+  };
+
+  const editWeeklyBlock = (day: DayKey, index: number, block: AvailabilityBlock) => {
+    setWeeklyDayKey(day);
+    setWeeklyStart(block.start);
+    setWeeklyEnd(block.end);
+    setEditingWeeklyIndex(index);
+  };
+
+  const saveWeeklyAvailability = async (nextBlocks: AvailabilityBlock[]) => {
+    const response = await fetch("/api/onboarding/cleaning/me", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        step: 8,
+        payload: {
+          availabilityMode: "FIJA",
+          availabilityBlocks: nextBlocks
+        }
+      })
+    });
+    const data = (await response.json()) as { ok?: boolean; onboarding?: { availabilityBlocks?: unknown }; error?: string; detail?: string };
+    if (!response.ok || !data.ok) {
+      throw new Error(data.detail || data.error || "No se pudo guardar la semana base");
+    }
+    setOnboardingAvailabilityBlocks(normalizeAvailabilityBlocks(data.onboarding?.availabilityBlocks ?? nextBlocks));
+    await fetch("/api/marketplace/pro/slots/sync", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ proId })
+    });
+    await loadAll(proId);
+  };
+
+  const saveWeeklyBlock = async () => {
+    setFeedback("");
+    setError("");
+    if (weeklyEnd <= weeklyStart) {
+      setError("La hora de término debe ser posterior al inicio.");
+      return;
+    }
+
+    const nextBlock: AvailabilityBlock = {
+      day: weeklyDayKey,
+      start: weeklyStart,
+      end: weeklyEnd
+    };
+
+    const nextBlocks = [...onboardingAvailabilityBlocks];
+    if (editingWeeklyIndex != null) {
+      const sameDayIndexes = onboardingAvailabilityBlocks
+        .map((block, index) => ({ block, index }))
+        .filter((item) => item.block.day === weeklyDayKey);
+      const target = sameDayIndexes[editingWeeklyIndex];
+      if (!target) {
+        setError("No pudimos encontrar ese bloque de semana base.");
+        return;
+      }
+      nextBlocks[target.index] = nextBlock;
+    } else {
+      nextBlocks.push(nextBlock);
+    }
+
+    try {
+      await saveWeeklyAvailability(nextBlocks);
+      resetWeeklyComposer();
+      setFeedback(editingWeeklyIndex != null ? "Bloque semanal actualizado." : "Bloque semanal agregado.");
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "No se pudo guardar la semana base");
+    }
+  };
+
+  const removeWeeklyBlock = async (day: DayKey, index: number) => {
+    setFeedback("");
+    setError("");
+    const nextBlocks = onboardingAvailabilityBlocks.filter((block, currentIndex) => {
+      const sameDayIndex =
+        onboardingAvailabilityBlocks
+          .slice(0, currentIndex + 1)
+          .filter((candidate) => candidate.day === day).length - 1;
+      return !(block.day === day && sameDayIndex === index);
+    });
+
+    try {
+      await saveWeeklyAvailability(nextBlocks);
+      if (editingWeeklyIndex === index && weeklyDayKey === day) {
+        resetWeeklyComposer();
+      }
+      setFeedback("Bloque semanal eliminado.");
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "No se pudo eliminar el bloque semanal");
+    }
   };
 
   const selectAddressSuggestion = (suggestion: string) => {
@@ -632,6 +825,10 @@ export default function ProPage() {
     try {
       const isAddressValid = await validateCoverageAddress();
       if (!isAddressValid) return;
+      const normalizedProfilePhoto = profilePhotoUrl ? await createCenteredProfilePhoto(profilePhotoUrl, photoFocus.x, photoFocus.y) : null;
+      if (normalizedProfilePhoto && normalizedProfilePhoto !== profilePhotoUrl) {
+        setProfilePhotoUrl(normalizedProfilePhoto);
+      }
 
       const payloadServiceCommunes = normalizeCommuneList(serviceCommunes.length > 0 ? serviceCommunes : [coverageComuna]);
       if (payloadServiceCommunes.length === 0) {
@@ -643,6 +840,7 @@ export default function ProPage() {
         body: JSON.stringify({
           proId,
           bio: bio.trim() || null,
+          profilePhotoUrl: normalizedProfilePhoto,
           coverageStreet: coverageStreet.trim() || null,
           coverageComuna: coverageComuna.trim() || null,
           coverageCity: coverageCity.trim() || null,
@@ -858,6 +1056,10 @@ export default function ProPage() {
                 ) : (
                   <span>{initialsFromName(proName)}</span>
                 )}
+                <button type="button" className="photo-camera-btn" onClick={openPhotoPicker} aria-label="Subir o cambiar foto de perfil">
+                  cam
+                </button>
+                <input ref={photoInputRef} type="file" accept="image/png,image/jpeg" className="sr-only-input" onChange={onPhotoFileChange} />
               </div>
               <div className="client-profile-copy">
                 <h3>{coverageComuna || "Tu perfil profesional"}</h3>
@@ -994,6 +1196,32 @@ export default function ProPage() {
             ) : null}
 
             {isEditingProfile ? <div className="grid-form">
+              <div className="full profile-photo-editor-card">
+                <div
+                  ref={photoPreviewRef}
+                  className={`tasker-photo-preview ${photoDragging ? "dragging" : ""}`}
+                  onPointerDown={startPhotoDrag}
+                  onPointerMove={movePhotoDrag}
+                  onPointerUp={stopPhotoDrag}
+                  onPointerCancel={stopPhotoDrag}
+                  onPointerLeave={stopPhotoDrag}
+                >
+                  {profilePhotoUrl ? (
+                    <img src={profilePhotoUrl} alt="Vista previa de perfil" style={{ objectPosition: `${photoFocus.x}% ${photoFocus.y}%` }} />
+                  ) : (
+                    <span className="tasker-photo-empty">{initialsFromName(proName)}</span>
+                  )}
+                </div>
+                <div className="tasker-photo-editor-copy">
+                  <strong>Foto de perfil</strong>
+                  <span>Mueve la foto dentro del marco para centrar la cara. Usa la cámara para subir otra si quieres cambiarla.</span>
+                  <div className="cta-row">
+                    <button type="button" className="cta ghost small" onClick={openPhotoPicker}>
+                      Cambiar foto
+                    </button>
+                  </div>
+                </div>
+              </div>
               <label className="full">
                 Bio
                 <textarea value={bio} onChange={(e) => setBio(e.target.value)} placeholder="Experiencia, especialidad, herramientas." />
@@ -1227,6 +1455,40 @@ export default function ProPage() {
                     Esta es la disponibilidad que definiste en tu onboarding. Si luego necesitas cerrar un bloque específico, hazlo
                     abajo desde el calendario sin tocar toda la semana.
                   </p>
+                  <p className="availability-inline-note soft">{weeklyVisibleWindowLabel}</p>
+
+                  <div className="availability-weekly-editor">
+                    <div className="grid-form availability-form-grid">
+                      <label>
+                        Día
+                        <select value={weeklyDayKey} onChange={(event) => setWeeklyDayKey(event.target.value as DayKey)}>
+                          {WEEK_DAY_OPTIONS.map((day) => (
+                            <option key={day.key} value={day.key}>
+                              {day.label}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <label>
+                        Inicio
+                        <input type="time" value={weeklyStart} onChange={(event) => setWeeklyStart(event.target.value)} />
+                      </label>
+                      <label>
+                        Término
+                        <input type="time" value={weeklyEnd} onChange={(event) => setWeeklyEnd(event.target.value)} />
+                      </label>
+                    </div>
+                    <div className="cta-row availability-form-actions">
+                      <button className="cta" type="button" onClick={saveWeeklyBlock}>
+                        {editingWeeklyIndex != null ? "Guardar bloque semanal" : "Agregar a semana base"}
+                      </button>
+                      {editingWeeklyIndex != null ? (
+                        <button className="cta ghost small" type="button" onClick={resetWeeklyComposer}>
+                          Cancelar edición
+                        </button>
+                      ) : null}
+                    </div>
+                  </div>
 
                   <div className="availability-weekly-grid">
                     {weeklyAvailabilityDays.map((day) => (
@@ -1240,9 +1502,17 @@ export default function ProPage() {
                         ) : (
                           <div className="availability-weekly-blocks">
                             {day.blocks.map((block, index) => (
-                              <span key={`${day.key}-${block.start}-${block.end}-${index}`} className="availability-weekly-block">
-                                {block.start} - {block.end}
-                              </span>
+                              <div key={`${day.key}-${block.start}-${block.end}-${index}`} className="availability-weekly-pill-row">
+                                <span className="availability-weekly-block">
+                                  {block.start} - {block.end}
+                                </span>
+                                <button className="cta ghost small" type="button" onClick={() => editWeeklyBlock(day.key, index, block)}>
+                                  Editar
+                                </button>
+                                <button className="cta ghost small" type="button" onClick={() => removeWeeklyBlock(day.key, index)}>
+                                  Quitar
+                                </button>
+                              </div>
                             ))}
                           </div>
                         )}
