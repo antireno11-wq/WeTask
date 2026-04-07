@@ -1086,7 +1086,12 @@ export default function ProPage() {
                   <span>{initialsFromName(proName)}</span>
                 )}
                 <button type="button" className="photo-camera-btn" onClick={openPhotoPicker} aria-label="Subir o cambiar foto de perfil">
-                  cam
+                  <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                    <path
+                      d="M8.5 5.5 9.7 4h4.6l1.2 1.5H18A2.5 2.5 0 0 1 20.5 8v8A2.5 2.5 0 0 1 18 18.5H6A2.5 2.5 0 0 1 3.5 16V8A2.5 2.5 0 0 1 6 5.5zm3.5 3a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9m0 1.8a2.7 2.7 0 1 1 0 5.4 2.7 2.7 0 0 1 0-5.4"
+                      fill="currentColor"
+                    />
+                  </svg>
                 </button>
                 <input ref={photoInputRef} type="file" accept="image/png,image/jpeg" className="sr-only-input" onChange={onPhotoFileChange} />
               </div>
