@@ -64,16 +64,6 @@ export default function AdminUsersPage() {
   const [deleteEmail, setDeleteEmail] = useState("");
   const [busyId, setBusyId] = useState("");
 
-  const copyEmail = async (email: string) => {
-    try {
-      await navigator.clipboard.writeText(email);
-      setFeedback(`Correo copiado: ${email}`);
-      setError("");
-    } catch {
-      setError("No pudimos copiar el correo.");
-    }
-  };
-
   const load = async (nextTaskerPage = taskerPage, nextCustomerPage = customerPage) => {
     setLoading(true);
     setError("");
@@ -197,9 +187,6 @@ export default function AdminUsersPage() {
                   <h4>{user.fullName}</h4>
                   <div className="admin-email-row">
                     <span className="admin-email-chip">{user.email}</span>
-                    <button type="button" className="cta ghost small" onClick={() => void copyEmail(user.email)}>
-                      Copiar correo
-                    </button>
                   </div>
                   <p>{assignmentLabelList(user.roleAssignments, user.role)}</p>
                   <div className="admin-user-meta-row">
@@ -261,9 +248,6 @@ export default function AdminUsersPage() {
                   <h4>{user.fullName}</h4>
                   <div className="admin-email-row">
                     <span className="admin-email-chip">{user.email}</span>
-                    <button type="button" className="cta ghost small" onClick={() => void copyEmail(user.email)}>
-                      Copiar correo
-                    </button>
                   </div>
                   <p>{assignmentLabelList(user.roleAssignments, user.role)}</p>
                 </div>
