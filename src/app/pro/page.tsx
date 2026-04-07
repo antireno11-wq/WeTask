@@ -319,6 +319,7 @@ export default function ProPage() {
   const [addressValidationError, setAddressValidationError] = useState("");
   const photoInputRef = useRef<HTMLInputElement | null>(null);
   const photoPreviewRef = useRef<HTMLDivElement | null>(null);
+  const extraCategorySectionRef = useRef<HTMLElement | null>(null);
   const cityOptions = useMemo(
     () => (coverageCity && !CHILE_CITIES.includes(coverageCity) ? [coverageCity, ...CHILE_CITIES] : CHILE_CITIES),
     [coverageCity]
@@ -1021,8 +1022,12 @@ export default function ProPage() {
   };
 
   const openNewTaskerCategory = () => {
-    if (typeof window === "undefined") return;
-    window.location.href = "/trabaja-con-nosotros/registro";
+    setActiveView("perfil");
+    setFeedback("Elige la nueva categoría que quieres activar y te llevaremos a su onboarding.");
+    setError("");
+    window.requestAnimationFrame(() => {
+      extraCategorySectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
   };
 
   return (
@@ -1215,7 +1220,7 @@ export default function ProPage() {
                   </article>
                 ) : null}
 
-                <article className="module-card client-dashboard-card full tasker-extra-category-card">
+                <article ref={extraCategorySectionRef} className="module-card client-dashboard-card full tasker-extra-category-card">
                   <div className="tasker-extra-category-head">
                     <div>
                       <h3>Agregar otra categoría</h3>
