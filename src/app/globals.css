@@ -5387,9 +5387,7 @@ textarea {
 }
 
 .pro-dashboard-hero-shell {
-  grid-template-columns: minmax(0, 1fr);
-  width: min(1240px, 100%);
-  gap: 0;
+  display: block;
 }
 
 .client-dashboard-copy {
@@ -5403,20 +5401,17 @@ textarea {
 .pro-dashboard-hero-card {
   max-width: 1180px;
   margin-inline: auto;
-  width: 100%;
-  grid-column: 1 / -1;
-  padding: 26px;
+  padding: 28px;
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.97) 0%, rgba(244, 250, 255, 0.95) 100%);
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(246, 251, 255, 0.94) 100%);
   box-shadow: 0 28px 60px rgba(8, 32, 74, 0.18);
-  overflow: hidden;
 }
 
 .pro-dashboard-hero-main {
   display: grid;
-  grid-template-columns: minmax(340px, 380px) minmax(0, 1fr);
-  gap: 22px;
-  align-items: start;
+  grid-template-columns: minmax(320px, 0.92fr) minmax(420px, 1.08fr);
+  gap: 24px;
+  align-items: stretch;
 }
 
 .pro-dashboard-hero-identity,
@@ -5431,18 +5426,10 @@ textarea {
 
 .pro-dashboard-hero-summary {
   min-width: 0;
-  align-content: start;
-  padding: 6px 0 0;
-  background: transparent;
-  border: 0;
-  box-shadow: none;
 }
 
 .pro-dashboard-hero-head {
   margin: 0;
-  display: grid;
-  gap: 4px;
-  padding: 4px 2px 2px;
 }
 
 .pro-dashboard-hero-head h2,
@@ -5453,19 +5440,15 @@ textarea {
 .pro-dashboard-summary-cards {
   margin-top: 0;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 14px;
+  gap: 12px;
   max-width: none;
-  width: 100%;
-  align-items: stretch;
 }
 
 .pro-dashboard-summary-cards .auth-flow-meta-card {
-  min-width: 0;
-  min-height: 104px;
+  min-height: 102px;
   border: 1px solid #d8e6f2;
-  background: linear-gradient(180deg, #ffffff 0%, #f5faff 100%);
-  box-shadow: 0 14px 28px rgba(16, 49, 90, 0.08);
-  border-radius: 22px;
+  background: linear-gradient(180deg, #f9fcff 0%, #eef5fb 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65);
 }
 
 .pro-dashboard-summary-cards .auth-flow-meta-card strong {
@@ -5488,11 +5471,10 @@ textarea {
 .pro-dashboard-shortcut {
   border-radius: 18px;
   border: 1px solid #d7e5f2;
-  background: linear-gradient(180deg, #ffffff 0%, #f6faff 100%);
+  background: #f8fbff;
   padding: 14px 16px;
   display: grid;
   gap: 4px;
-  min-width: 0;
 }
 
 .pro-dashboard-inline-card span,
@@ -5513,14 +5495,12 @@ textarea {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
-  width: 100%;
-  align-items: stretch;
 }
 
 .pro-dashboard-shortcut {
   text-align: left;
   transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease, background-color 0.16s ease;
-  min-height: 104px;
+  min-height: 96px;
 }
 
 .pro-dashboard-shortcut:hover {
