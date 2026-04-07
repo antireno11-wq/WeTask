@@ -29,18 +29,8 @@ type UserListPayload = {
   page: number;
   totalPages: number;
   totalRecentUsers: number;
-  sortBy?: UserSort;
   recentUsers: TeamUserRow[];
 };
-
-type UserSort = "newest" | "oldest" | "activity" | "name";
-
-const USER_SORT_OPTIONS: Array<{ value: UserSort; label: string }> = [
-  { value: "newest", label: "Más nuevos" },
-  { value: "oldest", label: "Más antiguos" },
-  { value: "activity", label: "Última actividad" },
-  { value: "name", label: "A-Z" }
-];
 
 function assignmentLabelList(roleAssignments: Array<{ code: "CUSTOMER" | "PRO" | "ADMIN"; label: string }>, fallbackRole: TeamUserRow["role"]) {
   if (roleAssignments.length > 0) return roleAssignments.map((role) => role.label).join(", ");
@@ -54,13 +44,20 @@ function dateLabel(value: string) {
   return Number.isNaN(date.getTime()) ? "-" : date.toLocaleDateString("es-CL");
 }
 
+function isApprovedTasker(user: TeamUserRow) {
+  return Boolean(
+    user.professionalProfile?.isVerified ||
+      user.professionalProfile?.verificationStatus === "APPROVED" ||
+      user.cleaningOnboarding?.status === "APROBADO" ||
+      user.cleaningOnboarding?.status === "ACTIVO"
+  );
+}
+
 export default function AdminUsersPage() {
   const [taskers, setTaskers] = useState<UserListPayload | null>(null);
   const [customers, setCustomers] = useState<UserListPayload | null>(null);
   const [taskerPage, setTaskerPage] = useState(1);
   const [customerPage, setCustomerPage] = useState(1);
-  const [taskerSort, setTaskerSort] = useState<UserSort>("newest");
-  const [customerSort, setCustomerSort] = useState<UserSort>("newest");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [feedback, setFeedback] = useState("");
@@ -77,18 +74,13 @@ export default function AdminUsersPage() {
     }
   };
 
-  const load = async (
-    nextTaskerPage = taskerPage,
-    nextCustomerPage = customerPage,
-    nextTaskerSort = taskerSort,
-    nextCustomerSort = customerSort
-  ) => {
+  const load = async (nextTaskerPage = taskerPage, nextCustomerPage = customerPage) => {
     setLoading(true);
     setError("");
     try {
       const [taskersResponse, customersResponse] = await Promise.all([
-        fetch(`/api/admin/team?page=${nextTaskerPage}&pageSize=5&roleFilter=taskers&sortBy=${nextTaskerSort}`),
-        fetch(`/api/admin/team?page=${nextCustomerPage}&pageSize=5&roleFilter=customers&sortBy=${nextCustomerSort}`)
+        fetch(`/api/admin/team?page=${nextTaskerPage}&pageSize=5&roleFilter=taskers`),
+        fetch(`/api/admin/team?page=${nextCustomerPage}&pageSize=5&roleFilter=customers`)
       ]);
 
       const taskersPayload = (await taskersResponse.json()) as UserListPayload & { error?: string; detail?: string };
@@ -101,8 +93,6 @@ export default function AdminUsersPage() {
       setCustomers(customersPayload);
       setTaskerPage(taskersPayload.page);
       setCustomerPage(customersPayload.page);
-      setTaskerSort((taskersPayload.sortBy as UserSort) ?? nextTaskerSort);
-      setCustomerSort((customersPayload.sortBy as UserSort) ?? nextCustomerSort);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error inesperado");
     } finally {
@@ -200,51 +190,26 @@ export default function AdminUsersPage() {
             <span className="status status-approved">{taskers?.totalRecentUsers ?? 0} taskers</span>
           </div>
 
-          <div className="admin-sort-row" aria-label="Orden taskers">
-            {USER_SORT_OPTIONS.map((option) => (
-              <button
-                key={option.value}
-                type="button"
-                className={`dashboard-switch ${taskerSort === option.value ? "active" : ""}`}
-                disabled={loading}
-                onClick={() => void load(1, customerPage, option.value, customerSort)}
-              >
-                {option.label}
-              </button>
-            ))}
-          </div>
-
           <div className="admin-team-list">
             {taskers?.recentUsers.map((user) => (
               <article key={user.id} className="admin-team-row">
-                <Link href={`/admin/users/${user.id}`} className="admin-team-row-main">
+                <div className="admin-team-row-copy">
                   <h4>{user.fullName}</h4>
                   <div className="admin-email-row">
                     <span className="admin-email-chip">{user.email}</span>
-                    <button
-                      type="button"
-                      className="cta ghost small"
-                      onClick={(event) => {
-                        event.preventDefault();
-                        void copyEmail(user.email);
-                      }}
-                    >
+                    <button type="button" className="cta ghost small" onClick={() => void copyEmail(user.email)}>
                       Copiar correo
                     </button>
                   </div>
                   <p>{assignmentLabelList(user.roleAssignments, user.role)}</p>
-                  <p>
-                    {user.cleaningOnboarding ? `Onboarding: ${user.cleaningOnboarding.status.toLowerCase()}` : "Sin onboarding"} ·{" "}
-                    {user.professionalProfile ? `Perfil: ${user.professionalProfile.verificationStatus.toLowerCase()}` : "Sin perfil pro"}
-                  </p>
-                  <p>
-                    Última actividad: {user.latestActivityLabel} · {dateLabel(user.latestActivityAt)}
-                  </p>
-                </Link>
+                  <div className="admin-user-meta-row">
+                    <span className={`admin-approval-chip ${isApprovedTasker(user) ? "approved" : "pending"}`}>
+                      <span aria-hidden>{isApprovedTasker(user) ? "✓" : "•"}</span>
+                      {isApprovedTasker(user) ? "Aprobado" : "Pendiente"}
+                    </span>
+                  </div>
+                </div>
                 <div className="cta-row admin-team-row-actions">
-                  <Link href={`/admin/users/${user.id}`} className="cta ghost small">
-                    Ver perfil
-                  </Link>
                   {!user.roleAssignments.some((role) => role.code === "ADMIN") ? (
                     <button
                       type="button"
@@ -289,48 +254,20 @@ export default function AdminUsersPage() {
             <span className="status status-approved">{customers?.totalRecentUsers ?? 0} clientes</span>
           </div>
 
-          <div className="admin-sort-row" aria-label="Orden clientes">
-            {USER_SORT_OPTIONS.map((option) => (
-              <button
-                key={option.value}
-                type="button"
-                className={`dashboard-switch ${customerSort === option.value ? "active" : ""}`}
-                disabled={loading}
-                onClick={() => void load(taskerPage, 1, taskerSort, option.value)}
-              >
-                {option.label}
-              </button>
-            ))}
-          </div>
-
           <div className="admin-team-list">
             {customers?.recentUsers.map((user) => (
               <article key={user.id} className="admin-team-row">
-                <Link href={`/admin/users/${user.id}`} className="admin-team-row-main">
+                <div className="admin-team-row-copy">
                   <h4>{user.fullName}</h4>
                   <div className="admin-email-row">
                     <span className="admin-email-chip">{user.email}</span>
-                    <button
-                      type="button"
-                      className="cta ghost small"
-                      onClick={(event) => {
-                        event.preventDefault();
-                        void copyEmail(user.email);
-                      }}
-                    >
+                    <button type="button" className="cta ghost small" onClick={() => void copyEmail(user.email)}>
                       Copiar correo
                     </button>
                   </div>
                   <p>{assignmentLabelList(user.roleAssignments, user.role)}</p>
-                  <p>{user.phone ? `Teléfono: ${user.phone}` : "Sin teléfono guardado"}</p>
-                  <p>
-                    Última actividad: {user.latestActivityLabel} · {dateLabel(user.latestActivityAt)}
-                  </p>
-                </Link>
+                </div>
                 <div className="cta-row admin-team-row-actions">
-                  <Link href={`/admin/users/${user.id}`} className="cta ghost small">
-                    Ver perfil
-                  </Link>
                   {!user.roleAssignments.some((role) => role.code === "ADMIN") ? (
                     <button
                       type="button"

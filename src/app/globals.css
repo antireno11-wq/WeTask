@@ -5749,21 +5749,58 @@ textarea {
   align-items: center;
   gap: 0.6rem;
   flex-wrap: wrap;
+  width: 100%;
 }
 
 .admin-email-chip {
   display: inline-flex;
   align-items: center;
-  max-width: 100%;
+  flex: 1 1 320px;
+  min-width: 0;
+  max-width: min(100%, 520px);
   padding: 0.42rem 0.72rem;
-  border-radius: 999px;
+  border-radius: 16px;
   background: rgba(25, 84, 162, 0.08);
   border: 1px solid rgba(89, 142, 215, 0.32);
   color: #153a68;
   font-size: 0.94rem;
   font-weight: 800;
   line-height: 1.2;
-  word-break: break-all;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.admin-user-meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 2px;
+}
+
+.admin-approval-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0.46rem 0.8rem;
+  border-radius: 999px;
+  font-size: 0.88rem;
+  font-weight: 800;
+  line-height: 1;
+  border: 1px solid #d6e3ef;
+  background: #f7fbff;
+  color: #46627d;
+}
+
+.admin-approval-chip.approved {
+  border-color: rgba(68, 167, 97, 0.28);
+  background: linear-gradient(180deg, #f3fff5 0%, #e6f7ea 100%);
+  color: #1d6b36;
+}
+
+.admin-approval-chip.pending {
+  border-color: rgba(215, 170, 55, 0.28);
+  background: linear-gradient(180deg, #fffaf0 0%, #fff1d8 100%);
+  color: #8a5a12;
 }
 
 .admin-queue-row p,
