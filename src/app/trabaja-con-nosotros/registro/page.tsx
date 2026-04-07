@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { AuthHeroNav } from "@/components/auth-hero-nav";
 import {
   CHEF_SERVICE_DEFINITIONS,
@@ -649,6 +649,37 @@ function fileToDataUrl(file: File): Promise<string> {
   });
 }
 
+function loadImageElement(src: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => resolve(image);
+    image.onerror = () => reject(new Error("No se pudo procesar la foto"));
+    image.src = src;
+  });
+}
+
+async function createCenteredProfilePhoto(dataUrl: string, focusX: number, focusY: number) {
+  if (!dataUrl) return dataUrl;
+  const image = await loadImageElement(dataUrl);
+  const size = 720;
+  const canvas = document.createElement("canvas");
+  canvas.width = size;
+  canvas.height = size;
+  const context = canvas.getContext("2d");
+  if (!context) return dataUrl;
+
+  const scale = Math.max(size / image.width, size / image.height);
+  const drawWidth = image.width * scale;
+  const drawHeight = image.height * scale;
+  const normalizedX = Math.min(100, Math.max(0, focusX));
+  const normalizedY = Math.min(100, Math.max(0, focusY));
+  const offsetX = (size - drawWidth) * (normalizedX / 100);
+  const offsetY = (size - drawHeight) * (normalizedY / 100);
+
+  context.drawImage(image, offsetX, offsetY, drawWidth, drawHeight);
+  return canvas.toDataURL("image/jpeg", 0.92);
+}
+
 function normalizeRut(rawRut: string) {
   return rawRut.replace(/\./g, "").replace(/-/g, "").toUpperCase();
 }
@@ -829,8 +860,12 @@ function CleaningOnboardingPageContent() {
   const [validatingAddress, setValidatingAddress] = useState(false);
   const [addressValidationMessage, setAddressValidationMessage] = useState("");
   const [addressValidationError, setAddressValidationError] = useState("");
+  const [coverageCommuneSelection, setCoverageCommuneSelection] = useState<ActiveMvpCommune>(COMMUNE_OPTIONS[0]);
+  const [photoFocus, setPhotoFocus] = useState({ x: 50, y: 34 });
+  const [photoDragging, setPhotoDragging] = useState(false);
   const addressValidationRequestRef = useRef(0);
   const availabilityTaskPanelRef = useRef<HTMLDivElement | null>(null);
+  const photoPreviewRef = useRef<HTMLDivElement | null>(null);
 
   const chicureoSelected = draft.homeCommune === "Chicureo" || draft.coverageCommunes.includes("Chicureo");
   const selectedCategoryLabel = CATEGORY_OPTIONS.find((option) => option.slug === draft.category)?.label ?? "Limpieza";
@@ -1811,6 +1846,10 @@ function CleaningOnboardingPageContent() {
     setError("");
     setFeedback("");
     try {
+      const normalizedProfilePhoto = await createCenteredProfilePhoto(draft.profilePhotoUrl, photoFocus.x, photoFocus.y);
+      if (normalizedProfilePhoto && normalizedProfilePhoto !== draft.profilePhotoUrl) {
+        setDraft((current) => ({ ...current, profilePhotoUrl: normalizedProfilePhoto }));
+      }
       const addressOk = await validateHomeAddress();
       if (!addressOk) return;
 
@@ -1822,7 +1861,7 @@ function CleaningOnboardingPageContent() {
           documentId: draft.rut.trim(),
           referenceAddress: draft.address.trim(),
           baseCommune: draft.homeCommune,
-          profilePhotoUrl: draft.profilePhotoUrl
+          profilePhotoUrl: normalizedProfilePhoto || draft.profilePhotoUrl
         });
       } else {
         const response = await fetch("/api/onboarding/cleaning/start", {
@@ -1836,7 +1875,7 @@ function CleaningOnboardingPageContent() {
             baseCommune: draft.homeCommune,
             referenceAddress: draft.address.trim(),
             documentId: draft.rut.trim(),
-            profilePhotoUrl: draft.profilePhotoUrl
+            profilePhotoUrl: normalizedProfilePhoto || draft.profilePhotoUrl
           })
         });
         const data = (await response.json()) as {
@@ -2329,21 +2368,53 @@ function CleaningOnboardingPageContent() {
     }
   };
 
-  const toggleCoverageCommune = (commune: ActiveMvpCommune) => {
-    setDraft((current) => {
-      const exists = current.coverageCommunes.includes(commune);
-      return {
-        ...current,
-        coverageCommunes: exists ? current.coverageCommunes.filter((item) => item !== commune) : [...current.coverageCommunes, commune]
-      };
-    });
-  };
-
   const selectAllCoverageCommunes = () => {
     setDraft((current) => ({
       ...current,
       coverageCommunes: [...COMMUNE_OPTIONS]
     }));
+  };
+
+  const addCoverageCommune = () => {
+    setDraft((current) => {
+      if (current.coverageCommunes.includes(coverageCommuneSelection)) return current;
+      return {
+        ...current,
+        coverageCommunes: [...current.coverageCommunes, coverageCommuneSelection]
+      };
+    });
+  };
+
+  const removeCoverageCommune = (commune: ActiveMvpCommune) => {
+    setDraft((current) => ({
+      ...current,
+      coverageCommunes: current.coverageCommunes.filter((item) => item !== commune)
+    }));
+  };
+
+  const updatePhotoFocusFromPointer = (clientX: number, clientY: number) => {
+    const preview = photoPreviewRef.current;
+    if (!preview) return;
+    const rect = preview.getBoundingClientRect();
+    const x = Math.min(100, Math.max(0, ((clientX - rect.left) / rect.width) * 100));
+    const y = Math.min(100, Math.max(0, ((clientY - rect.top) / rect.height) * 100));
+    setPhotoFocus({ x, y });
+  };
+
+  const startPhotoDrag = (event: ReactPointerEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+    setPhotoDragging(true);
+    updatePhotoFocusFromPointer(event.clientX, event.clientY);
+  };
+
+  const movePhotoDrag = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (!photoDragging) return;
+    updatePhotoFocusFromPointer(event.clientX, event.clientY);
+  };
+
+  const stopPhotoDrag = () => {
+    setPhotoDragging(false);
   };
 
   const revealAvailabilityDetail = (focusFirstInput = false) => {
@@ -2613,6 +2684,10 @@ function CleaningOnboardingPageContent() {
 
             {activeStep === 3 ? (
               <div className="onboarding-screen">
+                <div className="tasker-role-banner">
+                  <strong>Perfil tasker</strong>
+                  <span>Esta información será la base pública de tu perfil en WeTask.</span>
+                </div>
                 <h3>Datos personales + foto</h3>
                 <div className="grid-form auth-flow-form">
                   <label>
@@ -2635,10 +2710,11 @@ function CleaningOnboardingPageContent() {
                       placeholder="12.345.678-5"
                     />
                   </label>
-                  <label className="full">
+                  <label className="full tasker-address-field">
                     Dirección
                     <div className="address-autocomplete-shell">
                       <input
+                        className="tasker-address-input"
                         value={draft.address}
                         onChange={(event) => {
                           setSelectedFromAutocomplete(false);
@@ -2665,13 +2741,9 @@ function CleaningOnboardingPageContent() {
                       ) : null}
                     </div>
                     {autocompleteLoading ? <p className="input-hint">Buscando direcciones en Google...</p> : null}
-                    <p className="input-hint">
-                      {validatingAddress
-                        ? "Estamos corroborando esta dirección con Google automáticamente."
-                        : "La comuna se detecta automáticamente a partir de la dirección que ingreses."}
-                    </p>
+                    <p className="input-hint">{validatingAddress ? "Validando tu dirección automáticamente." : "La comuna se detecta automáticamente desde la dirección."}</p>
                   </label>
-                  <label>
+                  <label className="full">
                     Foto de perfil
                     <input
                       type="file"
@@ -2680,10 +2752,35 @@ function CleaningOnboardingPageContent() {
                         const file = event.target.files?.[0];
                         if (!file) return;
                         const content = await fileToDataUrl(file);
+                        setPhotoFocus({ x: 50, y: 34 });
                         updateDraft("profilePhotoUrl", content);
                       }}
                     />
+                    <p className="input-hint">Mueve la foto con el mouse o con el dedo dentro del marco para dejar tu rostro centrado.</p>
                   </label>
+                  {draft.profilePhotoUrl ? (
+                    <div className="full tasker-photo-editor">
+                      <div
+                        ref={photoPreviewRef}
+                        className={`tasker-photo-preview ${photoDragging ? "dragging" : ""}`}
+                        onPointerDown={startPhotoDrag}
+                        onPointerMove={movePhotoDrag}
+                        onPointerUp={stopPhotoDrag}
+                        onPointerCancel={stopPhotoDrag}
+                        onPointerLeave={stopPhotoDrag}
+                      >
+                        <img
+                          src={draft.profilePhotoUrl}
+                          alt="Vista previa de foto de perfil"
+                          style={{ objectPosition: `${photoFocus.x}% ${photoFocus.y}%` }}
+                        />
+                      </div>
+                      <div className="tasker-photo-editor-copy">
+                        <strong>Vista previa del perfil</strong>
+                        <span>La imagen se guardará recortada en formato cuadrado, centrada según la posición que elijas.</span>
+                      </div>
+                    </div>
+                  ) : null}
                 </div>
                 {addressValidationMessage ? <p className="feedback ok">{addressValidationMessage}</p> : null}
                 {addressValidationError ? <p className="feedback error">{addressValidationError}</p> : null}
@@ -2707,22 +2804,41 @@ function CleaningOnboardingPageContent() {
                     ? "Estas comunas están definidas por WeTask. Solo puedes seleccionar dentro de esta cobertura y no agregar zonas manualmente."
                     : "Selecciona solo comunas activas definidas por WeTask para tu cobertura."}
                 </p>
-                <div className="auth-flow-actions">
-                  <button type="button" className="cta ghost small" onClick={selectAllCoverageCommunes}>
-                    Todas
-                  </button>
-                </div>
-                <div className="onboarding-checkbox-grid">
-                  {COMMUNE_OPTIONS.map((commune) => (
-                    <label key={commune} className="onboarding-check-card">
-                      <input
-                        type="checkbox"
-                        checked={draft.coverageCommunes.includes(commune)}
-                        onChange={() => toggleCoverageCommune(commune)}
-                      />
-                      <span>{commune}</span>
-                    </label>
-                  ))}
+                <div className="commune-selector-panel">
+                  <div className="commune-picker-row">
+                    <select value={coverageCommuneSelection} onChange={(event) => setCoverageCommuneSelection(event.target.value as ActiveMvpCommune)}>
+                      {COMMUNE_OPTIONS.map((commune) => (
+                        <option key={commune} value={commune}>
+                          {commune}
+                        </option>
+                      ))}
+                    </select>
+                    <button type="button" className="cta ghost small" onClick={addCoverageCommune}>
+                      Agregar comuna
+                    </button>
+                  </div>
+                  <div className="cta-row">
+                    <button type="button" className="cta ghost small" onClick={selectAllCoverageCommunes}>
+                      Seleccionar todas
+                    </button>
+                  </div>
+                  <div className="commune-chip-list-frame">
+                    <p className="coverage-map-tag-head">Comunas guardadas</p>
+                    {draft.coverageCommunes.length > 0 ? (
+                      <div className="commune-chip-list" aria-label="Comunas seleccionadas">
+                        {draft.coverageCommunes.map((commune) => (
+                          <span key={commune} className="commune-chip">
+                            {commune}
+                            <button type="button" aria-label={`Quitar ${commune}`} onClick={() => removeCoverageCommune(commune)}>
+                              ×
+                            </button>
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="commune-empty">Todavía no agregas comunas de trabajo.</p>
+                    )}
+                  </div>
                 </div>
                 {chicureoSelected ? <p className="onboarding-warning">Chicureo puede tener recargo por distancia.</p> : null}
                 <div className="auth-flow-actions">

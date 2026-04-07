@@ -1,55 +1,22 @@
 "use client";
 
-import { FormEvent, MouseEvent, useEffect, useMemo, useRef, useState } from "react";
-import Link from "next/link";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { MarketNav } from "@/components/market-nav";
 import { ACTIVE_MVP_COMMUNES, inferCommuneFromAddress, normalizeCommune, normalizeCommuneList } from "@/lib/communes";
 import { geocodeAddress } from "@/lib/geo";
-import {
-  emptyScopeForTaskerCategory,
-  getTaskerCategoryConfig,
-  getTaskerCategoryLabel,
-  normalizeScopeForTaskerCategory,
-  type SupportedTaskerCategorySlug
-} from "@/lib/tasker-category-profiles";
 
-const statusOptions = ["ACCEPTED", "IN_PROGRESS", "AWAITING_CUSTOMER_CONFIRMATION", "CANCELLED"];
-const SANTIAGO_BOUNDS = {
-  minLat: -33.62,
-  maxLat: -33.3,
-  minLng: -70.82,
-  maxLng: -70.45
-};
+const statusOptions = ["ACCEPTED", "IN_PROGRESS", "COMPLETED", "CANCELLED"];
 const CHILE_CITIES = ["Santiago", "Valparaiso", "Vina del Mar", "Concepcion", "La Serena", "Antofagasta", "Temuco", "Puerto Montt"];
 const TASKER_WIZARD_STORAGE_KEY = "wetask_tasker_wizard_v2";
-const MAX_PROFILE_PHOTO_BYTES = 6 * 1024 * 1024;
 const PRO_STATUS_LABELS: Record<string, string> = {
   ACCEPTED: "Aceptado",
-  IN_PROGRESS: "Servicio en curso",
-  COMPLETED: "Trabajo realizado",
-  AWAITING_CUSTOMER_CONFIRMATION: "Esperando confirmación del cliente",
-  PAYOUT_SCHEDULED: "Pago programado",
-  PAID_OUT: "Pago realizado",
+  IN_PROGRESS: "En curso",
+  COMPLETED: "Completado",
   CANCELLED: "Cancelado",
-  CONFIRMED: "Reserva confirmada",
+  CONFIRMED: "Confirmado",
   ASSIGNED: "Asignado",
-  PENDING: "Pendiente",
-  DISPUTE_OPEN: "Disputa abierta",
-  DISPUTE: "Disputa abierta"
+  PENDING: "Pendiente"
 };
-const COMMUNE_MAP_POSITIONS: Record<string, { top: string; left: string }> = {
-  Vitacura: { top: "26%", left: "56%" },
-  "Lo Barnechea": { top: "16%", left: "69%" },
-  Chicureo: { top: "8%", left: "51%" },
-  "Las Condes": { top: "38%", left: "60%" },
-  Providencia: { top: "49%", left: "49%" },
-  "La Reina": { top: "55%", left: "67%" },
-  "Ñuñoa": { top: "61%", left: "53%" }
-};
-
-function clamp(value: number, min: number, max: number) {
-  return Math.min(Math.max(value, min), max);
-}
 
 type Booking = {
   id: string;
@@ -87,8 +54,6 @@ type AvailabilityBlock = {
 type ProProfile = {
   id: string;
   avatarUrl?: string | null;
-  avatarPositionX?: number | null;
-  avatarPositionY?: number | null;
   bio: string | null;
   coverageStreet: string | null;
   coverageComuna: string | null;
@@ -110,36 +75,12 @@ type ProProfileResponse = {
   profile?: ProProfile | null;
   categorySlug?: string | null;
   profilePhotoUrl?: string | null;
-  profilePhotoPositionX?: number | null;
-  profilePhotoPositionY?: number | null;
   availabilityMode?: "FIJA" | "VARIABLE" | null;
   availabilityBlocks?: unknown;
   taskerServices?: Service[];
-  additionalCategories?: AdditionalCategoryProfile[];
   serviceCommunes?: string[];
   error?: string;
   detail?: string;
-};
-
-type AdditionalCategoryProfile = {
-  id: string;
-  categorySlug: SupportedTaskerCategorySlug;
-  hourlyRateClp: number;
-  minBookingHours: number;
-  serviceCommunes: string[];
-  offeredServices: string[];
-  experienceTypes: string[];
-  scopeData: unknown;
-  isActive: boolean;
-  completedAt: string | null;
-};
-
-type AdditionalCategoryDraft = {
-  categorySlug: SupportedTaskerCategorySlug | "";
-  hourlyRateClp: number;
-  minBookingHours: number;
-  serviceCommunes: string[];
-  scopeData: Record<string, unknown>;
 };
 
 type AddressValidationResponse = {
@@ -261,67 +202,6 @@ function localDraftProfilePhoto() {
   }
 }
 
-function localDraftProfilePhotoFocus() {
-  if (typeof window === "undefined") return { x: 50, y: 34 };
-  try {
-    const raw = window.localStorage.getItem(TASKER_WIZARD_STORAGE_KEY);
-    if (!raw) return { x: 50, y: 34 };
-    const parsed = JSON.parse(raw) as { profilePhotoPositionX?: number; profilePhotoPositionY?: number };
-    return {
-      x: typeof parsed.profilePhotoPositionX === "number" ? clamp(parsed.profilePhotoPositionX, 0, 100) : 50,
-      y: typeof parsed.profilePhotoPositionY === "number" ? clamp(parsed.profilePhotoPositionY, 0, 100) : 34
-    };
-  } catch {
-    return { x: 50, y: 34 };
-  }
-}
-
-function fileToDataUrl(file: File) {
-  return new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onerror = () => reject(new Error("No se pudo leer la imagen."));
-    reader.onload = () => resolve(String(reader.result ?? ""));
-    reader.readAsDataURL(file);
-  });
-}
-
-function buildAdditionalCategoryDraft(
-  categorySlug: SupportedTaskerCategorySlug | "",
-  options?: {
-    profile?: AdditionalCategoryProfile | null;
-    defaultCommunes?: string[];
-    defaultHourlyRate?: number;
-  }
-): AdditionalCategoryDraft {
-  if (!categorySlug) {
-    return {
-      categorySlug: "",
-      hourlyRateClp: options?.defaultHourlyRate ?? 12000,
-      minBookingHours: 1,
-      serviceCommunes: options?.defaultCommunes ?? [],
-      scopeData: {}
-    };
-  }
-
-  if (options?.profile) {
-    return {
-      categorySlug,
-      hourlyRateClp: options.profile.hourlyRateClp,
-      minBookingHours: options.profile.minBookingHours,
-      serviceCommunes: options.profile.serviceCommunes,
-      scopeData: (normalizeScopeForTaskerCategory(categorySlug, options.profile.scopeData) as Record<string, unknown>) ?? {}
-    };
-  }
-
-  return {
-    categorySlug,
-    hourlyRateClp: options?.defaultHourlyRate ?? 12000,
-    minBookingHours: 1,
-    serviceCommunes: options?.defaultCommunes ?? [],
-    scopeData: emptyScopeForTaskerCategory(categorySlug) as Record<string, unknown>
-  };
-}
-
 export default function ProPage() {
   const [proId, setProId] = useState("");
   const [proName, setProName] = useState("");
@@ -335,8 +215,6 @@ export default function ProPage() {
 
   const [profile, setProfile] = useState<ProProfile | null>(null);
   const [profilePhotoUrl, setProfilePhotoUrl] = useState("");
-  const [profilePhotoPositionX, setProfilePhotoPositionX] = useState(50);
-  const [profilePhotoPositionY, setProfilePhotoPositionY] = useState(34);
   const [availabilityMode, setAvailabilityMode] = useState<"FIJA" | "VARIABLE" | null>(null);
   const [onboardingAvailabilityBlocks, setOnboardingAvailabilityBlocks] = useState<AvailabilityBlock[]>([]);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
@@ -352,17 +230,8 @@ export default function ProPage() {
   const [hourlyRateFromClp, setHourlyRateFromClp] = useState(12000);
   const [activeView, setActiveView] = useState<ProView>("resumen");
   const [serviceCommunes, setServiceCommunes] = useState<string[]>([]);
-  const [additionalCategories, setAdditionalCategories] = useState<AdditionalCategoryProfile[]>([]);
-  const [showCategoryEditor, setShowCategoryEditor] = useState(false);
-  const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
+  const [serviceCommuneSelection, setServiceCommuneSelection] = useState<string>(ACTIVE_MVP_COMMUNES[0] ?? "Las Condes");
   const hourlyRateInputRef = useRef<HTMLInputElement | null>(null);
-  const [additionalCategoryDraft, setAdditionalCategoryDraft] = useState<AdditionalCategoryDraft>({
-    categorySlug: "",
-    hourlyRateClp: 12000,
-    minBookingHours: 1,
-    serviceCommunes: [],
-    scopeData: {}
-  });
 
   const [slotDate, setSlotDate] = useState(dateInputDefault());
   const [slotTime, setSlotTime] = useState("09:00");
@@ -393,8 +262,6 @@ export default function ProPage() {
   const [validatedAddress, setValidatedAddress] = useState("");
   const [addressValidationMessage, setAddressValidationMessage] = useState("");
   const [addressValidationError, setAddressValidationError] = useState("");
-  const parsedMapLat = Number(coverageLatitude);
-  const parsedMapLng = Number(coverageLongitude);
   const cityOptions = useMemo(
     () => (coverageCity && !CHILE_CITIES.includes(coverageCity) ? [coverageCity, ...CHILE_CITIES] : CHILE_CITIES),
     [coverageCity]
@@ -408,10 +275,6 @@ export default function ProPage() {
       }),
     [coverageCity, coveragePostal, coverageStreet, coverageComuna]
   );
-  const mapLat = Number.isFinite(parsedMapLat) ? parsedMapLat : -33.4489;
-  const mapLng = Number.isFinite(parsedMapLng) ? parsedMapLng : -70.6693;
-  const markerLeftPct = ((mapLng - SANTIAGO_BOUNDS.minLng) / (SANTIAGO_BOUNDS.maxLng - SANTIAGO_BOUNDS.minLng)) * 100;
-  const markerTopPct = (1 - (mapLat - SANTIAGO_BOUNDS.minLat) / (SANTIAGO_BOUNDS.maxLat - SANTIAGO_BOUNDS.minLat)) * 100;
   const fullCoverageAddress = useMemo(
     () => [coverageStreet.trim(), coverageComuna.trim(), coverageCity.trim(), "Chile"].filter(Boolean).join(", "),
     [coverageCity, coverageComuna, coverageStreet]
@@ -420,10 +283,6 @@ export default function ProPage() {
     () => normalizeCommuneList(serviceCommunes.length > 0 ? serviceCommunes : [coverageComuna]),
     [serviceCommunes, coverageComuna]
   );
-  const mapEmbedUrl = useMemo(() => {
-    const query = encodeURIComponent(`${mapLat},${mapLng}`);
-    return `https://www.google.com/maps?q=${query}&z=11&output=embed`;
-  }, [mapLat, mapLng]);
   const todayKey = useMemo(() => formatDayKey(new Date()), []);
   const selectedDate = useMemo(() => new Date(`${slotDate}T12:00:00`), [slotDate]);
   const selectedMonthLabel = useMemo(
@@ -535,41 +394,11 @@ export default function ProPage() {
       view: "agenda" as ProView
     }
   ];
-  const primaryTaskerCategorySlug = (categorySlug || "") as SupportedTaskerCategorySlug | "";
-  const additionalCategoryConfig = useMemo(
-    () => getTaskerCategoryConfig(additionalCategoryDraft.categorySlug || null),
-    [additionalCategoryDraft.categorySlug]
-  );
-  const additionalCategoryScope = useMemo(
-    () => normalizeScopeForTaskerCategory(additionalCategoryDraft.categorySlug || null, additionalCategoryDraft.scopeData) as Record<string, unknown>,
-    [additionalCategoryDraft.categorySlug, additionalCategoryDraft.scopeData]
-  );
-  const availableAdditionalCategoryOptions = useMemo(() => {
-    const taken = new Set(
-      additionalCategories
-        .filter((item) => item.isActive)
-        .map((item) => item.categorySlug)
-        .filter((item) => item !== additionalCategoryDraft.categorySlug)
-    );
-
-    return ([
-      "limpieza",
-      "mascotas",
-      "babysitter",
-      "profesor-particular",
-      "personal-trainer",
-      "chef",
-      "maquillaje",
-      "planchado"
-    ] as SupportedTaskerCategorySlug[]).filter((item) => item !== primaryTaskerCategorySlug && !taken.has(item));
-  }, [additionalCategories, additionalCategoryDraft.categorySlug, primaryTaskerCategorySlug]);
 
   const applyProfile = (nextProfile: ProProfile | null, nextServiceCommunes: string[] = []) => {
     setProfile(nextProfile);
     setIsEditingProfile(false);
     if (!nextProfile) return;
-    setProfilePhotoPositionX(clamp(nextProfile.avatarPositionX ?? 50, 0, 100));
-    setProfilePhotoPositionY(clamp(nextProfile.avatarPositionY ?? 34, 0, 100));
     setBio(nextProfile.bio ?? "");
     setCoverageStreet(nextProfile.coverageStreet ?? "");
     setCoverageComuna(nextProfile.coverageComuna ?? "");
@@ -585,6 +414,7 @@ export default function ProPage() {
       nextServiceCommunes.length > 0 ? nextServiceCommunes : [nextProfile.coverageComuna ?? ""]
     );
     setServiceCommunes(normalizedServiceCommunes);
+    setServiceCommuneSelection(normalizedServiceCommunes[0] ?? ACTIVE_MVP_COMMUNES[0] ?? "Las Condes");
   };
 
   useEffect(() => {
@@ -692,27 +522,14 @@ export default function ProPage() {
     setProName(profileData.user?.fullName ?? "");
     setCategorySlug(profileData.categorySlug ?? "");
     const nextProfilePhoto = profileData.profilePhotoUrl?.trim() || profileData.profile?.avatarUrl?.trim() || localDraftProfilePhoto();
-    const localDraftFocus = localDraftProfilePhotoFocus();
     setProfilePhotoUrl(nextProfilePhoto);
-    setProfilePhotoPositionX(clamp(profileData.profilePhotoPositionX ?? profileData.profile?.avatarPositionX ?? localDraftFocus.x, 0, 100));
-    setProfilePhotoPositionY(clamp(profileData.profilePhotoPositionY ?? profileData.profile?.avatarPositionY ?? localDraftFocus.y, 0, 100));
     setAvailabilityMode(profileData.availabilityMode ?? null);
     setOnboardingAvailabilityBlocks(nextOnboardingAvailabilityBlocks);
     applyProfile(profileData.profile ?? null, profileData.serviceCommunes ?? []);
     setSlots(nextSlots);
     const nextServices = profileData.taskerServices ?? [];
-    const nextAdditionalCategories = profileData.additionalCategories ?? [];
-    setAdditionalCategories(nextAdditionalCategories);
     setServices(nextServices);
     setSlotServiceId((current) => (nextServices.some((service) => service.id === current) ? current : nextServices[0]?.id ?? ""));
-    setAdditionalCategoryDraft((current) =>
-      current.categorySlug
-        ? current
-        : buildAdditionalCategoryDraft("", {
-            defaultCommunes: profileData.serviceCommunes ?? [],
-            defaultHourlyRate: profileData.profile?.hourlyRateFromClp ?? 12000
-          })
-    );
   };
 
   useEffect(() => {
@@ -739,149 +556,12 @@ export default function ProPage() {
     }, 40);
   };
 
-  const startNewCategory = () => {
-    setEditingCategoryId(null);
-    setShowCategoryEditor(true);
-    setAdditionalCategoryDraft(
-      buildAdditionalCategoryDraft(availableAdditionalCategoryOptions[0] ?? "", {
-        defaultCommunes: selectedCommunes,
-        defaultHourlyRate: hourlyRateFromClp
-      })
-    );
+  const addServiceCommune = () => {
+    setServiceCommunes((current) => (current.includes(serviceCommuneSelection) ? current : [...current, serviceCommuneSelection]));
   };
 
-  const editAdditionalCategory = (category: AdditionalCategoryProfile) => {
-    setEditingCategoryId(category.id);
-    setShowCategoryEditor(true);
-    setAdditionalCategoryDraft(
-      buildAdditionalCategoryDraft(category.categorySlug, {
-        profile: category,
-        defaultCommunes: selectedCommunes,
-        defaultHourlyRate: hourlyRateFromClp
-      })
-    );
-  };
-
-  const cancelAdditionalCategoryEditor = () => {
-    setShowCategoryEditor(false);
-    setEditingCategoryId(null);
-    setAdditionalCategoryDraft(
-      buildAdditionalCategoryDraft("", {
-        defaultCommunes: selectedCommunes,
-        defaultHourlyRate: hourlyRateFromClp
-      })
-    );
-  };
-
-  const updateAdditionalCategoryArray = (key: string, value: string, checked: boolean) => {
-    setAdditionalCategoryDraft((current) => {
-      const currentValues = Array.isArray(current.scopeData[key]) ? (current.scopeData[key] as string[]) : [];
-      return {
-        ...current,
-        scopeData: {
-          ...current.scopeData,
-          [key]: checked ? Array.from(new Set([...currentValues, value])) : currentValues.filter((item) => item !== value)
-        }
-      };
-    });
-  };
-
-  const updateAdditionalCategoryToggle = (key: string, checked: boolean) => {
-    setAdditionalCategoryDraft((current) => ({
-      ...current,
-      scopeData: {
-        ...current.scopeData,
-        [key]: checked
-      }
-    }));
-  };
-
-  const saveAdditionalCategory = async () => {
-    if (!proId) return;
-
-    setError("");
-    setFeedback("");
-
-    try {
-      const response = await fetch(`/api/marketplace/pro/categories?proId=${proId}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          categorySlug: additionalCategoryDraft.categorySlug,
-          hourlyRateClp: additionalCategoryDraft.hourlyRateClp,
-          minBookingHours: additionalCategoryDraft.minBookingHours,
-          serviceCommunes: additionalCategoryDraft.serviceCommunes,
-          scopeData: additionalCategoryDraft.scopeData
-        })
-      });
-      const data = (await response.json()) as { error?: string; detail?: string };
-      if (!response.ok) {
-        throw new Error(data.detail || data.error || "No se pudo guardar la categoría");
-      }
-
-      await loadAll(proId);
-      setFeedback(
-        editingCategoryId
-          ? "Actualizamos esa categoría adicional en tu perfil."
-          : "La nueva categoría quedó agregada y publicada en tu perfil."
-      );
-      cancelAdditionalCategoryEditor();
-    } catch (eventualError) {
-      setError(eventualError instanceof Error ? eventualError.message : "No se pudo guardar la categoría");
-    }
-  };
-
-  const removeAdditionalCategory = async (categorySlugToRemove: SupportedTaskerCategorySlug) => {
-    if (!proId) return;
-
-    setError("");
-    setFeedback("");
-
-    try {
-      const response = await fetch(
-        `/api/marketplace/pro/categories?proId=${proId}&categorySlug=${encodeURIComponent(categorySlugToRemove)}`,
-        {
-          method: "DELETE"
-        }
-      );
-      const data = (await response.json()) as { error?: string; detail?: string };
-      if (!response.ok) {
-        throw new Error(data.detail || data.error || "No se pudo quitar la categoría");
-      }
-
-      await loadAll(proId);
-      setFeedback("Quitamos esa categoría adicional de tu perfil.");
-      if (additionalCategoryDraft.categorySlug === categorySlugToRemove) {
-        cancelAdditionalCategoryEditor();
-      }
-    } catch (eventualError) {
-      setError(eventualError instanceof Error ? eventualError.message : "No se pudo quitar la categoría");
-    }
-  };
-
-  const updateCoverageFromPointer = (clientX: number, clientY: number, rect: DOMRect) => {
-    const xPct = clamp((clientX - rect.left) / rect.width, 0, 1);
-    const yPct = clamp((clientY - rect.top) / rect.height, 0, 1);
-
-    const nextLng = SANTIAGO_BOUNDS.minLng + xPct * (SANTIAGO_BOUNDS.maxLng - SANTIAGO_BOUNDS.minLng);
-    const nextLat = SANTIAGO_BOUNDS.maxLat - yPct * (SANTIAGO_BOUNDS.maxLat - SANTIAGO_BOUNDS.minLat);
-    setManualCoveragePoint(true);
-    setCoverageLatitude(nextLat.toFixed(6));
-    setCoverageLongitude(nextLng.toFixed(6));
-  };
-
-  const onCoverageMapClick = (event: MouseEvent<HTMLDivElement>) => {
-    const rect = event.currentTarget.getBoundingClientRect();
-    updateCoverageFromPointer(event.clientX, event.clientY, rect);
-  };
-
-  const toggleCommune = (commune: string) => {
-    setServiceCommunes((current) => {
-      if (current.includes(commune)) {
-        return current.filter((item) => item !== commune);
-      }
-      return [...current, commune];
-    });
+  const removeServiceCommune = (commune: string) => {
+    setServiceCommunes((current) => current.filter((item) => item !== commune));
   };
 
   const selectAddressSuggestion = (suggestion: string) => {
@@ -946,24 +626,6 @@ export default function ProPage() {
     }
   };
 
-  const handleProfilePhotoChange = async (file: File | null) => {
-    if (!file) return;
-    if (file.size > MAX_PROFILE_PHOTO_BYTES) {
-      setError("La foto de perfil supera los 6 MB. Súbela más liviana para continuar.");
-      return;
-    }
-
-    try {
-      setError("");
-      const content = await fileToDataUrl(file);
-      setProfilePhotoUrl(content);
-      setProfilePhotoPositionX(50);
-      setProfilePhotoPositionY(34);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "No pudimos cargar esa foto.");
-    }
-  };
-
   const saveProfile = async () => {
     setFeedback("");
     setError("");
@@ -980,9 +642,6 @@ export default function ProPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           proId,
-          avatarUrl: profilePhotoUrl.trim() || null,
-          avatarPositionX: profilePhotoPositionX,
-          avatarPositionY: profilePhotoPositionY,
           bio: bio.trim() || null,
           coverageStreet: coverageStreet.trim() || null,
           coverageComuna: coverageComuna.trim() || null,
@@ -997,19 +656,6 @@ export default function ProPage() {
       });
       const data = (await response.json()) as { profile?: ProProfile; serviceCommunes?: string[]; error?: string; detail?: string };
       if (!response.ok || !data.profile) throw new Error(data.detail || data.error || "No se pudo guardar perfil");
-      try {
-        const raw = window.localStorage.getItem(TASKER_WIZARD_STORAGE_KEY);
-        const parsed = raw ? JSON.parse(raw) : {};
-        window.localStorage.setItem(
-          TASKER_WIZARD_STORAGE_KEY,
-          JSON.stringify({
-            ...parsed,
-            profilePhotoUrl,
-            profilePhotoPositionX,
-            profilePhotoPositionY
-          })
-        );
-      } catch {}
       applyProfile(data.profile, data.serviceCommunes ?? serviceCommunes);
       setIsEditingProfile(false);
       setFeedback("Perfil actualizado.");
@@ -1180,7 +826,7 @@ export default function ProPage() {
           <div className="auth-flow-copy client-dashboard-copy pro-dashboard-copy">
             <p className="auth-flow-kicker">Panel tasker</p>
             <h1>Gestiona tu operación diaria con el look nuevo de WeTask.</h1>
-            <p>Controla tu perfil, cobertura, agenda, reservas y pagos desde un panel más claro y más fácil de usar. Aquí verás cuándo una reserva ya está pagada, cuándo sigue retenida y cuándo entra al próximo payout.</p>
+            <p>Controla tu perfil, cobertura, agenda, reservas y pagos desde un panel más claro y más fácil de usar.</p>
 
             <div className="auth-flow-copy-list client-dashboard-summary">
               <div className="auth-flow-meta-card">
@@ -1208,12 +854,7 @@ export default function ProPage() {
             <div className="client-profile-box client-profile-box-auth pro-dashboard-profile-box">
               <div className="client-photo-frame pro-dashboard-badge" aria-hidden>
                 {profilePhotoUrl ? (
-                  <img
-                    src={profilePhotoUrl}
-                    alt=""
-                    className="client-photo-img pro-dashboard-photo-img"
-                    style={{ objectPosition: `${profilePhotoPositionX}% ${profilePhotoPositionY}%` }}
-                  />
+                  <img src={profilePhotoUrl} alt="" className="client-photo-img" />
                 ) : (
                   <span>{initialsFromName(proName)}</span>
                 )}
@@ -1226,12 +867,6 @@ export default function ProPage() {
                 </strong>
                 <p>Tarifa desde</p>
                 <strong className="client-profile-address">{clp(hourlyRateFromClp)}/hora</strong>
-                <p>Trabajos realizados</p>
-                <strong className="client-profile-address">{completedBookings.length} servicio(s) completado(s)</strong>
-                <p>Servicios activos</p>
-                <strong className="client-profile-address">
-                  {services.length > 0 ? services.map((service) => service.name).join(", ") : "Aún no tienes servicios asignados."}
-                </strong>
                 <div className="client-profile-actions">
                   <span className={`status ${profile?.isVerified ? "status-completed" : "status-pending"}`}>
                     {profile?.isVerified ? "Verificado" : "Pendiente de verificación"}
@@ -1310,15 +945,11 @@ export default function ProPage() {
                 <h2>Perfil profesional</h2>
                 <p>Revisa tu información y edítala solo cuando realmente lo necesites.</p>
               </div>
-              {isEditingProfile ? (
-                <button className="cta ghost small" type="button" onClick={() => setIsEditingProfile(false)}>
-                  Cerrar edición
-                </button>
-              ) : (
+              {!isEditingProfile ? (
                 <button className="cta ghost small" type="button" onClick={() => setIsEditingProfile(true)}>
                   Editar perfil
                 </button>
-              )}
+              ) : null}
             </div>
 
             {!isEditingProfile ? (
@@ -1345,346 +976,32 @@ export default function ProPage() {
                     <h3>Comunas activas</h3>
                     <p>{selectedCommunes.length > 0 ? selectedCommunes.join(", ") : "Aún no defines comunas de trabajo."}</p>
                   </article>
-                  <article className="module-card client-dashboard-card">
-                    <h3>Trabajos realizados</h3>
-                    <p>{completedBookings.length} servicio(s) completado(s) en WeTask.</p>
-                  </article>
-                  <article className="module-card client-dashboard-card">
-                    <h3>Servicios que haces</h3>
-                    <p>{services.length > 0 ? services.map((service) => service.name).join(", ") : "Todavía no tienes servicios activos cargados."}</p>
-                  </article>
                 </div>
 
-                <div className="full tasker-extra-categories-card">
-                  <div className="tasker-extra-categories-head">
-                    <div>
-                      <h3>Categorías que ofreces</h3>
-                      <p>Tu servicio principal viene del onboarding. Aquí puedes sumar nuevas categorías desde tu panel.</p>
+                {selectedCommunes.length > 0 ? (
+                  <article className="module-card client-dashboard-card full">
+                    <h3>Comunas donde trabajas</h3>
+                    <div className="commune-chip-list" aria-label="Comunas activas">
+                      {selectedCommunes.map((commune) => (
+                        <span key={commune} className="commune-chip">
+                          {commune}
+                        </span>
+                      ))}
                     </div>
-                    {!showCategoryEditor && availableAdditionalCategoryOptions.length > 0 ? (
-                      <button className="cta ghost small" type="button" onClick={startNewCategory}>
-                        Agregar categoría
-                      </button>
-                    ) : null}
-                  </div>
-
-                  <div className="tasker-extra-categories-list">
-                    <article className="tasker-category-pill-card primary">
-                      <strong>{getTaskerCategoryLabel(primaryTaskerCategorySlug || categorySlug)}</strong>
-                      <span>Categoría principal del onboarding</span>
-                    </article>
-                    {additionalCategories.map((item) => (
-                      <article key={item.id} className="tasker-category-pill-card">
-                        <div>
-                          <strong>{getTaskerCategoryLabel(item.categorySlug)}</strong>
-                          <span>{item.serviceCommunes.length} comuna(s) · {clp(item.hourlyRateClp)}/hora</span>
-                        </div>
-                        <div className="cta-row">
-                          <button className="cta ghost small" type="button" onClick={() => editAdditionalCategory(item)}>
-                            Editar
-                          </button>
-                          <button className="cta ghost small" type="button" onClick={() => void removeAdditionalCategory(item.categorySlug)}>
-                            Quitar
-                          </button>
-                        </div>
-                      </article>
-                    ))}
-                  </div>
-
-                  {showCategoryEditor ? (
-                    <div className="tasker-extra-categories-editor">
-                      <div className="grid-form compact">
-                        <label>
-                          Categoría
-                          <select
-                            value={additionalCategoryDraft.categorySlug}
-                            onChange={(event) =>
-                              setAdditionalCategoryDraft(
-                                buildAdditionalCategoryDraft(event.target.value as SupportedTaskerCategorySlug, {
-                                  defaultCommunes: selectedCommunes,
-                                  defaultHourlyRate: hourlyRateFromClp
-                                })
-                              )
-                            }
-                            disabled={Boolean(editingCategoryId)}
-                          >
-                            <option value="">Selecciona una categoría</option>
-                            {availableAdditionalCategoryOptions.map((option) => (
-                              <option key={option} value={option}>
-                                {getTaskerCategoryLabel(option)}
-                              </option>
-                            ))}
-                          </select>
-                        </label>
-                        <label>
-                          Tarifa por hora
-                          <input
-                            type="number"
-                            min={5000}
-                            value={additionalCategoryDraft.hourlyRateClp}
-                            onChange={(event) =>
-                              setAdditionalCategoryDraft((current) => ({
-                                ...current,
-                                hourlyRateClp: Number(event.target.value) || hourlyRateFromClp
-                              }))
-                            }
-                          />
-                        </label>
-                      </div>
-
-                      <div className="full">
-                        <p className="field-label">Comunas para esta categoría</p>
-                        <div className="inline-checks">
-                          {ACTIVE_MVP_COMMUNES.map((commune) => (
-                            <label key={`extra-${commune}`}>
-                              <input
-                                type="checkbox"
-                                checked={additionalCategoryDraft.serviceCommunes.includes(commune)}
-                                onChange={(event) =>
-                                  setAdditionalCategoryDraft((current) => ({
-                                    ...current,
-                                    serviceCommunes: event.target.checked
-                                      ? Array.from(new Set([...current.serviceCommunes, commune]))
-                                      : current.serviceCommunes.filter((item) => item !== commune)
-                                  }))
-                                }
-                              />
-                              {commune}
-                            </label>
-                          ))}
-                        </div>
-                      </div>
-
-                      {additionalCategoryConfig ? (
-                        <>
-                          <div className="full">
-                            <p className="field-label">Servicios ofrecidos</p>
-                            <div className="onboarding-scope-grid">
-                              {additionalCategoryConfig.serviceOptions.map((option) => (
-                                <label
-                                  key={option.value}
-                                  className={`auth-service-card auth-service-card-scope ${
-                                    Array.isArray(additionalCategoryScope.services_offered) &&
-                                    (additionalCategoryScope.services_offered as string[]).includes(option.value)
-                                      ? "active"
-                                      : ""
-                                  }`}
-                                >
-                                  <input
-                                    type="checkbox"
-                                    checked={
-                                      Array.isArray(additionalCategoryScope.services_offered) &&
-                                      (additionalCategoryScope.services_offered as string[]).includes(option.value)
-                                    }
-                                    onChange={(event) => updateAdditionalCategoryArray("services_offered", option.value, event.target.checked)}
-                                  />
-                                  <strong>{option.label}</strong>
-                                  {option.description ? <span>{option.description}</span> : null}
-                                </label>
-                              ))}
-                            </div>
-                          </div>
-
-                          {additionalCategoryConfig.extraGroups?.map((group) => (
-                            <div key={group.key} className="full">
-                              <p className="field-label">{group.label}</p>
-                              <div className="inline-checks">
-                                {group.options.map((option) => (
-                                  <label key={`${group.key}-${option.value}`}>
-                                    <input
-                                      type="checkbox"
-                                      checked={Array.isArray(additionalCategoryScope[group.key]) && (additionalCategoryScope[group.key] as string[]).includes(option.value)}
-                                      onChange={(event) => updateAdditionalCategoryArray(group.key, option.value, event.target.checked)}
-                                    />
-                                    {option.label}
-                                  </label>
-                                ))}
-                              </div>
-                            </div>
-                          ))}
-
-                          {additionalCategoryConfig.toggleFields?.length ? (
-                            <div className="full">
-                              <p className="field-label">Condiciones del servicio</p>
-                              <div className="inline-checks">
-                                {additionalCategoryConfig.toggleFields.map((field) => (
-                                  <label key={field.key}>
-                                    <input
-                                      type="checkbox"
-                                      checked={additionalCategoryScope[field.key] === true}
-                                      onChange={(event) => updateAdditionalCategoryToggle(field.key, event.target.checked)}
-                                    />
-                                    {field.label}
-                                  </label>
-                                ))}
-                              </div>
-                            </div>
-                          ) : null}
-
-                          {additionalCategoryConfig.includedTaskOptions.length > 0 ? (
-                            <div className="full">
-                              <p className="field-label">Tareas que sí realizas</p>
-                              <div className="onboarding-task-checklist">
-                                {additionalCategoryConfig.includedTaskOptions.map((option) => (
-                                  <label key={`included-${option.value}`} className="onboarding-task-checklist-row">
-                                    <span>{option.label}</span>
-                                    <input
-                                      type="checkbox"
-                                      checked={Array.isArray(additionalCategoryScope.tasks_included) && (additionalCategoryScope.tasks_included as string[]).includes(option.value)}
-                                      onChange={(event) => updateAdditionalCategoryArray("tasks_included", option.value, event.target.checked)}
-                                    />
-                                  </label>
-                                ))}
-                              </div>
-                            </div>
-                          ) : null}
-
-                          {additionalCategoryConfig.excludedTaskOptions.length > 0 ? (
-                            <div className="full">
-                              <p className="field-label">Tareas que no realizas</p>
-                              <div className="onboarding-task-checklist">
-                                {additionalCategoryConfig.excludedTaskOptions.map((option) => (
-                                  <label key={`excluded-${option.value}`} className="onboarding-task-checklist-row onboarding-task-checklist-row-warning">
-                                    <span>{option.label}</span>
-                                    <input
-                                      type="checkbox"
-                                      checked={Array.isArray(additionalCategoryScope.tasks_excluded) && (additionalCategoryScope.tasks_excluded as string[]).includes(option.value)}
-                                      onChange={(event) => updateAdditionalCategoryArray("tasks_excluded", option.value, event.target.checked)}
-                                    />
-                                  </label>
-                                ))}
-                              </div>
-                            </div>
-                          ) : null}
-
-                          <label className="full">
-                            Condiciones especiales
-                            <textarea
-                              value={typeof additionalCategoryScope.special_conditions === "string" ? additionalCategoryScope.special_conditions : ""}
-                              onChange={(event) =>
-                                setAdditionalCategoryDraft((current) => ({
-                                  ...current,
-                                  scopeData: {
-                                    ...current.scopeData,
-                                    special_conditions: event.target.value
-                                  }
-                                }))
-                              }
-                              placeholder="Cuéntale al cliente cualquier condición, límite o forma de trabajo importante."
-                            />
-                          </label>
-                        </>
-                      ) : null}
-
-                      <div className="cta-row">
-                        <button className="cta ghost small" type="button" onClick={cancelAdditionalCategoryEditor}>
-                          Cancelar
-                        </button>
-                        <button className="cta small" type="button" onClick={() => void saveAdditionalCategory()}>
-                          {editingCategoryId ? "Guardar categoría" : "Agregar categoría"}
-                        </button>
-                      </div>
-                    </div>
-                  ) : null}
-                </div>
-
-                <div className="full coverage-map-card pro-profile-map-preview">
-                  <div className="coverage-map-head">
-                    <h3>Mapa de cobertura</h3>
-                    <p>Revisa tu punto base, haz zoom en el mapa y confirma las comunas donde trabajas.</p>
-                  </div>
-                  <div className="coverage-map-wrap">
-                    <iframe
-                      title="Mapa de cobertura profesional"
-                      src={mapEmbedUrl}
-                      className="coverage-map-frame"
-                      loading="lazy"
-                      referrerPolicy="no-referrer-when-downgrade"
-                    />
-                    <span className="coverage-pin" style={{ left: `${markerLeftPct}%`, top: `${markerTopPct}%` }} aria-hidden>
-                      <span className="coverage-pin-dot" />
-                    </span>
-                  </div>
-                  {selectedCommunes.length > 0 ? (
-                    <>
-                      <p className="coverage-map-tag-head">Comunas donde trabajas</p>
-                      <div className="coverage-map-chip-list" aria-label="Comunas activas">
-                        {selectedCommunes.map((commune) => (
-                          <span key={commune} className="coverage-map-chip">
-                            {commune}
-                          </span>
-                        ))}
-                      </div>
-                    </>
-                  ) : null}
-                  <p className="coverage-meta">
-                    Dirección base: {coverageStreet || "Sin dirección"}, {coverageComuna || "Sin comuna"}, {coverageCity}
-                  </p>
-                </div>
+                  </article>
+                ) : null}
               </div>
             ) : null}
 
             {isEditingProfile ? <div className="grid-form">
-              <div className="full avatar-focus-editor">
-                <div>
-                  <p className="field-label">Foto de perfil</p>
-                  <p className="input-hint">Sube una foto clara y ajusta el encuadre para que se vea bien tu cara.</p>
-                </div>
-                <div className="avatar-focus-layout">
-                  <div className="avatar-focus-preview-frame" aria-hidden>
-                    {profilePhotoUrl ? (
-                      <img
-                        src={profilePhotoUrl}
-                        alt=""
-                        className="avatar-focus-preview-image"
-                        style={{ objectPosition: `${profilePhotoPositionX}% ${profilePhotoPositionY}%` }}
-                      />
-                    ) : (
-                      <span>{initialsFromName(proName)}</span>
-                    )}
-                  </div>
-                  <div className="avatar-focus-controls">
-                    <label>
-                      Cambiar foto
-                      <input
-                        type="file"
-                        accept="image/png,image/jpeg,image/webp"
-                        onChange={async (event) => {
-                          await handleProfilePhotoChange(event.target.files?.[0] ?? null);
-                          event.currentTarget.value = "";
-                        }}
-                      />
-                    </label>
-                    <label>
-                      Centrar horizontalmente
-                      <input
-                        type="range"
-                        min={0}
-                        max={100}
-                        value={profilePhotoPositionX}
-                        onChange={(event) => setProfilePhotoPositionX(Number(event.target.value))}
-                      />
-                    </label>
-                    <label>
-                      Centrar verticalmente
-                      <input
-                        type="range"
-                        min={0}
-                        max={100}
-                        value={profilePhotoPositionY}
-                        onChange={(event) => setProfilePhotoPositionY(Number(event.target.value))}
-                      />
-                    </label>
-                  </div>
-                </div>
-              </div>
               <label className="full">
                 Bio
                 <textarea value={bio} onChange={(e) => setBio(e.target.value)} placeholder="Experiencia, especialidad, herramientas." />
               </label>
-              <label>
+              <label className="full tasker-address-field">
                 Dirección
                 <input
+                  className="tasker-address-input"
                   value={coverageStreet}
                   onChange={(e) => {
                     setSelectedFromAutocomplete(false);
@@ -1712,11 +1029,7 @@ export default function ProPage() {
                     ))}
                   </div>
                 ) : null}
-                <div className="address-inline-actions">
-                  <button className="cta ghost small" type="button" onClick={() => void validateCoverageAddress()} disabled={validatingAddress}>
-                    {validatingAddress ? "Corroborando..." : "Corroborar con Google"}
-                  </button>
-                </div>
+                <p className="input-hint">{validatingAddress ? "Validando la dirección automáticamente." : "La comuna y la ubicación se validan automáticamente."}</p>
               </label>
               <label>
                 Comuna
@@ -1735,23 +1048,35 @@ export default function ProPage() {
               </label>
               <div className="full">
                 <p className="field-label">Comunas donde trabajas</p>
-                <div className="inline-checks">
-                  {ACTIVE_MVP_COMMUNES.map((commune) => (
-                    <label key={commune}>
-                      <input
-                        type="checkbox"
-                        checked={serviceCommunes.includes(commune)}
-                        onChange={(event) => {
-                          if (event.target.checked) {
-                            setServiceCommunes((current) => Array.from(new Set([...current, commune])));
-                            return;
-                          }
-                          setServiceCommunes((current) => current.filter((item) => item !== commune));
-                        }}
-                      />
-                      {commune}
-                    </label>
-                  ))}
+                <div className="commune-selector-panel">
+                  <div className="commune-picker-row">
+                    <select value={serviceCommuneSelection} onChange={(event) => setServiceCommuneSelection(event.target.value)}>
+                      {ACTIVE_MVP_COMMUNES.map((commune) => (
+                        <option key={commune} value={commune}>
+                          {commune}
+                        </option>
+                      ))}
+                    </select>
+                    <button type="button" className="cta ghost small" onClick={addServiceCommune}>
+                      Agregar comuna
+                    </button>
+                  </div>
+                  <div className="commune-chip-list-frame">
+                    {selectedCommunes.length > 0 ? (
+                      <div className="commune-chip-list" aria-label="Comunas activas">
+                        {selectedCommunes.map((commune) => (
+                          <span key={commune} className="commune-chip">
+                            {commune}
+                            <button type="button" aria-label={`Quitar ${commune}`} onClick={() => removeServiceCommune(commune)}>
+                              ×
+                            </button>
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="commune-empty">Todavía no agregas comunas de trabajo.</p>
+                    )}
+                  </div>
                 </div>
               </div>
               <label>
@@ -1784,79 +1109,12 @@ export default function ProPage() {
                   onChange={(e) => setHourlyRateFromClp(Number(e.target.value) || 12000)}
                 />
               </label>
-              <div className="full coverage-map-card">
-                <div className="coverage-map-head">
-                  <h3>Mapa de cobertura</h3>
-                  <p>Haz click para mover tu punto base y selecciona las comunas donde quieres trabajar.</p>
-                </div>
-                <div
-                  className="coverage-map-wrap coverage-map-interactive"
-                  onClick={onCoverageMapClick}
-                  onKeyDown={(event) => {
-                    if (event.key !== "Enter" && event.key !== " ") return;
-                    event.preventDefault();
-                    const rect = event.currentTarget.getBoundingClientRect();
-                    updateCoverageFromPointer(rect.left + rect.width / 2, rect.top + rect.height / 2, rect);
-                  }}
-                  role="button"
-                  tabIndex={0}
-                  aria-label="Seleccionar punto de cobertura en el mapa"
-                >
-                  <iframe
-                    title="Mapa de cobertura profesional"
-                    src={mapEmbedUrl}
-                    className="coverage-map-frame"
-                    loading="lazy"
-                    referrerPolicy="no-referrer-when-downgrade"
-                  />
-                  <div className="coverage-map-labels">
-                    {ACTIVE_MVP_COMMUNES.map((commune) => {
-                      const position = COMMUNE_MAP_POSITIONS[commune];
-                      const isSelected = selectedCommunes.includes(commune);
-                      return (
-                        <button
-                          key={commune}
-                          type="button"
-                          className={`coverage-commune-pill ${isSelected ? "active" : ""}`}
-                          style={{ top: position.top, left: position.left }}
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            toggleCommune(commune);
-                          }}
-                        >
-                          {commune}
-                        </button>
-                      );
-                    })}
-                  </div>
-                  <span className="coverage-pin" style={{ left: `${markerLeftPct}%`, top: `${markerTopPct}%` }} aria-hidden>
-                    <span className="coverage-pin-dot" />
-                  </span>
-                </div>
-                <p className="coverage-meta">
-                  Dirección base: {coverageStreet || "Sin dirección"}, {coverageComuna || "Sin comuna"}, {coverageCity}
+              {addressValidationMessage ? (
+                <p className="coverage-meta coverage-meta-ok">
+                  {addressValidationMessage} {validatedAddress ? `(${validatedAddress})` : ""}
                 </p>
-                {addressValidationMessage ? (
-                  <p className="coverage-meta coverage-meta-ok">
-                    {addressValidationMessage} {validatedAddress ? `(${validatedAddress})` : ""}
-                  </p>
-                ) : null}
-                {addressValidationError ? <p className="coverage-meta coverage-meta-error">{addressValidationError}</p> : null}
-                {selectedCommunes.length > 0 ? (
-                  <>
-                    <p className="coverage-map-tag-head">Comunas donde trabajas</p>
-                    <div className="coverage-map-chip-list" aria-label="Comunas activas">
-                      {selectedCommunes.map((commune) => (
-                        <span key={commune} className="coverage-map-chip">
-                          {commune}
-                        </span>
-                      ))}
-                    </div>
-                  </>
-                ) : (
-                  <p className="coverage-meta">Selecciona al menos una comuna.</p>
-                )}
-              </div>
+              ) : null}
+              {addressValidationError ? <p className="coverage-meta coverage-meta-error">{addressValidationError}</p> : null}
             </div> : null}
 
             {isEditingProfile ? (
@@ -2190,20 +1448,6 @@ export default function ProPage() {
                     <p>
                       <strong>Total:</strong> {clp(booking.totalPriceClp)}
                     </p>
-                    <p>
-                      <strong>Estado del pago:</strong>{" "}
-                      {booking.status === "DISPUTE_OPEN" || booking.status === "DISPUTE"
-                        ? "Retenido por disputa abierta"
-                        : booking.status === "PAYOUT_SCHEDULED" || booking.payout
-                          ? "Payout ya programado"
-                          : booking.status === "AWAITING_CUSTOMER_CONFIRMATION" || booking.status === "COMPLETED"
-                            ? "Esperando confirmación del cliente"
-                            : booking.status === "IN_PROGRESS"
-                              ? "Retenido hasta terminar el servicio"
-                              : booking.status === "CONFIRMED" || booking.status === "ACCEPTED" || booking.status === "ASSIGNED"
-                                ? "Pago reservado por WeTask"
-                                : "Aún no aplica"}
-                    </p>
                     <div className="status-editor">
                       <label>
                         Estado
@@ -2224,9 +1468,6 @@ export default function ProPage() {
                       <button className="cta ghost small" type="button" onClick={() => completeBooking(booking.id)}>
                         Finalizar
                       </button>
-                      <Link className="cta ghost small" href={`/pro/reservas/${booking.id}`}>
-                        Ver detalle
-                      </Link>
                     </div>
                   </article>
                 ))
@@ -2309,20 +1550,11 @@ export default function ProPage() {
                           <button className="cta ghost small" type="button" onClick={() => submitClientReview(booking.id)}>
                             Guardar reseña
                           </button>
-                          <button className="cta small" type="button" onClick={() => requestPayout(booking.id)} disabled={booking.status === "DISPUTE" || Boolean(booking.payout)}>
-                            {booking.status === "DISPUTE" ? "Payout bloqueado" : booking.payout ? "Payout ya programado" : "Solicitar payout"}
+                          <button className="cta small" type="button" onClick={() => requestPayout(booking.id)}>
+                            Solicitar payout
                           </button>
-                          <Link className="cta ghost small" href={`/pro/reservas/${booking.id}`}>
-                            Ver detalle
-                          </Link>
                         </div>
                       </div>
-                    <div className="client-booking-note">
-                      <strong>Lógica de cobro</strong>
-                      <p>El cliente paga al reservar. WeTask retiene ese dinero y tu pago entra al próximo ciclo cuando el cliente confirma o cuando vence el plazo sin reclamo.</p>
-                      {booking.payout ? <p><strong>Ya programado:</strong> este servicio ya entró al próximo ciclo automático de pago.</p> : null}
-                      {booking.status === "DISPUTE" ? <p><strong>Disputa abierta:</strong> el payout queda congelado hasta que WeTask resuelva el caso.</p> : null}
-                    </div>
                     </article>
                   ))
                 )}
