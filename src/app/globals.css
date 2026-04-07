@@ -5387,7 +5387,9 @@ textarea {
 }
 
 .pro-dashboard-hero-shell {
-  display: block;
+  grid-template-columns: minmax(0, 1fr);
+  width: min(1240px, 100%);
+  gap: 0;
 }
 
 .client-dashboard-copy {
@@ -5401,6 +5403,8 @@ textarea {
 .pro-dashboard-hero-card {
   max-width: 1180px;
   margin-inline: auto;
+  width: 100%;
+  grid-column: 1 / -1;
   padding: 28px;
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(246, 251, 255, 0.94) 100%);
