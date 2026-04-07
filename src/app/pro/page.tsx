@@ -1020,6 +1020,11 @@ export default function ProPage() {
     window.location.href = `/trabaja-con-nosotros/registro?service=${encodeURIComponent(serviceSlug)}`;
   };
 
+  const openNewTaskerCategory = () => {
+    if (typeof window === "undefined") return;
+    window.location.href = "/trabaja-con-nosotros/registro";
+  };
+
   return (
     <main className="auth-flow-screen auth-flow-screen-scroll market-shell-auth">
       <div className="auth-flow-backdrop" aria-hidden />
@@ -1086,6 +1091,11 @@ export default function ProPage() {
                     {profile?.isVerified ? "Verificado" : "Pendiente de verificación"}
                   </span>
                   <span className="status status-accepted">{serviceCommunes.length || 0} comuna(s)</span>
+                </div>
+                <div className="cta-row pro-dashboard-primary-action">
+                  <button type="button" className="cta" onClick={openNewTaskerCategory}>
+                    Hacerte tasker de otra categoría
+                  </button>
                 </div>
               </div>
             </div>
