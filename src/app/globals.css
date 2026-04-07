@@ -5361,6 +5361,7 @@ textarea {
 }
 
 .market-shell-auth-content {
+  width: min(1320px, 100%);
   padding-bottom: 40px;
 }
 
@@ -5406,6 +5407,8 @@ textarea {
 
 .pro-dashboard-hero-shell {
   display: block;
+  width: 100%;
+  max-width: none;
 }
 
 .client-dashboard-copy {
@@ -5417,7 +5420,7 @@ textarea {
 }
 
 .pro-dashboard-hero-card {
-  max-width: 1180px;
+  max-width: none;
   margin-inline: auto;
   padding: 28px;
   background:
