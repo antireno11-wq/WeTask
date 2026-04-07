@@ -183,6 +183,40 @@ function initialsFromName(value: string) {
   return words.map((word) => word[0]?.toUpperCase() ?? "").join("");
 }
 
+function escapeRegex(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function formatCoverageAddress(street: string, commune: string, city: string) {
+  const normalizedStreet = street
+    .replace(/\b\d{7}\b/g, " ")
+    .replace(/,\s*Región Metropolitana,?\s*Chile/gi, " ")
+    .replace(/,\s*Chile/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/\s+,/g, ",")
+    .replace(/,+$/g, "")
+    .trim();
+
+  const duplicatePatterns = [commune, city]
+    .map((value) => value.trim())
+    .filter(Boolean)
+    .map((value) => new RegExp(`(?:,\\s*)?${escapeRegex(value)}`, "gi"));
+
+  let cleanedStreet = normalizedStreet;
+  for (const pattern of duplicatePatterns) {
+    cleanedStreet = cleanedStreet.replace(pattern, "");
+  }
+
+  cleanedStreet = cleanedStreet
+    .replace(/\s+/g, " ")
+    .replace(/\s+,/g, ",")
+    .replace(/,+$/g, "")
+    .trim();
+
+  return [cleanedStreet || "Sin dirección", commune || "Sin comuna", city].filter(Boolean).join(", ");
+}
+
 function normalizeAvailabilityBlocks(value: unknown): AvailabilityBlock[] {
   if (!Array.isArray(value)) return [];
 
@@ -416,6 +450,10 @@ export default function ProPage() {
     const normalized = categorySlug.trim().toLowerCase();
     return TASKER_CATEGORY_ALIASES[normalized] ?? null;
   }, [categorySlug]);
+  const formattedCoverageAddress = useMemo(
+    () => formatCoverageAddress(coverageStreet, coverageComuna, coverageCity),
+    [coverageCity, coverageComuna, coverageStreet]
+  );
   const additionalCategoryOptions = useMemo(
     () => CORE_SERVICES.filter((service) => service.slug !== currentCoreCategorySlug),
     [currentCoreCategorySlug]
@@ -1063,9 +1101,7 @@ export default function ProPage() {
                   <div className="client-profile-copy">
                     <h3>{proName}</h3>
                     <p>Tu perfil y cobertura actual</p>
-                    <strong className="client-profile-address">
-                      {[coverageStreet || "Sin dirección", coverageComuna || "Sin comuna", coverageCity].filter(Boolean).join(", ")}
-                    </strong>
+                    <strong className="client-profile-address">{formattedCoverageAddress}</strong>
                     <div className="client-profile-actions">
                       <span className={`status ${profile?.isVerified ? "status-completed" : "status-pending"}`}>
                         {profile?.isVerified ? "Verificado" : "Pendiente de verificación"}
@@ -1213,7 +1249,7 @@ export default function ProPage() {
                   </article>
                   <article className="module-card client-dashboard-card">
                     <h3>Dirección base</h3>
-                    <p>{[coverageStreet || "Sin dirección", coverageComuna || "Sin comuna", coverageCity || "Sin ciudad"].join(", ")}</p>
+                    <p>{formattedCoverageAddress}</p>
                   </article>
                   <article className="module-card client-dashboard-card">
                     <h3>Tarifa desde</h3>
