@@ -655,8 +655,19 @@ export default function ProPage() {
     setPhotoDragging(false);
   };
 
+  const focusPhotoEditor = () => {
+    window.setTimeout(() => {
+      photoPreviewRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 120);
+  };
+
   const openPhotoPicker = () => {
-    photoInputRef.current?.click();
+    setActiveView("perfil");
+    setIsEditingProfile(true);
+    focusPhotoEditor();
+    window.setTimeout(() => {
+      photoInputRef.current?.click();
+    }, 60);
   };
 
   const onPhotoFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
@@ -667,7 +678,9 @@ export default function ProPage() {
       const dataUrl = await fileToDataUrl(file);
       setProfilePhotoUrl(dataUrl);
       setPhotoFocus({ x: 50, y: 34 });
+      setActiveView("perfil");
       setIsEditingProfile(true);
+      focusPhotoEditor();
       setFeedback("Foto cargada. Muévela dentro del marco y luego guarda el perfil.");
     } catch (error) {
       setError(error instanceof Error ? error.message : "No se pudo cargar la foto");
