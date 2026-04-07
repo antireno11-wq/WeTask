@@ -140,10 +140,6 @@ function dateInputDefault() {
   return d.toISOString().slice(0, 10);
 }
 
-function combineLocalDateAndTime(date: string, time: string) {
-  return new Date(`${date}T${time}:00`);
-}
-
 function formatBookingDate(value: string) {
   return new Date(value).toLocaleString("es-CL", {
     weekday: "long",
@@ -292,9 +288,6 @@ export default function ProPage() {
   const hourlyRateInputRef = useRef<HTMLInputElement | null>(null);
 
   const [slotDate, setSlotDate] = useState(dateInputDefault());
-  const [slotTime, setSlotTime] = useState("09:00");
-  const [slotDurationMin, setSlotDurationMin] = useState(60);
-  const [slotServiceId, setSlotServiceId] = useState("");
   const [weeklyDayKey, setWeeklyDayKey] = useState<DayKey>("lunes");
   const [weeklyStart, setWeeklyStart] = useState("09:00");
   const [weeklyEnd, setWeeklyEnd] = useState("13:00");
@@ -603,7 +596,6 @@ export default function ProPage() {
     setSlots(nextSlots);
     const nextServices = profileData.taskerServices ?? [];
     setServices(nextServices);
-    setSlotServiceId((current) => (nextServices.some((service) => service.id === current) ? current : nextServices[0]?.id ?? ""));
   };
 
   useEffect(() => {
@@ -881,33 +873,6 @@ export default function ProPage() {
       applyProfile(data.profile, data.serviceCommunes ?? serviceCommunes);
       setIsEditingProfile(false);
       setFeedback("Perfil actualizado.");
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Error inesperado");
-    }
-  };
-
-  const createSlot = async () => {
-    setFeedback("");
-    setError("");
-    try {
-      const startsAt = combineLocalDateAndTime(slotDate, slotTime);
-      const endsAt = new Date(startsAt.getTime() + slotDurationMin * 60 * 1000);
-
-      const response = await fetch("/api/marketplace/pro/slots", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          proId,
-          serviceId: slotServiceId || services[0]?.id || null,
-          startsAt: startsAt.toISOString(),
-          endsAt: endsAt.toISOString()
-        })
-      });
-
-      const data = (await response.json()) as { slot?: ProSlot; error?: string; detail?: string };
-      if (!response.ok || !data.slot) throw new Error(data.detail || data.error || "No se pudo crear bloque horario");
-      setSlots((prev) => [...prev, data.slot!].sort((a, b) => a.startsAt.localeCompare(b.startsAt)));
-      setFeedback("Bloque horario creado.");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error inesperado");
     }
@@ -1449,55 +1414,6 @@ export default function ProPage() {
                   </article>
                 </div>
 
-                <div className="availability-composer-card">
-                  <div className="availability-composer-head">
-                    <div>
-                      <p className="availability-eyebrow">Excepción puntual</p>
-                      <h3>Agrega un bloque solo para una fecha</h3>
-                    </div>
-                    <span className="availability-selected-pill">{selectedDayLabel}</span>
-                  </div>
-
-                  <div className="grid-form availability-form-grid">
-                    <label>
-                      Fecha
-                      <input type="date" value={slotDate} onChange={(e) => setSlotDate(e.target.value)} />
-                    </label>
-                    <label>
-                      Hora inicio
-                      <input type="time" value={slotTime} onChange={(e) => setSlotTime(e.target.value)} />
-                    </label>
-                    <label>
-                      Duración
-                      <select value={slotDurationMin} onChange={(e) => setSlotDurationMin(Number(e.target.value))}>
-                        <option value={30}>30 min</option>
-                        <option value={60}>60 min</option>
-                        <option value={90}>90 min</option>
-                        <option value={120}>120 min</option>
-                        <option value={180}>180 min</option>
-                        <option value={240}>240 min</option>
-                      </select>
-                    </label>
-                  </div>
-
-                  <p className="availability-inline-note">
-                    {services[0]?.name
-                      ? `Este bloque puntual se publicará para ${services[0].name}.`
-                      : categorySlug
-                        ? `Este bloque puntual se publicará para tu servicio de ${categorySlug.replaceAll("-", " ")}.`
-                        : "Este bloque puntual se publicará para el servicio que registraste en tu onboarding."}
-                  </p>
-                  <p className="availability-inline-note soft">
-                    Tu semana base sigue repitiéndose automáticamente. Desde el calendario de abajo puedes bloquear o reabrir horarios
-                    específicos si un día no quieres trabajar.
-                  </p>
-
-                  <div className="cta-row availability-form-actions">
-                    <button className="cta" type="button" onClick={createSlot}>
-                      Agregar bloque puntual
-                    </button>
-                  </div>
-                </div>
               </aside>
 
               <div className="availability-main-column">
