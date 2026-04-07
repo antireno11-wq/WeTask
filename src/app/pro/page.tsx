@@ -1056,7 +1056,7 @@ export default function ProPage() {
 
   const openCategoryOnboarding = (serviceSlug: CoreTaskerServiceSlug) => {
     if (typeof window === "undefined") return;
-    window.location.href = `/trabaja-con-nosotros/registro?service=${encodeURIComponent(serviceSlug)}`;
+    window.location.href = `/trabaja-con-nosotros/registro?service=${encodeURIComponent(serviceSlug)}&mode=new-category`;
   };
 
   const openNewTaskerCategory = () => {

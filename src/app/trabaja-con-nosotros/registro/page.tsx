@@ -903,8 +903,10 @@ function CleaningOnboardingPageContent() {
     const service = searchParams.get("service");
     return CATEGORY_OPTIONS.some((option) => option.slug === service) ? (service as CategorySlug) : null;
   }, [searchParams]);
+  const explicitNewCategoryFlow = useMemo(() => searchParams.get("mode") === "new-category", [searchParams]);
 
   useEffect(() => {
+    if (presetService || explicitNewCategoryFlow) return;
     const stored = window.localStorage.getItem(STORAGE_KEY);
     if (!stored) return;
     try {
@@ -942,7 +944,7 @@ function CleaningOnboardingPageContent() {
     } catch {
       // noop
     }
-  }, []);
+  }, [explicitNewCategoryFlow, presetService]);
 
   useEffect(() => {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...draft, activeStep }));
@@ -1288,7 +1290,44 @@ function CleaningOnboardingPageContent() {
 
   const hydrateFromServer = (nextOnboarding: OnboardingPayload, user?: { fullName?: string | null; email?: string | null; phone?: string | null }) => {
     const { firstName, lastName } = splitFullName(user?.fullName ?? session?.fullName ?? "");
+    const isNewCategoryFlow = Boolean(presetService && (explicitNewCategoryFlow || presetService !== nextOnboarding.categorySlug));
     setOnboarding(nextOnboarding);
+
+    if (isNewCategoryFlow && presetService) {
+      const baseDraft = createFreshDraft(presetService);
+      setDraft({
+        ...baseDraft,
+        phone: normalizeChileanMobileInput(user?.phone ?? baseDraft.phone),
+        phoneVerified: Boolean(nextOnboarding.phoneValidatedAt),
+        firstName: firstName || baseDraft.firstName,
+        lastName: lastName || baseDraft.lastName,
+        email: user?.email ?? baseDraft.email,
+        rut: formatRutInput(nextOnboarding.documentId ?? baseDraft.rut),
+        address: nextOnboarding.referenceAddress ?? baseDraft.address,
+        homeCommune: (nextOnboarding.baseCommune as ActiveMvpCommune) ?? baseDraft.homeCommune,
+        profilePhotoUrl: nextOnboarding.profilePhotoUrl ?? baseDraft.profilePhotoUrl,
+        coverageCommunes:
+          Array.isArray(nextOnboarding.serviceCommunes) && nextOnboarding.serviceCommunes.length > 0
+            ? (nextOnboarding.serviceCommunes as ActiveMvpCommune[])
+            : baseDraft.coverageCommunes,
+        yearsExperience: nextOnboarding.yearsExperience ? String(Math.min(nextOnboarding.yearsExperience, 10)) : baseDraft.yearsExperience,
+        workMode: nextOnboarding.workMode ?? baseDraft.workMode,
+        availabilityMode: nextOnboarding.availabilityMode ?? baseDraft.availabilityMode,
+        availabilityBlocks:
+          toAvailabilityBlocks(nextOnboarding.availabilityBlocks).length > 0
+            ? toAvailabilityBlocks(nextOnboarding.availabilityBlocks)
+            : baseDraft.availabilityBlocks,
+        bankName: nextOnboarding.bankName ?? baseDraft.bankName,
+        bankAccountType: (nextOnboarding.bankAccountType as DraftState["bankAccountType"]) ?? baseDraft.bankAccountType,
+        bankAccountNumber: nextOnboarding.bankAccountNumber ?? baseDraft.bankAccountNumber,
+        bankOwnerRut: formatRutInput(nextOnboarding.bankAccountHolderRut ?? baseDraft.bankOwnerRut),
+        acceptedTerms: false
+      });
+      setFeedback(`Estás configurando una nueva categoría tasker: ${CATEGORY_OPTIONS.find((option) => option.slug === presetService)?.label ?? presetService}.`);
+      setActiveStep(6);
+      return;
+    }
+
     setDraft((current) => ({
       ...current,
       phone: normalizeChileanMobileInput(user?.phone ?? current.phone),
@@ -1617,7 +1656,7 @@ function CleaningOnboardingPageContent() {
     };
 
     void load();
-  }, []);
+  }, [explicitNewCategoryFlow, presetService]);
 
   const updateDraft = <K extends keyof DraftState>(key: K, value: DraftState[K]) => {
     setDraft((current) => ({ ...current, [key]: value }));
