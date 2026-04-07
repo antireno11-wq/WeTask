@@ -1587,6 +1587,7 @@ textarea {
   padding: 10px 14px;
   cursor: pointer;
   width: fit-content;
+  text-decoration: none;
 }
 
 .cta:hover {
