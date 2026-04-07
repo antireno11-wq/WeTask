@@ -1037,70 +1037,93 @@ export default function ProPage() {
       <div className="login-screen-content market-shell-auth-content">
         <MarketNav />
 
-        <section className="auth-flow-shell auth-flow-shell-wide client-dashboard-hero">
-          <div className="auth-flow-copy client-dashboard-copy pro-dashboard-copy">
-            <p className="auth-flow-kicker">Panel tasker</p>
-            <h1>Gestiona tu operación diaria con el look nuevo de WeTask.</h1>
-            <p>Controla tu perfil, cobertura, agenda, reservas y pagos desde un panel más claro y más fácil de usar.</p>
+        <section className="auth-flow-shell auth-flow-shell-wide client-dashboard-hero pro-dashboard-hero-shell">
+          <section className="auth-flow-panel auth-flow-panel-wide pro-dashboard-hero-card">
+            <div className="pro-dashboard-hero-main">
+              <div className="pro-dashboard-hero-identity">
+                <p className="auth-flow-kicker">Panel tasker</p>
 
-            <div className="auth-flow-copy-list client-dashboard-summary">
-              <div className="auth-flow-meta-card">
-                <strong>Próximas reservas</strong>
-                <span>{upcomingBookings.length} servicio(s) activos o por realizar.</span>
-              </div>
-              <div className="auth-flow-meta-card">
-                <strong>Servicios completados</strong>
-                <span>{completedBookings.length} trabajo(s) finalizado(s).</span>
-              </div>
-              <div className="auth-flow-meta-card">
-                <strong>Bloques disponibles</strong>
-                <span>{availableSlotsCount} horario(s) abierto(s) para nuevas reservas.</span>
-              </div>
-            </div>
-
-          </div>
-
-          <section className="auth-flow-panel auth-flow-panel-wide client-dashboard-profile-panel">
-            <div className="panel-head client-dashboard-panel-head">
-              <h2>Tu operación hoy</h2>
-              <p>Resumen rápido de tu perfil y cobertura actual.</p>
-            </div>
-
-            <div className="client-profile-box client-profile-box-auth pro-dashboard-profile-box">
-              <div className="client-photo-frame pro-dashboard-badge" aria-hidden>
-                {profilePhotoUrl ? (
-                  <img src={profilePhotoUrl} alt="" className="client-photo-img" />
-                ) : (
-                  <span>{initialsFromName(proName)}</span>
-                )}
-                <button type="button" className="photo-camera-btn" onClick={openPhotoPicker} aria-label="Subir o cambiar foto de perfil">
-                  <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                    <path
-                      d="M8.5 5.5 9.7 4h4.6l1.2 1.5H18A2.5 2.5 0 0 1 20.5 8v8A2.5 2.5 0 0 1 18 18.5H6A2.5 2.5 0 0 1 3.5 16V8A2.5 2.5 0 0 1 6 5.5zm3.5 3a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9m0 1.8a2.7 2.7 0 1 1 0 5.4 2.7 2.7 0 0 1 0-5.4"
-                      fill="currentColor"
-                    />
-                  </svg>
-                </button>
-                <input ref={photoInputRef} type="file" accept="image/png,image/jpeg" className="sr-only-input" onChange={onPhotoFileChange} />
-              </div>
-              <div className="client-profile-copy">
-                <h3>{coverageComuna || "Tu perfil profesional"}</h3>
-                <p>Dirección base</p>
-                <strong className="client-profile-address">
-                  {[coverageStreet || "Sin dirección", coverageComuna || "Sin comuna", coverageCity].filter(Boolean).join(", ")}
-                </strong>
-                <p>Tarifa desde</p>
-                <strong className="client-profile-address">{clp(hourlyRateFromClp)}/hora</strong>
-                <div className="client-profile-actions">
-                  <span className={`status ${profile?.isVerified ? "status-completed" : "status-pending"}`}>
-                    {profile?.isVerified ? "Verificado" : "Pendiente de verificación"}
-                  </span>
-                  <span className="status status-accepted">{serviceCommunes.length || 0} comuna(s)</span>
+                <div className="client-profile-box client-profile-box-auth pro-dashboard-profile-box">
+                  <div className="client-photo-frame pro-dashboard-badge" aria-hidden>
+                    {profilePhotoUrl ? (
+                      <img src={profilePhotoUrl} alt="" className="client-photo-img" />
+                    ) : (
+                      <span>{initialsFromName(proName)}</span>
+                    )}
+                    <button type="button" className="photo-camera-btn" onClick={openPhotoPicker} aria-label="Subir o cambiar foto de perfil">
+                      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                        <path
+                          d="M8.5 5.5 9.7 4h4.6l1.2 1.5H18A2.5 2.5 0 0 1 20.5 8v8A2.5 2.5 0 0 1 18 18.5H6A2.5 2.5 0 0 1 3.5 16V8A2.5 2.5 0 0 1 6 5.5zm3.5 3a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9m0 1.8a2.7 2.7 0 1 1 0 5.4 2.7 2.7 0 0 1 0-5.4"
+                          fill="currentColor"
+                        />
+                      </svg>
+                    </button>
+                    <input ref={photoInputRef} type="file" accept="image/png,image/jpeg" className="sr-only-input" onChange={onPhotoFileChange} />
+                  </div>
+                  <div className="client-profile-copy">
+                    <h3>{proName}</h3>
+                    <p>Tu perfil y cobertura actual</p>
+                    <strong className="client-profile-address">
+                      {[coverageStreet || "Sin dirección", coverageComuna || "Sin comuna", coverageCity].filter(Boolean).join(", ")}
+                    </strong>
+                    <div className="client-profile-actions">
+                      <span className={`status ${profile?.isVerified ? "status-completed" : "status-pending"}`}>
+                        {profile?.isVerified ? "Verificado" : "Pendiente de verificación"}
+                      </span>
+                      <span className="status status-accepted">{serviceCommunes.length || 0} comuna(s)</span>
+                    </div>
+                    <div className="pro-dashboard-inline-details">
+                      <div className="pro-dashboard-inline-card">
+                        <span>Tarifa desde</span>
+                        <strong>{clp(hourlyRateFromClp)}/hora</strong>
+                      </div>
+                      <div className="pro-dashboard-inline-card">
+                        <span>Categoría actual</span>
+                        <strong>{CORE_SERVICES.find((service) => service.slug === currentCoreCategorySlug)?.label ?? "Tasker activo"}</strong>
+                      </div>
+                    </div>
+                    <div className="cta-row pro-dashboard-primary-action">
+                      <button type="button" className="cta" onClick={openNewTaskerCategory}>
+                        Hacerte tasker de otra categoría
+                      </button>
+                    </div>
+                  </div>
                 </div>
-                <div className="cta-row pro-dashboard-primary-action">
-                  <button type="button" className="cta" onClick={openNewTaskerCategory}>
-                    Hacerte tasker de otra categoría
-                  </button>
+              </div>
+
+              <div className="pro-dashboard-hero-summary">
+                <div className="panel-head client-dashboard-panel-head pro-dashboard-hero-head">
+                  <h2>Resumen rápido</h2>
+                  <p>Todo lo importante de tu operación en un solo lugar.</p>
+                </div>
+
+                <div className="auth-flow-copy-list client-dashboard-summary pro-dashboard-summary-cards">
+                  <div className="auth-flow-meta-card">
+                    <strong>Próximas reservas</strong>
+                    <span>{upcomingBookings.length} servicio(s) activos o por realizar.</span>
+                  </div>
+                  <div className="auth-flow-meta-card">
+                    <strong>Servicios completados</strong>
+                    <span>{completedBookings.length} trabajo(s) finalizado(s).</span>
+                  </div>
+                  <div className="auth-flow-meta-card">
+                    <strong>Bloques disponibles</strong>
+                    <span>{availableSlotsCount} horario(s) abierto(s) para nuevas reservas.</span>
+                  </div>
+                </div>
+
+                <div className="pro-dashboard-hero-shortcuts">
+                  {quickAccessCards.slice(3).map((card) => (
+                    <button
+                      key={card.title}
+                      type="button"
+                      className="pro-dashboard-shortcut"
+                      onClick={() => setActiveView(card.view)}
+                    >
+                      <strong>{card.title}</strong>
+                      <span>{card.detail}</span>
+                    </button>
+                  ))}
                 </div>
               </div>
             </div>
