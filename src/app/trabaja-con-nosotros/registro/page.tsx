@@ -82,7 +82,7 @@ import {
   getTeacherModeLabel,
   getTeacherServiceLabel,
   normalizeTeacherScope,
-  type TeacherAnyLevelSlug,
+  type TeacherLevelSlug,
   type TeacherModeSlug,
   type TeacherScopeData,
   type TeacherScopeServiceSlug
@@ -112,7 +112,6 @@ import {
   normalizeMakeupScope,
   type MakeupScopeData
 } from "@/lib/makeup-scope";
-import { isMakeupScopeServiceSlug, type MakeupScopeServiceSlug } from "@/lib/makeup-service-types";
 import {
   IRONING_SCOPE_SERVICE_OPTIONS,
   IRONING_TASK_EXCLUDED_OPTIONS,
@@ -258,14 +257,14 @@ type DraftState = {
   babysitterMultiChild: boolean | null;
   babysitterScope: BabysitterScopeData;
   teacherSubject: TeacherScopeServiceSlug;
-  teacherLevel: TeacherAnyLevelSlug;
+  teacherLevel: TeacherLevelSlug;
   teacherMode: "presencial" | "online" | "ambas";
   teacherScope: TeacherScopeData;
   trainerServiceType: "funcional" | "fuerza" | "perdida_peso" | "movilidad";
   trainerMode: "presencial" | "online" | "ambas";
   trainerBringsEquipment: boolean | null;
   trainerScope: TrainerScopeData;
-  makeupType: MakeupScopeServiceSlug[];
+  makeupType: MakeupScopeData["services_offered"];
   makeupKit: boolean | null;
   ironingType: "casa_cliente" | "retiro_entrega";
   ironingDelicate: boolean | null;
@@ -527,14 +526,29 @@ function selectedChefServiceDefinitions(draft: DraftState): ChefServiceDefinitio
   return CHEF_SERVICE_DEFINITIONS.filter((service) => draft.chefServiceType.includes(service.slug));
 }
 
-function normalizeMakeupTypes(value: unknown): MakeupScopeServiceSlug[] {
-  if (Array.isArray(value)) {
-    return value.filter((item): item is MakeupScopeServiceSlug => typeof item === "string" && isMakeupScopeServiceSlug(item));
-  }
-  if (typeof value === "string" && isMakeupScopeServiceSlug(value)) {
-    return [value];
-  }
-  return [];
+function normalizeMakeupTypes(value: unknown): MakeupScopeData["services_offered"] {
+  const legacyMap: Record<string, MakeupScopeData["services_offered"][number]> = {
+    social: "social_evento",
+    eventos: "fiesta",
+    novias: "novia",
+    natural: "natural",
+    social_evento: "social_evento",
+    noche: "noche",
+    fiesta: "fiesta",
+    novia: "novia",
+    produccion_fotos: "produccion_fotos",
+    otro: "otro"
+  };
+
+  const values = Array.isArray(value) ? value : typeof value === "string" ? [value] : [];
+  return Array.from(
+    new Set(
+      values
+        .filter((item): item is string => typeof item === "string")
+        .map((item) => legacyMap[item])
+        .filter((item): item is MakeupScopeData["services_offered"][number] => Boolean(item))
+    )
+  );
 }
 
 function normalizeChefServiceTypes(value: unknown): ChefServiceSlug[] {
@@ -904,9 +918,10 @@ function CleaningOnboardingPageContent() {
     return CATEGORY_OPTIONS.some((option) => option.slug === service) ? (service as CategorySlug) : null;
   }, [searchParams]);
   const explicitNewCategoryFlow = useMemo(() => searchParams.get("mode") === "new-category", [searchParams]);
+  const isAdditionalCategoryFlow = Boolean(presetService && explicitNewCategoryFlow);
 
   useEffect(() => {
-    if (presetService || explicitNewCategoryFlow) return;
+    if (presetService) return;
     const stored = window.localStorage.getItem(STORAGE_KEY);
     if (!stored) return;
     try {
@@ -944,7 +959,7 @@ function CleaningOnboardingPageContent() {
     } catch {
       // noop
     }
-  }, [explicitNewCategoryFlow, presetService]);
+  }, []);
 
   useEffect(() => {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...draft, activeStep }));
@@ -1018,6 +1033,15 @@ function CleaningOnboardingPageContent() {
     if (!presetService) return;
     setDraft((current) => ({ ...current, category: presetService }));
   }, [presetService]);
+
+  useEffect(() => {
+    if (activeStep !== 2) return;
+    if (session?.role !== "PRO") return;
+    setDraft((current) => (current.phoneVerified ? current : { ...current, phoneVerified: true }));
+    setError("");
+    setFeedback("");
+    setActiveStep(3);
+  }, [activeStep, session?.role]);
 
   useEffect(() => {
     if (presetService && activeStep === 5) {
@@ -1469,7 +1493,7 @@ function CleaningOnboardingPageContent() {
                   : [],
                 levels: Array.isArray(nextOnboarding.experienceTypes)
                   ? nextOnboarding.experienceTypes.filter(
-                      (item): item is TeacherAnyLevelSlug =>
+                      (item): item is TeacherLevelSlug =>
                         typeof item === "string" &&
                         TEACHER_LEVEL_OPTIONS.some((option) => option.value === item)
                     )
@@ -1625,7 +1649,10 @@ function CleaningOnboardingPageContent() {
             throw new Error(onboardingData.detail || onboardingData.error || "No se pudo cargar el registro");
           }
           hydrateFromServer(onboardingData.onboarding, onboardingData.user);
-          if (Array.isArray(onboardingData.serviceRates) && onboardingData.serviceRates.length > 0) {
+          const isNewCategoryFlow = Boolean(
+            presetService && (explicitNewCategoryFlow || presetService !== onboardingData.onboarding.categorySlug)
+          );
+          if (!isNewCategoryFlow && Array.isArray(onboardingData.serviceRates) && onboardingData.serviceRates.length > 0) {
             const serviceRates = onboardingData.serviceRates;
             setDraft((current) => ({
               ...current,
@@ -1656,7 +1683,7 @@ function CleaningOnboardingPageContent() {
     };
 
     void load();
-  }, [explicitNewCategoryFlow, presetService]);
+  }, [explicitNewCategoryFlow, presetService, session?.fullName]);
 
   const updateDraft = <K extends keyof DraftState>(key: K, value: DraftState[K]) => {
     setDraft((current) => ({ ...current, [key]: value }));
@@ -1803,6 +1830,10 @@ function CleaningOnboardingPageContent() {
   const continueStep1 = () => {
     setError("");
     setFeedback("");
+    if (session?.role === "PRO" || draft.phoneVerified || Boolean(onboarding?.phoneValidatedAt)) {
+      setActiveStep(3);
+      return;
+    }
     setActiveStep(2);
   };
 
@@ -2543,12 +2574,16 @@ function CleaningOnboardingPageContent() {
   const activeAvailabilityDays = useMemo(() => groupedBlocks.filter((day) => day.blocks.length > 0).length, [groupedBlocks]);
   const totalAvailabilityBlocks = draft.availabilityBlocks.length;
   const maxAccessibleStep = useMemo(() => {
+    if (isAdditionalCategoryFlow) {
+      if (activeStep === 12) return 11 as WizardStep;
+      return Math.min(activeStep, 11) as WizardStep;
+    }
     const persistedStep = Math.max(1, Math.min(11, onboarding?.currentStep ?? 1));
     if (activeStep === 12) {
       return 11 as WizardStep;
     }
     return Math.max(persistedStep, Math.min(activeStep, 11)) as WizardStep;
-  }, [activeStep, onboarding?.currentStep]);
+  }, [activeStep, isAdditionalCategoryFlow, onboarding?.currentStep]);
 
   const jumpToStep = (step: WizardStep) => {
     if (step > maxAccessibleStep || saving || resetting) return;
@@ -2623,7 +2658,7 @@ function CleaningOnboardingPageContent() {
             <div className="onboarding-step-nav" aria-label="Navegación por pasos del onboarding">
               {ONBOARDING_STEP_ITEMS.map((item) => {
                 const isActive = activeStep === item.step;
-                const isDone = item.step < activeStep || item.step <= (onboarding?.currentStep ?? 1);
+                const isDone = item.step < activeStep || (!isAdditionalCategoryFlow && item.step <= (onboarding?.currentStep ?? 1));
                 const isLocked = item.step > maxAccessibleStep;
 
                 return (
