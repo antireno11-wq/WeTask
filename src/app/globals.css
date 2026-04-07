@@ -5339,7 +5339,24 @@ textarea {
 }
 
 .market-shell-auth {
-  background: #244266;
+  background:
+    linear-gradient(180deg, #163a70 0%, #2f6fa8 48%, #87c8b7 100%);
+}
+
+.market-shell-auth .auth-flow-backdrop {
+  background:
+    radial-gradient(circle at 18% 22%, rgba(255, 255, 255, 0.14) 0%, rgba(255, 255, 255, 0) 22%),
+    radial-gradient(circle at 82% 18%, rgba(129, 198, 255, 0.16) 0%, rgba(129, 198, 255, 0) 24%),
+    radial-gradient(circle at 50% 100%, rgba(129, 209, 177, 0.22) 0%, rgba(129, 209, 177, 0) 34%),
+    linear-gradient(180deg, rgba(17, 53, 101, 0.96) 0%, rgba(48, 112, 168, 0.9) 52%, rgba(135, 200, 183, 0.88) 100%);
+  background-position: center;
+  background-size: cover;
+  filter: none;
+  transform: none;
+}
+
+.market-shell-auth .auth-flow-backdrop::after {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.04) 0%, rgba(9, 28, 54, 0.06) 100%);
 }
 
 .market-shell-auth-content {
