@@ -3,6 +3,7 @@
 import { FormEvent, useEffect, useMemo, useRef, useState, type ChangeEvent, type PointerEvent as ReactPointerEvent } from "react";
 import { MarketNav } from "@/components/market-nav";
 import { ACTIVE_MVP_COMMUNES, inferCommuneFromAddress, normalizeCommune, normalizeCommuneList } from "@/lib/communes";
+import { CORE_SERVICES, type CoreTaskerServiceSlug } from "@/lib/core-services";
 import { geocodeAddress } from "@/lib/geo";
 
 const statusOptions = ["ACCEPTED", "IN_PROGRESS", "COMPLETED", "CANCELLED"];
@@ -114,6 +115,21 @@ const WEEK_DAY_OPTIONS: Array<{ key: DayKey; label: string; shortLabel: string }
   { key: "sabado", label: "Sábado", shortLabel: "Sáb" },
   { key: "domingo", label: "Domingo", shortLabel: "Dom" }
 ];
+
+const TASKER_CATEGORY_ALIASES: Record<string, CoreTaskerServiceSlug> = {
+  limpieza: "limpieza",
+  mascotas: "mascotas",
+  "paseo-cuidado-mascotas": "mascotas",
+  babysitter: "babysitter",
+  "babysitter-por-horas": "babysitter",
+  "profesor-particular": "profesor-particular",
+  "personal-trainer": "personal-trainer",
+  chef: "chef",
+  "chef-a-domicilio": "chef",
+  maquillaje: "maquillaje",
+  "maquillaje-a-domicilio": "maquillaje",
+  planchado: "planchado"
+};
 
 function clp(value: number) {
   return new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP", maximumFractionDigits: 0 }).format(value);
@@ -402,6 +418,14 @@ export default function ProPage() {
   );
   const weeklyBlocksCount = useMemo(() => onboardingAvailabilityBlocks.length, [onboardingAvailabilityBlocks]);
   const weeklyVisibleWindowLabel = "WeTask replica tu semana base y genera disponibilidad real para las próximas 8 semanas. En este panel ves 14 a 21 días a la vez.";
+  const currentCoreCategorySlug = useMemo(() => {
+    const normalized = categorySlug.trim().toLowerCase();
+    return TASKER_CATEGORY_ALIASES[normalized] ?? null;
+  }, [categorySlug]);
+  const additionalCategoryOptions = useMemo(
+    () => CORE_SERVICES.filter((service) => service.slug !== currentCoreCategorySlug),
+    [currentCoreCategorySlug]
+  );
 
   const upcomingBookings = useMemo(
     () => bookings.filter((item) => new Date(item.scheduledAt).getTime() >= Date.now() && item.status !== "COMPLETED"),
@@ -1013,6 +1037,11 @@ export default function ProPage() {
     }
   };
 
+  const openCategoryOnboarding = (serviceSlug: CoreTaskerServiceSlug) => {
+    if (typeof window === "undefined") return;
+    window.location.href = `/trabaja-con-nosotros/registro?service=${encodeURIComponent(serviceSlug)}`;
+  };
+
   return (
     <main className="auth-flow-screen auth-flow-screen-scroll market-shell-auth">
       <div className="auth-flow-backdrop" aria-hidden />
@@ -1192,6 +1221,31 @@ export default function ProPage() {
                     </div>
                   </article>
                 ) : null}
+
+                <article className="module-card client-dashboard-card full tasker-extra-category-card">
+                  <div className="tasker-extra-category-head">
+                    <div>
+                      <h3>Agregar otra categoría</h3>
+                      <p>Si quieres ofrecer otro servicio en WeTask, entra directo a su onboarding y completa esa categoría.</p>
+                    </div>
+                  </div>
+                  <div className="tasker-extra-category-grid">
+                    {additionalCategoryOptions.map((service) => (
+                      <button
+                        key={service.slug}
+                        type="button"
+                        className="tasker-extra-category-option"
+                        onClick={() => openCategoryOnboarding(service.slug)}
+                      >
+                        <span className="tasker-extra-category-icon" aria-hidden>
+                          {service.icon}
+                        </span>
+                        <strong>{service.label}</strong>
+                        <span>{service.taskerDescription}</span>
+                      </button>
+                    ))}
+                  </div>
+                </article>
               </div>
             ) : null}
 
