@@ -5409,6 +5409,9 @@ textarea {
   display: block;
   width: 100%;
   max-width: none;
+  position: relative;
+  z-index: 1;
+  padding: 28px 0;
 }
 
 .client-dashboard-copy {

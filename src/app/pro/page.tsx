@@ -1075,7 +1075,7 @@ export default function ProPage() {
       <div className="login-screen-content market-shell-auth-content">
         <MarketNav />
 
-        <section className="auth-flow-shell auth-flow-shell-wide client-dashboard-hero pro-dashboard-hero-shell">
+        <section className="pro-dashboard-hero-shell">
           <section className="auth-flow-panel auth-flow-panel-wide pro-dashboard-hero-card">
             <div className="pro-dashboard-hero-main">
               <div className="pro-dashboard-hero-identity">
