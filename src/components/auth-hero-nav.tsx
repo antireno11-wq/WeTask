@@ -18,7 +18,7 @@ export function AuthHeroNav() {
   return (
     <header className="auth-hero-nav">
       <Link href="/" className="auth-hero-brand" aria-label="Volver al inicio de WeTask">
-        <BrandLogo width={180} height={60} variant="white-wordmark" />
+        <BrandLogo width={180} height={60} />
       </Link>
 
       <div className="auth-hero-nav-groups">
