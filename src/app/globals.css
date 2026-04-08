@@ -5838,11 +5838,16 @@ textarea {
 
 .admin-dashboard-grid,
 .admin-team-grid,
-.admin-users-grid,
 .admin-detail-grid {
   display: grid;
   gap: 1rem;
   grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.admin-users-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: 1fr;
 }
 
 .admin-section-card {
@@ -5920,9 +5925,9 @@ textarea {
 .admin-email-chip {
   display: inline-flex;
   align-items: center;
-  flex: 1 1 320px;
+  flex: 1 1 auto;
   min-width: 0;
-  max-width: min(100%, 520px);
+  max-width: 100%;
   padding: 0.42rem 0.72rem;
   border-radius: 16px;
   background: rgba(25, 84, 162, 0.08);
@@ -5931,8 +5936,9 @@ textarea {
   font-size: 0.94rem;
   font-weight: 800;
   line-height: 1.2;
-  overflow-wrap: anywhere;
-  word-break: break-word;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .admin-user-meta-row {
