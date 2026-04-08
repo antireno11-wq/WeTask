@@ -1185,42 +1185,6 @@ export default function ProPage() {
             ))}
           </div>
 
-          {activeView === "resumen" ? (
-            <section className="auth-flow-panel client-dashboard-section">
-            <div className="panel-head client-dashboard-panel-head">
-              <h2>Resumen rápido</h2>
-              <p>Vista general de tu actividad actual.</p>
-            </div>
-
-            <div className="module-grid client-dashboard-metrics">
-              {quickAccessCards.slice(0, 3).map((card) => (
-                <button
-                  key={card.title}
-                  type="button"
-                  className="module-card client-dashboard-metric dashboard-nav-card"
-                  onClick={() => setActiveView(card.view)}
-                >
-                  <h3>{card.title}</h3>
-                  <p>{card.detail}</p>
-                </button>
-              ))}
-            </div>
-            <div className="module-grid dashboard-summary-grid">
-              {quickAccessCards.slice(3).map((card) => (
-                <button
-                  key={card.title}
-                  type="button"
-                  className="module-card client-dashboard-card dashboard-summary-card dashboard-nav-card"
-                  onClick={() => setActiveView(card.view)}
-                >
-                  <h3>{card.title}</h3>
-                  <p>{card.detail}</p>
-                </button>
-              ))}
-            </div>
-            </section>
-          ) : null}
-
           {activeView === "perfil" ? (
             <section className="auth-flow-panel client-dashboard-section">
             <div className="panel-head client-dashboard-panel-head">
