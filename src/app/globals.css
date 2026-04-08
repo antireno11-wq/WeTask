@@ -6310,8 +6310,10 @@ textarea {
 
 .booking-flow-page .auth-flow-backdrop {
   background:
-    linear-gradient(118deg, rgba(11, 32, 67, 0.84) 0%, rgba(18, 86, 176, 0.38) 44%, rgba(255, 106, 0, 0.16) 100%),
-    url("/services/limpieza-opt.jpg");
+    radial-gradient(circle at 18% 22%, rgba(255, 255, 255, 0.14) 0%, rgba(255, 255, 255, 0) 22%),
+    radial-gradient(circle at 82% 18%, rgba(129, 198, 255, 0.16) 0%, rgba(129, 198, 255, 0) 24%),
+    radial-gradient(circle at 50% 100%, rgba(129, 209, 177, 0.22) 0%, rgba(129, 209, 177, 0) 34%),
+    linear-gradient(180deg, rgba(17, 53, 101, 0.96) 0%, rgba(48, 112, 168, 0.9) 52%, rgba(135, 200, 183, 0.88) 100%);
   background-position: center;
   background-size: cover;
 }
@@ -6970,19 +6972,21 @@ textarea {
   position: absolute;
   inset: 0;
   background:
-    linear-gradient(118deg, rgba(11, 32, 67, 0.71) 0%, rgba(18, 86, 176, 0.36) 46%, rgba(255, 106, 0, 0.15) 100%),
-    url("/hero-webel-reference.webp");
+    radial-gradient(circle at 18% 22%, rgba(255, 255, 255, 0.14) 0%, rgba(255, 255, 255, 0) 22%),
+    radial-gradient(circle at 82% 18%, rgba(129, 198, 255, 0.16) 0%, rgba(129, 198, 255, 0) 24%),
+    radial-gradient(circle at 50% 100%, rgba(129, 209, 177, 0.22) 0%, rgba(129, 209, 177, 0) 34%),
+    linear-gradient(180deg, rgba(17, 53, 101, 0.96) 0%, rgba(48, 112, 168, 0.9) 52%, rgba(135, 200, 183, 0.88) 100%);
   background-position: center;
   background-size: cover;
-  filter: blur(22px) saturate(1.05);
-  transform: scale(1.1);
+  filter: none;
+  transform: none;
 }
 
 .auth-flow-backdrop::after {
   content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.05) 0%, rgba(13, 36, 70, 0.09) 100%);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.04) 0%, rgba(9, 28, 54, 0.06) 100%);
 }
 
 .auth-flow-shell {
