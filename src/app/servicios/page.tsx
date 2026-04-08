@@ -92,9 +92,9 @@ export default function ServiciosPage() {
   };
 
   return (
-    <main className="auth-flow-screen auth-flow-screen-scroll">
+    <main className="auth-flow-screen auth-flow-screen-scroll market-shell-auth">
       <div className="auth-flow-backdrop" aria-hidden />
-      <div className="login-screen-content">
+      <div className="login-screen-content market-shell-auth-content">
         <MarketNav />
 
         <section className="auth-flow-shell auth-flow-shell-wide">

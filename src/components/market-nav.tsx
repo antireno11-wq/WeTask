@@ -76,7 +76,7 @@ export function MarketNav() {
   return (
     <header className="market-nav">
       <Link href="/" className="brand-link">
-        <BrandLogo className="brand-logo" width={170} height={68} variant="white-wordmark" />
+        <BrandLogo className="brand-logo" width={170} height={68} />
       </Link>
       <div className="nav-right">
         <nav>
