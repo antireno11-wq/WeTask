@@ -1076,7 +1076,7 @@ export default function ProPage() {
         <MarketNav />
 
         <section className="pro-dashboard-hero-shell">
-          <section className="auth-flow-panel auth-flow-panel-wide pro-dashboard-hero-card">
+          <section className="pro-dashboard-hero-card">
             <div className="pro-dashboard-hero-main">
               <div className="pro-dashboard-hero-identity">
                 <p className="auth-flow-kicker">Panel tasker</p>
@@ -1128,12 +1128,12 @@ export default function ProPage() {
               </div>
 
               <div className="pro-dashboard-hero-summary">
-                <div className="panel-head client-dashboard-panel-head pro-dashboard-hero-head">
+                <div className="panel-head pro-dashboard-hero-head">
                   <h2>Resumen rápido</h2>
                   <p>Todo lo importante de tu operación en un solo lugar.</p>
                 </div>
 
-                <div className="auth-flow-copy-list client-dashboard-summary pro-dashboard-summary-cards">
+                <div className="auth-flow-copy-list pro-dashboard-summary-cards">
                   <div className="auth-flow-meta-card">
                     <strong>Próximas reservas</strong>
                     <span>{upcomingBookings.length} servicio(s) activos o por realizar.</span>
