@@ -5548,10 +5548,10 @@ textarea {
 .pro-dashboard-hero-card {
   max-width: none;
   margin-inline: auto;
-  padding: 28px;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(246, 251, 255, 0.94) 100%);
-  box-shadow: 0 28px 60px rgba(8, 32, 74, 0.18);
+  padding: 0;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
   overflow: hidden;
 }
 
@@ -5577,11 +5577,11 @@ textarea {
 .pro-dashboard-hero-summary {
   min-width: 0;
   width: 100%;
-  padding: 20px 22px 22px;
-  border-radius: 24px;
-  border: 1px solid #d8e6f2;
-  background: linear-gradient(180deg, #fbfdff 0%, #f2f8ff 100%);
-  box-shadow: 0 14px 34px rgba(15, 47, 88, 0.08);
+  padding: 0;
+  border-radius: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
 .pro-dashboard-hero-head {
@@ -6808,10 +6808,10 @@ textarea {
   grid-template-columns: 118px minmax(0, 1fr);
   align-items: start;
   min-height: 100%;
-  padding: 18px;
-  background: linear-gradient(180deg, #fbfdff 0%, #f2f8ff 100%);
-  border: 1px solid #d8e6f2;
-  box-shadow: 0 14px 34px rgba(15, 47, 88, 0.08);
+  padding: 0;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
 }
 
 .pro-dashboard-hero-card .client-photo-frame {
