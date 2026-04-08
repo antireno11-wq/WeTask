@@ -1568,10 +1568,10 @@ export default function ProPage() {
                                 <span className="availability-weekly-block">
                                   {block.start} - {block.end}
                                 </span>
-                                <button className="cta ghost small" type="button" onClick={() => editWeeklyBlock(day.key, index, block)}>
+                                <button className="availability-weekly-action" type="button" onClick={() => editWeeklyBlock(day.key, index, block)}>
                                   Editar
                                 </button>
-                                <button className="cta ghost small" type="button" onClick={() => removeWeeklyBlock(day.key, index)}>
+                                <button className="availability-weekly-action" type="button" onClick={() => removeWeeklyBlock(day.key, index)}>
                                   Quitar
                                 </button>
                               </div>

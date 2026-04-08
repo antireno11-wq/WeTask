@@ -2861,27 +2861,48 @@ textarea {
 
 .availability-weekly-blocks {
   display: grid;
-  gap: 8px;
+  gap: 6px;
 }
 
 .availability-weekly-pill-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 6px;
   align-items: center;
 }
 
 .availability-weekly-block {
   display: inline-flex;
   align-items: center;
-  min-height: 36px;
+  min-height: 32px;
   border-radius: 999px;
-  padding: 0 12px;
+  padding: 0 10px;
   background: #ffffff;
   border: 1px solid #cfe0ef;
   color: #173b5f;
-  font-size: 0.85rem;
+  font-size: 0.82rem;
   font-weight: 800;
+}
+
+.availability-weekly-action {
+  appearance: none;
+  min-height: 30px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid #cfe0ef;
+  background: #f8fbff;
+  color: #2d5179;
+  font-size: 0.78rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: background 0.16s ease, border-color 0.16s ease, color 0.16s ease, transform 0.16s ease;
+}
+
+.availability-weekly-action:hover {
+  background: #ffffff;
+  border-color: #a9c7df;
+  color: #173b5f;
+  transform: translateY(-1px);
 }
 
 .availability-weekdays {
@@ -3320,6 +3341,10 @@ textarea {
   }
 
   .availability-weekly-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .availability-weekly-pill-row {
     grid-template-columns: 1fr;
   }
 
