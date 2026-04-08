@@ -995,121 +995,90 @@ export default function ProDetailPage() {
 
         {data ? (
           <>
-            <section className="auth-flow-shell auth-flow-shell-wide client-dashboard-hero">
-              <div className="auth-flow-copy client-dashboard-copy">
-                <p className="auth-flow-kicker">Tasker verificado</p>
-                <h1>{data.user.fullName}</h1>
-                <p
-                  style={{
-                    margin: "14px 0 0",
-                    fontSize: "1.04rem",
-                    fontWeight: 800,
-                    color: "#ffddb9",
-                    letterSpacing: "0.01em"
-                  }}
-                >
-                  {taskerRole}
-                </p>
-                <p>{summaryDescription}</p>
+            <section className="page public-tasker-hero-shell">
+              <article className="auth-flow-panel client-dashboard-section public-tasker-hero-card">
+                <div className="public-tasker-hero-top">
+                  <span className="we-verified-badge public-tasker-verified-badge">Tasker verificado</span>
 
-                <div className="auth-flow-copy-list client-dashboard-summary">
-                  <div className="auth-flow-meta-card">
-                    <strong>{categoryName}</strong>
-                    <span>{offeredServices.join(", ")}</span>
-                  </div>
-                  <div className="auth-flow-meta-card">
-                    <strong>Experiencia</strong>
-                    <span>{experienceYears} años de experiencia en servicios a domicilio.</span>
-                  </div>
-                  <div className="auth-flow-meta-card">
-                    <strong>Disponibilidad</strong>
-                    <span>{daysWithSlotsCount} día(s) con agenda visible para reserva.</span>
-                  </div>
-                  {requestedRecommendedHours ? (
-                    <div className="auth-flow-meta-card">
-                      <strong>Tiempo sugerido</strong>
-                      <span>
-                        {requestedEstimatedMinHours && requestedEstimatedMaxHours
-                          ? `${requestedEstimatedMinHours} a ${requestedEstimatedMaxHours} horas · `
-                          : ""}
-                        Recomendado: {requestedRecommendedHours} h
-                      </span>
+                  <div className="public-tasker-identity">
+                    <div className="we-pro-avatar large public-tasker-avatar" aria-hidden>
+                      {profilePhotoUrl ? <img src={profilePhotoUrl} alt="" className="we-pro-avatar-image" /> : initials(data.user.fullName)}
                     </div>
-                  ) : null}
-                </div>
-              </div>
 
-              <section className="auth-flow-panel auth-flow-panel-wide client-dashboard-profile-panel we-pro-sticky-card">
-                <div className="we-sticky-head">
-                  <div className="we-pro-avatar large" aria-hidden>
-                    {profilePhotoUrl ? <img src={profilePhotoUrl} alt="" className="we-pro-avatar-image" /> : initials(data.user.fullName)}
+                    <div className="public-tasker-identity-copy">
+                      <h1>{data.user.fullName}</h1>
+                      <p className="public-tasker-role">{categoryName}</p>
+                      <p className="we-pro-rating-line">
+                        <span className="we-star">★</span> {rating.toFixed(1)} ({data.ratingsCount} valoraciones)
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <h3>{data.user.fullName}</h3>
-                    <p
-                      style={{
-                        margin: "4px 0 0",
-                        color: "#264d7a",
-                        fontWeight: 800
-                      }}
-                    >
-                      {taskerRole}
-                    </p>
-                    <p>
-                      <span className="we-star">★</span> {rating.toFixed(1)} ({data.ratingsCount} valoraciones)
-                    </p>
+
+                  <div className="public-profile-switcher public-tasker-hero-switcher">
+                    <button type="button" className={`public-profile-switch ${activeView === "perfil" ? "active" : ""}`} onClick={() => switchPublicView("perfil")}>
+                      Perfil
+                    </button>
+                    <button type="button" className={`public-profile-switch ${activeView === "valoraciones" ? "active" : ""}`} onClick={() => switchPublicView("valoraciones")}>
+                      Valoraciones
+                    </button>
+                    <button type="button" className={`public-profile-switch ${activeView === "agenda" ? "active" : ""}`} onClick={() => switchPublicView("agenda")}>
+                      Agenda
+                    </button>
+                  </div>
+
+                  <div className="public-tasker-price-box">
+                    <span className="public-tasker-price-label">Tarifa desde</span>
+                    <strong className="public-tasker-price-value">{data.hourlyRateFromClp ? clp(data.hourlyRateFromClp) : "Por definir"}/h</strong>
+                    <p className="public-tasker-price-meta">{data.coverageCity ?? "Santiago"} · {workModeLabel}</p>
+                  </div>
+
+                  <p className="public-tasker-summary">{summaryDescription}</p>
+
+                  <div className="cta-row public-tasker-hero-actions">
+                    <Link className="cta small" href={buildReserveHref()}>
+                      Reservar ahora
+                    </Link>
+                  </div>
+
+                  <div className="auth-flow-copy-list client-dashboard-summary public-tasker-summary-cards">
+                    <div className="auth-flow-meta-card">
+                      <strong>Servicios que realiza</strong>
+                      <span>{offeredServices.join(", ")}</span>
+                    </div>
+                    <div className="auth-flow-meta-card">
+                      <strong>Experiencia</strong>
+                      <span>{experienceYears} años de experiencia en servicios a domicilio.</span>
+                    </div>
+                    <div className="auth-flow-meta-card">
+                      <strong>Disponibilidad</strong>
+                      <span>{daysWithSlotsCount} día(s) con agenda visible para reserva.</span>
+                    </div>
+                    {requestedRecommendedHours ? (
+                      <div className="auth-flow-meta-card">
+                        <strong>Tiempo sugerido</strong>
+                        <span>
+                          {requestedEstimatedMinHours && requestedEstimatedMaxHours
+                            ? `${requestedEstimatedMinHours} a ${requestedEstimatedMaxHours} horas · `
+                            : ""}
+                          Recomendado: {requestedRecommendedHours} h
+                        </span>
+                      </div>
+                    ) : null}
                   </div>
                 </div>
-
-                <p className="we-sticky-price">{data.hourlyRateFromClp ? clp(data.hourlyRateFromClp) : "Por definir"}/h</p>
-                <p className="we-sticky-meta">{data.coverageCity ?? "Santiago"} · {workModeLabel}</p>
-
-                <div className="public-profile-switcher">
-                  <button type="button" className={`public-profile-switch ${activeView === "perfil" ? "active" : ""}`} onClick={() => switchPublicView("perfil")}>
-                    Perfil
-                  </button>
-                  <button type="button" className={`public-profile-switch ${activeView === "valoraciones" ? "active" : ""}`} onClick={() => switchPublicView("valoraciones")}>
-                    Valoraciones
-                  </button>
-                  <button type="button" className={`public-profile-switch ${activeView === "agenda" ? "active" : ""}`} onClick={() => switchPublicView("agenda")}>
-                    Agenda
-                  </button>
-                </div>
-
-                <div className="cta-row">
-                  <Link className="cta small" href={buildReserveHref()}>
-                    Reservar ahora
-                  </Link>
-                </div>
-
-                <p className="minimal-note">Para protegerte, usa siempre WeTask para contratar y comunicarte.</p>
-              </section>
+              </article>
             </section>
 
             <div className="page client-dashboard-sections">
               {loading ? <p className="empty">Cargando perfil...</p> : null}
-              {notice ? <p className="feedback ok">{notice}</p> : null}
               {error ? <p className="feedback error">{error}</p> : null}
 
               <section className="we-pro-detail-layout" id="public-tasker-view">
                 <div className="we-pro-detail-main">
-                  <div className="public-profile-switcher public-profile-switcher-wide">
-                    <button type="button" className={`public-profile-switch ${activeView === "perfil" ? "active" : ""}`} onClick={() => switchPublicView("perfil")}>
-                      Ver perfil
-                    </button>
-                    <button type="button" className={`public-profile-switch ${activeView === "valoraciones" ? "active" : ""}`} onClick={() => switchPublicView("valoraciones")}>
-                      Ver valoraciones
-                    </button>
-                    <button type="button" className={`public-profile-switch ${activeView === "agenda" ? "active" : ""}`} onClick={() => switchPublicView("agenda")}>
-                      Ver agenda
-                    </button>
-                  </div>
-
                   {activeView === "perfil" ? (
                     <>
                   <article className="auth-flow-panel client-dashboard-section">
                     <h2>Perfil del tasker</h2>
-                    <p>{summaryDescription}</p>
                     <div className="we-trust-grid">
                       <div className={`we-trust-card ${hasIdentityProof ? "ok" : ""}`}>
                         <span className="we-trust-check" aria-hidden>{hasIdentityProof ? "✓" : "•"}</span>
