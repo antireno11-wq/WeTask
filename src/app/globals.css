@@ -3619,13 +3619,25 @@ textarea {
 }
 
 .public-tasker-verified-badge {
-  justify-self: start;
+  justify-self: center;
   min-height: 42px;
   padding: 0 16px;
   background: linear-gradient(180deg, #e6fff0 0%, #c9f4d8 100%);
   color: #0d6a3a;
   border-color: #8ed2ab;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.75);
+}
+
+.public-tasker-hero-primary {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(280px, 0.9fr);
+  gap: 22px;
+  align-items: start;
+}
+
+.public-tasker-hero-copy {
+  display: grid;
+  gap: 16px;
 }
 
 .public-tasker-identity {
@@ -3644,6 +3656,7 @@ textarea {
   display: grid;
   gap: 6px;
   min-width: 0;
+  text-align: left;
 }
 
 .public-tasker-identity-copy h1 {
@@ -3661,7 +3674,8 @@ textarea {
 }
 
 .public-tasker-hero-switcher {
-  margin-top: 2px;
+  margin-top: 0;
+  justify-content: flex-start;
 }
 
 .public-tasker-price-box {
@@ -3671,6 +3685,7 @@ textarea {
   border: 1px solid #d7e5f2;
   border-radius: 22px;
   background: linear-gradient(180deg, #fbfdff 0%, #f2f8ff 100%);
+  align-content: start;
 }
 
 .public-tasker-price-label {
@@ -3695,7 +3710,7 @@ textarea {
 }
 
 .public-tasker-hero-actions {
-  margin-top: 2px;
+  margin-top: 8px;
 }
 
 .public-tasker-summary-cards {
@@ -3825,7 +3840,7 @@ textarea {
 .we-info-grid {
   margin-top: 8px;
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr);
   gap: 12px;
 }
 
@@ -3846,7 +3861,7 @@ textarea {
 .we-trust-grid {
   margin-top: 14px;
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr);
   gap: 12px;
 }
 
@@ -4600,13 +4615,32 @@ textarea {
     padding: 20px;
   }
 
+  .public-tasker-hero-primary {
+    grid-template-columns: 1fr;
+  }
+
   .public-tasker-identity {
     grid-template-columns: 1fr;
+    justify-items: center;
+    text-align: center;
   }
 
   .public-tasker-avatar {
     width: 84px;
     height: 84px;
+  }
+
+  .public-tasker-identity-copy {
+    text-align: center;
+  }
+
+  .public-tasker-hero-switcher {
+    justify-content: center;
+  }
+
+  .public-tasker-price-box {
+    justify-items: center;
+    text-align: center;
   }
 
   .public-tasker-summary-cards.client-dashboard-summary {

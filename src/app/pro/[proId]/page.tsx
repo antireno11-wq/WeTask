@@ -999,45 +999,47 @@ export default function ProDetailPage() {
               <article className="auth-flow-panel client-dashboard-section public-tasker-hero-card">
                 <div className="public-tasker-hero-top">
                   <span className="we-verified-badge public-tasker-verified-badge">Tasker verificado</span>
+                  <div className="public-tasker-hero-primary">
+                    <div className="public-tasker-hero-copy">
+                      <div className="public-tasker-identity">
+                        <div className="we-pro-avatar large public-tasker-avatar" aria-hidden>
+                          {profilePhotoUrl ? <img src={profilePhotoUrl} alt="" className="we-pro-avatar-image" /> : initials(data.user.fullName)}
+                        </div>
 
-                  <div className="public-tasker-identity">
-                    <div className="we-pro-avatar large public-tasker-avatar" aria-hidden>
-                      {profilePhotoUrl ? <img src={profilePhotoUrl} alt="" className="we-pro-avatar-image" /> : initials(data.user.fullName)}
+                        <div className="public-tasker-identity-copy">
+                          <h1>{data.user.fullName}</h1>
+                          <p className="public-tasker-role">{categoryName}</p>
+                          <p className="we-pro-rating-line">
+                            <span className="we-star">★</span> {rating.toFixed(1)} ({data.ratingsCount} valoraciones)
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="public-profile-switcher public-tasker-hero-switcher">
+                        <button type="button" className={`public-profile-switch ${activeView === "perfil" ? "active" : ""}`} onClick={() => switchPublicView("perfil")}>
+                          Perfil
+                        </button>
+                        <button type="button" className={`public-profile-switch ${activeView === "valoraciones" ? "active" : ""}`} onClick={() => switchPublicView("valoraciones")}>
+                          Valoraciones
+                        </button>
+                        <button type="button" className={`public-profile-switch ${activeView === "agenda" ? "active" : ""}`} onClick={() => switchPublicView("agenda")}>
+                          Agenda
+                        </button>
+                      </div>
+
+                      <p className="public-tasker-summary">{summaryDescription}</p>
                     </div>
 
-                    <div className="public-tasker-identity-copy">
-                      <h1>{data.user.fullName}</h1>
-                      <p className="public-tasker-role">{categoryName}</p>
-                      <p className="we-pro-rating-line">
-                        <span className="we-star">★</span> {rating.toFixed(1)} ({data.ratingsCount} valoraciones)
-                      </p>
+                    <div className="public-tasker-price-box">
+                      <span className="public-tasker-price-label">Tarifa desde</span>
+                      <strong className="public-tasker-price-value">{data.hourlyRateFromClp ? clp(data.hourlyRateFromClp) : "Por definir"}/h</strong>
+                      <p className="public-tasker-price-meta">{data.coverageCity ?? "Santiago"} · {workModeLabel}</p>
+                      <div className="cta-row public-tasker-hero-actions">
+                        <Link className="cta small" href={buildReserveHref()}>
+                          Reservar ahora
+                        </Link>
+                      </div>
                     </div>
-                  </div>
-
-                  <div className="public-profile-switcher public-tasker-hero-switcher">
-                    <button type="button" className={`public-profile-switch ${activeView === "perfil" ? "active" : ""}`} onClick={() => switchPublicView("perfil")}>
-                      Perfil
-                    </button>
-                    <button type="button" className={`public-profile-switch ${activeView === "valoraciones" ? "active" : ""}`} onClick={() => switchPublicView("valoraciones")}>
-                      Valoraciones
-                    </button>
-                    <button type="button" className={`public-profile-switch ${activeView === "agenda" ? "active" : ""}`} onClick={() => switchPublicView("agenda")}>
-                      Agenda
-                    </button>
-                  </div>
-
-                  <div className="public-tasker-price-box">
-                    <span className="public-tasker-price-label">Tarifa desde</span>
-                    <strong className="public-tasker-price-value">{data.hourlyRateFromClp ? clp(data.hourlyRateFromClp) : "Por definir"}/h</strong>
-                    <p className="public-tasker-price-meta">{data.coverageCity ?? "Santiago"} · {workModeLabel}</p>
-                  </div>
-
-                  <p className="public-tasker-summary">{summaryDescription}</p>
-
-                  <div className="cta-row public-tasker-hero-actions">
-                    <Link className="cta small" href={buildReserveHref()}>
-                      Reservar ahora
-                    </Link>
                   </div>
 
                   <div className="auth-flow-copy-list client-dashboard-summary public-tasker-summary-cards">
