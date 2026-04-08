@@ -26,20 +26,14 @@ type DemoPro = {
 function buildDemoCleaningScope(serviceSlugs: string[]): CleaningScopeData {
   const servicesOffered: CleaningScopeData["services_offered"] = [];
 
-  if (serviceSlugs.includes("limpieza-hogar")) {
+  if (
+    serviceSlugs.includes("limpieza-hogar") ||
+    serviceSlugs.includes("limpieza-profunda") ||
+    serviceSlugs.includes("limpieza-por-horas") ||
+    serviceSlugs.includes("limpieza-post-mudanza") ||
+    serviceSlugs.includes("limpieza-oficina")
+  ) {
     servicesOffered.push("limpieza-hogar");
-  }
-  if (serviceSlugs.includes("limpieza-profunda")) {
-    servicesOffered.push("limpieza-profunda");
-  }
-  if (serviceSlugs.includes("limpieza-por-horas")) {
-    servicesOffered.push("limpieza-por-horas");
-  }
-  if (serviceSlugs.includes("limpieza-post-mudanza")) {
-    servicesOffered.push("limpieza-post-mudanza");
-  }
-  if (serviceSlugs.includes("limpieza-oficina")) {
-    servicesOffered.push("limpieza-oficina");
   }
   return {
     services_offered: Array.from(new Set(servicesOffered)),

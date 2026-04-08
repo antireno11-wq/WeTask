@@ -76,12 +76,20 @@ export const CLEANING_SERVICE_DEFINITIONS: CleaningServiceDefinition[] = [
 ];
 
 export const CLEANING_SERVICE_MAP = new Map(CLEANING_SERVICE_DEFINITIONS.map((service) => [service.slug, service]));
+export const ACTIVE_CLEANING_SERVICE_SLUGS = ["limpieza-hogar"] as const;
+const ACTIVE_CLEANING_SERVICE_SLUG_SET = new Set<string>(ACTIVE_CLEANING_SERVICE_SLUGS);
+export const ACTIVE_CLEANING_SERVICE_DEFINITIONS = CLEANING_SERVICE_DEFINITIONS.filter((service) =>
+  ACTIVE_CLEANING_SERVICE_SLUG_SET.has(service.slug)
+);
 
 export function isCleaningServiceSlug(value: string): value is CleaningServiceSlug {
   return CLEANING_SERVICE_MAP.has(value as CleaningServiceSlug);
 }
 
+export function isActiveCleaningServiceSlug(value: string): value is (typeof ACTIVE_CLEANING_SERVICE_SLUGS)[number] {
+  return ACTIVE_CLEANING_SERVICE_SLUG_SET.has(value);
+}
+
 export function getCleaningServiceDefinition(value: string) {
   return CLEANING_SERVICE_MAP.get(value as CleaningServiceSlug) ?? null;
 }
-

@@ -1,32 +1,20 @@
-import { type CleaningServiceSlug, isCleaningServiceSlug } from "@/lib/cleaning-service-types";
+import {
+  ACTIVE_CLEANING_SERVICE_DEFINITIONS,
+  ACTIVE_CLEANING_SERVICE_SLUGS,
+  type CleaningServiceSlug,
+  isActiveCleaningServiceSlug,
+  isCleaningServiceSlug
+} from "@/lib/cleaning-service-types";
 
-export const CLEANING_SCOPE_SERVICE_OPTIONS = [
-  {
-    value: "limpieza-hogar",
-    label: "Limpieza estándar",
-    description: "La opción más común para mantención general y aseo normal del hogar."
-  },
-  {
-    value: "limpieza-profunda",
-    label: "Limpieza profunda",
-    description: "Para cuando el cliente pide más detalle, más tiempo y una limpieza más exigente."
-  },
-  {
-    value: "limpieza-por-horas",
-    label: "Limpieza por horas",
-    description: "Flexible para tareas puntuales, apoyo doméstico y mantención rápida."
-  },
-  {
-    value: "limpieza-post-mudanza",
-    label: "Limpieza post mudanza",
-    description: "Para casas o departamentos vacíos, recién ocupados o entregas de propiedad."
-  },
-  {
-    value: "limpieza-oficina",
-    label: "Limpieza de oficina",
-    description: "Para oficinas pequeñas, consultas y espacios de trabajo."
-  }
-] as const;
+export const CLEANING_SCOPE_SERVICE_OPTIONS = ACTIVE_CLEANING_SERVICE_DEFINITIONS.map((service) => ({
+  value: service.slug,
+  label: service.name,
+  description: service.description
+})) as ReadonlyArray<{
+  value: (typeof ACTIVE_CLEANING_SERVICE_SLUGS)[number];
+  label: string;
+  description: string;
+}>;
 
 export const CLEANING_TASK_INCLUDED_OPTIONS = [
   { value: "barrer", label: "Barrer" },
@@ -58,7 +46,7 @@ export const CLEANING_TASK_EXCLUDED_OPTIONS = [
   { value: "limpieza_vidrios_en_altura", label: "Limpieza de vidrios en altura" }
 ] as const;
 
-export type CleaningScopeServiceSlug = CleaningServiceSlug;
+export type CleaningScopeServiceSlug = (typeof ACTIVE_CLEANING_SERVICE_SLUGS)[number];
 export type CleaningTaskIncludedSlug = (typeof CLEANING_TASK_INCLUDED_OPTIONS)[number]["value"];
 export type CleaningTaskExcludedSlug = (typeof CLEANING_TASK_EXCLUDED_OPTIONS)[number]["value"];
 
@@ -100,7 +88,7 @@ export function normalizeCleaningScope(value: unknown): CleaningScopeData {
   }
 
   const candidate = value as Partial<CleaningScopeData>;
-  const legacyServiceMap: Record<string, CleaningScopeServiceSlug> = {
+  const legacyServiceMap: Record<string, CleaningServiceSlug> = {
     aseo_general: "limpieza-hogar",
     limpieza_bano: "limpieza-hogar",
     limpieza_cocina: "limpieza-hogar",
@@ -120,13 +108,14 @@ export function normalizeCleaningScope(value: unknown): CleaningScopeData {
             candidate.services_offered
               .map((item) => {
                 if (typeof item !== "string") return null;
-                if (isCleaningScopeServiceSlug(item)) return item;
+                if (isCleaningScopeServiceSlug(item) && isActiveCleaningServiceSlug(item)) return item;
                 return legacyServiceMap[item] ?? null;
               })
-              .filter((item): item is CleaningScopeServiceSlug => Boolean(item))
+              .filter((item): item is CleaningServiceSlug => typeof item === "string")
+              .filter(isActiveCleaningServiceSlug)
           )
         )
-      : [],
+      : [...ACTIVE_CLEANING_SERVICE_SLUGS],
     tasks_included: Array.isArray(candidate.tasks_included)
       ? candidate.tasks_included.filter((item): item is CleaningTaskIncludedSlug => typeof item === "string" && isCleaningTaskIncludedSlug(item))
       : [],
@@ -149,7 +138,7 @@ export function getCleaningExcludedTaskLabel(value: string) {
   return excludedTaskMap.get(value as CleaningTaskExcludedSlug)?.label ?? value;
 }
 
-const CLEANING_TASKS_BY_SERVICE: Record<CleaningScopeServiceSlug, CleaningTaskIncludedSlug[]> = {
+const CLEANING_TASKS_BY_SERVICE: Record<CleaningServiceSlug, CleaningTaskIncludedSlug[]> = {
   "limpieza-hogar": [
     "barrer",
     "aspirar",
@@ -204,8 +193,12 @@ const CLEANING_TASKS_BY_SERVICE: Record<CleaningScopeServiceSlug, CleaningTaskIn
   "limpieza-oficina": ["barrer", "aspirar", "trapear", "sacudir_polvo", "limpiar_banos", "sacar_basura", "orden_basico"]
 };
 
-export function getCleaningTaskOptionsForService(serviceSlug: CleaningScopeServiceSlug | null | undefined) {
-  if (!serviceSlug) return [...CLEANING_TASK_INCLUDED_OPTIONS];
+export function getCleaningTaskOptionsForService(serviceSlug: CleaningServiceSlug | null | undefined) {
+  if (!serviceSlug || !isActiveCleaningServiceSlug(serviceSlug)) {
+    const defaultService = ACTIVE_CLEANING_SERVICE_SLUGS[0];
+    const allowed = new Set(CLEANING_TASKS_BY_SERVICE[defaultService] ?? []);
+    return CLEANING_TASK_INCLUDED_OPTIONS.filter((option) => allowed.has(option.value));
+  }
   const allowed = new Set(CLEANING_TASKS_BY_SERVICE[serviceSlug] ?? []);
   return CLEANING_TASK_INCLUDED_OPTIONS.filter((option) => allowed.has(option.value));
 }

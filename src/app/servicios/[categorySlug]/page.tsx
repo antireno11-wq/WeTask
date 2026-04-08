@@ -19,7 +19,7 @@ import {
   isCleaningSizeBand,
   parseCleaningServiceSlug
 } from "@/lib/cleaning-duration-estimator";
-import { getCleaningServiceDefinition } from "@/lib/cleaning-service-types";
+import { ACTIVE_CLEANING_SERVICE_SLUGS, getCleaningServiceDefinition } from "@/lib/cleaning-service-types";
 import { ACTIVE_MVP_COMMUNES, COVERAGE_UNAVAILABLE_MESSAGE, inferCommuneFromAddress, normalizeCommune } from "@/lib/communes";
 import { estimateIroningDuration } from "@/lib/ironing-duration-estimator";
 import { MAKEUP_TASK_INCLUDED_OPTIONS } from "@/lib/makeup-scope";
@@ -36,8 +36,6 @@ type Category = {
 };
 
 type TaskFilterOption = { value: string; label: string };
-
-const CLEANING_CUSTOMER_SERVICE_ORDER = ["limpieza-hogar", "limpieza-profunda", "limpieza-por-horas", "limpieza-oficina"] as const;
 
 const TASK_FILTER_OPTIONS_BY_CATEGORY: Record<string, TaskFilterOption[]> = {
   limpieza: [...CLEANING_TASK_INCLUDED_OPTIONS],
@@ -268,10 +266,10 @@ export default function ServicioCategoriaPage() {
     if (!category) return [];
     if (category.slug !== "limpieza") return category.services;
 
-    const orderMap = new Map(CLEANING_CUSTOMER_SERVICE_ORDER.map((slug, index) => [slug, index]));
+    const orderMap = new Map(ACTIVE_CLEANING_SERVICE_SLUGS.map((slug, index) => [slug, index]));
     return category.services
-      .filter((service) => orderMap.has(service.slug as (typeof CLEANING_CUSTOMER_SERVICE_ORDER)[number]))
-      .sort((a, b) => (orderMap.get(a.slug as (typeof CLEANING_CUSTOMER_SERVICE_ORDER)[number]) ?? 999) - (orderMap.get(b.slug as (typeof CLEANING_CUSTOMER_SERVICE_ORDER)[number]) ?? 999));
+      .filter((service) => orderMap.has(service.slug as (typeof ACTIVE_CLEANING_SERVICE_SLUGS)[number]))
+      .sort((a, b) => (orderMap.get(a.slug as (typeof ACTIVE_CLEANING_SERVICE_SLUGS)[number]) ?? 999) - (orderMap.get(b.slug as (typeof ACTIVE_CLEANING_SERVICE_SLUGS)[number]) ?? 999));
   }, [category]);
 
   const availableTaskOptions = useMemo(() => {

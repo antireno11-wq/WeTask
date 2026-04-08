@@ -20,9 +20,11 @@ import {
   type ChefScopeData
 } from "@/lib/chef-scope";
 import {
+  ACTIVE_CLEANING_SERVICE_SLUGS,
   CLEANING_SERVICE_DEFINITIONS,
   type CleaningServiceDefinition,
   type CleaningServiceSlug,
+  isActiveCleaningServiceSlug,
   isCleaningServiceSlug
 } from "@/lib/cleaning-service-types";
 import {
@@ -504,13 +506,16 @@ function getPricingGuide(draft: DraftState) {
 
 function normalizeCleaningServiceSlugs(value: unknown): CleaningServiceSlug[] {
   if (Array.isArray(value)) {
-    const items = value.filter((item): item is CleaningServiceSlug => typeof item === "string" && isCleaningServiceSlug(item));
-    return items.length > 0 ? Array.from(new Set(items)) : [];
+    const items = value.filter(
+      (item): item is CleaningServiceSlug =>
+        typeof item === "string" && isCleaningServiceSlug(item) && isActiveCleaningServiceSlug(item)
+    );
+    return items.length > 0 ? Array.from(new Set(items)) : [...ACTIVE_CLEANING_SERVICE_SLUGS];
   }
-  if (typeof value === "string" && isCleaningServiceSlug(value)) {
+  if (typeof value === "string" && isCleaningServiceSlug(value) && isActiveCleaningServiceSlug(value)) {
     return [value];
   }
-  return [];
+  return [...ACTIVE_CLEANING_SERVICE_SLUGS];
 }
 
 function selectedCleaningServiceDefinitions(draft: DraftState): CleaningServiceDefinition[] {
@@ -519,7 +524,7 @@ function selectedCleaningServiceDefinitions(draft: DraftState): CleaningServiceD
 
 function deriveCleaningServicesFromScope(scope: CleaningScopeData): CleaningServiceSlug[] {
   const derived = scope.services_offered.filter(isCleaningServiceSlug);
-  return derived.length > 0 ? Array.from(new Set(derived)) : [];
+  return derived.length > 0 ? Array.from(new Set(derived)) : [...ACTIVE_CLEANING_SERVICE_SLUGS];
 }
 
 function selectedChefServiceDefinitions(draft: DraftState): ChefServiceDefinition[] {
@@ -588,9 +593,12 @@ function createInitialDraft(): DraftState {
     category: "limpieza",
     yearsExperience: "1",
     workMode: "SOLO",
-    cleaningServices: [],
+    cleaningServices: [...ACTIVE_CLEANING_SERVICE_SLUGS],
     cleaningServiceRates: {},
-    cleaningScope: emptyCleaningScope(),
+    cleaningScope: {
+      ...emptyCleaningScope(),
+      services_offered: [...ACTIVE_CLEANING_SERVICE_SLUGS]
+    },
     chefServiceType: [],
     chefServiceRates: {},
     chefScope: emptyChefScope(),
