@@ -1118,11 +1118,6 @@ export default function ProPage() {
                         <strong>{CORE_SERVICES.find((service) => service.slug === currentCoreCategorySlug)?.label ?? "Tasker activo"}</strong>
                       </div>
                     </div>
-                    <div className="cta-row pro-dashboard-primary-action">
-                      <button type="button" className="cta" onClick={openNewTaskerCategory}>
-                        Hacerte tasker de otra categoría
-                      </button>
-                    </div>
                   </div>
                 </div>
               </div>
@@ -1278,6 +1273,20 @@ export default function ProPage() {
                     </div>
                   </article>
                 ) : null}
+
+                <article className="module-card client-dashboard-card full tasker-current-categories-card">
+                  <h3>Categorías actuales</h3>
+                  <div className="commune-chip-list" aria-label="Categorías activas">
+                    <span className="commune-chip">
+                      {CORE_SERVICES.find((service) => service.slug === currentCoreCategorySlug)?.label ?? "Tasker activo"}
+                    </span>
+                  </div>
+                  <div className="cta-row tasker-current-categories-action">
+                    <button type="button" className="cta" onClick={openNewTaskerCategory}>
+                      Hacerte tasker de otra categoría
+                    </button>
+                  </div>
+                </article>
 
                 <article ref={extraCategorySectionRef} className="module-card client-dashboard-card full tasker-extra-category-card">
                   <div className="tasker-extra-category-head">

@@ -6870,6 +6870,19 @@ textarea {
   gap: 16px;
 }
 
+.tasker-current-categories-card {
+  display: grid;
+  gap: 14px;
+}
+
+.tasker-current-categories-card h3 {
+  margin: 0;
+}
+
+.tasker-current-categories-action {
+  margin-top: 2px;
+}
+
 .tasker-extra-category-head {
   display: flex;
   justify-content: space-between;
