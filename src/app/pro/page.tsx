@@ -1061,7 +1061,7 @@ export default function ProPage() {
 
   const openNewTaskerCategory = () => {
     setActiveView("perfil");
-    setFeedback("Elige la nueva categoría que quieres activar y te llevaremos a su onboarding.");
+    setFeedback("");
     setError("");
     window.requestAnimationFrame(() => {
       extraCategorySectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
