@@ -856,8 +856,10 @@ export default function ReservarPage() {
               </div>
             </div>
           </div>
+        </section>
 
-          <section className="auth-flow-panel auth-flow-panel-wide booking-summary-panel">
+        <section className="page booking-status-shell">
+          <section className="auth-flow-panel client-dashboard-section booking-summary-panel">
             <div className="booking-summary-card">
               <strong>Estado de tu reserva</strong>
               <div className="booking-summary-list">

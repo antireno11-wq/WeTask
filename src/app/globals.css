@@ -6600,8 +6600,14 @@ textarea {
   align-items: start;
 }
 
+.booking-status-shell {
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
 .booking-summary-panel {
   display: grid;
+  margin-top: 2px;
 }
 
 .booking-summary-card {
