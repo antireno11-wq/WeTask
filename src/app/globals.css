@@ -3768,11 +3768,16 @@ textarea {
 
 .public-tasker-hero-shell {
   margin-top: 18px;
+  padding-bottom: 18px;
 }
 
 .public-tasker-hero-card {
   padding: 28px;
   overflow: hidden;
+}
+
+.public-tasker-hero-shell + .client-dashboard-sections {
+  padding-top: 2px;
 }
 
 .public-tasker-hero-top {
