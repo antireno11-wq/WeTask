@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { MarketNav } from "@/components/market-nav";
 import { CORE_CATEGORY_SLUGS, CORE_SERVICES } from "@/lib/core-services";
+import { ACTIVE_CLEANING_SERVICE_DEFINITIONS } from "@/lib/cleaning-service-types";
 
 type Category = {
   id: string;
@@ -91,6 +92,14 @@ export default function ServiciosPage() {
     return `/registro?next=${encodeURIComponent(`/servicios/${slug}`)}`;
   };
 
+  const getCategoryFromPrice = (category: Category) => {
+    if (category.slug === "limpieza") {
+      return Math.min(...ACTIVE_CLEANING_SERVICE_DEFINITIONS.map((service) => service.recommendedMinClp));
+    }
+
+    return Math.min(...category.services.map((service) => service.basePriceClp));
+  };
+
   return (
     <main className="auth-flow-screen auth-flow-screen-scroll market-shell-auth">
       <div className="auth-flow-backdrop" aria-hidden />
@@ -149,7 +158,7 @@ export default function ServiciosPage() {
                             style: "currency",
                             currency: "CLP",
                             maximumFractionDigits: 0
-                          }).format(Math.min(...category.services.map((service) => service.basePriceClp)))}`
+                          }).format(getCategoryFromPrice(category))}`
                         : "Precio por definir"}
                     </small>
                   </div>

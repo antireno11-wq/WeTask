@@ -32,7 +32,7 @@ export const CLEANING_SERVICE_DEFINITIONS: CleaningServiceDefinition[] = [
       "Sacar basura"
     ],
     excludes: ["Limpieza profunda de horno", "Interior de refrigerador", "Manchas difíciles", "Post mudanza", "Trabajo pesado"],
-    recommendedMinClp: 12000,
+    recommendedMinClp: 5000,
     recommendedMaxClp: 16000
   },
   {

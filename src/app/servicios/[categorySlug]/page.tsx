@@ -262,6 +262,12 @@ export default function ServicioCategoriaPage() {
     return getCleaningServiceDefinition(selectedCleaningServiceSlug);
   }, [selectedCleaningServiceSlug]);
 
+  const getServiceDisplayPrice = (service: Category["services"][number]) => {
+    if (category?.slug !== "limpieza") return service.basePriceClp;
+    const definition = getCleaningServiceDefinition(service.slug);
+    return definition?.recommendedMinClp ?? service.basePriceClp;
+  };
+
   const visibleServices = useMemo(() => {
     if (!category) return [];
     if (category.slug !== "limpieza") return category.services;
@@ -603,7 +609,7 @@ export default function ServicioCategoriaPage() {
                             <div className="auth-service-card-head">
                               <strong>{service.name}</strong>
                               <span className="auth-service-price-inline">
-                                Desde <strong>${new Intl.NumberFormat("es-CL").format(service.basePriceClp)}</strong>
+                                Desde <strong>${new Intl.NumberFormat("es-CL").format(getServiceDisplayPrice(service))}</strong>
                                 {chefDefinition ? "" : "/h"}
                               </span>
                             </div>
@@ -639,12 +645,6 @@ export default function ServicioCategoriaPage() {
                         <h3>Cuéntanos los detalles del servicio</h3>
                         <p>{cleaningDetailsIntro}</p>
                       </div>
-
-                      <div className="service-prep-summary">
-                        <strong>{selectedCleaningDefinition.name}</strong>
-                        <span>{selectedCleaningDefinition.forClients}</span>
-                      </div>
-
                       {availableTaskOptions.length > 0 ? (
                         <div className="service-task-filter-card service-task-filter-card-embedded">
                           <div className="panel-head">
