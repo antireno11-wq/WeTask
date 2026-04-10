@@ -5627,17 +5627,18 @@ textarea {
 .pro-dashboard-hero-card {
   max-width: none;
   margin-inline: auto;
-  padding: 0;
-  background: transparent;
-  border: 0;
-  box-shadow: none;
+  padding: 24px;
+  background: linear-gradient(180deg, rgba(243, 248, 253, 0.96) 0%, rgba(233, 241, 249, 0.94) 100%);
+  border: 1px solid rgba(207, 223, 237, 0.98);
+  border-radius: 32px;
+  box-shadow: 0 24px 48px rgba(14, 38, 73, 0.14);
   overflow: hidden;
 }
 
 .pro-dashboard-hero-main {
   display: flex;
   flex-direction: column;
-  gap: 22px;
+  gap: 18px;
   align-items: stretch;
   width: 100%;
 }
@@ -5657,10 +5658,20 @@ textarea {
   min-width: 0;
   width: 100%;
   padding: 0;
-  border-radius: 0;
+  border-radius: 24px;
   border: 0;
   background: transparent;
   box-shadow: none;
+}
+
+.pro-dashboard-kicker {
+  width: fit-content;
+  margin-bottom: 6px;
+  padding: 8px 16px;
+  border-color: rgba(176, 198, 220, 0.9);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.94) 0%, rgba(235, 242, 249, 0.96) 100%);
+  color: #173b5f;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
 }
 
 .pro-dashboard-hero-head {
@@ -5715,6 +5726,13 @@ textarea {
   gap: 4px;
 }
 
+.pro-dashboard-inline-card {
+  min-height: 88px;
+  padding: 12px 14px;
+  gap: 3px;
+  align-content: start;
+}
+
 .pro-dashboard-inline-card span,
 .pro-dashboard-shortcut span {
   color: #607891;
@@ -5729,6 +5747,10 @@ textarea {
   line-height: 1.3;
 }
 
+.pro-dashboard-inline-card strong {
+  font-size: 0.98rem;
+}
+
 .pro-dashboard-hero-shortcuts {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -5738,6 +5760,11 @@ textarea {
 
 .pro-dashboard-profile-box {
   width: 100%;
+  padding: 18px 20px;
+  border-radius: 28px;
+  border: 1px solid rgba(205, 220, 235, 0.95);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.97) 0%, rgba(247, 251, 255, 0.94) 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
 }
 
 .pro-dashboard-shortcut {

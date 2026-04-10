@@ -1079,7 +1079,7 @@ export default function ProPage() {
           <section className="pro-dashboard-hero-card">
             <div className="pro-dashboard-hero-main">
               <div className="pro-dashboard-hero-identity">
-                <p className="auth-flow-kicker">Panel tasker</p>
+                <p className="auth-flow-kicker pro-dashboard-kicker">Panel tasker</p>
 
                 <div className="client-profile-box client-profile-box-auth pro-dashboard-profile-box">
                   <div className="client-photo-frame pro-dashboard-badge" aria-hidden>
