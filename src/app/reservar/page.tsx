@@ -859,44 +859,44 @@ export default function ReservarPage() {
         <MarketNav />
 
         <section className="auth-flow-shell auth-flow-shell-wide client-dashboard-hero booking-flow-hero">
-          <div className="auth-flow-copy client-dashboard-copy">
-            <p className="auth-flow-kicker">Reserva protegida</p>
-            <h1>Agenda, compara y paga en un solo flujo.</h1>
-            <p>Elige el servicio, encuentra profesionales disponibles en tu zona y confirma tu reserva con pago seguro dentro de WeTask.</p>
+          <div className="booking-flow-hero-grid">
+            <div className="auth-flow-copy client-dashboard-copy">
+              <p className="auth-flow-kicker">Reserva protegida</p>
+              <h1>Agenda, compara y paga en un solo flujo.</h1>
+              <p>Elige el servicio, encuentra profesionales disponibles en tu zona y confirma tu reserva con pago seguro dentro de WeTask.</p>
 
-            <div className="auth-flow-copy-list client-dashboard-summary">
-              <div className="auth-flow-meta-card">
-                <strong>Dirección</strong>
-                <span>{address.street}, {address.commune}</span>
-              </div>
-              <div className="auth-flow-meta-card">
-                <strong>Servicio</strong>
-                <span>{selectedService?.name ?? "Selecciona un servicio"}</span>
-              </div>
-              <div className="auth-flow-meta-card">
-                <strong>Total estimado</strong>
-                <span>{selectedPro ? clp(total) : "Busca profesionales para calcularlo"}</span>
+              <div className="auth-flow-copy-list client-dashboard-summary">
+                <div className="auth-flow-meta-card">
+                  <strong>Dirección</strong>
+                  <span>{address.street}, {address.commune}</span>
+                </div>
+                <div className="auth-flow-meta-card">
+                  <strong>Servicio</strong>
+                  <span>{selectedService?.name ?? "Selecciona un servicio"}</span>
+                </div>
+                <div className="auth-flow-meta-card">
+                  <strong>Total estimado</strong>
+                  <span>{selectedPro ? clp(total) : "Busca profesionales para calcularlo"}</span>
+                </div>
               </div>
             </div>
+
+            <aside className="auth-flow-panel client-dashboard-section booking-summary-panel">
+              <div className="booking-summary-card">
+                <strong>Estado de tu reserva</strong>
+                <div className="booking-summary-list">
+                  <span className={filters.serviceId ? "is-complete" : ""}>1. Servicio seleccionado</span>
+                  <span className={matches.length > 0 ? "is-complete" : ""}>2. Profesionales encontrados</span>
+                  <span className={selectedStartAt ? "is-complete" : ""}>3. Horario elegido</span>
+                  <span className={checkoutState === "approved" ? "is-complete" : ""}>4. Pago confirmado</span>
+                </div>
+                <div className="auth-flow-note-card">
+                  <strong>Resumen rápido</strong>
+                  <span>{selectedPro ? `${selectedPro.fullName} · ${selectedStartAt ? formatBookingDateTime(selectedStartAt) : "falta horario"}` : "Aún no eliges profesional."}</span>
+                </div>
+              </div>
+            </aside>
           </div>
-        </section>
-
-        <section className="page booking-status-shell">
-          <section className="auth-flow-panel client-dashboard-section booking-summary-panel">
-            <div className="booking-summary-card">
-              <strong>Estado de tu reserva</strong>
-              <div className="booking-summary-list">
-                <span className={filters.serviceId ? "is-complete" : ""}>1. Servicio seleccionado</span>
-                <span className={matches.length > 0 ? "is-complete" : ""}>2. Profesionales encontrados</span>
-                <span className={selectedStartAt ? "is-complete" : ""}>3. Horario elegido</span>
-                <span className={checkoutState === "approved" ? "is-complete" : ""}>4. Pago confirmado</span>
-              </div>
-              <div className="auth-flow-note-card">
-                <strong>Resumen rápido</strong>
-                <span>{selectedPro ? `${selectedPro.fullName} · ${selectedStartAt ? formatBookingDateTime(selectedStartAt) : "falta horario"}` : "Aún no eliges profesional."}</span>
-              </div>
-            </div>
-          </section>
         </section>
 
         <div className="page client-dashboard-sections booking-flow-sections">

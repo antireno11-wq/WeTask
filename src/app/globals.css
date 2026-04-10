@@ -6633,22 +6633,27 @@ textarea {
 }
 
 .booking-flow-hero {
-  align-items: start;
+  align-items: stretch;
 }
 
-.booking-status-shell {
-  padding-top: 0;
-  padding-bottom: 0;
+.booking-flow-hero-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.45fr) minmax(320px, 0.95fr);
+  gap: 24px;
+  align-items: start;
+  width: 100%;
 }
 
 .booking-summary-panel {
   display: grid;
-  margin-top: 2px;
+  margin-top: 0;
+  align-self: start;
 }
 
 .booking-summary-card {
   display: grid;
   gap: 16px;
+  min-width: 0;
 }
 
 .booking-summary-list {
@@ -6669,6 +6674,12 @@ textarea {
   border-color: #a8d5be;
   background: linear-gradient(180deg, #f5fff8 0%, #edf9f1 100%);
   color: #1f6a43;
+}
+
+@media (max-width: 980px) {
+  .booking-flow-hero-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 .booking-flow-sections {
