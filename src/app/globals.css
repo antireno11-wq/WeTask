@@ -2842,6 +2842,127 @@ textarea {
   background: linear-gradient(180deg, #fbfdff 0%, #f3f8fd 100%);
 }
 
+.availability-weekly-day-selector {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.availability-weekly-day-chip {
+  appearance: none;
+  display: grid;
+  gap: 4px;
+  padding: 12px 14px;
+  border-radius: 18px;
+  border: 1px solid #d8e7f3;
+  background: rgba(255, 255, 255, 0.95);
+  color: #33506c;
+  text-align: left;
+  cursor: pointer;
+  transition: transform 0.16s ease, border-color 0.16s ease, background 0.16s ease, box-shadow 0.16s ease;
+}
+
+.availability-weekly-day-chip span {
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #6a8197;
+}
+
+.availability-weekly-day-chip strong {
+  font-size: 0.98rem;
+  font-weight: 900;
+  color: #14335c;
+}
+
+.availability-weekly-day-chip:hover {
+  transform: translateY(-1px);
+  border-color: #bed6e9;
+  background: #ffffff;
+  box-shadow: 0 12px 22px rgba(20, 51, 92, 0.08);
+}
+
+.availability-weekly-day-chip.active {
+  border-color: #9fd4b6;
+  background: linear-gradient(180deg, #ffffff 0%, #eefaf3 100%);
+  box-shadow: 0 14px 24px rgba(34, 104, 65, 0.12);
+}
+
+.availability-weekly-day-chip.active span {
+  color: #3c7b53;
+}
+
+.availability-weekly-time-shell {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) minmax(220px, 0.9fr);
+  gap: 12px;
+  align-items: stretch;
+}
+
+.availability-weekly-time-card {
+  display: grid;
+  gap: 8px;
+  padding: 14px 16px;
+  border-radius: 18px;
+  border: 1px solid #d8e7f3;
+  background: rgba(255, 255, 255, 0.94);
+}
+
+.availability-weekly-time-card span {
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #6a8197;
+}
+
+.availability-weekly-time-card input {
+  width: 100%;
+  min-height: 44px;
+  border: 0;
+  background: transparent;
+  color: #14335c;
+  font-size: 1.08rem;
+  font-weight: 900;
+  padding: 0;
+  box-shadow: none;
+}
+
+.availability-weekly-arrow {
+  display: grid;
+  place-items: center;
+  min-width: 36px;
+  color: #6f8aa4;
+  font-size: 1.4rem;
+  font-weight: 900;
+}
+
+.availability-weekly-preview {
+  display: grid;
+  gap: 6px;
+  align-content: center;
+  padding: 14px 16px;
+  border-radius: 18px;
+  border: 1px solid #cce3d5;
+  background: linear-gradient(180deg, #f7fdf9 0%, #edf8f1 100%);
+}
+
+.availability-weekly-preview span {
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #4b7a5f;
+}
+
+.availability-weekly-preview strong {
+  color: #173b5f;
+  font-size: 0.98rem;
+  font-weight: 900;
+  line-height: 1.35;
+}
+
 .availability-weekly-day {
   border: 1px solid #d8e7f3;
   border-radius: 20px;
@@ -2881,38 +3002,38 @@ textarea {
 
 .availability-weekly-blocks {
   display: grid;
-  gap: 6px;
+  gap: 8px;
 }
 
 .availability-weekly-pill-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto auto;
-  gap: 6px;
+  gap: 8px;
   align-items: center;
 }
 
 .availability-weekly-block {
   display: inline-flex;
   align-items: center;
-  min-height: 32px;
+  min-height: 36px;
   border-radius: 999px;
-  padding: 0 10px;
-  background: #ffffff;
-  border: 1px solid #cfe0ef;
+  padding: 0 12px;
+  background: linear-gradient(180deg, #ffffff 0%, #f6fbff 100%);
+  border: 1px solid #d3e2ef;
   color: #173b5f;
-  font-size: 0.82rem;
+  font-size: 0.84rem;
   font-weight: 800;
 }
 
 .availability-weekly-action {
   appearance: none;
-  min-height: 30px;
+  min-height: 32px;
   padding: 0 10px;
   border-radius: 999px;
-  border: 1px solid #cfe0ef;
-  background: #f8fbff;
+  border: 1px solid #d1dfec;
+  background: #ffffff;
   color: #2d5179;
-  font-size: 0.78rem;
+  font-size: 0.76rem;
   font-weight: 800;
   cursor: pointer;
   transition: background 0.16s ease, border-color 0.16s ease, color 0.16s ease, transform 0.16s ease;
@@ -3364,6 +3485,18 @@ textarea {
     grid-template-columns: 1fr;
   }
 
+  .availability-weekly-day-selector {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .availability-weekly-time-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .availability-weekly-arrow {
+    display: none;
+  }
+
   .availability-weekly-pill-row {
     grid-template-columns: 1fr;
   }
@@ -3391,6 +3524,15 @@ textarea {
 }
 
 @media (max-width: 640px) {
+  .availability-weekly-day-selector {
+    grid-template-columns: 1fr;
+  }
+
+  .availability-weekly-time-card,
+  .availability-weekly-preview {
+    padding: 12px 14px;
+  }
+
   .page {
     padding: 18px 14px 44px;
   }

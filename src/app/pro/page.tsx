@@ -1493,25 +1493,38 @@ export default function ProPage() {
                   <p className="availability-inline-note soft">{weeklyVisibleWindowLabel}</p>
 
                   <div className="availability-weekly-editor">
-                    <div className="grid-form availability-form-grid">
-                      <label>
-                        Día
-                        <select value={weeklyDayKey} onChange={(event) => setWeeklyDayKey(event.target.value as DayKey)}>
-                          {WEEK_DAY_OPTIONS.map((day) => (
-                            <option key={day.key} value={day.key}>
-                              {day.label}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
-                      <label>
-                        Inicio
+                    <div className="availability-weekly-day-selector">
+                      {WEEK_DAY_OPTIONS.map((day) => (
+                        <button
+                          key={day.key}
+                          type="button"
+                          className={`availability-weekly-day-chip ${weeklyDayKey === day.key ? "active" : ""}`}
+                          onClick={() => setWeeklyDayKey(day.key)}
+                        >
+                          <span>{day.shortLabel}</span>
+                          <strong>{day.label}</strong>
+                        </button>
+                      ))}
+                    </div>
+
+                    <div className="availability-weekly-time-shell">
+                      <label className="availability-weekly-time-card">
+                        <span>Hora de inicio</span>
                         <input type="time" value={weeklyStart} onChange={(event) => setWeeklyStart(event.target.value)} />
                       </label>
-                      <label>
-                        Término
+                      <div className="availability-weekly-arrow" aria-hidden>
+                        →
+                      </div>
+                      <label className="availability-weekly-time-card">
+                        <span>Hora de término</span>
                         <input type="time" value={weeklyEnd} onChange={(event) => setWeeklyEnd(event.target.value)} />
                       </label>
+                      <div className="availability-weekly-preview">
+                        <span>{editingWeeklyIndex != null ? "Editando bloque" : "Nuevo bloque semanal"}</span>
+                        <strong>
+                          {WEEK_DAY_OPTIONS.find((day) => day.key === weeklyDayKey)?.label ?? "Día"} · {weeklyStart} - {weeklyEnd}
+                        </strong>
+                      </div>
                     </div>
                     <div className="cta-row availability-form-actions">
                       <button className="cta" type="button" onClick={saveWeeklyBlock}>
