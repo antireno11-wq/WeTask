@@ -3781,7 +3781,8 @@ textarea {
 }
 
 .public-tasker-verified-badge {
-  justify-self: center;
+  justify-self: flex-start;
+  align-self: start;
   min-height: 42px;
   padding: 0 16px;
   background: linear-gradient(180deg, #e6fff0 0%, #c9f4d8 100%);
@@ -3883,6 +3884,24 @@ textarea {
 
 .public-tasker-summary-cards.client-dashboard-summary {
   grid-template-columns: repeat(4, minmax(180px, 1fr));
+  max-width: none;
+}
+
+.public-tasker-summary-cards .auth-flow-meta-card {
+  min-height: 0;
+  border: 1px solid #d7e5f2;
+  background: linear-gradient(180deg, #ffffff 0%, #f5faff 100%);
+  box-shadow: 0 12px 24px rgba(20, 50, 84, 0.08);
+  text-align: left;
+}
+
+.public-tasker-summary-cards .auth-flow-meta-card strong {
+  color: #173762;
+}
+
+.public-tasker-summary-cards .auth-flow-meta-card span {
+  color: #516b84;
+  overflow-wrap: normal;
 }
 
 .public-profile-switch {
