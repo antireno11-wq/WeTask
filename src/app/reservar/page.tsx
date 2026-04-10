@@ -184,6 +184,7 @@ export default function ReservarPage() {
   });
 
   const [customerId, setCustomerId] = useState("");
+  const [customerEmail, setCustomerEmail] = useState("");
 
   const [matches, setMatches] = useState<MatchProfessional[]>([]);
   const [selectedProId, setSelectedProId] = useState("");
@@ -203,12 +204,18 @@ export default function ReservarPage() {
   const [createdBooking, setCreatedBooking] = useState<BookingResponse | null>(null);
   const [savedPaymentMethods, setSavedPaymentMethods] = useState<SavedPaymentMethod[]>([]);
   const [loadingSavedPaymentMethods, setLoadingSavedPaymentMethods] = useState(false);
+  const [selectedSavedPaymentMethodId, setSelectedSavedPaymentMethodId] = useState("");
+  const [showNewCardForm, setShowNewCardForm] = useState(false);
   const [preferredSlotId, setPreferredSlotId] = useState("");
   const [preferredStartsAt, setPreferredStartsAt] = useState("");
   const mercadoPagoPublicKey = process.env.NEXT_PUBLIC_MERCADOPAGO_PUBLIC_KEY ?? "";
 
   const selectedPro = useMemo(() => matches.find((pro) => pro.userId === selectedProId) ?? null, [matches, selectedProId]);
   const selectedService = useMemo(() => services.find((service) => service.id === filters.serviceId) ?? null, [services, filters.serviceId]);
+  const selectedSavedPaymentMethod = useMemo(
+    () => savedPaymentMethods.find((paymentMethod) => paymentMethod.id === selectedSavedPaymentMethodId) ?? null,
+    [savedPaymentMethods, selectedSavedPaymentMethodId]
+  );
   const isChefService = Boolean(selectedService?.slug && getChefServiceDefinition(selectedService.slug));
   const quickCheckoutMode = taskerFlowLocked;
 
@@ -353,8 +360,9 @@ export default function ReservarPage() {
     const bootstrapSession = async () => {
       try {
         const response = await fetch("/api/auth/session");
-        const data = (await response.json()) as { session?: { userId: string } | null };
+        const data = (await response.json()) as { session?: { userId?: string; email?: string | null } | null };
         if (data.session?.userId) setCustomerId(data.session.userId);
+        if (data.session?.email) setCustomerEmail(data.session.email);
       } catch {
         // noop
       }
@@ -370,7 +378,11 @@ export default function ReservarPage() {
         const response = await fetch("/api/marketplace/client/payment-methods");
         const data = (await response.json()) as { paymentMethods?: SavedPaymentMethod[] };
         if (response.ok) {
-          setSavedPaymentMethods(data.paymentMethods ?? []);
+          const paymentMethods = data.paymentMethods ?? [];
+          setSavedPaymentMethods(paymentMethods);
+          const defaultPaymentMethod = paymentMethods.find((item) => item.isDefault) ?? paymentMethods[0] ?? null;
+          setSelectedSavedPaymentMethodId(defaultPaymentMethod?.id ?? "");
+          setShowNewCardForm(paymentMethods.length === 0);
         }
       } catch {
         // noop
@@ -669,6 +681,7 @@ export default function ReservarPage() {
 
   useEffect(() => {
     setCardFormReady(false);
+    if (!showNewCardForm) return;
     setCheckoutState("idle");
     setCheckoutStatusText("");
     if (!selectedSlot || !mpSdkReady || !mercadoPagoPublicKey) return;
@@ -716,15 +729,19 @@ export default function ReservarPage() {
         checkoutFormRef.current = null;
       }
     };
-  }, [selectedSlot, mpSdkReady, mercadoPagoPublicKey, total]);
+  }, [selectedSlot, mpSdkReady, mercadoPagoPublicKey, total, showNewCardForm]);
 
   const submitCheckout = async () => {
     if (!customerId || !selectedPro || !selectedSlot || !selectedStartAt || !filters.serviceId) {
       setError("Completa cliente, profesional, servicio y horario.");
       return;
     }
-    if (!cardFormReady || !checkoutFormRef.current) {
+    if (showNewCardForm && (!cardFormReady || !checkoutFormRef.current)) {
       setError("Formulario de pago aún cargando. Espera unos segundos.");
+      return;
+    }
+    if (!showNewCardForm && !selectedSavedPaymentMethod) {
+      setError("Selecciona una tarjeta guardada o agrega una nueva para continuar.");
       return;
     }
 
@@ -743,12 +760,17 @@ export default function ReservarPage() {
         return;
       }
 
-      const cardData = (checkoutFormRef.current.getCardFormData?.() ?? {}) as CardFormData;
-      if (!cardData.token || !cardData.paymentMethodId) {
+      const cardData = showNewCardForm ? ((checkoutFormRef.current?.getCardFormData?.() ?? {}) as CardFormData) : null;
+      if (showNewCardForm && (!cardData?.token || !cardData.paymentMethodId)) {
         throw new Error("No pudimos tokenizar tu tarjeta. Revisa los datos e inténtalo nuevamente.");
       }
 
-      const payerEmail = (cardData.cardholderEmail || "").trim();
+      const payerEmail = (
+        selectedSavedPaymentMethod?.payerEmail ||
+        cardData?.cardholderEmail ||
+        customerEmail ||
+        ""
+      ).trim();
       if (!payerEmail) {
         throw new Error("Ingresa un correo válido para procesar el pago.");
       }
@@ -779,13 +801,14 @@ export default function ReservarPage() {
             travelFeeClp: 0
           },
           payment: {
-            token: cardData.token,
-            paymentMethodId: cardData.paymentMethodId,
-            issuerId: cardData.issuerId,
-            installments: Number(cardData.installments || 1),
+            token: cardData?.token,
+            paymentMethodId: selectedSavedPaymentMethod?.paymentMethodId ?? cardData?.paymentMethodId,
+            issuerId: cardData?.issuerId,
+            installments: Number(cardData?.installments || 1),
             payerEmail,
-            payerIdentificationType: cardData.identificationType,
-            payerIdentificationNumber: cardData.identificationNumber
+            payerIdentificationType: cardData?.identificationType,
+            payerIdentificationNumber: cardData?.identificationNumber,
+            savedCardId: showNewCardForm ? undefined : selectedSavedPaymentMethod?.id
           },
           idempotencyKey: checkoutIdempotencyKey
         })
@@ -1181,7 +1204,7 @@ export default function ReservarPage() {
               </div>
 
               {!mercadoPagoPublicKey ? (
-                <p className="feedback error">Configura `NEXT_PUBLIC_MERCADOPAGO_PUBLIC_KEY` para habilitar pagos.</p>
+                showNewCardForm ? <p className="feedback error">Configura `NEXT_PUBLIC_MERCADOPAGO_PUBLIC_KEY` para habilitar pagos.</p> : null
               ) : null}
 
               <div className="booking-checkout-saved-methods">
@@ -1197,20 +1220,46 @@ export default function ReservarPage() {
                 ) : (
                   <div className="client-payment-methods-list compact">
                     {savedPaymentMethods.map((paymentMethod) => (
-                      <article key={paymentMethod.id} className="client-payment-method-card compact">
+                      <button
+                        key={paymentMethod.id}
+                        type="button"
+                        className={`client-payment-method-card compact selectable${selectedSavedPaymentMethodId === paymentMethod.id && !showNewCardForm ? " is-selected" : ""}`}
+                        onClick={() => {
+                          setSelectedSavedPaymentMethodId(paymentMethod.id);
+                          setShowNewCardForm(false);
+                          setCheckoutState("idle");
+                          setCheckoutStatusText("");
+                          setError("");
+                        }}
+                      >
                         <div>
                           <strong>{paymentMethodLabel(paymentMethod)}</strong>
                           <p>{paymentMethod.isDefault ? "Tarjeta principal" : "Tarjeta guardada"}</p>
                         </div>
-                      </article>
+                        {selectedSavedPaymentMethodId === paymentMethod.id && !showNewCardForm ? <span>Seleccionada</span> : null}
+                      </button>
                     ))}
                   </div>
                 )}
 
-                <div className="cta-row">
+                <div className="cta-row booking-checkout-method-actions">
                   <Link className="cta ghost small" href="/cliente">
                     Gestionar tarjetas
                   </Link>
+                  {savedPaymentMethods.length > 0 ? (
+                    <button
+                      className="cta ghost small"
+                      type="button"
+                      onClick={() => {
+                        setShowNewCardForm((prev) => !prev);
+                        setCheckoutState("idle");
+                        setCheckoutStatusText("");
+                        setError("");
+                      }}
+                    >
+                      {showNewCardForm ? "Usar tarjeta guardada" : "Agregar otra tarjeta"}
+                    </button>
+                  ) : null}
                 </div>
               </div>
 
@@ -1220,47 +1269,54 @@ export default function ReservarPage() {
                 </button>
               </div>
 
-              <form id="mp-card-form" className="grid-form auth-flow-form" onSubmit={(event) => event.preventDefault()}>
-                <label>
-                  Nombre del titular
-                  <input id="mp-cardholder-name" type="text" placeholder="Como aparece en tu tarjeta" />
-                </label>
-                <label>
-                  Email pagador
-                  <input id="mp-cardholder-email" type="email" placeholder="correo@ejemplo.com" />
-                </label>
-                <label className="full">
-                  Número de tarjeta
-                  <div id="mp-card-number" className="mp-secure-field" />
-                </label>
-                <label>
-                  Vencimiento
-                  <div id="mp-expiration-date" className="mp-secure-field" />
-                </label>
-                <label>
-                  Código de seguridad
-                  <div id="mp-security-code" className="mp-secure-field" />
-                </label>
-                <label>
-                  Cuotas
-                  <select id="mp-installments" defaultValue="" />
-                </label>
-                <label>
-                  Banco emisor
-                  <select id="mp-issuer" defaultValue="" />
-                </label>
-                <label>
-                  Tipo de identificación
-                  <select id="mp-identification-type" defaultValue="" />
-                </label>
-                <label>
-                  Número de identificación
-                  <input id="mp-identification-number" type="text" placeholder="RUT / documento" />
-                </label>
-              </form>
+              {showNewCardForm ? (
+                <form id="mp-card-form" className="grid-form auth-flow-form" onSubmit={(event) => event.preventDefault()}>
+                  <label>
+                    Nombre del titular
+                    <input id="mp-cardholder-name" type="text" placeholder="Como aparece en tu tarjeta" />
+                  </label>
+                  <label>
+                    Email pagador
+                    <input id="mp-cardholder-email" type="email" placeholder="correo@ejemplo.com" defaultValue={customerEmail} />
+                  </label>
+                  <label className="full">
+                    Número de tarjeta
+                    <div id="mp-card-number" className="mp-secure-field" />
+                  </label>
+                  <label>
+                    Vencimiento
+                    <div id="mp-expiration-date" className="mp-secure-field" />
+                  </label>
+                  <label>
+                    Código de seguridad
+                    <div id="mp-security-code" className="mp-secure-field" />
+                  </label>
+                  <label>
+                    Cuotas
+                    <select id="mp-installments" defaultValue="" />
+                  </label>
+                  <label>
+                    Banco emisor
+                    <select id="mp-issuer" defaultValue="" />
+                  </label>
+                  <label>
+                    Tipo de identificación
+                    <select id="mp-identification-type" defaultValue="" />
+                  </label>
+                  <label>
+                    Número de identificación
+                    <input id="mp-identification-number" type="text" placeholder="RUT / documento" />
+                  </label>
+                </form>
+              ) : null}
 
               <div className="cta-row">
-                <button className="cta" type="button" onClick={submitCheckout} disabled={loadingCheckout || !selectedSlot || !selectedStartAt || !cardFormReady}>
+                <button
+                  className="cta"
+                  type="button"
+                  onClick={submitCheckout}
+                  disabled={loadingCheckout || !selectedSlot || !selectedStartAt || (showNewCardForm ? !cardFormReady : !selectedSavedPaymentMethod)}
+                >
                   {loadingCheckout ? "Procesando pago..." : "Pagar y confirmar reserva"}
                 </button>
                 <Link className="cta ghost" href="/cliente">
@@ -1268,16 +1324,18 @@ export default function ReservarPage() {
                 </Link>
               </div>
 
-              {checkoutState === "processing" ? <p className="feedback ok">Procesando pago...</p> : null}
-              {checkoutState === "approved" ? <p className="feedback ok">Pago aprobado. Redirigiendo a tu confirmación...</p> : null}
-              {checkoutState === "rejected" ? <p className="feedback error">Pago rechazado. Revisa los datos o prueba otra tarjeta.</p> : null}
-              {checkoutState === "connection_error" ? <p className="feedback error">Error de conexión con el proveedor de pago.</p> : null}
-              {checkoutStatusText ? <p className="minimal-note">Estado checkout: {checkoutStatusText}</p> : null}
-              {createdBooking ? (
-                <p className="minimal-note">
-                  Reserva {createdBooking.id} · Estado {createdBooking.status} · Pago {createdBooking.paymentStatus}
-                </p>
-              ) : null}
+              <div className="booking-checkout-feedback-stack">
+                {checkoutState === "processing" ? <p className="feedback ok">Procesando pago...</p> : null}
+                {checkoutState === "approved" ? <p className="feedback ok">Pago aprobado. Redirigiendo a tu confirmación...</p> : null}
+                {checkoutState === "rejected" ? <p className="feedback error">Pago rechazado. Revisa los datos o prueba otra tarjeta.</p> : null}
+                {checkoutState === "connection_error" ? <p className="feedback error">Error de conexión con el proveedor de pago.</p> : null}
+                {checkoutStatusText ? <p className="minimal-note">Estado checkout: {checkoutStatusText}</p> : null}
+                {createdBooking ? (
+                  <p className="minimal-note">
+                    Reserva {createdBooking.id} · Estado {createdBooking.status} · Pago {createdBooking.paymentStatus}
+                  </p>
+                ) : null}
+              </div>
             </section>
           ) : null}
 

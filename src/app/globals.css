@@ -6476,6 +6476,27 @@ textarea {
   padding: 12px 14px;
 }
 
+.client-payment-method-card.selectable {
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+}
+
+.client-payment-method-card.selectable span {
+  margin-left: auto;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #1d4e80;
+}
+
+.client-payment-method-card.selectable.is-selected {
+  border-color: rgba(27, 92, 150, 0.44);
+  background: rgba(234, 244, 255, 0.98);
+  box-shadow: 0 16px 30px rgba(22, 50, 87, 0.08);
+}
+
 .client-payment-method-actions {
   display: flex;
   align-items: center;
@@ -6494,6 +6515,21 @@ textarea {
 
 .client-payment-actions {
   margin-top: 22px;
+}
+
+.booking-checkout-method-actions {
+  align-items: center;
+}
+
+.booking-checkout-feedback-stack {
+  display: grid;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.booking-checkout-feedback-stack .feedback,
+.booking-checkout-feedback-stack .minimal-note {
+  margin: 0;
 }
 
 .client-payment-card-grid {

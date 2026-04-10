@@ -33,7 +33,7 @@ const checkoutSchema = z.object({
     .optional()
     .default({ materials: false, urgency: false, travelFeeClp: 0 }),
   payment: z.object({
-    token: z.string().min(6),
+    token: z.preprocess((value) => (typeof value === "string" && value.trim().length === 0 ? undefined : value), z.string().min(6).optional()),
     paymentMethodId: z.string().min(2).optional(),
     issuerId: z.string().optional(),
     installments: z.coerce.number().int().min(1).max(48).default(1),
@@ -119,6 +119,9 @@ export async function POST(req: NextRequest) {
       if (!savedPaymentMethod) {
         return NextResponse.json({ error: "La tarjeta guardada no pertenece al cliente" }, { status: 400 });
       }
+    }
+    if (!savedPaymentMethod && !input.payment.token) {
+      return NextResponse.json({ error: "Faltan los datos de la tarjeta para procesar el pago" }, { status: 400 });
     }
 
     if (selectedSlotId) {
