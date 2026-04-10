@@ -185,17 +185,17 @@ export default function ServiceProsPage() {
         if (!match) throw new Error("Categoria no encontrada");
         setCategory(match);
 
-        const fetchProfessionals = async (strictServiceFilter: boolean) => {
+        const fetchProfessionals = async (options: { strictServiceFilter: boolean; includeTasks: boolean }) => {
           const qs = new URLSearchParams({
             city,
             categoryId: match.id,
             limit: "40"
           });
-          if (strictServiceFilter && selectedServiceId) qs.set("serviceId", selectedServiceId);
+          if (options.strictServiceFilter && selectedServiceId) qs.set("serviceId", selectedServiceId);
           if (address.trim()) qs.set("street", address.trim());
           if (comuna) qs.set("commune", comuna);
           if (requestedIso) qs.set("date", requestedIso);
-          if (selectedTasks.length > 0) qs.set("tasks", selectedTasks.join(","));
+          if (options.includeTasks && selectedTasks.length > 0) qs.set("tasks", selectedTasks.join(","));
 
           const response = await fetch(`/api/marketplace/search-professionals?${qs.toString()}`);
           const data = (await response.json()) as { professionals?: Professional[]; error?: string; detail?: string };
@@ -205,10 +205,18 @@ export default function ServiceProsPage() {
           return data.professionals;
         };
 
-        let nextProfessionals = await fetchProfessionals(true);
+        let nextProfessionals = await fetchProfessionals({ strictServiceFilter: true, includeTasks: true });
+
+        if (nextProfessionals.length === 0 && selectedTasks.length > 0) {
+          nextProfessionals = await fetchProfessionals({ strictServiceFilter: true, includeTasks: false });
+          if (nextProfessionals.length > 0) {
+            setUsedCategoryFallback(true);
+            setNotifyMessage("No encontramos taskers que coincidan con todos esos focos, así que te mostramos disponibilidad general para este servicio.");
+          }
+        }
 
         if (nextProfessionals.length === 0 && selectedServiceId) {
-          nextProfessionals = await fetchProfessionals(false);
+          nextProfessionals = await fetchProfessionals({ strictServiceFilter: false, includeTasks: false });
           if (nextProfessionals.length > 0) {
             setUsedCategoryFallback(true);
             setNotifyMessage(
@@ -219,9 +227,7 @@ export default function ServiceProsPage() {
 
         setAllPros(nextProfessionals);
 
-        if (nextProfessionals.length === 0) {
-          setNotifyMessage("Aún no tenemos cobertura en esta dirección. Puedes activar aviso cuando haya taskers.");
-        }
+        if (nextProfessionals.length === 0) setNotifyMessage("");
       } catch (e) {
         setError(e instanceof Error ? e.message : "Error inesperado");
       } finally {
