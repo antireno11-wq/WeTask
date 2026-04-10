@@ -79,13 +79,14 @@ async function ensureOnboardingForUser(userId: string) {
   });
 }
 
-function denyLockedOnboarding(status: CleaningOnboardingStatus, identityRole: UserRole | null) {
+function denyLockedOnboarding(status: CleaningOnboardingStatus, identityRole: UserRole | null, step?: number) {
   if (identityRole === UserRole.ADMIN) return null;
+  const isAvailabilityOnlyUpdate = step === 8;
   if (status === CleaningOnboardingStatus.PENDIENTE_REVISION) {
-    return "Tu perfil está pendiente de revisión. Espera evaluación del equipo o contacto de soporte.";
+    return isAvailabilityOnlyUpdate ? null : "Tu perfil está pendiente de revisión. Espera evaluación del equipo o contacto de soporte.";
   }
   if (status === CleaningOnboardingStatus.APROBADO || status === CleaningOnboardingStatus.ACTIVO) {
-    return "Tu perfil ya fue aprobado. Si necesitas cambios, contacta a soporte.";
+    return isAvailabilityOnlyUpdate ? null : "Tu perfil ya fue aprobado. Si necesitas cambios, contacta a soporte.";
   }
   return null;
 }
@@ -257,7 +258,7 @@ export async function PATCH(req: NextRequest) {
     const input = cleaningOnboardingSaveSchema.parse(body);
 
     const onboarding = await ensureOnboardingForUser(userId);
-    const deniedReason = denyLockedOnboarding(onboarding.status, identity.role);
+    const deniedReason = denyLockedOnboarding(onboarding.status, identity.role, input.step);
     if (deniedReason) {
       return NextResponse.json({ error: deniedReason }, { status: 409 });
     }
