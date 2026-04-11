@@ -7038,6 +7038,55 @@ textarea {
   margin: 0;
 }
 
+.booking-checkout-tasker-card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 6px;
+  padding: 14px 16px;
+  border: 1px solid #d6e7f5;
+  border-radius: 20px;
+  background: linear-gradient(180deg, #ffffff 0%, #f5faff 100%);
+}
+
+.booking-checkout-tasker-avatar {
+  width: 72px;
+  height: 72px;
+  border-radius: 22px;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, #1656b0 0%, #18a6d5 100%);
+  color: #ffffff;
+  font-size: 1.2rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  box-shadow: 0 14px 28px rgba(22, 86, 176, 0.2);
+}
+
+.booking-checkout-tasker-avatar-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.booking-checkout-tasker-copy {
+  display: grid;
+  gap: 6px;
+}
+
+.booking-checkout-tasker-copy strong {
+  color: #173b5f;
+  font-size: 1.02rem;
+}
+
+.booking-checkout-tasker-copy span {
+  color: #5b748e;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+}
+
 @media (max-width: 980px) {
   .pro-dashboard-hero-card {
     padding: 22px 18px;
@@ -7064,6 +7113,11 @@ textarea {
 
   .booking-pro-highlights {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .booking-checkout-tasker-card {
+    grid-template-columns: minmax(0, 1fr);
+    justify-items: start;
   }
 
   .dashboard-summary-grid {

@@ -29,6 +29,7 @@ type MatchProfessional = {
   id: string;
   userId: string;
   fullName: string;
+  profilePhotoUrl?: string | null;
   ratingAvg: number;
   ratingsCount: number;
   hourlyRateFromClp: number | null;
@@ -538,7 +539,7 @@ export default function ReservarPage() {
         coverageCity: string | null;
         serviceRadiusKm: number;
         taskerServices?: Array<{ priceClp: number; service?: { id: string; name: string } | null }>;
-        user: { fullName: string };
+        user: { fullName: string; cleaningOnboarding?: { profilePhotoUrl?: string | null } | null };
         slots: Slot[];
       };
     };
@@ -552,6 +553,7 @@ export default function ReservarPage() {
       id: professional.id,
       userId: professional.userId,
       fullName: professional.user.fullName,
+      profilePhotoUrl: professional.user.cleaningOnboarding?.profilePhotoUrl ?? null,
       ratingAvg: Number(professional.ratingAvg ?? 0),
       ratingsCount: professional.ratingsCount ?? 0,
       hourlyRateFromClp: professional.hourlyRateFromClp,
@@ -628,7 +630,7 @@ export default function ReservarPage() {
           nextAvailableAt: string | null;
           coverageCity: string | null;
           serviceRadiusKm: number;
-          user: { fullName: string };
+          user: { fullName: string; cleaningOnboarding?: { profilePhotoUrl?: string | null } | null };
           taskerServices?: Array<{ priceClp: number; serviceId: string | null; service?: { id: string; name: string } | null }>;
           slots: Slot[];
         }>;
@@ -644,6 +646,7 @@ export default function ReservarPage() {
         id: item.id,
         userId: item.userId,
         fullName: item.user.fullName,
+        profilePhotoUrl: item.user.cleaningOnboarding?.profilePhotoUrl ?? null,
         ratingAvg: Number(item.ratingAvg),
         ratingsCount: item.ratingsCount,
         hourlyRateFromClp: item.hourlyRateFromClp,
@@ -970,11 +973,21 @@ export default function ReservarPage() {
                 </div>
 
                 <div className="booking-checkout-summary">
+                  <div className="booking-checkout-tasker-card">
+                    <div className="booking-checkout-tasker-avatar" aria-hidden>
+                      {selectedPro?.profilePhotoUrl ? (
+                        <img src={selectedPro.profilePhotoUrl} alt="" className="booking-checkout-tasker-avatar-image" />
+                      ) : (
+                        initials(selectedPro?.fullName ?? "Tasker")
+                      )}
+                    </div>
+                    <div className="booking-checkout-tasker-copy">
+                      <strong>{selectedPro?.fullName ?? "Cargando profesional"}</strong>
+                      <span>{starsText(selectedPro?.ratingAvg ?? 0)} {Number(selectedPro?.ratingAvg ?? 0).toFixed(1)} ({selectedPro?.ratingsCount ?? 0})</span>
+                    </div>
+                  </div>
                   <p>
                     Servicio: <strong>{selectedService?.name ?? "Servicio seleccionado"}</strong>
-                  </p>
-                  <p>
-                    Tasker: <strong>{selectedPro?.fullName ?? "Cargando profesional"}</strong>
                   </p>
                   <p>
                     Fecha y hora: <strong>{selectedStartAt ? formatBookingDateTime(selectedStartAt) : "Selecciona bloque y hora"}</strong>
@@ -1369,6 +1382,19 @@ export default function ReservarPage() {
               </div>
 
               <div className="booking-checkout-summary">
+                <div className="booking-checkout-tasker-card">
+                  <div className="booking-checkout-tasker-avatar" aria-hidden>
+                    {selectedPro.profilePhotoUrl ? (
+                      <img src={selectedPro.profilePhotoUrl} alt="" className="booking-checkout-tasker-avatar-image" />
+                    ) : (
+                      initials(selectedPro.fullName)
+                    )}
+                  </div>
+                  <div className="booking-checkout-tasker-copy">
+                    <strong>{selectedPro.fullName}</strong>
+                    <span>{starsText(selectedPro.ratingAvg)} {selectedPro.ratingAvg.toFixed(1)} ({selectedPro.ratingsCount})</span>
+                  </div>
+                </div>
                 <p>
                   Servicio: <strong>{selectedService?.name ?? "Servicio seleccionado"}</strong>
                 </p>
@@ -1380,9 +1406,6 @@ export default function ReservarPage() {
                 </p>
                 <p>
                   Horas estimadas: <strong>{hours}</strong> · Total: <strong>{clp(total)}</strong>
-                </p>
-                <p>
-                  Tasker: <strong>{selectedPro.fullName}</strong>
                 </p>
                 {recommendedHours ? (
                   <p>
