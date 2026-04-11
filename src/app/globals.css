@@ -6744,10 +6744,10 @@ textarea {
 }
 
 .booking-flow-hero-content {
-  width: min(100%, 1040px);
+  width: 100%;
   margin: 0 auto;
   display: grid;
-  gap: 20px;
+  gap: 16px;
 }
 
 .booking-flow-hero-copy {
@@ -6774,7 +6774,7 @@ textarea {
 }
 
 .booking-flow-hero-summary {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr);
   width: 100%;
   margin: 0;
 }
@@ -6810,7 +6810,7 @@ textarea {
 
 .booking-summary-list {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr);
   gap: 10px;
 }
 

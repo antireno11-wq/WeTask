@@ -924,8 +924,8 @@ export default function ReservarPage() {
             <div className="booking-flow-hero-content">
               <div className="booking-flow-hero-copy">
                 <p className="auth-flow-kicker booking-flow-hero-kicker">Reserva protegida</p>
-                <h1>Agenda, compara y paga en un solo flujo.</h1>
-                <p>Elige el servicio, encuentra profesionales disponibles en tu zona y confirma tu reserva con pago seguro dentro de WeTask.</p>
+                <h1>Elige el servicio, selecciona un horario y confirma tu reserva.</h1>
+                <p>Revisa la dirección, valida el servicio que necesitas y avanza paso a paso hasta completar el pago seguro dentro de WeTask.</p>
               </div>
 
               <div className="auth-flow-copy-list client-dashboard-summary booking-flow-hero-summary">
