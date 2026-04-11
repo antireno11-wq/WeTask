@@ -3831,8 +3831,8 @@ textarea {
 }
 
 .public-tasker-avatar {
-  width: 112px;
-  height: 112px;
+  width: 132px;
+  height: 132px;
 }
 
 .public-tasker-identity-copy {
@@ -3863,13 +3863,13 @@ textarea {
 
 .public-tasker-price-box {
   display: grid;
-  gap: 6px;
-  padding: 18px 20px;
+  gap: 4px;
+  padding: 14px 16px;
   border: 1px solid #d7e5f2;
-  border-radius: 22px;
+  border-radius: 18px;
   background: linear-gradient(180deg, #fbfdff 0%, #f2f8ff 100%);
   align-content: start;
-  width: min(100%, 560px);
+  width: min(100%, 380px);
   justify-self: center;
   justify-items: center;
   text-align: center;
@@ -3885,7 +3885,7 @@ textarea {
 
 .public-tasker-price-value {
   color: #173762;
-  font-size: clamp(2rem, 3vw, 3.2rem);
+  font-size: clamp(1.7rem, 2.4vw, 2.5rem);
   line-height: 1;
 }
 
@@ -4899,8 +4899,8 @@ textarea {
   }
 
   .public-tasker-avatar {
-    width: 84px;
-    height: 84px;
+    width: 96px;
+    height: 96px;
   }
 
   .public-tasker-identity-copy {
@@ -4912,6 +4912,7 @@ textarea {
   }
 
   .public-tasker-price-box {
+    width: min(100%, 320px);
     justify-items: center;
     text-align: center;
   }
