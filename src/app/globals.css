@@ -6723,21 +6723,58 @@ textarea {
 }
 
 .booking-flow-hero {
+  grid-template-columns: minmax(0, 1fr);
   align-items: stretch;
+  padding: 22px 0 12px;
 }
 
-.booking-flow-hero-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1.45fr) minmax(320px, 0.95fr);
-  gap: 24px;
-  align-items: start;
+.booking-flow-hero-card {
   width: 100%;
 }
 
-.booking-summary-panel {
+.booking-flow-hero-content {
+  width: min(100%, 1040px);
+  margin: 0 auto;
   display: grid;
-  margin-top: 0;
-  align-self: start;
+  gap: 20px;
+}
+
+.booking-flow-hero-copy {
+  display: grid;
+  gap: 12px;
+  justify-items: center;
+  text-align: center;
+}
+
+.booking-flow-hero-copy h1 {
+  margin: 0;
+  color: #173762;
+}
+
+.booking-flow-hero-copy p:not(.auth-flow-kicker) {
+  margin: 0;
+  max-width: 760px;
+  color: #4f6882;
+  text-shadow: none;
+}
+
+.booking-flow-hero-kicker {
+  margin-bottom: 4px;
+}
+
+.booking-flow-hero-summary {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  width: 100%;
+  margin: 0;
+}
+
+.booking-flow-hero-summary .auth-flow-meta-card {
+  min-height: 0;
+  text-align: left;
+}
+
+.booking-flow-hero-summary .auth-flow-meta-card span {
+  overflow-wrap: anywhere;
 }
 
 .booking-summary-card {
@@ -6746,8 +6783,23 @@ textarea {
   min-width: 0;
 }
 
+.booking-summary-card-inline {
+  padding: 18px 20px;
+  border: 1px solid #d9e8f6;
+  border-radius: 24px;
+  background: linear-gradient(180deg, #fbfdff 0%, #f4f9ff 100%);
+  box-shadow: 0 18px 32px rgba(19, 42, 87, 0.08);
+}
+
+.booking-summary-card-inline > strong {
+  color: #173762;
+  font-size: 1rem;
+  text-align: center;
+}
+
 .booking-summary-list {
   display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 10px;
 }
 
@@ -6766,8 +6818,13 @@ textarea {
   color: #1f6a43;
 }
 
+.booking-flow-note-card {
+  text-align: center;
+}
+
 @media (max-width: 980px) {
-  .booking-flow-hero-grid {
+  .booking-flow-hero-summary,
+  .booking-summary-list {
     grid-template-columns: minmax(0, 1fr);
   }
 }

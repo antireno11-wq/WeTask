@@ -859,13 +859,15 @@ export default function ReservarPage() {
         <MarketNav />
 
         <section className="auth-flow-shell auth-flow-shell-wide client-dashboard-hero booking-flow-hero">
-          <div className="booking-flow-hero-grid">
-            <div className="auth-flow-copy client-dashboard-copy">
-              <p className="auth-flow-kicker">Reserva protegida</p>
-              <h1>Agenda, compara y paga en un solo flujo.</h1>
-              <p>Elige el servicio, encuentra profesionales disponibles en tu zona y confirma tu reserva con pago seguro dentro de WeTask.</p>
+          <article className="auth-flow-panel client-dashboard-section booking-flow-hero-card">
+            <div className="booking-flow-hero-content">
+              <div className="booking-flow-hero-copy">
+                <p className="auth-flow-kicker booking-flow-hero-kicker">Reserva protegida</p>
+                <h1>Agenda, compara y paga en un solo flujo.</h1>
+                <p>Elige el servicio, encuentra profesionales disponibles en tu zona y confirma tu reserva con pago seguro dentro de WeTask.</p>
+              </div>
 
-              <div className="auth-flow-copy-list client-dashboard-summary">
+              <div className="auth-flow-copy-list client-dashboard-summary booking-flow-hero-summary">
                 <div className="auth-flow-meta-card">
                   <strong>Dirección</strong>
                   <span>{address.street}, {address.commune}</span>
@@ -879,10 +881,8 @@ export default function ReservarPage() {
                   <span>{selectedPro ? clp(total) : "Busca profesionales para calcularlo"}</span>
                 </div>
               </div>
-            </div>
 
-            <aside className="auth-flow-panel client-dashboard-section booking-summary-panel">
-              <div className="booking-summary-card">
+              <div className="booking-summary-card booking-summary-card-inline">
                 <strong>Estado de tu reserva</strong>
                 <div className="booking-summary-list">
                   <span className={filters.serviceId ? "is-complete" : ""}>1. Servicio seleccionado</span>
@@ -890,13 +890,13 @@ export default function ReservarPage() {
                   <span className={selectedStartAt ? "is-complete" : ""}>3. Horario elegido</span>
                   <span className={checkoutState === "approved" ? "is-complete" : ""}>4. Pago confirmado</span>
                 </div>
-                <div className="auth-flow-note-card">
+                <div className="auth-flow-note-card booking-flow-note-card">
                   <strong>Resumen rápido</strong>
                   <span>{selectedPro ? `${selectedPro.fullName} · ${selectedStartAt ? formatBookingDateTime(selectedStartAt) : "falta horario"}` : "Aún no eliges profesional."}</span>
                 </div>
               </div>
-            </aside>
-          </div>
+            </div>
+          </article>
         </section>
 
         <div className="page client-dashboard-sections booking-flow-sections">
