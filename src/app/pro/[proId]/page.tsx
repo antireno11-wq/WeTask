@@ -802,17 +802,28 @@ export default function ProDetailPage() {
     [selectedDate]
   );
   const monthCalendarDays = useMemo(() => {
-    const start = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1);
-    const startWeekday = (start.getDay() + 6) % 7;
-    start.setDate(start.getDate() - startWeekday);
+    const year = selectedDate.getFullYear();
+    const month = selectedDate.getMonth();
+    const firstDay = new Date(year, month, 1);
+    const firstWeekday = (firstDay.getDay() + 6) % 7;
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const totalCells = Math.ceil((firstWeekday + daysInMonth) / 7) * 7;
 
-    return Array.from({ length: 35 }, (_, index) => {
-      const current = new Date(start);
-      current.setDate(start.getDate() + index);
+    return Array.from({ length: totalCells }, (_, index) => {
+      const dayNumber = index - firstWeekday + 1;
+      if (dayNumber < 1 || dayNumber > daysInMonth) {
+        return {
+          key: `blank-${index}`,
+          date: null,
+          isCurrentMonth: false
+        };
+      }
+
+      const current = new Date(year, month, dayNumber);
       return {
         key: formatDayKey(current),
         date: current,
-        isCurrentMonth: current.getMonth() === selectedDate.getMonth()
+        isCurrentMonth: true
       };
     });
   }, [selectedDate]);
@@ -1587,6 +1598,9 @@ export default function ProDetailPage() {
 
                           <div className="availability-month-grid">
                             {monthCalendarDays.map((day) => {
+                              if (!day.date) {
+                                return <div key={day.key} className="availability-day-spacer" aria-hidden />;
+                              }
                               const slotCount = slotsByDay.get(day.key)?.length ?? 0;
                               const isToday = day.key === todayKey;
                               const isSelected = day.key === selectedDay;
@@ -1597,7 +1611,6 @@ export default function ProDetailPage() {
                                   type="button"
                                   className={[
                                     "availability-day-card",
-                                    !day.isCurrentMonth ? "muted" : "",
                                     isToday ? "today" : "",
                                     isSelected ? "selected" : ""
                                   ]
@@ -1618,7 +1631,9 @@ export default function ProDetailPage() {
                           </div>
                         </div>
 
-                        <div className="availability-task-panel">
+                      </div>
+
+                      <div className="availability-task-panel public-availability-day-panel">
                           <div className="availability-task-head">
                             <div>
                               <p className="availability-eyebrow">Día elegido</p>
@@ -1643,7 +1658,6 @@ export default function ProDetailPage() {
                                   </div>
                                   <div className="availability-task-copy">
                                     <strong>{slot.service?.name ?? categoryName}</strong>
-                                    <p>Disponible para reservar en WeTask.</p>
                                   </div>
                                   <div className="availability-task-actions">
                                     <Link className="cta small" href={buildReserveHref({ slotId: slot.id, startsAt: slot.startsAt, serviceId: slot.service?.id })}>
@@ -1654,7 +1668,6 @@ export default function ProDetailPage() {
                               ))}
                             </div>
                           )}
-                        </div>
                       </div>
                     </article>
                   ) : null}

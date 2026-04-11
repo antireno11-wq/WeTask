@@ -4244,7 +4244,7 @@ textarea {
 }
 
 .public-availability-shell {
-  grid-template-columns: minmax(220px, 260px) minmax(0, 1.1fr) minmax(300px, 360px);
+  grid-template-columns: minmax(240px, 280px) minmax(0, 1fr);
   gap: 18px;
 }
 
@@ -4259,25 +4259,35 @@ textarea {
 }
 
 .public-availability-shell .availability-month-grid {
-  gap: 8px;
+  gap: 10px;
+}
+
+.public-availability-shell .availability-board-card {
+  min-height: 100%;
 }
 
 .public-availability-shell .availability-day-card {
-  min-height: 84px;
-  padding: 10px 8px;
+  min-height: 112px;
+  padding: 14px 12px;
   border-radius: 16px;
 }
 
 .public-availability-shell .availability-day-number {
-  font-size: 0.98rem;
+  font-size: 1.08rem;
 }
 
 .public-availability-shell .availability-day-meta {
-  font-size: 0.7rem;
+  font-size: 0.78rem;
 }
 
-.public-availability-shell .availability-task-panel {
-  align-content: start;
+.availability-day-spacer {
+  min-height: 112px;
+  border-radius: 16px;
+  background: transparent;
+}
+
+.public-availability-day-panel {
+  margin-top: 18px;
 }
 
 .public-availability-task-item {
@@ -4694,12 +4704,12 @@ textarea {
 
 @media (max-width: 1200px) {
   .public-availability-shell {
-    grid-template-columns: minmax(0, 1fr) minmax(280px, 320px);
+    grid-template-columns: 1fr;
   }
 
-  .public-availability-shell .pro-availability-sidebar,
-  .public-availability-shell .availability-task-panel {
-    grid-column: 1 / -1;
+  .public-availability-shell .availability-day-card,
+  .availability-day-spacer {
+    min-height: 96px;
   }
 
   .public-rating-hero {
