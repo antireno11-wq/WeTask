@@ -85,6 +85,24 @@ function clampBookingHours(value: number) {
   return Math.min(8, Math.max(1, Math.floor(value || 1)));
 }
 
+function formatDayKey(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function shiftMonthKey(dayKey: string, delta: number) {
+  const base = new Date(`${dayKey}T12:00:00`);
+  const desiredDay = base.getDate();
+  const target = new Date(base);
+  target.setDate(1);
+  target.setMonth(target.getMonth() + delta);
+  const lastDay = new Date(target.getFullYear(), target.getMonth() + 1, 0).getDate();
+  target.setDate(Math.min(desiredDay, lastDay));
+  return formatDayKey(target);
+}
+
 function clp(value: number) {
   return new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP", maximumFractionDigits: 0 }).format(value);
 }
@@ -232,6 +250,44 @@ export default function ReservarPage() {
   }, [selectedPro]);
 
   const selectedSlots = useMemo(() => dayGroups.find(([day]) => day === selectedDay)?.[1] ?? [], [dayGroups, selectedDay]);
+  const selectedDateKey = selectedDay || filters.date || formatDayKey(new Date());
+  const selectedCalendarDate = useMemo(() => new Date(`${selectedDateKey}T12:00:00`), [selectedDateKey]);
+  const todayKey = useMemo(() => formatDayKey(new Date()), []);
+  const selectedMonthLabel = useMemo(
+    () => selectedCalendarDate.toLocaleDateString("es-CL", { month: "long", year: "numeric" }),
+    [selectedCalendarDate]
+  );
+  const selectedDayLabel = useMemo(
+    () => selectedCalendarDate.toLocaleDateString("es-CL", { weekday: "long", day: "numeric", month: "long" }),
+    [selectedCalendarDate]
+  );
+  const monthCalendarDays = useMemo(() => {
+    const start = new Date(selectedCalendarDate.getFullYear(), selectedCalendarDate.getMonth(), 1);
+    const startWeekday = (start.getDay() + 6) % 7;
+    start.setDate(start.getDate() - startWeekday);
+
+    return Array.from({ length: 35 }, (_, index) => {
+      const current = new Date(start);
+      current.setDate(start.getDate() + index);
+      return {
+        key: formatDayKey(current),
+        date: current,
+        isCurrentMonth: current.getMonth() === selectedCalendarDate.getMonth()
+      };
+    });
+  }, [selectedCalendarDate]);
+  const slotsByDay = useMemo(() => {
+    const map = new Map<string, Slot[]>();
+    for (const slot of selectedPro?.slots ?? []) {
+      const key = slot.startsAt.slice(0, 10);
+      const prev = map.get(key) ?? [];
+      map.set(key, [...prev, slot].sort((a, b) => a.startsAt.localeCompare(b.startsAt)));
+    }
+    return map;
+  }, [selectedPro?.slots]);
+  const daysWithSlotsCount = slotsByDay.size;
+  const todaySlots = slotsByDay.get(todayKey) ?? [];
+  const nextAvailableSlot = selectedPro?.slots[0] ?? null;
 
   const selectedSlot = useMemo(() => {
     if (!selectedPro || !selectedSlotId) return null;
@@ -1057,118 +1113,241 @@ export default function ReservarPage() {
                     <p>Selecciona un día, luego elige el bloque, la hora de inicio y la cantidad de horas del servicio.</p>
                   </div>
 
-                  <div className="day-tabs">
-                    {dayGroups.map(([day]) => (
-                      <button key={day} type="button" className={`day-tab ${selectedDay === day ? "active" : ""}`} onClick={() => setSelectedDay(day)}>
-                        {new Date(`${day}T00:00:00`).toLocaleDateString("es-ES", { weekday: "short", day: "2-digit", month: "2-digit" })}
-                      </button>
-                    ))}
-                  </div>
+                  <div className="booking-agenda-shell">
+                    <div className="booking-agenda-overview">
+                      <article className="availability-stat-card tone-indigo">
+                        <span>Hoy</span>
+                        <strong>{todaySlots.length}</strong>
+                        <p>bloque(s) abiertos hoy</p>
+                      </article>
+                      <article className="availability-stat-card tone-peach">
+                        <span>Disponibles</span>
+                        <strong>{selectedPro.slots.length}</strong>
+                        <p>horarios visibles para reservar</p>
+                      </article>
+                      <article className="availability-stat-card tone-sky">
+                        <span>Días activos</span>
+                        <strong>{daysWithSlotsCount}</strong>
+                        <p>días con agenda cargada</p>
+                      </article>
+                      <article className="availability-stat-card tone-mint">
+                        <span>Próximo</span>
+                        <strong>{nextAvailableSlot ? new Date(nextAvailableSlot.startsAt).toLocaleDateString("es-CL", { day: "2-digit", month: "2-digit" }) : "--"}</strong>
+                        <p>{nextAvailableSlot ? new Date(nextAvailableSlot.startsAt).toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" }) : "Sin bloques cercanos"}</p>
+                      </article>
+                    </div>
 
-                  <div className="calendar-slot-grid">
-                    {selectedSlots.map((slot) => (
-                      <button
-                        key={slot.id}
-                        type="button"
-                        className={`slot-btn ${selectedSlotId === slot.id ? "slot-btn-active" : ""}`}
-                        onClick={() => {
-                          setSelectedSlotId(slot.id);
-                          setSelectedStartAt(new Date(slot.startsAt).toISOString());
-                        }}
-                      >
-                        {new Date(slot.startsAt).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" })} -{" "}
-                        {new Date(slot.endsAt).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" })}
-                      </button>
-                    ))}
-                  </div>
+                    <div className="availability-board-card booking-availability-board">
+                      <div className="availability-board-head">
+                        <div>
+                          <p className="availability-eyebrow">Calendario</p>
+                          <h3>{selectedMonthLabel}</h3>
+                        </div>
+                        <div className="availability-month-nav">
+                          <button
+                            type="button"
+                            className="availability-month-nav-btn"
+                            onClick={() => {
+                              const next = shiftMonthKey(selectedDateKey, -1);
+                              setSelectedDay(next);
+                            }}
+                          >
+                            ‹
+                          </button>
+                          <button
+                            type="button"
+                            className="availability-month-nav-btn"
+                            onClick={() => {
+                              const next = shiftMonthKey(selectedDateKey, 1);
+                              setSelectedDay(next);
+                            }}
+                          >
+                            ›
+                          </button>
+                        </div>
+                      </div>
 
-                  {!selectedSlots.length ? <p className="minimal-note booking-agenda-empty">Este día todavía no tiene bloques disponibles.</p> : null}
-
-                  <div className="grid-form auth-flow-form booking-agenda-form">
-                    <label>
-                      Hora de inicio
-                      <select value={selectedStartAt} onChange={(e) => setSelectedStartAt(e.target.value)} disabled={!selectedSlot}>
-                        {!selectedSlot ? <option value="">Primero elige un bloque</option> : null}
-                        {startOptions.map((startAt) => (
-                          <option key={startAt} value={startAt}>
-                            {new Date(startAt).toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" })}
-                          </option>
+                      <div className="availability-weekdays">
+                        {["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"].map((day) => (
+                          <span key={day}>{day}</span>
                         ))}
-                      </select>
-                    </label>
-                    <label>
-                      Horas (1-8)
-                      <select value={hours} onChange={(e) => setHours(clampBookingHours(Number(e.target.value) || 1))} disabled={!selectedSlot}>
-                        {hourOptions.map((hourOption) => (
-                          <option key={hourOption} value={hourOption}>
-                            {hourOption} hora{hourOption === 1 ? "" : "s"}
-                          </option>
-                        ))}
-                      </select>
-                      {recommendedHours ? (
-                        <small className="input-hint">
-                          Recomendación WeTask: {estimatedHoursRange ? `${estimatedHoursRange} · ` : ""}
-                          reserva sugerida {recommendedHours} hora(s).
-                        </small>
-                      ) : null}
-                    </label>
-                    <label className="full">
-                      Detalles del trabajo
-                      <textarea value={details} onChange={(e) => setDetails(e.target.value)} />
-                    </label>
-                    {isChefService ? (
-                      <div className="full auth-flow-note-card">
-                        <strong>¿Deberíamos saber algo sobre tu alimentación?</strong>
-                        <span>Cuéntanos si necesitas comida libre de alérgenos, sin gluten, APLV u otra consideración importante.</span>
-                        <div className="inline-checks" style={{ marginTop: 12 }}>
-                          {DIETARY_OPTIONS.map((option) => (
-                            <label key={option}>
-                              <input
-                                type="checkbox"
-                                checked={dietaryFlags.includes(option)}
-                                onChange={(event) =>
-                                  setDietaryFlags((current) =>
-                                    event.target.checked ? Array.from(new Set([...current, option])) : current.filter((item) => item !== option)
-                                  )
-                                }
-                              />
-                              {option}
-                            </label>
+                      </div>
+
+                      <div className="availability-month-grid">
+                        {monthCalendarDays.map((day) => {
+                          const slotCount = slotsByDay.get(day.key)?.length ?? 0;
+                          const isToday = day.key === todayKey;
+                          const isSelected = day.key === selectedDay;
+
+                          return (
+                            <button
+                              key={day.key}
+                              type="button"
+                              className={[
+                                "availability-day-card",
+                                !day.isCurrentMonth ? "muted" : "",
+                                isToday ? "today" : "",
+                                isSelected ? "selected" : ""
+                              ]
+                                .filter(Boolean)
+                                .join(" ")}
+                              onClick={() => {
+                                setSelectedDay(day.key);
+                                setSelectedSlotId("");
+                                setSelectedStartAt("");
+                              }}
+                            >
+                              <span className="availability-day-number">{day.date.getDate()}</span>
+                              <span className="availability-day-meta">{slotCount > 0 ? `${slotCount} horario(s)` : "Sin horarios"}</span>
+                              <span className="availability-day-dots" aria-hidden>
+                                {slotCount > 0 ? <span className="availability-dot free" /> : <span className="availability-dot" />}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    <div className="availability-task-panel booking-availability-task-panel">
+                      <div className="availability-task-head">
+                        <div>
+                          <p className="availability-eyebrow">Día elegido</p>
+                          <h4>{selectedDayLabel}</h4>
+                        </div>
+                        <span className="availability-selected-pill">{selectedSlots.length} bloque(s)</span>
+                      </div>
+
+                      {selectedSlots.length === 0 ? (
+                        <div className="availability-empty-state">
+                          <strong>No hay horarios abiertos ese día.</strong>
+                          <p>Prueba con otro día del calendario para ver la disponibilidad de este tasker.</p>
+                        </div>
+                      ) : (
+                        <div className="availability-task-list">
+                          {selectedSlots.map((slot) => (
+                            <article key={slot.id} className={`availability-task-item open booking-availability-task-item ${selectedSlotId === slot.id ? "is-selected" : ""}`}>
+                              <div className="availability-task-time">
+                                {new Date(slot.startsAt).toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" })}
+                                <span />
+                                {new Date(slot.endsAt).toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" })}
+                              </div>
+                              <div className="availability-task-copy">
+                                <strong>{slot.service?.name ?? selectedService?.name ?? "Bloque disponible"}</strong>
+                                <p>Primero elige este bloque base y luego define tu hora de inicio y duración.</p>
+                              </div>
+                              <div className="availability-task-actions">
+                                <button
+                                  type="button"
+                                  className="cta small"
+                                  onClick={() => {
+                                    setSelectedSlotId(slot.id);
+                                    setSelectedStartAt(new Date(slot.startsAt).toISOString());
+                                  }}
+                                >
+                                  {selectedSlotId === slot.id ? "Bloque elegido" : "Usar este bloque"}
+                                </button>
+                              </div>
+                            </article>
                           ))}
                         </div>
-                        <textarea
-                          style={{ marginTop: 12 }}
-                          value={dietaryNotes}
-                          onChange={(event) => setDietaryNotes(event.target.value)}
-                          placeholder="Ejemplo: una persona es celíaca, evitar contaminación cruzada, sin mariscos, menú infantil, etc."
-                        />
-                      </div>
-                    ) : null}
-                  </div>
+                      )}
+                    </div>
 
-                  <div className="price-box booking-price-box">
-                    Resumen en vivo: ({clp(baseHourly)} x {hours}h) + comisión {clp(commission)} = <strong>{clp(total)}</strong>
-                  </div>
-                  {selectedSlot && selectedStartAt ? (
-                    <p className="minimal-note">
-                      Horario elegido: <strong>{formatBookingDateTime(selectedStartAt)}</strong> · duración <strong>{hours} hora(s)</strong>
-                    </p>
-                  ) : null}
-                  {recommendedHours ? (
-                    <p className="minimal-note">
-                      Tiempo recomendado para este servicio: <strong>{recommendedHours} hora(s)</strong>
-                      {estimatedHoursRange ? ` · Rango estimado ${estimatedHoursRange}` : ""}
-                    </p>
-                  ) : null}
-                  <div className="cta-row">
-                    <button
-                      className="cta"
-                      type="button"
-                      disabled={!selectedSlot || !selectedStartAt}
-                      onClick={() => setBookingStage("checkout")}
-                    >
-                      Continuar al checkout
-                    </button>
+                    <div className="booking-agenda-detail-card">
+                      <div className="grid-form auth-flow-form booking-agenda-form">
+                        <label>
+                          Hora de inicio
+                          <select value={selectedStartAt} onChange={(e) => setSelectedStartAt(e.target.value)} disabled={!selectedSlot}>
+                            {!selectedSlot ? <option value="">Primero elige un bloque</option> : null}
+                            {startOptions.map((startAt) => (
+                              <option key={startAt} value={startAt}>
+                                {new Date(startAt).toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" })}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                        <label>
+                          Horas del servicio
+                          <select value={hours} onChange={(e) => setHours(clampBookingHours(Number(e.target.value) || 1))} disabled={!selectedSlot}>
+                            {hourOptions.map((hourOption) => (
+                              <option key={hourOption} value={hourOption}>
+                                {hourOption} hora{hourOption === 1 ? "" : "s"}
+                              </option>
+                            ))}
+                          </select>
+                          {recommendedHours ? (
+                            <small className="input-hint">
+                              Recomendación WeTask: {estimatedHoursRange ? `${estimatedHoursRange} · ` : ""}
+                              reserva sugerida {recommendedHours} hora(s).
+                            </small>
+                          ) : null}
+                        </label>
+                        <label className="full">
+                          Detalles del trabajo
+                          <textarea value={details} onChange={(e) => setDetails(e.target.value)} />
+                        </label>
+                        {isChefService ? (
+                          <div className="full auth-flow-note-card">
+                            <strong>¿Deberíamos saber algo sobre tu alimentación?</strong>
+                            <span>Cuéntanos si necesitas comida libre de alérgenos, sin gluten, APLV u otra consideración importante.</span>
+                            <div className="inline-checks" style={{ marginTop: 12 }}>
+                              {DIETARY_OPTIONS.map((option) => (
+                                <label key={option}>
+                                  <input
+                                    type="checkbox"
+                                    checked={dietaryFlags.includes(option)}
+                                    onChange={(event) =>
+                                      setDietaryFlags((current) =>
+                                        event.target.checked ? Array.from(new Set([...current, option])) : current.filter((item) => item !== option)
+                                      )
+                                    }
+                                  />
+                                  {option}
+                                </label>
+                              ))}
+                            </div>
+                            <textarea
+                              style={{ marginTop: 12 }}
+                              value={dietaryNotes}
+                              onChange={(event) => setDietaryNotes(event.target.value)}
+                              placeholder="Ejemplo: una persona es celíaca, evitar contaminación cruzada, sin mariscos, menú infantil, etc."
+                            />
+                          </div>
+                        ) : null}
+                      </div>
+
+                      <div className="price-box booking-price-box">
+                        <div className="booking-price-box-head">
+                          <strong>Total estimado de la reserva</strong>
+                          <span>{clp(total)}</span>
+                        </div>
+                        <p>Tarifa referencial del tasker: {clp(baseHourly)}/h</p>
+                        {selectedSlot && selectedStartAt ? (
+                          <p>
+                            Horario elegido: <strong>{formatBookingDateTime(selectedStartAt)}</strong> · duración <strong>{hours} hora(s)</strong>
+                          </p>
+                        ) : (
+                          <p>Elige un bloque, la hora de inicio y cuántas horas necesitas para continuar.</p>
+                        )}
+                        {recommendedHours ? (
+                          <p>
+                            Tiempo recomendado: <strong>{recommendedHours} hora(s)</strong>
+                            {estimatedHoursRange ? ` · Rango estimado ${estimatedHoursRange}` : ""}
+                          </p>
+                        ) : null}
+                      </div>
+
+                      <div className="cta-row">
+                        <button
+                          className="cta"
+                          type="button"
+                          disabled={!selectedSlot || !selectedStartAt}
+                          onClick={() => setBookingStage("checkout")}
+                        >
+                          Continuar al checkout
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 </section>
               </div>

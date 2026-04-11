@@ -6942,11 +6942,75 @@ textarea {
   margin: 12px 0 0;
 }
 
+.booking-agenda-shell {
+  display: grid;
+  gap: 18px;
+}
+
+.booking-agenda-overview {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.booking-availability-board,
+.booking-agenda-detail-card {
+  width: 100%;
+}
+
+.booking-availability-task-panel {
+  width: 100%;
+}
+
+.booking-availability-task-item {
+  grid-template-columns: minmax(120px, 140px) minmax(0, 1fr) auto;
+}
+
+.booking-availability-task-item.is-selected {
+  border-color: #173b5f;
+  box-shadow: 0 18px 28px rgba(23, 59, 95, 0.14);
+}
+
+.booking-agenda-detail-card {
+  display: grid;
+  gap: 16px;
+  padding: 18px;
+  border-radius: 24px;
+  border: 1px solid #d9e8f6;
+  background: linear-gradient(180deg, #ffffff 0%, #f7fbff 100%);
+}
+
 .booking-price-box {
   border-radius: 18px;
   border: 1px solid #d6e7f5;
   background: linear-gradient(180deg, #ffffff 0%, #f2f8ff 100%);
   margin-top: 16px;
+  display: grid;
+  gap: 8px;
+}
+
+.booking-price-box-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.booking-price-box-head strong {
+  color: #173b5f;
+  font-size: 1rem;
+}
+
+.booking-price-box-head span {
+  color: #173b5f;
+  font-size: clamp(1.4rem, 2.6vw, 2rem);
+  font-weight: 900;
+}
+
+.booking-price-box p {
+  margin: 0;
+  color: #5b748e;
+  line-height: 1.6;
 }
 
 .booking-checkout-summary {
@@ -6983,6 +7047,10 @@ textarea {
     grid-template-columns: minmax(0, 1fr);
   }
 
+  .booking-agenda-overview {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .booking-pro-highlights {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -6992,6 +7060,10 @@ textarea {
   }
 
   .client-payment-inline-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .booking-availability-task-item {
     grid-template-columns: minmax(0, 1fr);
   }
 
