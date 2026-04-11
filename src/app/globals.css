@@ -1765,7 +1765,7 @@ textarea {
 }
 
 .coverage-meta {
-  margin: 0;
+  margin: 0 0 12px;
   color: var(--ink-soft);
   font-size: 0.8rem;
 }
@@ -3755,6 +3755,12 @@ textarea {
   gap: 12px;
 }
 
+.we-pro-duo-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
 .public-profile-switcher {
   display: flex;
   align-items: center;
@@ -3825,8 +3831,8 @@ textarea {
 }
 
 .public-tasker-avatar {
-  width: 96px;
-  height: 96px;
+  width: 112px;
+  height: 112px;
 }
 
 .public-tasker-identity-copy {
@@ -3906,7 +3912,7 @@ textarea {
 }
 
 .public-tasker-summary-cards.client-dashboard-summary {
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   max-width: none;
   width: 100%;
 }
@@ -4045,8 +4051,15 @@ textarea {
 .we-info-grid {
   margin-top: 8px;
   display: grid;
-  grid-template-columns: minmax(0, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
+}
+
+.we-info-grid > div {
+  padding: 14px 16px;
+  border-radius: 18px;
+  border: 1px solid #d7e5f2;
+  background: linear-gradient(180deg, #fbfdff 0%, #f3f8fd 100%);
 }
 
 .we-info-grid h3 {
@@ -4061,13 +4074,68 @@ textarea {
 
 .we-profile-quick-grid {
   margin-top: 12px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .we-trust-grid {
   margin-top: 14px;
   display: grid;
-  grid-template-columns: minmax(0, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
+}
+
+.we-scope-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.we-scope-card {
+  padding: 14px 16px;
+  border-radius: 18px;
+  border: 1px solid #d7e5f2;
+  background: linear-gradient(180deg, #fbfdff 0%, #f3f8fd 100%);
+}
+
+.we-scope-card h3 {
+  margin: 0;
+}
+
+.we-scope-card p {
+  margin: 8px 0 0;
+}
+
+.we-check-list-scope {
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 8px;
+}
+
+.we-check-list-scope li {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  color: #2a3545;
+}
+
+.we-check-list-scope li::before {
+  content: "✓";
+  display: inline-grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  flex: 0 0 20px;
+  border-radius: 999px;
+  background: #eaf8ef;
+  color: #1b7a42;
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+.we-check-list-scope.is-excluded li::before {
+  content: "—";
+  background: #fff1f1;
+  color: #b04545;
 }
 
 .we-trust-card {
@@ -4875,6 +4943,8 @@ textarea {
   }
 
   .we-info-grid,
+  .we-pro-duo-grid,
+  .we-scope-grid,
   .we-trust-grid,
   .we-metrics-grid,
   .we-cancel-table {

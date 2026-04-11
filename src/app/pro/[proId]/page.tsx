@@ -142,6 +142,23 @@ type FaqItem = {
 
 type PublicProfileView = "perfil" | "valoraciones" | "agenda";
 
+function renderScopeChecklist(title: string, items: string[], emptyText: string, variant: "included" | "excluded" = "included") {
+  return (
+    <div className="we-scope-card">
+      <h3>{title}</h3>
+      {items.length > 0 ? (
+        <ul className={`we-check-list we-check-list-scope${variant === "excluded" ? " is-excluded" : ""}`}>
+          {items.map((item) => (
+            <li key={item}>{item}</li>
+          ))}
+        </ul>
+      ) : (
+        <p>{emptyText}</p>
+      )}
+    </div>
+  );
+}
+
 const sampleComments: SampleReview[] = [
   {
     name: "Josefa R.",
@@ -306,27 +323,27 @@ function faqItemsForCategory(categorySlug: string | null | undefined): FaqItem[]
         {
           question: "¿Qué tipo de cuidado de mascotas ofrece?",
           answer:
-            "Puedes revisar en el perfil si hace paseos, cuidado en casa del cliente o cuidado en su propio domicilio. Antes de reservar, por chat puedes confirmar detalles como tamaño, rutina y necesidades de tu mascota."
+            "Ofrece exactamente los servicios que aparecen publicados en esta ficha, como paseos, visitas o cuidado básico a domicilio."
         },
         {
           question: "¿Puede cuidar más de una mascota a la vez?",
           answer:
-            "Sí, pero depende del tipo de servicio y de la rutina de cada mascota. Lo ideal es indicar cuántas mascotas son y sus necesidades para confirmar disponibilidad real."
+            "Sí, pero depende de la rutina, el tamaño y las necesidades de cada mascota. Si son varias, conviene avisarlo antes de reservar."
         },
         {
           question: "¿Qué pasa si mi mascota necesita cuidados especiales?",
           answer:
-            "Puedes dejar esa información en la reserva y volver a confirmarla por chat. Así el tasker puede decirte si cuenta con la experiencia adecuada antes del servicio."
+            "Debes informarlo antes de confirmar la reserva para que el tasker te diga si puede hacerse cargo de esos cuidados."
         },
         {
           question: "¿Puedo agendar paseos o cuidados recurrentes?",
           answer:
-            "Sí. En WeTask puedes reservar nuevamente al mismo profesional o coordinar servicios frecuentes según su agenda disponible."
+            "Sí. Puedes volver a reservar al mismo tasker según los bloques que tenga abiertos en agenda."
         },
         {
           question: "¿Cómo se confirma la disponibilidad?",
           answer:
-            "La agenda visible muestra horarios abiertos. Una vez que eliges un bloque y completas la reserva, el servicio queda confirmado dentro de la plataforma."
+            "Se confirma cuando eliges un bloque visible y completas la reserva dentro de WeTask."
         }
       ];
     case "chef":
@@ -334,7 +351,7 @@ function faqItemsForCategory(categorySlug: string | null | undefined): FaqItem[]
         {
           question: "¿Qué tipo de servicios de chef ofrece?",
           answer:
-            "Depende del perfil: puede incluir cocina gourmet, cocina casera, repostería, cocina para eventos o cumpleaños. En la ficha se muestran sus especialidades y puedes confirmar el detalle antes de reservar."
+            "Ofrece solo los servicios estandarizados que aparecen en su perfil, como cena privada, meal prep, asado o repostería."
         },
         {
           question: "¿Cocina en la casa del cliente?",
@@ -344,12 +361,12 @@ function faqItemsForCategory(categorySlug: string | null | undefined): FaqItem[]
         {
           question: "¿Puedo pedir un menú especial o restricciones alimentarias?",
           answer:
-            "Sí. Puedes dejar observaciones en tu reserva y usar el chat para detallar alergias, preferencias o restricciones antes de la visita."
+            "Sí. Puedes dejarlas en la reserva para que el chef confirme si puede adaptarse a ellas."
         },
         {
           question: "¿Quién pone los ingredientes?",
           answer:
-            "Eso puede acordarse según el tipo de servicio. Algunos servicios consideran lista de compras sugerida y otros se coordinan directamente con el cliente antes de la fecha."
+            "Depende del servicio. En la ficha y en la coordinación previa se define si van incluidos o si se coordinan aparte."
         },
         {
           question: "¿Puedo reservar de forma recurrente?",
@@ -362,12 +379,12 @@ function faqItemsForCategory(categorySlug: string | null | undefined): FaqItem[]
         {
           question: "¿Qué tipos de maquillaje realiza?",
           answer:
-            "El perfil puede incluir maquillaje social, para eventos y novias. Revisa sus especialidades y confirma por chat si necesitas algo específico."
+            "Realiza solo los tipos de maquillaje que aparecen publicados en su perfil, como social, fiesta, novia o producción."
         },
         {
           question: "¿El kit de maquillaje está incluido?",
           answer:
-            "Si el profesional trabaja con kit propio, eso queda indicado en su perfil u observaciones del servicio. También puedes consultarlo antes de reservar."
+            "Sí o no según lo que indique en su ficha. Si incluye kit, pestañas o prueba previa, eso aparece en el perfil."
         },
         {
           question: "¿Puede atender a domicilio?",
@@ -382,7 +399,7 @@ function faqItemsForCategory(categorySlug: string | null | undefined): FaqItem[]
         {
           question: "¿Cómo aseguro mi horario?",
           answer:
-            "La mejor forma es reservar directamente el bloque disponible dentro de la plataforma, así el servicio queda protegido y confirmado."
+            "Reservando un bloque disponible dentro de WeTask. Así el horario queda tomado y protegido."
         }
       ];
     case "planchado":
@@ -390,12 +407,12 @@ function faqItemsForCategory(categorySlug: string | null | undefined): FaqItem[]
         {
           question: "¿Cómo cobra este servicio de planchado?",
           answer:
-            "En WeTask el servicio de planchado se maneja por hora. En el perfil puedes ver la tarifa referencial y reservar según la duración estimada."
+            "Se cobra por hora. En la ficha puedes ver la tarifa base y reservar según el tiempo que necesites."
         },
         {
           question: "¿Puede planchar ropa delicada?",
           answer:
-            "Si el profesional ofrece ese tipo de servicio, puedes verlo en sus especialidades o confirmarlo antes de la reserva para evitar errores con prendas sensibles."
+            "Sí, pero solo si lo declara en su perfil. Si tienes prendas delicadas, conviene avisarlo antes."
         },
         {
           question: "¿El servicio se hace en mi casa?",
@@ -410,7 +427,99 @@ function faqItemsForCategory(categorySlug: string | null | undefined): FaqItem[]
         {
           question: "¿Qué debo tener listo antes de la visita?",
           answer:
-            "Idealmente deja la ropa separada y comenta si hay prendas delicadas o instrucciones especiales para que el servicio sea más fluido."
+            "Idealmente la ropa separada y cualquier instrucción especial sobre prendas delicadas o temperatura."
+        }
+      ];
+    case "limpieza":
+      return [
+        {
+          question: "¿Qué incluye la limpieza estándar?",
+          answer: "Incluye solo las tareas que el tasker marcó como sí realiza en su perfil."
+        },
+        {
+          question: "¿Lleva sus propios productos o implementos?",
+          answer: "Depende de lo que indique en su perfil. Si no aparece claro, conviene confirmarlo antes de reservar."
+        },
+        {
+          question: "¿Puede hacer tareas fuera del alcance publicado?",
+          answer: "No necesariamente. Si la tarea no aparece en su alcance del servicio, primero debes consultarla."
+        },
+        {
+          question: "¿Cómo sé cuánto tiempo debería reservar?",
+          answer: "WeTask te muestra un tiempo sugerido cuando corresponde, pero la duración final depende del tamaño del trabajo y del alcance acordado."
+        },
+        {
+          question: "¿Cómo confirmo que atiende mi comuna?",
+          answer: "La ficha muestra sus comunas activas, así que si aparece en resultados debería poder atender esa zona."
+        }
+      ];
+    case "babysitter":
+      return [
+        {
+          question: "¿Con qué edades trabaja?",
+          answer: "Trabaja solo con las edades que aparecen en su perfil, por ejemplo lactantes, preescolar o escolar."
+        },
+        {
+          question: "¿Puede cuidar a más de un niño?",
+          answer: "Sí, si el tasker lo permite en su alcance del servicio. Si son varios niños, conviene avisarlo antes."
+        },
+        {
+          question: "¿Hace tareas adicionales en la casa?",
+          answer: "Solo las tareas que figuran como sí realiza en su perfil."
+        },
+        {
+          question: "¿Tiene conocimientos de primeros auxilios?",
+          answer: "Si los tiene, eso se muestra en su perfil dentro del alcance del servicio."
+        },
+        {
+          question: "¿Cómo se confirma el horario?",
+          answer: "Reservando un bloque disponible y completando el pago dentro de WeTask."
+        }
+      ];
+    case "personal-trainer":
+      return [
+        {
+          question: "¿Qué tipo de entrenamiento realiza?",
+          answer: "Realiza solo los tipos de entrenamiento que aparecen publicados en su perfil."
+        },
+        {
+          question: "¿Lleva implementos o equipamiento?",
+          answer: "Si lleva implementos, eso aparece indicado en su alcance del servicio."
+        },
+        {
+          question: "¿Las clases pueden ser online o presenciales?",
+          answer: "Sí, según la modalidad que el tasker tenga activa en su perfil."
+        },
+        {
+          question: "¿Puede adaptar la clase a mi nivel?",
+          answer: "Sí, pero siempre dentro de los objetivos y modalidades que declara trabajar."
+        },
+        {
+          question: "¿Cómo elijo un horario?",
+          answer: "Desde la agenda visible del tasker, seleccionando un bloque libre."
+        }
+      ];
+    case "profesor-particular":
+      return [
+        {
+          question: "¿Qué asignaturas enseña?",
+          answer: "Enseña únicamente las asignaturas y subcategorías que aparecen publicadas en su perfil."
+        },
+        {
+          question: "¿Qué nivel puede enseñar?",
+          answer: "Los niveles exactos se muestran en la ficha, por ejemplo básica, media, universitaria o principiante/intermedio/avanzado."
+        },
+        {
+          question: "¿Hace clases online o presenciales?",
+          answer: "Sí, según la modalidad que tenga activa en su perfil."
+        },
+        {
+          question: "¿Qué necesita tener preparado el alumno?",
+          answer: "Eso se define en su perfil o en la coordinación previa, por ejemplo cuaderno, instrumento o computador."
+        },
+        {
+          question: "¿Puedo tomar clases frecuentes?",
+          answer: "Sí. Puedes volver a reservar según la agenda que tenga disponible."
         }
       ];
     default:
@@ -976,16 +1085,6 @@ export default function ProDetailPage() {
     return `/reservar?${qs.toString()}`;
   };
   const focusLabel = normalizedPrimaryCategorySlug === "mascotas" ? "Tipos de mascota" : "Especialidades";
-  const serviceLabel = normalizedPrimaryCategorySlug === "limpieza" ? "Servicios de limpieza" : "Servicios que ofrece";
-  const goalText =
-    normalizedPrimaryCategorySlug === "mascotas"
-      ? "Cuidar mascotas con confianza, constancia y buena comunicación con cada familia."
-      : normalizedPrimaryCategorySlug === "chef"
-        ? "Llenar agenda con servicios bien coordinados y experiencias de calidad en cada visita."
-        : normalizedPrimaryCategorySlug === "maquillaje"
-          ? "Construir una agenda estable con clientas recurrentes y servicios bien evaluados."
-          : "Llenar agenda con clientes recurrentes y servicios de calidad.";
-
   return (
     <main className="auth-flow-screen auth-flow-screen-scroll market-shell-auth">
       <div className="auth-flow-backdrop" aria-hidden />
@@ -1046,10 +1145,6 @@ export default function ProDetailPage() {
                     <div className="auth-flow-meta-card">
                       <strong>Servicios que realiza</strong>
                       <span>{offeredServices.join(", ")}</span>
-                    </div>
-                    <div className="auth-flow-meta-card">
-                      <strong>Experiencia</strong>
-                      <span>{experienceYears} años de experiencia en servicios a domicilio.</span>
                     </div>
                     <div className="auth-flow-meta-card">
                       <strong>Disponibilidad</strong>
@@ -1128,71 +1223,45 @@ export default function ProDetailPage() {
                     </div>
                   </article>
 
-                  <article className="auth-flow-panel client-dashboard-section">
-                    <h2>Sobre mi</h2>
-                    <p>{expandedAbout ? aboutText : aboutPreview}</p>
-                    {aboutText.length > 340 ? (
-                      <button type="button" className="we-text-link" onClick={() => setExpandedAbout((prev) => !prev)}>
-                        {expandedAbout ? "Ver menos" : "Ver mas"}
-                      </button>
-                    ) : null}
-                  </article>
+                  <section className="we-pro-duo-grid">
+                    <article className="auth-flow-panel client-dashboard-section">
+                      <h2>Sobre mi</h2>
+                      <p>{expandedAbout ? aboutText : aboutPreview}</p>
+                      {aboutText.length > 340 ? (
+                        <button type="button" className="we-text-link" onClick={() => setExpandedAbout((prev) => !prev)}>
+                          {expandedAbout ? "Ver menos" : "Ver mas"}
+                        </button>
+                      ) : null}
+                    </article>
 
-                  <article className="auth-flow-panel client-dashboard-section">
-                    <h2>Informacion de interes</h2>
-                    <div className="we-info-grid">
-                      <div>
-                        <h3>¿Cuánta experiencia tiene?</h3>
-                        <p>{experienceYears} años trabajando en servicios a domicilio.</p>
-                      </div>
-                      <div>
-                        <h3>{serviceLabel}</h3>
-                        <p>{offeredServices.join(", ")}</p>
-                      </div>
-                      <div>
-                        <h3>{focusLabel}</h3>
-                        <p>{experienceTypes.join(", ")}</p>
-                      </div>
-                      <div>
-                        <h3>¿Qué busca en WeTask?</h3>
-                        <p>{goalText}</p>
-                      </div>
-                    </div>
-                  </article>
-
-                  <article className="auth-flow-panel client-dashboard-section">
-                    <h2>Cobertura</h2>
-                    <p className="coverage-meta">Estas son las comunas activas que el tasker tiene configuradas hoy.</p>
-                    {activeCommunes.length > 0 ? (
-                      <div className="coverage-map-chip-list" aria-label="Comunas donde trabaja">
-                        {activeCommunes.map((commune) => (
-                          <span key={commune} className="coverage-map-chip">
-                            {commune}
-                          </span>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="coverage-meta">Aún no hay comunas informadas en este perfil.</p>
-                    )}
-                  </article>
+                    <article className="auth-flow-panel client-dashboard-section">
+                      <h2>Cobertura</h2>
+                      <p className="coverage-meta">Estas son las comunas activas que el tasker tiene configuradas hoy.</p>
+                      {activeCommunes.length > 0 ? (
+                        <div className="coverage-map-chip-list" aria-label="Comunas donde trabaja">
+                          {activeCommunes.map((commune) => (
+                            <span key={commune} className="coverage-map-chip">
+                              {commune}
+                            </span>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="coverage-meta">Aún no hay comunas informadas en este perfil.</p>
+                      )}
+                    </article>
+                  </section>
 
                   {normalizedPrimaryCategorySlug === "limpieza" ? (
                     <article className="auth-flow-panel client-dashboard-section">
                       <h2>Alcance del servicio</h2>
-                      <div className="we-info-grid">
-                        <div>
+                      <div className="we-info-grid we-scope-grid">
+                        <div className="we-scope-card">
                           <h3>Tipos de limpieza que acepta</h3>
                           <p>{cleaningScopeServices.length > 0 ? cleaningScopeServices.join(", ") : "Aún no informado."}</p>
                         </div>
-                        <div>
-                          <h3>Tareas que sí realiza</h3>
-                          <p>{cleaningScopeIncludedTasks.length > 0 ? cleaningScopeIncludedTasks.join(", ") : "Aún no informado."}</p>
-                        </div>
-                        <div>
-                          <h3>Tareas que no realiza</h3>
-                          <p>{cleaningScopeExcludedTasks.length > 0 ? cleaningScopeExcludedTasks.join(", ") : "No reporta exclusiones."}</p>
-                        </div>
-                        <div>
+                        {renderScopeChecklist("Tareas que sí realiza", cleaningScopeIncludedTasks, "Aún no informado.")}
+                        {renderScopeChecklist("Tareas que no realiza", cleaningScopeExcludedTasks, "No reporta exclusiones.", "excluded")}
+                        <div className="we-scope-card">
                           <h3>Condiciones especiales</h3>
                           <p>{cleaningScope.special_conditions || "Sin condiciones especiales reportadas."}</p>
                         </div>
@@ -1204,28 +1273,22 @@ export default function ProDetailPage() {
                   {normalizedPrimaryCategorySlug === "mascotas" ? (
                     <article className="auth-flow-panel client-dashboard-section">
                       <h2>Alcance del servicio</h2>
-                      <div className="we-info-grid">
-                        <div>
+                      <div className="we-info-grid we-scope-grid">
+                        <div className="we-scope-card">
                           <h3>Servicios de mascotas que ofrece</h3>
                           <p>{petScopeServices.length > 0 ? petScopeServices.join(", ") : "Aún no informado."}</p>
                         </div>
-                        <div>
+                        <div className="we-scope-card">
                           <h3>Mascotas con las que trabaja</h3>
                           <p>{petScopeAnimals.length > 0 ? petScopeAnimals.join(", ") : "Aún no informado."}</p>
                         </div>
-                        <div>
-                          <h3>Tareas que sí realiza</h3>
-                          <p>{petScopeIncludedTasks.length > 0 ? petScopeIncludedTasks.join(", ") : "Aún no informado."}</p>
-                        </div>
-                        <div>
-                          <h3>Tareas que no realiza</h3>
-                          <p>{petScopeExcludedTasks.length > 0 ? petScopeExcludedTasks.join(", ") : "No reporta exclusiones."}</p>
-                        </div>
-                        <div>
+                        {renderScopeChecklist("Tareas que sí realiza", petScopeIncludedTasks, "Aún no informado.")}
+                        {renderScopeChecklist("Tareas que no realiza", petScopeExcludedTasks, "No reporta exclusiones.", "excluded")}
+                        <div className="we-scope-card">
                           <h3>Mascotas grandes</h3>
                           <p>{petScope.accepts_large_pets == null ? "No informado." : petScope.accepts_large_pets ? "Sí acepta" : "No acepta"}</p>
                         </div>
-                        <div>
+                        <div className="we-scope-card">
                           <h3>Condiciones especiales</h3>
                           <p>{petScope.special_conditions || "Sin condiciones especiales reportadas."}</p>
                         </div>
@@ -1237,24 +1300,18 @@ export default function ProDetailPage() {
                   {normalizedPrimaryCategorySlug === "maquillaje" ? (
                     <article className="auth-flow-panel client-dashboard-section">
                       <h2>Alcance del servicio</h2>
-                      <div className="we-info-grid">
-                        <div>
+                      <div className="we-info-grid we-scope-grid">
+                        <div className="we-scope-card">
                           <h3>Tipos de maquillaje</h3>
                           <p>{makeupScopeServices.length > 0 ? makeupScopeServices.join(", ") : "Aún no informado."}</p>
                         </div>
-                        <div>
-                          <h3>Tareas que sí realiza</h3>
-                          <p>{makeupScopeIncludedTasks.length > 0 ? makeupScopeIncludedTasks.join(", ") : "Aún no informado."}</p>
-                        </div>
-                        <div>
-                          <h3>Tareas que no realiza</h3>
-                          <p>{makeupScopeExcludedTasks.length > 0 ? makeupScopeExcludedTasks.join(", ") : "No reporta exclusiones."}</p>
-                        </div>
-                        <div>
+                        {renderScopeChecklist("Tareas que sí realiza", makeupScopeIncludedTasks, "Aún no informado.")}
+                        {renderScopeChecklist("Tareas que no realiza", makeupScopeExcludedTasks, "No reporta exclusiones.", "excluded")}
+                        <div className="we-scope-card">
                           <h3>Incluye kit</h3>
                           <p>{makeupScope.includes_kit == null ? "No informado." : makeupScope.includes_kit ? "Sí" : "No"}</p>
                         </div>
-                        <div>
+                        <div className="we-scope-card">
                           <h3>Condiciones especiales</h3>
                           <p>{makeupScope.special_conditions || "Sin condiciones especiales reportadas."}</p>
                         </div>
@@ -1266,24 +1323,18 @@ export default function ProDetailPage() {
                   {normalizedPrimaryCategorySlug === "planchado" ? (
                     <article className="auth-flow-panel client-dashboard-section">
                       <h2>Alcance del servicio</h2>
-                      <div className="we-info-grid">
-                        <div>
+                      <div className="we-info-grid we-scope-grid">
+                        <div className="we-scope-card">
                           <h3>Modalidades de planchado</h3>
                           <p>{ironingScopeServices.length > 0 ? ironingScopeServices.join(", ") : "Aún no informado."}</p>
                         </div>
-                        <div>
-                          <h3>Tareas que sí realiza</h3>
-                          <p>{ironingScopeIncludedTasks.length > 0 ? ironingScopeIncludedTasks.join(", ") : "Aún no informado."}</p>
-                        </div>
-                        <div>
-                          <h3>Tareas que no realiza</h3>
-                          <p>{ironingScopeExcludedTasks.length > 0 ? ironingScopeExcludedTasks.join(", ") : "No reporta exclusiones."}</p>
-                        </div>
-                        <div>
+                        {renderScopeChecklist("Tareas que sí realiza", ironingScopeIncludedTasks, "Aún no informado.")}
+                        {renderScopeChecklist("Tareas que no realiza", ironingScopeExcludedTasks, "No reporta exclusiones.", "excluded")}
+                        <div className="we-scope-card">
                           <h3>Ropa delicada</h3>
                           <p>{ironingScope.delicate_clothes == null ? "No informado." : ironingScope.delicate_clothes ? "Sí" : "No"}</p>
                         </div>
-                        <div>
+                        <div className="we-scope-card">
                           <h3>Condiciones especiales</h3>
                           <p>{ironingScope.special_conditions || "Sin condiciones especiales reportadas."}</p>
                         </div>
@@ -1295,32 +1346,26 @@ export default function ProDetailPage() {
                   {normalizedPrimaryCategorySlug === "babysitter" ? (
                     <article className="auth-flow-panel client-dashboard-section">
                       <h2>Alcance del servicio</h2>
-                      <div className="we-info-grid">
-                        <div>
+                      <div className="we-info-grid we-scope-grid">
+                        <div className="we-scope-card">
                           <h3>Servicios de babysitter que ofrece</h3>
                           <p>{babysitterScopeServices.length > 0 ? babysitterScopeServices.join(", ") : "Aún no informado."}</p>
                         </div>
-                        <div>
+                        <div className="we-scope-card">
                           <h3>Edades con las que trabaja</h3>
                           <p>{babysitterScopeAges.length > 0 ? babysitterScopeAges.join(", ") : "Aún no informado."}</p>
                         </div>
-                        <div>
-                          <h3>Tareas que sí realiza</h3>
-                          <p>{babysitterScopeIncludedTasks.length > 0 ? babysitterScopeIncludedTasks.join(", ") : "Aún no informado."}</p>
-                        </div>
-                        <div>
-                          <h3>Tareas que no realiza</h3>
-                          <p>{babysitterScopeExcludedTasks.length > 0 ? babysitterScopeExcludedTasks.join(", ") : "No reporta exclusiones."}</p>
-                        </div>
-                        <div>
+                        {renderScopeChecklist("Tareas que sí realiza", babysitterScopeIncludedTasks, "Aún no informado.")}
+                        {renderScopeChecklist("Tareas que no realiza", babysitterScopeExcludedTasks, "No reporta exclusiones.", "excluded")}
+                        <div className="we-scope-card">
                           <h3>Primeros auxilios</h3>
                           <p>{babysitterScope.first_aid == null ? "No informado." : babysitterScope.first_aid ? "Sí" : "No"}</p>
                         </div>
-                        <div>
+                        <div className="we-scope-card">
                           <h3>Más de un niño</h3>
                           <p>{babysitterScope.multi_child == null ? "No informado." : babysitterScope.multi_child ? "Sí" : "No"}</p>
                         </div>
-                        <div>
+                        <div className="we-scope-card">
                           <h3>Condiciones especiales</h3>
                           <p>{babysitterScope.special_conditions || "Sin condiciones especiales reportadas."}</p>
                         </div>
@@ -1332,16 +1377,16 @@ export default function ProDetailPage() {
                   {normalizedPrimaryCategorySlug === "chef" ? (
                     <article className="auth-flow-panel client-dashboard-section">
                       <h2>Alcance del servicio</h2>
-                      <div className="we-info-grid">
-                        <div>
+                      <div className="we-info-grid we-scope-grid">
+                        <div className="we-scope-card">
                           <h3>Servicios de chef que ofrece</h3>
                           <p>{chefScopeServices.length > 0 ? chefScopeServices.join(", ") : "Aún no informado."}</p>
                         </div>
-                        <div>
+                        <div className="we-scope-card">
                           <h3>Modelo del servicio</h3>
                           <p>Servicios estandarizados por WeTask con duración estimada, qué incluye y precio claro por servicio.</p>
                         </div>
-                        <div>
+                        <div className="we-scope-card">
                           <h3>Condiciones especiales</h3>
                           <p>{chefScope.special_conditions || "Sin condiciones especiales reportadas."}</p>
                         </div>
@@ -1351,7 +1396,7 @@ export default function ProDetailPage() {
                           const service = getChefServiceDefinition(serviceSlug);
                           if (!service) return null;
                           return (
-                            <div key={service.slug}>
+                            <div key={service.slug} className="we-scope-card">
                               <h3>{service.name}</h3>
                               <p>Duración estimada: {service.estimatedDurationLabel}</p>
                               <p>Incluye: {service.includes.join(", ")}.</p>
@@ -1369,28 +1414,22 @@ export default function ProDetailPage() {
                   {normalizedPrimaryCategorySlug === "personal-trainer" ? (
                     <article className="auth-flow-panel client-dashboard-section">
                       <h2>Alcance del servicio</h2>
-                      <div className="we-info-grid">
-                        <div>
+                      <div className="we-info-grid we-scope-grid">
+                        <div className="we-scope-card">
                           <h3>Tipos de entrenamiento</h3>
                           <p>{trainerScopeServices.length > 0 ? trainerScopeServices.join(", ") : "Aún no informado."}</p>
                         </div>
-                        <div>
+                        <div className="we-scope-card">
                           <h3>Modalidades</h3>
                           <p>{trainerScopeModes.length > 0 ? trainerScopeModes.join(", ") : "Aún no informado."}</p>
                         </div>
-                        <div>
-                          <h3>Tareas que sí realiza</h3>
-                          <p>{trainerScopeIncludedTasks.length > 0 ? trainerScopeIncludedTasks.join(", ") : "Aún no informado."}</p>
-                        </div>
-                        <div>
-                          <h3>Tareas que no realiza</h3>
-                          <p>{trainerScopeExcludedTasks.length > 0 ? trainerScopeExcludedTasks.join(", ") : "No reporta exclusiones."}</p>
-                        </div>
-                        <div>
+                        {renderScopeChecklist("Tareas que sí realiza", trainerScopeIncludedTasks, "Aún no informado.")}
+                        {renderScopeChecklist("Tareas que no realiza", trainerScopeExcludedTasks, "No reporta exclusiones.", "excluded")}
+                        <div className="we-scope-card">
                           <h3>Lleva equipamiento</h3>
                           <p>{trainerScope.brings_equipment == null ? "No informado." : trainerScope.brings_equipment ? "Sí" : "No"}</p>
                         </div>
-                        <div>
+                        <div className="we-scope-card">
                           <h3>Condiciones especiales</h3>
                           <p>{trainerScope.special_conditions || "Sin condiciones especiales reportadas."}</p>
                         </div>
@@ -1402,28 +1441,22 @@ export default function ProDetailPage() {
                   {normalizedPrimaryCategorySlug === "profesor-particular" ? (
                     <article className="auth-flow-panel client-dashboard-section">
                       <h2>Alcance del servicio</h2>
-                      <div className="we-info-grid">
-                        <div>
+                      <div className="we-info-grid we-scope-grid">
+                        <div className="we-scope-card">
                           <h3>Asignaturas que ofrece</h3>
                           <p>{teacherScopeServices.length > 0 ? teacherScopeServices.join(", ") : "Aún no informado."}</p>
                         </div>
-                        <div>
+                        <div className="we-scope-card">
                           <h3>Niveles</h3>
                           <p>{teacherScopeLevels.length > 0 ? teacherScopeLevels.join(", ") : "Aún no informado."}</p>
                         </div>
-                        <div>
+                        <div className="we-scope-card">
                           <h3>Modalidades</h3>
                           <p>{teacherScopeModes.length > 0 ? teacherScopeModes.join(", ") : "Aún no informado."}</p>
                         </div>
-                        <div>
-                          <h3>Tareas que sí realiza</h3>
-                          <p>{teacherScopeIncludedTasks.length > 0 ? teacherScopeIncludedTasks.join(", ") : "Aún no informado."}</p>
-                        </div>
-                        <div>
-                          <h3>Tareas que no realiza</h3>
-                          <p>{teacherScopeExcludedTasks.length > 0 ? teacherScopeExcludedTasks.join(", ") : "No reporta exclusiones."}</p>
-                        </div>
-                        <div>
+                        {renderScopeChecklist("Tareas que sí realiza", teacherScopeIncludedTasks, "Aún no informado.")}
+                        {renderScopeChecklist("Tareas que no realiza", teacherScopeExcludedTasks, "No reporta exclusiones.", "excluded")}
+                        <div className="we-scope-card">
                           <h3>Condiciones especiales</h3>
                           <p>{teacherScope.special_conditions || "Sin condiciones especiales reportadas."}</p>
                         </div>
