@@ -38,8 +38,6 @@ export const CLEANING_TASK_EXCLUDED_OPTIONS = [
   { value: "limpieza_post_obra_pesada", label: "Limpieza post obra pesada" },
   { value: "limpieza_en_altura", label: "Limpieza en altura" },
   { value: "mover_muebles_pesados", label: "Mover muebles pesados" },
-  { value: "cuidar_ninos", label: "Cuidar niños" },
-  { value: "cuidar_adultos_mayores", label: "Cuidar adultos mayores" },
   { value: "cocinar", label: "Cocinar" },
   { value: "lavar_mascotas_o_zonas_mascotas", label: "Lavar mascotas o limpiar zonas de mascotas" },
   { value: "uso_quimicos_fuertes", label: "Uso de químicos fuertes" },
