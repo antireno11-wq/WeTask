@@ -383,7 +383,9 @@ export default function AyudaSoportePage() {
     setReportFileMessage("");
   };
 
-  const handleContactSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const [sendingContact, setSendingContact] = useState(false);
+
+  const handleContactSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setContactMessage("");
 
@@ -392,14 +394,36 @@ export default function AyudaSoportePage() {
       return;
     }
 
-    setContactMessage("Tu mensaje fue enviado correctamente. Te responderemos lo antes posible.");
-    setContactForm({
-      name: "",
-      email: "",
-      phone: "",
-      reason: "",
-      message: ""
-    });
+    setSendingContact(true);
+
+    try {
+      const response = await fetch("/api/support/contact", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(contactForm)
+      });
+
+      const data = (await response.json()) as { ok?: boolean; error?: string; detail?: string };
+
+      if (!response.ok || !data.ok) {
+        throw new Error(data.detail || data.error || "No se pudo enviar tu mensaje");
+      }
+
+      setContactMessage("Tu mensaje fue enviado correctamente. Te responderemos lo antes posible.");
+      setContactForm({
+        name: "",
+        email: "",
+        phone: "",
+        reason: "",
+        message: ""
+      });
+    } catch (error) {
+      setContactMessage(error instanceof Error ? error.message : "No se pudo enviar tu mensaje");
+    } finally {
+      setSendingContact(false);
+    }
   };
 
   const handleEvidenceChange = (event: ChangeEvent<HTMLInputElement>) => {
@@ -757,8 +781,8 @@ export default function AyudaSoportePage() {
             </label>
 
             <div className="full auth-flow-actions support-section-actions">
-              <button type="submit" className="cta">
-                Enviar mensaje
+              <button type="submit" className="cta" disabled={sendingContact}>
+                {sendingContact ? "Enviando..." : "Enviar mensaje"}
               </button>
             </div>
           </form>

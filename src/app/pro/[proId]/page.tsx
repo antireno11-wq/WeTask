@@ -1510,9 +1510,9 @@ export default function ProDetailPage() {
                   <article className="auth-flow-panel client-dashboard-section">
                     <h2>¿Podemos ayudarte?</h2>
                     <p>Si tienes dudas del servicio, horario o materiales, escríbenos antes de reservar.</p>
-                    <button type="button" className="cta small">
+                    <Link href="/ayuda-soporte#support-contact" className="cta small">
                       Enviar mensaje
-                    </button>
+                    </Link>
                   </article>
                     </>
                   ) : null}
