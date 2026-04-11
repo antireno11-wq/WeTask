@@ -438,7 +438,7 @@ export default function ReservarPage() {
           setSavedPaymentMethods(paymentMethods);
           const defaultPaymentMethod = paymentMethods.find((item) => item.isDefault) ?? paymentMethods[0] ?? null;
           setSelectedSavedPaymentMethodId(defaultPaymentMethod?.id ?? "");
-          setShowNewCardForm(paymentMethods.length === 0);
+          setShowNewCardForm(false);
         }
       } catch {
         // noop
@@ -468,6 +468,11 @@ export default function ReservarPage() {
       setHours(hourOptions[hourOptions.length - 1] ?? 1);
     }
   }, [selectedSlot, selectedStartAt, startOptions, hourOptions, hours]);
+
+  useEffect(() => {
+    if (bookingStage !== "checkout" || typeof window === "undefined") return;
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [bookingStage]);
 
   useEffect(() => {
     const nextKey =
@@ -1056,6 +1061,7 @@ export default function ReservarPage() {
             )}
           </section>
 
+          {bookingStage === "agenda" ? (
           <div className={`booking-flow-grid ${quickCheckoutMode ? "booking-flow-grid-compact" : ""}`}>
             {!quickCheckoutMode ? (
               <section className="auth-flow-panel client-dashboard-section">
@@ -1353,12 +1359,13 @@ export default function ReservarPage() {
               </div>
             ) : null}
           </div>
+          ) : null}
 
           {selectedPro && bookingStage === "checkout" ? (
             <section className="auth-flow-panel client-dashboard-section booking-checkout-section">
               <div className="panel-head auth-flow-panel-head">
                 <h2>Checkout</h2>
-                <p>Revisa el horario elegido y completa el pago con Mercado Pago.</p>
+                <p>Revisa el resumen de tu servicio y paga con la tarjeta que quieras usar en esta reserva.</p>
               </div>
 
               <div className="booking-checkout-summary">
@@ -1373,6 +1380,9 @@ export default function ReservarPage() {
                 </p>
                 <p>
                   Horas estimadas: <strong>{hours}</strong> · Total: <strong>{clp(total)}</strong>
+                </p>
+                <p>
+                  Tasker: <strong>{selectedPro.fullName}</strong>
                 </p>
                 {recommendedHours ? (
                   <p>
@@ -1395,7 +1405,21 @@ export default function ReservarPage() {
                 {loadingSavedPaymentMethods ? (
                   <p className="minimal-note">Cargando tarjetas guardadas...</p>
                 ) : savedPaymentMethods.length === 0 ? (
-                  <p className="minimal-note">Aún no tienes tarjetas guardadas. Puedes agregarlas desde tu panel cliente.</p>
+                  <div className="booking-checkout-empty-methods">
+                    <p className="minimal-note">Aún no tienes tarjetas guardadas para esta cuenta.</p>
+                    <button
+                      className="cta ghost small"
+                      type="button"
+                      onClick={() => {
+                        setShowNewCardForm(true);
+                        setCheckoutState("idle");
+                        setCheckoutStatusText("");
+                        setError("");
+                      }}
+                    >
+                      Agregar tarjeta
+                    </button>
+                  </div>
                 ) : (
                   <div className="client-payment-methods-list compact">
                     {savedPaymentMethods.map((paymentMethod) => (
@@ -1443,7 +1467,16 @@ export default function ReservarPage() {
               </div>
 
               <div className="cta-row">
-                <button className="cta ghost small" type="button" onClick={() => setBookingStage("agenda")}>
+                <button
+                  className="cta ghost small"
+                  type="button"
+                  onClick={() => {
+                    setBookingStage("agenda");
+                    if (typeof window !== "undefined") {
+                      window.scrollTo({ top: 0, behavior: "smooth" });
+                    }
+                  }}
+                >
                   Volver a la agenda
                 </button>
               </div>
