@@ -9,6 +9,10 @@ type HelpCard = {
   text: string;
 };
 
+type QuickHelpCard = HelpCard & {
+  href: string;
+};
+
 type FaqItem = {
   question: string;
   answer: string;
@@ -21,30 +25,36 @@ type FaqSection = {
 
 type TicketStatus = "Solicitud recibida" | "En revisión" | "En proceso" | "Resuelta" | "Cerrada";
 
-const quickHelpCards: HelpCard[] = [
+const quickHelpCards: QuickHelpCard[] = [
   {
     title: "Reservas",
-    text: "Resuelve dudas sobre agendamiento, cambios de fecha, cancelaciones y estado de tu servicio."
+    text: "Resuelve dudas sobre agendamiento, cambios de fecha, cancelaciones y estado de tu servicio.",
+    href: "#faq-reservas"
   },
   {
     title: "Pagos y reembolsos",
-    text: "Consulta información sobre cobros, métodos de pago, devoluciones y comprobantes."
+    text: "Consulta información sobre cobros, métodos de pago, devoluciones y comprobantes.",
+    href: "#faq-pagos-y-reembolsos"
   },
   {
     title: "Cuenta cliente",
-    text: "Administra tus datos personales, direcciones, métodos de pago y preferencias."
+    text: "Administra tus datos personales, direcciones, métodos de pago y preferencias.",
+    href: "#support-client-help"
   },
   {
     title: "Cuenta profesional",
-    text: "Encuentra ayuda sobre registro, aprobación de perfil, pagos, comisiones y disponibilidad."
+    text: "Encuentra ayuda sobre registro, aprobación de perfil, pagos, comisiones y disponibilidad.",
+    href: "#support-pro-help"
   },
   {
     title: "Seguridad y confianza",
-    text: "Conoce cómo protegemos a clientes y profesionales y cómo reportar situaciones inapropiadas."
+    text: "Conoce cómo protegemos a clientes y profesionales y cómo reportar situaciones inapropiadas.",
+    href: "#faq-seguridad-y-confianza"
   },
   {
     title: "Contactar soporte",
-    text: "Si no encontraste tu respuesta, comunícate con nuestro equipo de ayuda."
+    text: "Si no encontraste tu respuesta, comunícate con nuestro equipo de ayuda.",
+    href: "#support-contact"
   }
 ];
 
@@ -315,8 +325,19 @@ const policyLinks = [
   "Tratamiento de datos personales"
 ];
 
+function supportSectionId(title: string) {
+  return `faq-${title
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")}`;
+}
+
 export default function AyudaSoportePage() {
   const [search, setSearch] = useState("");
+  const [showReportForm, setShowReportForm] = useState(false);
+  const [showContactForm, setShowContactForm] = useState(false);
   const [reportMessage, setReportMessage] = useState("");
   const [contactMessage, setContactMessage] = useState("");
   const [reportFileMessage, setReportFileMessage] = useState("");
@@ -511,18 +532,19 @@ export default function AyudaSoportePage() {
           </div>
           <div className="support-card-grid">
             {quickHelpCards.map((card) => (
-              <article key={card.title} className="support-info-card">
+              <a key={card.title} href={card.href} className="support-info-card support-info-card-link">
                 <h3>{card.title}</h3>
                 <p>{card.text}</p>
-              </article>
+              </a>
             ))}
           </div>
         </section>
 
-        <section className="panel" id="support-faq">
-          <div className="panel-head">
+        <section className="panel we-faq-section" id="support-faq">
+          <div className="we-faq-heading">
+            <p className="we-faq-kicker">Respuestas WeTask</p>
             <h2>Preguntas frecuentes</h2>
-            <p>Las preguntas aparecen cerradas por defecto. Haz click en cada una para ver la respuesta.</p>
+            <p>Encuentra respuestas rápidas sobre reservas, pagos, cancelaciones, seguridad y uso de WeTask.</p>
           </div>
 
           {!hasFaqResults ? (
@@ -533,15 +555,17 @@ export default function AyudaSoportePage() {
           ) : (
             <div className="support-faq-sections">
               {filteredFaqSections.map((section) => (
-                <article key={section.title} className="support-faq-group">
+                <article key={section.title} className="support-faq-group" id={supportSectionId(section.title)}>
                   <div className="support-section-head">
                     <h3>{section.title}</h3>
                     <span>{section.items.length} tema(s)</span>
                   </div>
                   <div className="we-faq-list support-faq-list">
                     {section.items.map((item) => (
-                      <details key={item.question}>
-                        <summary>{item.question}</summary>
+                      <details key={item.question} className="we-faq-item">
+                        <summary>
+                          <span>{item.question}</span>
+                        </summary>
                         <p>{item.answer}</p>
                       </details>
                     ))}
@@ -552,7 +576,7 @@ export default function AyudaSoportePage() {
           )}
         </section>
 
-        <section className="panel">
+        <section className="panel" id="support-client-help">
           <div className="panel-head">
             <h2>Ayuda para clientes</h2>
             <p>Si contrataste un servicio en WeTask, aquí encontrarás información útil para gestionar tus reservas, pagos y soporte.</p>
@@ -580,7 +604,7 @@ export default function AyudaSoportePage() {
           </div>
         </section>
 
-        <section className="panel">
+        <section className="panel" id="support-pro-help">
           <div className="panel-head">
             <h2>Ayuda para profesionales</h2>
             <p>
@@ -620,105 +644,118 @@ export default function AyudaSoportePage() {
             <p>Cuéntanos qué ocurrió y nuestro equipo revisará tu caso lo antes posible.</p>
           </div>
 
-          <div className="support-report-options">
-            {reportCategories.map((option) => (
-              <button
-                key={option}
-                type="button"
-                className={`support-report-chip ${reportForm.category === option ? "active" : ""}`}
-                onClick={() => setReportForm((current) => ({ ...current, category: option }))}
-              >
-                {option}
-              </button>
-            ))}
-          </div>
-
-          <form className="grid-form support-form-grid" onSubmit={handleReportSubmit}>
-            <label>
-              Nombre completo
-              <input
-                value={reportForm.fullName}
-                onChange={(event) => setReportForm((current) => ({ ...current, fullName: event.target.value }))}
-                required
-              />
-            </label>
-            <label>
-              Correo electrónico
-              <input
-                type="email"
-                value={reportForm.email}
-                onChange={(event) => setReportForm((current) => ({ ...current, email: event.target.value }))}
-                required
-              />
-            </label>
-            <label>
-              Teléfono
-              <input
-                value={reportForm.phone}
-                onChange={(event) => setReportForm((current) => ({ ...current, phone: event.target.value }))}
-                required
-              />
-            </label>
-            <label>
-              Tipo de usuario
-              <select
-                value={reportForm.userType}
-                onChange={(event) => setReportForm((current) => ({ ...current, userType: event.target.value }))}
-              >
-                <option value="Cliente">Cliente</option>
-                <option value="Profesional">Profesional</option>
-              </select>
-            </label>
-            <label>
-              Número de reserva
-              <input
-                value={reportForm.bookingId}
-                onChange={(event) => setReportForm((current) => ({ ...current, bookingId: event.target.value }))}
-                placeholder="Ej: WT-45821"
-              />
-            </label>
-            <label>
-              Categoría del problema
-              <select
-                value={reportForm.category}
-                onChange={(event) => setReportForm((current) => ({ ...current, category: event.target.value }))}
-              >
-                {reportCategories.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="full">
-              Descripción del problema
-              <textarea
-                rows={6}
-                value={reportForm.description}
-                onChange={(event) => setReportForm((current) => ({ ...current, description: event.target.value }))}
-                required
-              />
-            </label>
-            <label className="full">
-              Adjuntar evidencia
-              <input type="file" onChange={handleEvidenceChange} />
-              {reportFileMessage ? <p className="input-hint support-success-inline">{reportFileMessage}</p> : null}
-            </label>
-            <label className="full support-checkbox">
-              <input
-                type="checkbox"
-                checked={reportForm.accepted}
-                onChange={(event) => setReportForm((current) => ({ ...current, accepted: event.target.checked }))}
-              />
-              <span>Acepto que WeTask revise la información enviada para gestionar este caso.</span>
-            </label>
-
-            <div className="full auth-flow-actions support-section-actions">
-              <button type="submit" className="cta">
-                Enviar reporte
+          {!showReportForm ? (
+            <div className="support-action-callout">
+              <p>Si tuviste un problema con una reserva, un cobro o una situación inapropiada, abre el formulario y cuéntanos el caso.</p>
+              <button type="button" className="cta" onClick={() => setShowReportForm(true)}>
+                Abrir formulario de reporte
               </button>
             </div>
-          </form>
+          ) : null}
+
+          {showReportForm ? (
+            <>
+              <div className="support-report-options">
+                {reportCategories.map((option) => (
+                  <button
+                    key={option}
+                    type="button"
+                    className={`support-report-chip ${reportForm.category === option ? "active" : ""}`}
+                    onClick={() => setReportForm((current) => ({ ...current, category: option }))}
+                  >
+                    {option}
+                  </button>
+                ))}
+              </div>
+
+              <form className="grid-form support-form-grid" onSubmit={handleReportSubmit}>
+                <label>
+                  Nombre completo
+                  <input
+                    value={reportForm.fullName}
+                    onChange={(event) => setReportForm((current) => ({ ...current, fullName: event.target.value }))}
+                    required
+                  />
+                </label>
+                <label>
+                  Correo electrónico
+                  <input
+                    type="email"
+                    value={reportForm.email}
+                    onChange={(event) => setReportForm((current) => ({ ...current, email: event.target.value }))}
+                    required
+                  />
+                </label>
+                <label>
+                  Teléfono
+                  <input
+                    value={reportForm.phone}
+                    onChange={(event) => setReportForm((current) => ({ ...current, phone: event.target.value }))}
+                    required
+                  />
+                </label>
+                <label>
+                  Tipo de usuario
+                  <select
+                    value={reportForm.userType}
+                    onChange={(event) => setReportForm((current) => ({ ...current, userType: event.target.value }))}
+                  >
+                    <option value="Cliente">Cliente</option>
+                    <option value="Profesional">Profesional</option>
+                  </select>
+                </label>
+                <label>
+                  Número de reserva
+                  <input
+                    value={reportForm.bookingId}
+                    onChange={(event) => setReportForm((current) => ({ ...current, bookingId: event.target.value }))}
+                    placeholder="Ej: WT-45821"
+                  />
+                </label>
+                <label>
+                  Categoría del problema
+                  <select
+                    value={reportForm.category}
+                    onChange={(event) => setReportForm((current) => ({ ...current, category: event.target.value }))}
+                  >
+                    {reportCategories.map((option) => (
+                      <option key={option} value={option}>
+                        {option}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="full">
+                  Descripción del problema
+                  <textarea
+                    rows={6}
+                    value={reportForm.description}
+                    onChange={(event) => setReportForm((current) => ({ ...current, description: event.target.value }))}
+                    required
+                  />
+                </label>
+                <label className="full">
+                  Adjuntar evidencia
+                  <input type="file" onChange={handleEvidenceChange} />
+                  {reportFileMessage ? <p className="input-hint support-success-inline">{reportFileMessage}</p> : null}
+                </label>
+                <label className="full support-checkbox">
+                  <input
+                    type="checkbox"
+                    checked={reportForm.accepted}
+                    onChange={(event) => setReportForm((current) => ({ ...current, accepted: event.target.checked }))}
+                  />
+                  <span>Acepto que WeTask revise la información enviada para gestionar este caso.</span>
+                </label>
+
+                <div className="full auth-flow-actions support-section-actions">
+                  <button type="submit" className="cta">
+                    Enviar reporte
+                  </button>
+                </div>
+              </form>
+            </>
+          ) : null}
 
           {reportMessage ? (
             <p className={`feedback ${reportMessage.includes("recibido") ? "ok" : "error"}`}>{reportMessage}</p>
@@ -740,52 +777,63 @@ export default function AyudaSoportePage() {
             ))}
           </div>
 
-          <form className="grid-form support-form-grid support-contact-form" onSubmit={handleContactSubmit}>
-            <label>
-              Nombre
-              <input
-                value={contactForm.name}
-                onChange={(event) => setContactForm((current) => ({ ...current, name: event.target.value }))}
-                required
-              />
-            </label>
-            <label>
-              Correo electrónico
-              <input
-                type="email"
-                value={contactForm.email}
-                onChange={(event) => setContactForm((current) => ({ ...current, email: event.target.value }))}
-                required
-              />
-            </label>
-            <label>
-              Teléfono
-              <input value={contactForm.phone} onChange={(event) => setContactForm((current) => ({ ...current, phone: event.target.value }))} />
-            </label>
-            <label>
-              Motivo de contacto
-              <input
-                value={contactForm.reason}
-                onChange={(event) => setContactForm((current) => ({ ...current, reason: event.target.value }))}
-                required
-              />
-            </label>
-            <label className="full">
-              Mensaje
-              <textarea
-                rows={5}
-                value={contactForm.message}
-                onChange={(event) => setContactForm((current) => ({ ...current, message: event.target.value }))}
-                required
-              />
-            </label>
-
-            <div className="full auth-flow-actions support-section-actions">
-              <button type="submit" className="cta" disabled={sendingContact}>
-                {sendingContact ? "Enviando..." : "Enviar mensaje"}
+          {!showContactForm ? (
+            <div className="support-action-callout">
+              <p>Si tu caso no quedó resuelto en las preguntas frecuentes, abre el formulario y escríbenos directamente.</p>
+              <button type="button" className="cta" onClick={() => setShowContactForm(true)}>
+                Abrir formulario de contacto
               </button>
             </div>
-          </form>
+          ) : null}
+
+          {showContactForm ? (
+            <form className="grid-form support-form-grid support-contact-form" onSubmit={handleContactSubmit}>
+              <label>
+                Nombre
+                <input
+                  value={contactForm.name}
+                  onChange={(event) => setContactForm((current) => ({ ...current, name: event.target.value }))}
+                  required
+                />
+              </label>
+              <label>
+                Correo electrónico
+                <input
+                  type="email"
+                  value={contactForm.email}
+                  onChange={(event) => setContactForm((current) => ({ ...current, email: event.target.value }))}
+                  required
+                />
+              </label>
+              <label>
+                Teléfono
+                <input value={contactForm.phone} onChange={(event) => setContactForm((current) => ({ ...current, phone: event.target.value }))} />
+              </label>
+              <label>
+                Motivo de contacto
+                <input
+                  value={contactForm.reason}
+                  onChange={(event) => setContactForm((current) => ({ ...current, reason: event.target.value }))}
+                  required
+                />
+              </label>
+              <label className="full">
+                Mensaje
+                <textarea
+                  rows={5}
+                  value={contactForm.message}
+                  onChange={(event) => setContactForm((current) => ({ ...current, message: event.target.value }))}
+                  required
+                />
+              </label>
+
+              <div className="full auth-flow-actions support-section-actions">
+                <button type="submit" className="cta" disabled={sendingContact}>
+                  {sendingContact ? "Enviando..." : "Enviar mensaje"}
+                </button>
+              </div>
+            </form>
+          ) : null}
 
           {contactMessage ? (
             <p className={`feedback ${contactMessage.includes("correctamente") ? "ok" : "error"}`}>{contactMessage}</p>
