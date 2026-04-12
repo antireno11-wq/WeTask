@@ -203,6 +203,14 @@ function clp(value: number) {
   return new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP", maximumFractionDigits: 0 }).format(value);
 }
 
+function materialsSupportLabel(bringsOwnProducts: boolean | null, bringsOwnTools: boolean | null) {
+  if (bringsOwnProducts && bringsOwnTools) return "Lleva productos e implementos";
+  if (bringsOwnProducts) return "Lleva sus productos";
+  if (bringsOwnTools) return "Lleva sus implementos";
+  if (bringsOwnProducts === false || bringsOwnTools === false) return "Usa lo disponible en el domicilio";
+  return "Por confirmar antes de la reserva";
+}
+
 function isValidYmd(value: string | null) {
   return Boolean(value && /^\d{4}-\d{2}-\d{2}$/.test(value));
 }
@@ -435,10 +443,6 @@ function faqItemsForCategory(categorySlug: string | null | undefined): FaqItem[]
         {
           question: "¿Qué incluye la limpieza estándar?",
           answer: "Incluye solo las tareas que el tasker marcó como sí realiza en su perfil."
-        },
-        {
-          question: "¿Lleva sus propios productos o implementos?",
-          answer: "Depende de lo que indique en su perfil. Si no aparece claro, conviene confirmarlo antes de reservar."
         },
         {
           question: "¿Puede hacer tareas fuera del alcance publicado?",
@@ -1018,14 +1022,6 @@ export default function ProDetailPage() {
     }
     return Array.from(bySlug.values());
   }, [data?.taskerServices]);
-  const servicePriceTags = useMemo(() => {
-    return (data?.taskerServices ?? [])
-      .filter((item) => item.service?.name)
-      .map((item) => ({
-        key: `${item.service?.id ?? item.service?.name}`,
-        label: `${item.service?.name} · ${item.priceClp ? clp(item.priceClp) : "Por definir"}/h`
-      }));
-  }, [data?.taskerServices]);
   const profilePhotoUrl = onboarding?.profilePhotoUrl?.trim() || data?.avatarUrl?.trim() || "";
   const activeCommunes = useMemo(() => {
     const raw = Array.isArray(onboarding?.serviceCommunes) ? onboarding.serviceCommunes : [];
@@ -1046,6 +1042,7 @@ export default function ProDetailPage() {
   const offeredServices = toLabelList(onboarding?.offeredServices, demoOfferedServices);
   const experienceTypes = toLabelList(onboarding?.experienceTypes, demoExperienceTypes);
   const languages = toLabelList(onboarding?.languages, demoLanguages);
+  const materialsSupport = materialsSupportLabel(onboarding?.bringsOwnProducts ?? null, onboarding?.bringsOwnTools ?? null);
   const workModeLabel = onboarding?.workMode === "EQUIPO" ? "Trabajo en equipo" : "Trabajo individual";
   const primaryCategorySlug = serviceCategories[0]?.slug ?? onboarding?.categorySlug ?? null;
   const normalizedPrimaryCategorySlug = normalizeCategorySlug(primaryCategorySlug);
@@ -1224,11 +1221,15 @@ export default function ProDetailPage() {
                         <h3>Idiomas</h3>
                         <p>{languages.join(", ")}</p>
                       </div>
+                      <div>
+                        <h3>Productos e implementos</h3>
+                        <p>{materialsSupport}</p>
+                      </div>
                     </div>
                     <div className="we-pro-tags">
-                      {(servicePriceTags.length > 0 ? servicePriceTags : offeredServices.map((service) => ({ key: service, label: service }))).map((service) => (
-                        <span key={service.key} className="we-tag">
-                          {service.label}
+                      {offeredServices.map((service) => (
+                        <span key={service} className="we-tag">
+                          {service}
                         </span>
                       ))}
                     </div>
@@ -1478,12 +1479,36 @@ export default function ProDetailPage() {
 
                   <article className="auth-flow-panel client-dashboard-section">
                     <h2>Garantía WeTask</h2>
-                    <p>Hasta confirmar que el servicio fue correcto, el pago permanece protegido en plataforma.</p>
-                    <ul className="we-check-list">
-                      <li>Garantía de reembolso</li>
-                      <li>Atencion 365 dias</li>
-                      <li>Pago protegido</li>
-                    </ul>
+                    <p>El pago se mantiene protegido dentro de WeTask hasta que recibas el servicio o podamos revisar cualquier inconveniente reportado.</p>
+                    <div className="we-guarantee-grid">
+                      <article className="we-guarantee-card">
+                        <span className="we-guarantee-lock" aria-hidden>
+                          <svg viewBox="0 0 24 24" focusable="false">
+                            <path d="M8 10V8a4 4 0 1 1 8 0v2h1a2 2 0 0 1 2 2v6a3 3 0 0 1-3 3H8a3 3 0 0 1-3-3v-6a2 2 0 0 1 2-2h1zm2 0h4V8a2 2 0 1 0-4 0v2zm2 4a1.5 1.5 0 0 0-.75 2.8V18a.75.75 0 0 0 1.5 0v-1.2A1.5 1.5 0 0 0 12 14z" />
+                          </svg>
+                        </span>
+                        <strong>Pago seguro</strong>
+                        <span>Tu dinero queda protegido hasta recibir el servicio.</span>
+                      </article>
+                      <article className="we-guarantee-card">
+                        <span className="we-guarantee-lock" aria-hidden>
+                          <svg viewBox="0 0 24 24" focusable="false">
+                            <path d="M8 10V8a4 4 0 1 1 8 0v2h1a2 2 0 0 1 2 2v6a3 3 0 0 1-3 3H8a3 3 0 0 1-3-3v-6a2 2 0 0 1 2-2h1zm2 0h4V8a2 2 0 1 0-4 0v2zm2 4a1.5 1.5 0 0 0-.75 2.8V18a.75.75 0 0 0 1.5 0v-1.2A1.5 1.5 0 0 0 12 14z" />
+                          </svg>
+                        </span>
+                        <strong>Garantía de reembolso</strong>
+                        <span>Si algo sale mal, revisamos el caso y gestionamos la devolución cuando corresponda.</span>
+                      </article>
+                      <article className="we-guarantee-card">
+                        <span className="we-guarantee-lock" aria-hidden>
+                          <svg viewBox="0 0 24 24" focusable="false">
+                            <path d="M8 10V8a4 4 0 1 1 8 0v2h1a2 2 0 0 1 2 2v6a3 3 0 0 1-3 3H8a3 3 0 0 1-3-3v-6a2 2 0 0 1 2-2h1zm2 0h4V8a2 2 0 1 0-4 0v2zm2 4a1.5 1.5 0 0 0-.75 2.8V18a.75.75 0 0 0 1.5 0v-1.2A1.5 1.5 0 0 0 12 14z" />
+                          </svg>
+                        </span>
+                        <strong>Atención 365 días</strong>
+                        <span>Siempre puedes contactarnos si necesitas ayuda antes, durante o después del servicio.</span>
+                      </article>
+                    </div>
                   </article>
 
                   <article className="auth-flow-panel client-dashboard-section">
