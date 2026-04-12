@@ -301,6 +301,14 @@ function ratingLabel(value: number) {
   return "Bien evaluado";
 }
 
+function ratingTierLabel(value: number) {
+  if (value >= 4.8) return "Sobresaliente";
+  if (value >= 4.4) return "Muy bueno";
+  if (value >= 4) return "Confiable";
+  if (value >= 3.5) return "Bueno";
+  return "En desarrollo";
+}
+
 function taskerRoleLabel(value: string | null | undefined) {
   switch (normalizeCategorySlug(value)) {
     case "limpieza":
@@ -865,6 +873,12 @@ export default function ProDetailPage() {
     { label: "Amabilidad", score: friendlinessScore },
     { label: "Puntualidad", score: punctualityScore }
   ];
+  const reviewBreakdownItems = reviewSummaryCards.map((item, index) => ({
+    ...item,
+    percent: Math.round((item.score / 5) * 100),
+    tier: ratingTierLabel(item.score),
+    toneClass: `tone-${index + 1}`
+  }));
   const switchPublicView = (view: PublicProfileView) => {
     setActiveView(view);
     if (typeof window !== "undefined") {
@@ -1704,66 +1718,69 @@ export default function ProDetailPage() {
                   ) : null}
 
                   {activeView === "valoraciones" ? (
-                    <article id="reviews" className="auth-flow-panel client-dashboard-section">
-                      <div className="we-section-head">
-                        <h2>Valoraciones de clientes</h2>
-                        <span className="availability-board-chip">{data.ratingsCount} opinión(es)</span>
+                    <article id="reviews" className="auth-flow-panel client-dashboard-section we-reviews-section">
+                      <div className="we-reviews-header">
+                        <p className="we-faq-kicker">Clientes WeTask</p>
+                        <h2>Valoraciones y comentarios</h2>
                       </div>
 
-                      <div className="public-rating-hero">
-                        <div className="public-rating-hero-copy">
-                          <span className="public-rating-stars public-rating-stars-large">{renderStars(rating)}</span>
-                          <strong>{ratingLabel(rating)}</strong>
-                          <p>
-                            {rating.toFixed(1)} de 5 basado en {data.ratingsCount} valoraciones verificadas dentro de WeTask.
-                          </p>
+                      <div className="we-reviews-grid">
+                        <div className="we-reviews-main">
+                          <div className="we-reviews-score-card">
+                            <div className="we-reviews-score-value">{rating.toFixed(1)}</div>
+                            <span className="public-rating-stars public-rating-stars-large">{renderStars(rating)}</span>
+                            <p>
+                              {data.ratingsCount} valoración(es) verificadas en WeTask
+                            </p>
+                          </div>
+
+                          <div className="we-reviews-comments">
+                            <h3>Comentarios destacados</h3>
+                            {sampleComments.map((comment) => (
+                              <article key={comment.name + comment.time} className="public-review-card public-review-card-fancy">
+                                <div className="public-review-head public-review-head-fancy">
+                                  <div className="public-review-person">
+                                    <span className="public-review-avatar">{initials(comment.name)}</span>
+                                    <div>
+                                      <strong>{comment.name}</strong>
+                                      <span>
+                                        {comment.serviceLabel} · {comment.time}
+                                      </span>
+                                    </div>
+                                  </div>
+                                  <div className="public-review-score">
+                                    <span className="public-rating-stars">{renderStars(comment.overall)}</span>
+                                    <small>{comment.overall.toFixed(1)} / 5</small>
+                                  </div>
+                                </div>
+
+                                <p>{comment.text}</p>
+                                <em>{comment.wouldBookAgain ? "Lo volvería a contratar" : "No lo volvería a contratar"}</em>
+                              </article>
+                            ))}
+                          </div>
                         </div>
-                        <div className="public-rating-summary-grid">
-                          {reviewSummaryCards.map((item) => (
-                            <article key={item.label} className="public-rating-card">
-                              <span>{item.label}</span>
-                              <strong>{renderStars(item.score)}</strong>
-                              <small>{item.score.toFixed(1)} de 5</small>
-                            </article>
-                          ))}
-                        </div>
-                      </div>
 
-                      <div className="public-review-list">
-                        {sampleComments.map((comment) => (
-                          <article key={comment.name + comment.time} className="public-review-card">
-                            <div className="public-review-head">
-                              <div>
-                                <strong>{comment.name}</strong>
-                                <span>
-                                  {comment.serviceLabel} · {comment.time}
-                                </span>
-                              </div>
-                              <div className="public-review-score">
-                                <span className="public-rating-stars">{renderStars(comment.overall)}</span>
-                                <small>{comment.overall.toFixed(1)} / 5</small>
-                              </div>
-                            </div>
-
-                            <div className="public-review-metrics">
-                              <div>
-                                <span>Puntualidad</span>
-                                <strong>{renderStars(comment.punctuality)}</strong>
-                              </div>
-                              <div>
-                                <span>Comunicación</span>
-                                <strong>{renderStars(comment.communication)}</strong>
-                              </div>
-                              <div>
-                                <span>Calidad</span>
-                                <strong>{renderStars(comment.quality)}</strong>
-                              </div>
-                            </div>
-
-                            <p>{comment.text}</p>
-                            <em>{comment.wouldBookAgain ? "Lo volvería a contratar" : "No lo volvería a contratar"}</em>
-                          </article>
-                        ))}
+                        <aside className="we-reviews-breakdown">
+                          <h3>Elementos mejor evaluados</h3>
+                          <div className="we-reviews-breakdown-list">
+                            {reviewBreakdownItems.map((item) => (
+                              <article key={item.label} className={`we-reviews-breakdown-card ${item.toneClass}`}>
+                                <div className="we-reviews-breakdown-head">
+                                  <strong>{item.label}</strong>
+                                  <span>{item.percent}%</span>
+                                </div>
+                                <div className="we-reviews-progress-rail" aria-hidden>
+                                  <span className="we-reviews-progress-fill" style={{ width: `${item.percent}%` }} />
+                                </div>
+                                <div className="we-reviews-breakdown-foot">
+                                  <small>{renderStars(item.score)}</small>
+                                  <small>{item.tier}</small>
+                                </div>
+                              </article>
+                            ))}
+                          </div>
+                        </aside>
                       </div>
                     </article>
                   ) : null}

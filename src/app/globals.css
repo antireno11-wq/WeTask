@@ -3867,69 +3867,11 @@ textarea {
   width: 16px;
 }
 
-.public-rating-hero {
-  display: grid;
-  grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.08fr);
-  gap: 16px;
-  margin-top: 12px;
-}
-
-.public-rating-hero-copy,
-.public-rating-card,
 .public-review-card {
   border: 1px solid rgba(214, 231, 245, 0.96);
   border-radius: 24px;
   background: linear-gradient(180deg, #ffffff 0%, #f7fbff 100%);
   box-shadow: 0 18px 30px rgba(19, 42, 87, 0.08);
-}
-
-.public-rating-hero-copy {
-  padding: 20px;
-  display: grid;
-  gap: 10px;
-}
-
-.public-rating-hero-copy strong {
-  color: #173762;
-  font-size: 1.35rem;
-}
-
-.public-rating-hero-copy p {
-  margin: 0;
-  color: #48617a;
-  line-height: 1.6;
-}
-
-.public-rating-summary-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-}
-
-.public-rating-card {
-  padding: 16px;
-  display: grid;
-  gap: 8px;
-}
-
-.public-rating-card span,
-.public-review-metrics span {
-  color: #5d758f;
-  font-size: 0.82rem;
-  font-weight: 800;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-
-.public-rating-card strong,
-.public-review-score strong {
-  color: #173762;
-}
-
-.public-rating-card small,
-.public-review-score small {
-  color: #5a7188;
-  font-weight: 700;
 }
 
 .public-rating-stars {
@@ -3942,13 +3884,7 @@ textarea {
 }
 
 .public-rating-stars-large {
-  font-size: 1.45rem;
-}
-
-.public-review-list {
-  margin-top: 14px;
-  display: grid;
-  gap: 14px;
+  font-size: 1.7rem;
 }
 
 .public-review-card {
@@ -3984,26 +3920,6 @@ textarea {
   text-align: right;
 }
 
-.public-review-metrics {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
-}
-
-.public-review-metrics div {
-  padding: 12px 14px;
-  border: 1px solid rgba(214, 231, 245, 0.98);
-  border-radius: 18px;
-  background: rgba(248, 251, 255, 0.96);
-  display: grid;
-  gap: 6px;
-}
-
-.public-review-metrics strong {
-  color: #173762;
-  font-size: 0.96rem;
-}
-
 .public-review-card p {
   margin: 0;
   color: #304257;
@@ -4014,6 +3930,186 @@ textarea {
   color: #1b7b4b;
   font-style: normal;
   font-weight: 800;
+}
+
+.we-reviews-section {
+  padding: 34px 30px;
+}
+
+.we-reviews-header {
+  max-width: 760px;
+  margin: 0 auto 24px;
+  text-align: center;
+  display: grid;
+  gap: 10px;
+}
+
+.we-reviews-header h2 {
+  margin: 0;
+  font-size: clamp(2.1rem, 4.5vw, 3.8rem);
+  line-height: 0.98;
+  letter-spacing: -0.05em;
+  color: #132a57;
+}
+
+.we-reviews-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(320px, 0.95fr);
+  gap: 22px;
+  align-items: start;
+}
+
+.we-reviews-main {
+  display: grid;
+  gap: 18px;
+}
+
+.we-reviews-score-card,
+.we-reviews-breakdown,
+.public-review-card-fancy {
+  border: 1px solid rgba(214, 231, 245, 0.96);
+  border-radius: 28px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(244, 249, 255, 0.96));
+  box-shadow: 0 20px 36px rgba(19, 42, 87, 0.08);
+}
+
+.we-reviews-score-card {
+  padding: 28px 24px;
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  text-align: center;
+}
+
+.we-reviews-score-value {
+  color: #132a57;
+  font-size: clamp(3.4rem, 8vw, 5.2rem);
+  line-height: 0.9;
+  font-weight: 800;
+  letter-spacing: -0.06em;
+}
+
+.we-reviews-score-card p {
+  margin: 0;
+  color: #60758f;
+  line-height: 1.55;
+}
+
+.we-reviews-comments {
+  display: grid;
+  gap: 14px;
+}
+
+.we-reviews-comments h3,
+.we-reviews-breakdown h3 {
+  margin: 0;
+  color: #132a57;
+  font-size: 1.5rem;
+  letter-spacing: -0.03em;
+}
+
+.public-review-card-fancy {
+  padding: 18px 18px 20px;
+}
+
+.public-review-head-fancy {
+  align-items: center;
+}
+
+.public-review-person {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+
+.public-review-avatar {
+  width: 52px;
+  height: 52px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 52px;
+  font-weight: 800;
+  color: #1656b0;
+  background: linear-gradient(135deg, rgba(233, 244, 255, 0.98), rgba(215, 234, 249, 0.98));
+  border: 1px solid rgba(207, 226, 243, 0.96);
+}
+
+.we-reviews-breakdown {
+  padding: 24px 20px;
+  display: grid;
+  gap: 18px;
+}
+
+.we-reviews-breakdown-list {
+  display: grid;
+  gap: 14px;
+}
+
+.we-reviews-breakdown-card {
+  padding: 16px;
+  border-radius: 22px;
+  background: rgba(244, 249, 255, 0.9);
+  border: 1px solid rgba(214, 231, 245, 0.96);
+  display: grid;
+  gap: 10px;
+  --review-accent: linear-gradient(90deg, #18a6d5 0%, #1656b0 100%);
+  --review-accent-ink: #1656b0;
+}
+
+.we-reviews-breakdown-card.tone-2 {
+  --review-accent: linear-gradient(90deg, #1aa57a 0%, #18a6d5 100%);
+  --review-accent-ink: #177245;
+}
+
+.we-reviews-breakdown-card.tone-3 {
+  --review-accent: linear-gradient(90deg, #5fcf96 0%, #1aa57a 100%);
+  --review-accent-ink: #177245;
+}
+
+.we-reviews-breakdown-card.tone-4 {
+  --review-accent: linear-gradient(90deg, #ffb34d 0%, #ff6a00 100%);
+  --review-accent-ink: #e36a00;
+}
+
+.we-reviews-breakdown-head,
+.we-reviews-breakdown-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.we-reviews-breakdown-head strong {
+  color: #132a57;
+  font-size: 1.02rem;
+}
+
+.we-reviews-breakdown-head span {
+  color: var(--review-accent-ink);
+  font-weight: 800;
+}
+
+.we-reviews-progress-rail {
+  position: relative;
+  height: 14px;
+  border-radius: 999px;
+  background: rgba(219, 232, 244, 0.92);
+  overflow: hidden;
+}
+
+.we-reviews-progress-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: inherit;
+  background: var(--review-accent);
+}
+
+.we-reviews-breakdown-foot small {
+  color: #5f7591;
+  font-weight: 700;
 }
 
 .we-check-list {
@@ -4395,7 +4491,7 @@ textarea {
     grid-template-columns: 1fr;
   }
 
-  .public-rating-hero {
+  .we-reviews-grid {
     grid-template-columns: 1fr;
   }
 }
@@ -4612,6 +4708,23 @@ textarea {
 
   .public-tasker-summary-cards.client-dashboard-summary {
     grid-template-columns: 1fr;
+  }
+
+  .public-review-head-fancy,
+  .we-reviews-breakdown-head,
+  .we-reviews-breakdown-foot {
+    align-items: start;
+  }
+
+  .public-review-head-fancy,
+  .we-reviews-breakdown-head,
+  .we-reviews-breakdown-foot {
+    flex-direction: column;
+  }
+
+  .public-review-score {
+    justify-items: start;
+    text-align: left;
   }
 
   .service-pros-copy,
