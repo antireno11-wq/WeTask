@@ -7645,6 +7645,20 @@ textarea {
   padding: 22px 0 26px;
 }
 
+.service-request-shell {
+  width: min(1240px, 100%);
+  grid-template-columns: minmax(0, 1fr);
+  gap: 22px;
+}
+
+.service-request-shell .auth-flow-copy {
+  max-width: 760px;
+}
+
+.service-request-panel {
+  width: 100%;
+}
+
 .auth-flow-copy {
   color: #ffffff;
   max-width: 540px;
@@ -8064,6 +8078,23 @@ textarea {
   border-radius: 24px;
   background: linear-gradient(180deg, #fbfdff 0%, #f2f8ff 100%);
   box-shadow: 0 16px 28px rgba(19, 42, 87, 0.06);
+}
+
+.service-request-panel .service-prep-card,
+.service-request-panel .service-task-filter-card,
+.service-request-panel .service-duration-card {
+  width: 100%;
+}
+
+.service-request-panel .service-duration-grid,
+.service-request-panel .service-duration-toggles,
+.service-request-panel .onboarding-checkbox-grid-compact,
+.service-request-panel .onboarding-checkbox-grid-compact-list {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.service-request-panel .service-duration-grid .full {
+  grid-column: 1 / -1;
 }
 
 .service-prep-summary {

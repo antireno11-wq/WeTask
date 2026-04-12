@@ -476,7 +476,7 @@ export default function ServicioCategoriaPage() {
       <div className="login-screen-content market-shell-auth-content">
         <MarketNav />
 
-        <section className="auth-flow-shell auth-flow-shell-wide">
+        <section className="auth-flow-shell auth-flow-shell-wide service-request-shell">
           <div className="auth-flow-copy">
             <p className="auth-flow-kicker">Servicio</p>
             <h1>{category?.name ?? "Cargando servicio..."}</h1>
@@ -494,7 +494,7 @@ export default function ServicioCategoriaPage() {
             </div>
           </div>
 
-          <section className="auth-flow-panel auth-flow-panel-wide">
+          <section className="auth-flow-panel auth-flow-panel-wide service-request-panel">
             {loading ? <p className="empty">Cargando categoria...</p> : null}
             {error ? <p className="feedback error">{error}</p> : null}
 
