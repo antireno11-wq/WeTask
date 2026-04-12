@@ -1511,12 +1511,18 @@ export default function ProDetailPage() {
                     </div>
                   </article>
 
-                  <article className="auth-flow-panel client-dashboard-section">
-                    <h2>Preguntas frecuentes</h2>
+                  <article className="auth-flow-panel client-dashboard-section we-faq-section">
+                    <div className="we-faq-heading">
+                      <p className="we-faq-kicker">Respuestas WeTask</p>
+                      <h2>Preguntas frecuentes</h2>
+                      <p>Estas son las dudas más comunes antes de reservar este servicio dentro de WeTask.</p>
+                    </div>
                     <div className="we-faq-list">
                       {faqItems.map((item) => (
-                        <details key={item.question}>
-                          <summary>{item.question}</summary>
+                        <details key={item.question} className="we-faq-item">
+                          <summary>
+                            <span>{item.question}</span>
+                          </summary>
                           <p>{item.answer}</p>
                         </details>
                       ))}
