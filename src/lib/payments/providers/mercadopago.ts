@@ -2,6 +2,24 @@ import { ProviderPaymentCreateInput, ProviderPaymentResult, ProviderRefundInput 
 
 const MP_API_BASE = "https://api.mercadopago.com";
 
+export type MercadoPagoCredentialMode = "test" | "production" | "unknown" | "missing";
+export type MercadoPagoHealthReport = {
+  configured: boolean;
+  credentials: {
+    hasAccessToken: boolean;
+    hasPublicKey: boolean;
+    accessTokenMode: MercadoPagoCredentialMode;
+    publicKeyMode: MercadoPagoCredentialMode;
+    sameEnvironment: boolean | null;
+  };
+  provider: {
+    reachable: boolean;
+    ok: boolean;
+    status: number | null;
+    message: string;
+  };
+};
+
 export type MercadoPagoStoredCard = {
   customerId: string;
   cardId: string;
@@ -19,6 +37,45 @@ function mpAccessToken() {
     throw new Error("MERCADOPAGO_ACCESS_TOKEN no configurado");
   }
   return token;
+}
+
+function detectCredentialMode(value: string | undefined | null): MercadoPagoCredentialMode {
+  if (!value) return "missing";
+  const normalized = value.trim().toUpperCase();
+  if (!normalized) return "missing";
+  if (normalized.includes("TEST")) return "test";
+  if (normalized.startsWith("APP_USR") || normalized.startsWith("APP_PUBLIC")) return "production";
+  return "unknown";
+}
+
+export function getMercadoPagoHealthSnapshot(): MercadoPagoHealthReport {
+  const accessToken = process.env.MERCADOPAGO_ACCESS_TOKEN;
+  const publicKey = process.env.NEXT_PUBLIC_MERCADOPAGO_PUBLIC_KEY;
+  const accessTokenMode = detectCredentialMode(accessToken);
+  const publicKeyMode = detectCredentialMode(publicKey);
+  const sameEnvironment =
+    accessTokenMode === "missing" || publicKeyMode === "missing"
+      ? null
+      : accessTokenMode === "unknown" || publicKeyMode === "unknown"
+        ? null
+        : accessTokenMode === publicKeyMode;
+
+  return {
+    configured: Boolean(accessToken && publicKey),
+    credentials: {
+      hasAccessToken: Boolean(accessToken),
+      hasPublicKey: Boolean(publicKey),
+      accessTokenMode,
+      publicKeyMode,
+      sameEnvironment
+    },
+    provider: {
+      reachable: false,
+      ok: false,
+      status: null,
+      message: "Aún no verificado"
+    }
+  };
 }
 
 function parseDate(value: unknown) {
@@ -79,6 +136,52 @@ async function mpRequest(path: string, init: RequestInit & { idempotencyKey?: st
   });
   const payload = await response.json().catch(() => ({}));
   return { response, payload };
+}
+
+export async function checkMercadoPagoHealth(): Promise<MercadoPagoHealthReport> {
+  const snapshot = getMercadoPagoHealthSnapshot();
+
+  if (!snapshot.credentials.hasAccessToken) {
+    return {
+      ...snapshot,
+      provider: {
+        reachable: false,
+        ok: false,
+        status: null,
+        message: "Falta MERCADOPAGO_ACCESS_TOKEN"
+      }
+    };
+  }
+
+  try {
+    const probeEmail = `healthcheck+${Date.now()}@wetask.invalid`;
+    const { response, payload } = await mpRequest(`/v1/customers/search?email=${encodeURIComponent(probeEmail)}`, { method: "GET" });
+    const ok = response.ok;
+    const detail =
+      payload?.message ||
+      payload?.error ||
+      (ok ? "Mercado Pago respondió correctamente" : "Mercado Pago respondió con error");
+
+    return {
+      ...snapshot,
+      provider: {
+        reachable: ok,
+        ok,
+        status: response.status,
+        message: String(detail)
+      }
+    };
+  } catch (error) {
+    return {
+      ...snapshot,
+      provider: {
+        reachable: false,
+        ok: false,
+        status: null,
+        message: error instanceof Error ? error.message : "No se pudo conectar con Mercado Pago"
+      }
+    };
+  }
 }
 
 export async function createMercadoPagoPayment(input: ProviderPaymentCreateInput): Promise<ProviderPaymentResult> {

@@ -5,6 +5,7 @@ import { getRequestIdentity, hasRole } from "@/lib/auth";
 import { COVERAGE_UNAVAILABLE_MESSAGE, inferCommuneFromAddress, normalizeCommune, taskerServesCommune } from "@/lib/communes";
 import { calculateMarketplacePrice } from "@/lib/marketplace-pricing";
 import { createProviderPayment } from "@/lib/payments/provider-adapter";
+import { getMercadoPagoHealthSnapshot } from "@/lib/payments/providers/mercadopago";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -246,6 +247,17 @@ export async function POST(req: NextRequest) {
       urgencyFeeClp: serviceCategory.urgencyFeeClp,
       platformFeePct: Number(serviceCategory.basePlatformFeePct)
     });
+
+    const paymentHealth = getMercadoPagoHealthSnapshot();
+    if (!paymentHealth.credentials.hasAccessToken) {
+      return NextResponse.json(
+        {
+          error: "Mercado Pago no está configurado",
+          detail: "Falta MERCADOPAGO_ACCESS_TOKEN en el servidor."
+        },
+        { status: 503 }
+      );
+    }
 
     const derivedKey = input.idempotencyKey
       ? input.idempotencyKey
