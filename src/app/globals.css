@@ -7647,12 +7647,12 @@ textarea {
 
 .service-request-shell {
   width: min(1240px, 100%);
-  grid-template-columns: minmax(0, 1fr);
-  gap: 22px;
+  grid-template-columns: minmax(280px, 0.78fr) minmax(0, 1.22fr);
+  gap: 28px;
 }
 
 .service-request-shell .auth-flow-copy {
-  max-width: 760px;
+  max-width: 520px;
 }
 
 .service-request-panel {
@@ -8086,15 +8086,35 @@ textarea {
   width: 100%;
 }
 
-.service-request-panel .service-duration-grid,
-.service-request-panel .service-duration-toggles,
-.service-request-panel .onboarding-checkbox-grid-compact,
-.service-request-panel .onboarding-checkbox-grid-compact-list {
-  grid-template-columns: minmax(0, 1fr);
+.service-prep-card-cleaning {
+  gap: 18px;
 }
 
-.service-request-panel .service-duration-grid .full {
-  grid-column: 1 / -1;
+.service-prep-columns {
+  display: grid;
+  grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.08fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.service-prep-columns .service-task-filter-card,
+.service-prep-columns .service-duration-card {
+  min-width: 0;
+}
+
+.service-prep-columns .service-task-filter-card {
+  height: 100%;
+}
+
+@media (max-width: 1100px) {
+  .service-request-shell,
+  .service-prep-columns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .service-request-shell .auth-flow-copy {
+    max-width: 760px;
+  }
 }
 
 .service-prep-summary {

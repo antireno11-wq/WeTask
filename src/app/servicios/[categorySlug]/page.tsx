@@ -640,137 +640,139 @@ export default function ServicioCategoriaPage() {
                     </div>
                   ) : null}
                   {isCleaningCategory && selectedCleaningDefinition ? (
-                    <div className="full service-prep-card" id="task-focos">
+                    <div className="full service-prep-card service-prep-card-cleaning" id="task-focos">
                       <div className="panel-head">
                         <h3>Cuéntanos los detalles del servicio</h3>
                         <p>{cleaningDetailsIntro}</p>
                       </div>
-                      {availableTaskOptions.length > 0 ? (
-                        <div className="service-task-filter-card service-task-filter-card-embedded">
-                          <div className="panel-head">
-                            <h3>Tareas o focos que necesitas</h3>
-                            <p>Opcional. Esto nos ayuda a mostrar taskers más alineados antes de entrar a resultados.</p>
-                          </div>
-                          <div className="onboarding-task-checklist onboarding-task-checklist-compact">
-                            <div className="onboarding-task-checklist-head onboarding-task-checklist-head-neutral">
-                              <span>Lista de tareas</span>
-                              <span>Agregar</span>
+                      <div className="service-prep-columns">
+                        {availableTaskOptions.length > 0 ? (
+                          <div className="service-task-filter-card service-task-filter-card-embedded">
+                            <div className="panel-head">
+                              <h3>Tareas o focos que necesitas</h3>
+                              <p>Opcional. Esto nos ayuda a mostrar taskers más alineados antes de entrar a resultados.</p>
                             </div>
-                            {availableTaskOptions.map((task) => (
-                              <label key={task.value} className={`onboarding-task-checklist-row ${selectedTasks.includes(task.value) ? "checked" : ""}`}>
-                                <span className="onboarding-task-checklist-label">{task.label}</span>
-                                <span className="onboarding-task-checklist-control">
-                                  <input type="checkbox" checked={selectedTasks.includes(task.value)} onChange={() => toggleTask(task.value)} />
-                                  <span className="onboarding-task-checklist-box" aria-hidden />
-                                </span>
-                              </label>
-                            ))}
+                            <div className="onboarding-task-checklist onboarding-task-checklist-compact">
+                              <div className="onboarding-task-checklist-head onboarding-task-checklist-head-neutral">
+                                <span>Lista de tareas</span>
+                                <span>Agregar</span>
+                              </div>
+                              {availableTaskOptions.map((task) => (
+                                <label key={task.value} className={`onboarding-task-checklist-row ${selectedTasks.includes(task.value) ? "checked" : ""}`}>
+                                  <span className="onboarding-task-checklist-label">{task.label}</span>
+                                  <span className="onboarding-task-checklist-control">
+                                    <input type="checkbox" checked={selectedTasks.includes(task.value)} onChange={() => toggleTask(task.value)} />
+                                    <span className="onboarding-task-checklist-box" aria-hidden />
+                                  </span>
+                                </label>
+                              ))}
+                            </div>
                           </div>
-                        </div>
-                      ) : null}
+                        ) : null}
 
-                      <div className="service-duration-card">
-                        <div className="panel-head">
-                          <h3>Ayúdanos a estimar la duración</h3>
-                          <p>Con esto te recomendamos cuántas horas reservar según tu espacio y el alcance de esta limpieza.</p>
-                        </div>
-
-                        <div className="service-duration-grid">
-                          <label>
-                            Habitaciones
-                            <select value={cleaningBedrooms} onChange={(event) => setCleaningBedrooms(event.target.value)} required>
-                              <option value="">Selecciona</option>
-                              <option value="0">Estudio / sin dormitorios</option>
-                              <option value="1">1 habitación</option>
-                              <option value="2">2 habitaciones</option>
-                              <option value="3">3 habitaciones</option>
-                              <option value="4">4 habitaciones</option>
-                              <option value="5">5 o más</option>
-                            </select>
-                          </label>
-                          <label>
-                            Baños
-                            <select value={cleaningBathrooms} onChange={(event) => setCleaningBathrooms(event.target.value)} required>
-                              <option value="">Selecciona</option>
-                              <option value="1">1 baño</option>
-                              <option value="2">2 baños</option>
-                              <option value="3">3 baños</option>
-                              <option value="4">4 baños</option>
-                              <option value="5">5 o más</option>
-                            </select>
-                          </label>
-                          <label>
-                            Tamaño aproximado
-                            <select value={cleaningSize} onChange={(event) => setCleaningSize(event.target.value)} required>
-                              <option value="">Selecciona</option>
-                              {CLEANING_SIZE_OPTIONS.map((option) => (
-                                <option key={option.value} value={option.value}>
-                                  {option.label} · {option.helper}
-                                </option>
-                              ))}
-                            </select>
-                          </label>
-                          <label>
-                            Nivel de suciedad
-                            <select value={cleaningDirt} onChange={(event) => setCleaningDirt(event.target.value)} required>
-                              <option value="">Selecciona</option>
-                              {CLEANING_DIRT_LEVEL_OPTIONS.map((option) => (
-                                <option key={option.value} value={option.value}>
-                                  {option.label}
-                                </option>
-                              ))}
-                            </select>
-                          </label>
-                          <label className="full">
-                            Estado del espacio
-                            <select value={cleaningOccupancy} onChange={(event) => setCleaningOccupancy(event.target.value)} required>
-                              <option value="">Selecciona</option>
-                              {CLEANING_OCCUPANCY_OPTIONS.map((option) => (
-                                <option key={option.value} value={option.value}>
-                                  {option.label}
-                                </option>
-                              ))}
-                            </select>
-                          </label>
-                        </div>
-
-                        <div className="service-duration-toggles">
-                          <label className={`onboarding-check-card ${cleaningKitchen ? "active" : ""}`}>
-                            <input type="checkbox" checked={cleaningKitchen} onChange={() => setCleaningKitchen((current) => !current)} />
-                            <span>Incluir cocina</span>
-                          </label>
-                          <label className={`onboarding-check-card ${cleaningLivingDining ? "active" : ""}`}>
-                            <input type="checkbox" checked={cleaningLivingDining} onChange={() => setCleaningLivingDining((current) => !current)} />
-                            <span>Incluir living / comedor</span>
-                          </label>
-                        </div>
-
-                        <div className="service-duration-extras">
-                          <strong>Extras que agregan tiempo</strong>
-                          <div className="onboarding-checkbox-grid onboarding-checkbox-grid-compact">
-                            {CLEANING_EXTRA_OPTIONS.map((extra) => (
-                              <label key={extra.value} className={`onboarding-check-card ${cleaningExtras.includes(extra.value) ? "active" : ""}`}>
-                                <input
-                                  type="checkbox"
-                                  checked={cleaningExtras.includes(extra.value)}
-                                  onChange={() => toggleCleaningExtra(extra.value)}
-                                />
-                                <span>
-                                  {extra.label}
-                                  <small>+{extra.minutes} min</small>
-                                </span>
-                              </label>
-                            ))}
+                        <div className="service-duration-card">
+                          <div className="panel-head">
+                            <h3>Ayúdanos a estimar la duración</h3>
+                            <p>Con esto te recomendamos cuántas horas reservar según tu espacio y el alcance de esta limpieza.</p>
                           </div>
-                        </div>
 
-                        <div className={`service-duration-result ${cleaningEstimate ? "ready" : ""}`}>
-                          <strong>{cleaningEstimate ? `${cleaningEstimate.minHours} a ${cleaningEstimate.maxHours} horas` : "Completa los datos para estimar el tiempo"}</strong>
-                          <span>
-                            {cleaningEstimate
-                              ? `${cleaningEstimate.summary} Si quieres irte a la segura, reserva ${cleaningEstimate.recommendedHours} hora(s).`
-                              : "Te ayudaremos a calcular una recomendación antes de mostrar taskers."}
-                          </span>
+                          <div className="service-duration-grid">
+                            <label>
+                              Habitaciones
+                              <select value={cleaningBedrooms} onChange={(event) => setCleaningBedrooms(event.target.value)} required>
+                                <option value="">Selecciona</option>
+                                <option value="0">Estudio / sin dormitorios</option>
+                                <option value="1">1 habitación</option>
+                                <option value="2">2 habitaciones</option>
+                                <option value="3">3 habitaciones</option>
+                                <option value="4">4 habitaciones</option>
+                                <option value="5">5 o más</option>
+                              </select>
+                            </label>
+                            <label>
+                              Baños
+                              <select value={cleaningBathrooms} onChange={(event) => setCleaningBathrooms(event.target.value)} required>
+                                <option value="">Selecciona</option>
+                                <option value="1">1 baño</option>
+                                <option value="2">2 baños</option>
+                                <option value="3">3 baños</option>
+                                <option value="4">4 baños</option>
+                                <option value="5">5 o más</option>
+                              </select>
+                            </label>
+                            <label>
+                              Tamaño aproximado
+                              <select value={cleaningSize} onChange={(event) => setCleaningSize(event.target.value)} required>
+                                <option value="">Selecciona</option>
+                                {CLEANING_SIZE_OPTIONS.map((option) => (
+                                  <option key={option.value} value={option.value}>
+                                    {option.label} · {option.helper}
+                                  </option>
+                                ))}
+                              </select>
+                            </label>
+                            <label>
+                              Nivel de suciedad
+                              <select value={cleaningDirt} onChange={(event) => setCleaningDirt(event.target.value)} required>
+                                <option value="">Selecciona</option>
+                                {CLEANING_DIRT_LEVEL_OPTIONS.map((option) => (
+                                  <option key={option.value} value={option.value}>
+                                    {option.label}
+                                  </option>
+                                ))}
+                              </select>
+                            </label>
+                            <label className="full">
+                              Estado del espacio
+                              <select value={cleaningOccupancy} onChange={(event) => setCleaningOccupancy(event.target.value)} required>
+                                <option value="">Selecciona</option>
+                                {CLEANING_OCCUPANCY_OPTIONS.map((option) => (
+                                  <option key={option.value} value={option.value}>
+                                    {option.label}
+                                  </option>
+                                ))}
+                              </select>
+                            </label>
+                          </div>
+
+                          <div className="service-duration-toggles">
+                            <label className={`onboarding-check-card ${cleaningKitchen ? "active" : ""}`}>
+                              <input type="checkbox" checked={cleaningKitchen} onChange={() => setCleaningKitchen((current) => !current)} />
+                              <span>Incluir cocina</span>
+                            </label>
+                            <label className={`onboarding-check-card ${cleaningLivingDining ? "active" : ""}`}>
+                              <input type="checkbox" checked={cleaningLivingDining} onChange={() => setCleaningLivingDining((current) => !current)} />
+                              <span>Incluir living / comedor</span>
+                            </label>
+                          </div>
+
+                          <div className="service-duration-extras">
+                            <strong>Extras que agregan tiempo</strong>
+                            <div className="onboarding-checkbox-grid onboarding-checkbox-grid-compact">
+                              {CLEANING_EXTRA_OPTIONS.map((extra) => (
+                                <label key={extra.value} className={`onboarding-check-card ${cleaningExtras.includes(extra.value) ? "active" : ""}`}>
+                                  <input
+                                    type="checkbox"
+                                    checked={cleaningExtras.includes(extra.value)}
+                                    onChange={() => toggleCleaningExtra(extra.value)}
+                                  />
+                                  <span>
+                                    {extra.label}
+                                    <small>+{extra.minutes} min</small>
+                                  </span>
+                                </label>
+                              ))}
+                            </div>
+                          </div>
+
+                          <div className={`service-duration-result ${cleaningEstimate ? "ready" : ""}`}>
+                            <strong>{cleaningEstimate ? `${cleaningEstimate.minHours} a ${cleaningEstimate.maxHours} horas` : "Completa los datos para estimar el tiempo"}</strong>
+                            <span>
+                              {cleaningEstimate
+                                ? `${cleaningEstimate.summary} Si quieres irte a la segura, reserva ${cleaningEstimate.recommendedHours} hora(s).`
+                                : "Te ayudaremos a calcular una recomendación antes de mostrar taskers."}
+                            </span>
+                          </div>
                         </div>
                       </div>
                     </div>
