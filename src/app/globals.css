@@ -42,8 +42,8 @@ body {
 .site-footer-wrap {
   position: relative;
   z-index: 4;
-  margin-top: 18px;
-  padding: 0 18px 28px;
+  margin-top: 12px;
+  padding: 0 18px 22px;
 }
 
 .site-footer-panel {
@@ -54,7 +54,7 @@ body {
 .page {
   max-width: 1120px;
   margin: 0 auto;
-  padding: 24px 18px 64px;
+  padding: 18px 18px 44px;
 }
 
 .market-nav {
@@ -299,12 +299,12 @@ body {
 }
 
 .panel {
-  margin-top: 18px;
+  margin-top: 14px;
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 18px;
-  padding: 18px;
-  box-shadow: 0 14px 26px rgba(19, 42, 87, 0.1);
+  padding: 16px;
+  box-shadow: 0 12px 22px rgba(19, 42, 87, 0.08);
 }
 
 .panel-head h2 {
@@ -317,7 +317,7 @@ body {
 }
 
 .panel-head p {
-  margin-top: 10px;
+  margin-top: 8px;
   margin-bottom: 0;
   color: var(--ink-soft);
   font-size: 0.98rem;
@@ -4371,7 +4371,7 @@ textarea {
 }
 
 .support-page-content {
-  padding-bottom: 56px;
+  padding-bottom: 38px;
 }
 
 .support-card-grid {
@@ -5640,7 +5640,7 @@ textarea {
   z-index: 1;
   margin-top: -8px;
   padding-top: 0;
-  padding-bottom: 64px;
+  padding-bottom: 40px;
 }
 
 .market-shell-auth {
@@ -5949,7 +5949,7 @@ textarea {
   z-index: 1;
   width: min(1240px, 100%);
   margin: 0 auto;
-  padding: 24px;
+  padding: 18px;
 }
 
 .admin-auth-shell {
@@ -6339,7 +6339,7 @@ textarea {
 }
 
 .client-profile-box-auth {
-  margin-top: 18px;
+  margin-top: 14px;
   border-radius: 24px;
   border-color: #d6e7f5;
   background: linear-gradient(180deg, #fbfdff 0%, #f2f8ff 100%);
@@ -6371,11 +6371,11 @@ textarea {
   position: relative;
   z-index: 1;
   padding-top: 0;
-  padding-bottom: 48px;
+  padding-bottom: 34px;
 }
 
 .client-dashboard-sections .feedback {
-  margin: 0 0 18px;
+  margin: 0 0 14px;
 }
 
 .client-payment-methods-list {
@@ -6984,7 +6984,7 @@ textarea {
 }
 
 .client-dashboard-section + .client-dashboard-section {
-  margin-top: 18px;
+  margin-top: 14px;
 }
 
 .dashboard-switcher {
@@ -7434,7 +7434,7 @@ textarea {
   position: relative;
   min-height: calc(100vh - var(--site-footer-space));
   overflow: hidden;
-  padding: 24px;
+  padding: 18px;
   display: grid;
   place-items: center;
   background: #0d2446;
@@ -7472,19 +7472,19 @@ textarea {
   display: grid;
   grid-template-columns: minmax(260px, 0.92fr) minmax(360px, 0.98fr);
   align-items: center;
-  gap: 30px;
+  gap: 22px;
 }
 
 .auth-flow-shell-wide {
   grid-template-columns: minmax(250px, 0.86fr) minmax(420px, 1.24fr);
   align-items: start;
-  padding: 22px 0 26px;
+  padding: 16px 0 20px;
 }
 
 .service-request-shell {
   width: min(1240px, 100%);
   grid-template-columns: minmax(280px, 0.78fr) minmax(0, 1.22fr);
-  gap: 28px;
+  gap: 22px;
 }
 
 .service-request-shell .auth-flow-copy {
@@ -7527,7 +7527,7 @@ textarea {
 }
 
 .auth-flow-copy > p {
-  margin: 16px 0 0;
+  margin: 12px 0 0;
   max-width: 54ch;
   color: rgba(255, 255, 255, 0.88);
   font-size: 1.02rem;
@@ -7535,7 +7535,7 @@ textarea {
 }
 
 .auth-flow-copy-list {
-  margin-top: 18px;
+  margin-top: 14px;
   display: grid;
   gap: 10px;
 }
@@ -7573,7 +7573,7 @@ textarea {
 }
 
 .auth-flow-inline-links {
-  margin-top: 18px;
+  margin-top: 14px;
   display: flex;
   gap: 14px;
   flex-wrap: wrap;
