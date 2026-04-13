@@ -2331,6 +2331,13 @@ textarea {
   background: #ffffff;
 }
 
+.availability-month-nav-btn:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
 .availability-form-grid {
   gap: 12px;
 }

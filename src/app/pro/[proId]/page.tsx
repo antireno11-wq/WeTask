@@ -804,6 +804,7 @@ export default function ProDetailPage() {
 
   const selectedSlots = useMemo(() => dayGroups.find(([day]) => day === selectedDay)?.[1] ?? [], [dayGroups, selectedDay]);
   const todayKey = useMemo(() => formatDayKey(new Date()), []);
+  const todayDate = useMemo(() => new Date(`${todayKey}T12:00:00`), [todayKey]);
   const selectedDate = useMemo(() => new Date(`${selectedDay}T12:00:00`), [selectedDay]);
   const selectedMonthLabel = useMemo(
     () => selectedDate.toLocaleDateString("es-CL", { month: "long", year: "numeric" }),
@@ -832,13 +833,31 @@ export default function ProDetailPage() {
       }
 
       const current = new Date(year, month, dayNumber);
+      const isPastDayInCurrentMonth =
+        current.getFullYear() === todayDate.getFullYear() &&
+        current.getMonth() === todayDate.getMonth() &&
+        current.getDate() < todayDate.getDate();
+
+      if (isPastDayInCurrentMonth) {
+        return {
+          key: `past-${formatDayKey(current)}`,
+          date: null,
+          isCurrentMonth: false
+        };
+      }
+
       return {
         key: formatDayKey(current),
         date: current,
         isCurrentMonth: true
       };
     });
-  }, [selectedDate]);
+  }, [selectedDate, todayDate]);
+  const canGoToPreviousMonth = useMemo(() => {
+    const selectedMonthStart = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1);
+    const currentMonthStart = new Date(todayDate.getFullYear(), todayDate.getMonth(), 1);
+    return selectedMonthStart.getTime() > currentMonthStart.getTime();
+  }, [selectedDate, todayDate]);
   const slotsByDay = useMemo(() => {
     const map = new Map<string, AvailabilitySlot[]>();
     for (const slot of slots) {
@@ -1618,11 +1637,17 @@ export default function ProDetailPage() {
                               <h3>{selectedMonthLabel}</h3>
                             </div>
                             <div className="availability-month-nav">
-                              <button type="button" className="availability-month-nav-btn" onClick={() => {
-                                const next = shiftMonthKey(selectedDay, -1);
-                                setDate(next);
-                                setSelectedDay(next);
-                              }}>
+                              <button
+                                type="button"
+                                className="availability-month-nav-btn"
+                                disabled={!canGoToPreviousMonth}
+                                onClick={() => {
+                                  if (!canGoToPreviousMonth) return;
+                                  const next = shiftMonthKey(selectedDay, -1);
+                                  setDate(next);
+                                  setSelectedDay(next);
+                                }}
+                              >
                                 ‹
                               </button>
                               <button type="button" className="availability-month-nav-btn" onClick={() => {
