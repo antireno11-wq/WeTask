@@ -853,6 +853,22 @@ export default function ProDetailPage() {
       };
     });
   }, [selectedDate, todayDate]);
+  const visibleMonthCalendarDays = useMemo(() => {
+    const selectedIsCurrentMonth =
+      selectedDate.getFullYear() === todayDate.getFullYear() && selectedDate.getMonth() === todayDate.getMonth();
+
+    if (!selectedIsCurrentMonth) {
+      return monthCalendarDays;
+    }
+
+    const firstVisibleDayIndex = monthCalendarDays.findIndex((day) => day.date && day.key === todayKey);
+    if (firstVisibleDayIndex === -1) {
+      return monthCalendarDays;
+    }
+
+    const firstVisibleWeekIndex = Math.floor(firstVisibleDayIndex / 7) * 7;
+    return monthCalendarDays.slice(firstVisibleWeekIndex);
+  }, [monthCalendarDays, selectedDate, todayDate, todayKey]);
   const canGoToPreviousMonth = useMemo(() => {
     const selectedMonthStart = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1);
     const currentMonthStart = new Date(todayDate.getFullYear(), todayDate.getMonth(), 1);
@@ -1667,7 +1683,7 @@ export default function ProDetailPage() {
                           </div>
 
                           <div className="availability-month-grid">
-                            {monthCalendarDays.map((day) => {
+                            {visibleMonthCalendarDays.map((day) => {
                               if (!day.date) {
                                 return <div key={day.key} className="availability-day-spacer" aria-hidden />;
                               }
