@@ -7483,8 +7483,8 @@ textarea {
 
 .service-request-shell {
   width: min(1240px, 100%);
-  grid-template-columns: minmax(280px, 0.78fr) minmax(0, 1.22fr);
-  gap: 22px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 18px;
 }
 
 .service-request-flow {
@@ -7494,7 +7494,10 @@ textarea {
 }
 
 .service-request-shell .auth-flow-copy {
-  max-width: 520px;
+  max-width: none;
+  width: 100%;
+  display: grid;
+  gap: 12px;
 }
 
 .service-request-panel {
@@ -7549,6 +7552,14 @@ textarea {
   margin-top: 14px;
   display: grid;
   gap: 10px;
+}
+
+.service-request-shell .auth-flow-copy-list {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.service-request-shell .auth-flow-copy > p {
+  max-width: 74ch;
 }
 
 .auth-flow-meta-card,
@@ -7976,6 +7987,10 @@ textarea {
 
   .service-request-shell .auth-flow-copy {
     max-width: 760px;
+  }
+
+  .service-request-shell .auth-flow-copy-list {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
