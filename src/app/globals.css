@@ -7487,12 +7487,23 @@ textarea {
   gap: 22px;
 }
 
+.service-request-flow {
+  width: 100%;
+  display: grid;
+  gap: 22px;
+}
+
 .service-request-shell .auth-flow-copy {
   max-width: 520px;
 }
 
 .service-request-panel {
   width: 100%;
+}
+
+.service-request-form-main {
+  display: grid;
+  gap: 18px;
 }
 
 .auth-flow-copy {
@@ -7922,6 +7933,17 @@ textarea {
   width: 100%;
 }
 
+.service-request-detail-shell {
+  width: min(1240px, 100%);
+  margin: 0 auto;
+}
+
+.service-request-detail-panel {
+  display: grid;
+  gap: 18px;
+  width: 100%;
+}
+
 .service-prep-card-cleaning {
   gap: 18px;
 }
@@ -7936,6 +7958,10 @@ textarea {
 .service-prep-columns .service-task-filter-card,
 .service-prep-columns .service-duration-card {
   min-width: 0;
+}
+
+.service-request-detail-actions {
+  margin-top: 0;
 }
 
 .service-prep-columns .service-task-filter-card {

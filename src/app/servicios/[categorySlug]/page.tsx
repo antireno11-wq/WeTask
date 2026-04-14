@@ -470,423 +470,440 @@ export default function ServicioCategoriaPage() {
     goToPros();
   };
 
+  const showCleaningDetails = isCleaningCategory && Boolean(selectedCleaningDefinition);
+  const showIroningDetails = isIroningCategory && Boolean(selectedServiceId);
+  const showGenericTaskFocus = !isCleaningCategory && availableTaskOptions.length > 0;
+  const showPreparationSection = showCleaningDetails || showIroningDetails || showGenericTaskFocus || !autoAdvanceOnServiceSelect;
+
   return (
     <main className="auth-flow-screen auth-flow-screen-scroll market-shell-auth">
       <div className="auth-flow-backdrop" aria-hidden />
       <div className="login-screen-content market-shell-auth-content">
         <MarketNav />
 
-        <section className="auth-flow-shell auth-flow-shell-wide service-request-shell">
-          <div className="auth-flow-copy">
-            <p className="auth-flow-kicker">Servicio</p>
-            <h1>{category?.name ?? "Cargando servicio..."}</h1>
-            <p>Elige una variante del servicio y una comuna activa de WeTask para ver taskers disponibles en tu zona.</p>
+        {loading ? <p className="empty">Cargando categoria...</p> : null}
+        {error ? <p className="feedback error">{error}</p> : null}
 
-            <div className="auth-flow-copy-list">
-              <div className="auth-flow-meta-card">
-                <strong>Cobertura inteligente</strong>
-                <span>Trabajamos solo en comunas activas definidas por WeTask y mostramos solo taskers dentro de esa cobertura.</span>
-              </div>
-              <div className="auth-flow-meta-card">
-                <strong>Siguiente paso</strong>
-                <span>Después podrás comparar perfiles, agenda y tarifas antes de reservar.</span>
-              </div>
-            </div>
-          </div>
+        {category ? (
+          <>
+            <form className="service-request-flow" onSubmit={openPros}>
+              <section className="auth-flow-shell auth-flow-shell-wide service-request-shell">
+                <div className="auth-flow-copy">
+                  <p className="auth-flow-kicker">Servicio</p>
+                  <h1>{category.name}</h1>
+                  <p>Elige una variante del servicio y una comuna activa de WeTask para ver taskers disponibles en tu zona.</p>
 
-          <section className="auth-flow-panel auth-flow-panel-wide service-request-panel">
-            {loading ? <p className="empty">Cargando categoria...</p> : null}
-            {error ? <p className="feedback error">{error}</p> : null}
-
-            {category ? (
-              <>
-                <div className="panel-head auth-flow-panel-head">
-                  <h2>{category.name}</h2>
-                  <p>Completa los datos para continuar con una búsqueda real de taskers.</p>
+                  <div className="auth-flow-copy-list">
+                    <div className="auth-flow-meta-card">
+                      <strong>Cobertura inteligente</strong>
+                      <span>Trabajamos solo en comunas activas definidas por WeTask y mostramos solo taskers dentro de esa cobertura.</span>
+                    </div>
+                    <div className="auth-flow-meta-card">
+                      <strong>Siguiente paso</strong>
+                      <span>Después podrás comparar perfiles, agenda y tarifas antes de reservar.</span>
+                    </div>
+                  </div>
                 </div>
 
-                <form className="grid-form auth-flow-form" onSubmit={openPros}>
-                  {isCustomerSession && street.trim() ? (
-                    <div className="full auth-flow-note-card auth-flow-note-card-compact">
-                      <strong>Usaremos tu dirección guardada</strong>
-                      <span>{street}</span>
-                      <span>
-                        {selectedCommune || detectedCommune
-                          ? `Comuna dentro de cobertura: ${selectedCommune || detectedCommune}`
-                          : "Si quieres cambiarla, edítala desde tu panel cliente."}
-                      </span>
-                    </div>
-                  ) : (
-                    <>
-                      <label>
-                        Dirección
-                        <input
-                          value={street}
-                          onChange={(event) => {
-                            setStreet(event.target.value);
-                            setSelectedFromAutocomplete(false);
-                            setShowSuggestions(true);
-                          }}
-                          onFocus={() => setShowSuggestions(addressSuggestions.length > 0)}
-                          placeholder="Calle y número"
-                          required
-                        />
-                        {autocompleteLoading ? <p className="input-hint">Buscando direcciones...</p> : null}
-                        {showSuggestions && addressSuggestions.length > 0 ? (
-                          <div className="address-suggestions">
-                            {addressSuggestions.map((suggestion) => (
-                              <button
-                                key={suggestion}
-                                type="button"
-                                className="address-suggestion-btn"
-                                onClick={() => selectAddressSuggestion(suggestion)}
-                              >
-                                {suggestion}
-                              </button>
-                            ))}
-                          </div>
-                        ) : null}
-                      </label>
-                      <label>
-                        Comuna disponible
-                        <select value={selectedCommune} onChange={(event) => setSelectedCommune(event.target.value)} required>
-                          <option value="">Selecciona una comuna</option>
-                          {ACTIVE_MVP_COMMUNES.map((commune) => (
-                            <option key={commune} value={commune}>
-                              {commune}
-                            </option>
-                          ))}
-                        </select>
-                        <p className="input-hint">Solo puedes buscar dentro de las comunas activas definidas por WeTask.</p>
-                      </label>
-                      <label>
-                        Departamento
-                        <input
-                          value={apartment}
-                          onChange={(event) => setApartment(event.target.value)}
-                          placeholder="Ej: 504, Torre B"
-                        />
-                      </label>
-                      <label>
-                        Referencia
-                        <input
-                          value={reference}
-                          onChange={(event) => setReference(event.target.value)}
-                          placeholder="Ej: portón gris, frente a la plaza"
-                        />
-                      </label>
-                      <div className="full auth-flow-note-card">
-                        <strong>Comuna para la búsqueda</strong>
-                        <span>{selectedCommune || detectedCommune || "Selecciona una comuna activa para continuar."}</span>
-                      </div>
-                    </>
-                  )}
-                  <label className="full">
-                    {isCleaningCategory ? "Elige el tipo de limpieza" : "Tipo de servicio"}
-                    <div className={`auth-service-grid ${autoAdvanceOnServiceSelect ? "auth-service-grid-compact" : "auth-service-grid-cleaning"}`}>
-                      {visibleServices.map((service) => {
-                        const cleaningDefinition = category.slug === "limpieza" ? getCleaningServiceDefinition(service.slug) : null;
-                        const chefDefinition = category.slug === "chef" ? getChefServiceDefinition(service.slug) : null;
-                        const isActive = selectedServiceId === service.id;
-                        return (
-                          <label
-                            key={service.id}
-                            className={`auth-service-card ${isActive ? "active" : ""} ${autoAdvanceOnServiceSelect ? "auth-service-card-collapsible" : ""}`}
-                          >
-                            <input
-                              type="radio"
-                              name="selectedService"
-                              value={service.id}
-                              checked={isActive}
-                              onChange={() => {
-                                setSelectedServiceId(service.id);
-                                if (autoAdvanceOnServiceSelect) {
-                                  goToPros(service.id);
-                                }
-                              }}
-                              required
-                            />
-                            <div className="auth-service-card-head">
-                              <strong>{service.name}</strong>
-                              <span className="auth-service-price-inline">
-                                Desde <strong>${new Intl.NumberFormat("es-CL").format(getServiceDisplayPrice(service))}</strong>
-                                {chefDefinition ? "" : "/h"}
-                              </span>
-                            </div>
-                            <span>{cleaningDefinition?.forClients ?? chefDefinition?.forClients ?? service.description}</span>
-                            {isActive ? (
-                              <div className="auth-service-card-detail">
-                                {isCleaningCategory && cleaningEstimate ? (
-                                  <span>
-                                    Tiempo sugerido: {cleaningEstimate.minHours} a {cleaningEstimate.maxHours} horas · Recomendado: {cleaningEstimate.recommendedHours} h.
-                                  </span>
-                                ) : null}
-                                {cleaningDefinition ? <span>Incluye: {cleaningDefinition.includes.slice(0, 4).join(", ")}.</span> : null}
-                                {chefDefinition ? <span>Incluye: {chefDefinition.includes.slice(0, 4).join(", ")}.</span> : null}
-                                {chefDefinition ? <span>Duración estimada: {chefDefinition.estimatedDurationLabel}.</span> : null}
-                                {cleaningDefinition?.excludes?.length ? <span>No incluye: {cleaningDefinition.excludes.slice(0, 3).join(", ")}.</span> : null}
-                                {chefDefinition?.excludes?.length ? <span>No incluye: {chefDefinition.excludes.slice(0, 3).join(", ")}.</span> : null}
-                              </div>
-                            ) : null}
-                          </label>
-                        );
-                      })}
-                    </div>
-                  </label>
-                  {isCleaningCategory && !selectedCleaningDefinition ? (
-                    <div className="full auth-flow-note-card auth-flow-note-card-compact">
-                      <strong>Primero elige el tipo de limpieza</strong>
-                      <span>Después te pediremos solo los detalles necesarios para estimar la duración y mostrar taskers compatibles.</span>
-                    </div>
-                  ) : null}
-                  {isCleaningCategory && selectedCleaningDefinition ? (
-                    <div className="full service-prep-card service-prep-card-cleaning" id="task-focos">
-                      <div className="panel-head">
-                        <h3>Cuéntanos los detalles del servicio</h3>
-                        <p>{cleaningDetailsIntro}</p>
-                      </div>
-                      <div className="service-prep-columns">
-                        {availableTaskOptions.length > 0 ? (
-                          <div className="service-task-filter-card service-task-filter-card-embedded">
-                            <div className="panel-head">
-                              <h3>Tareas o focos que necesitas</h3>
-                              <p>Opcional. Esto nos ayuda a mostrar taskers más alineados antes de entrar a resultados.</p>
-                            </div>
-                            <div className="onboarding-task-checklist onboarding-task-checklist-compact">
-                              <div className="onboarding-task-checklist-head onboarding-task-checklist-head-neutral">
-                                <span>Lista de tareas</span>
-                                <span>Agregar</span>
-                              </div>
-                              {availableTaskOptions.map((task) => (
-                                <label key={task.value} className={`onboarding-task-checklist-row ${selectedTasks.includes(task.value) ? "checked" : ""}`}>
-                                  <span className="onboarding-task-checklist-label">{task.label}</span>
-                                  <span className="onboarding-task-checklist-control">
-                                    <input type="checkbox" checked={selectedTasks.includes(task.value)} onChange={() => toggleTask(task.value)} />
-                                    <span className="onboarding-task-checklist-box" aria-hidden />
-                                  </span>
-                                </label>
-                              ))}
-                            </div>
-                          </div>
-                        ) : null}
+                <section className="auth-flow-panel auth-flow-panel-wide service-request-panel">
+                  <div className="panel-head auth-flow-panel-head">
+                    <h2>{category.name}</h2>
+                    <p>Completa los datos para continuar con una búsqueda real de taskers.</p>
+                  </div>
 
-                        <div className="service-duration-card">
-                          <div className="panel-head">
-                            <h3>Ayúdanos a estimar la duración</h3>
-                            <p>Con esto te recomendamos cuántas horas reservar según tu espacio y el alcance de esta limpieza.</p>
-                          </div>
-
-                          <div className="service-duration-grid">
-                            <label>
-                              Habitaciones
-                              <select value={cleaningBedrooms} onChange={(event) => setCleaningBedrooms(event.target.value)} required>
-                                <option value="">Selecciona</option>
-                                <option value="0">Estudio / sin dormitorios</option>
-                                <option value="1">1 habitación</option>
-                                <option value="2">2 habitaciones</option>
-                                <option value="3">3 habitaciones</option>
-                                <option value="4">4 habitaciones</option>
-                                <option value="5">5 o más</option>
-                              </select>
-                            </label>
-                            <label>
-                              Baños
-                              <select value={cleaningBathrooms} onChange={(event) => setCleaningBathrooms(event.target.value)} required>
-                                <option value="">Selecciona</option>
-                                <option value="1">1 baño</option>
-                                <option value="2">2 baños</option>
-                                <option value="3">3 baños</option>
-                                <option value="4">4 baños</option>
-                                <option value="5">5 o más</option>
-                              </select>
-                            </label>
-                            <label>
-                              Tamaño aproximado
-                              <select value={cleaningSize} onChange={(event) => setCleaningSize(event.target.value)} required>
-                                <option value="">Selecciona</option>
-                                {CLEANING_SIZE_OPTIONS.map((option) => (
-                                  <option key={option.value} value={option.value}>
-                                    {option.label} · {option.helper}
-                                  </option>
-                                ))}
-                              </select>
-                            </label>
-                            <label>
-                              Nivel de suciedad
-                              <select value={cleaningDirt} onChange={(event) => setCleaningDirt(event.target.value)} required>
-                                <option value="">Selecciona</option>
-                                {CLEANING_DIRT_LEVEL_OPTIONS.map((option) => (
-                                  <option key={option.value} value={option.value}>
-                                    {option.label}
-                                  </option>
-                                ))}
-                              </select>
-                            </label>
-                            <label className="full">
-                              Estado del espacio
-                              <select value={cleaningOccupancy} onChange={(event) => setCleaningOccupancy(event.target.value)} required>
-                                <option value="">Selecciona</option>
-                                {CLEANING_OCCUPANCY_OPTIONS.map((option) => (
-                                  <option key={option.value} value={option.value}>
-                                    {option.label}
-                                  </option>
-                                ))}
-                              </select>
-                            </label>
-                          </div>
-
-                          <div className="service-duration-toggles">
-                            <label className={`onboarding-check-card ${cleaningKitchen ? "active" : ""}`}>
-                              <input type="checkbox" checked={cleaningKitchen} onChange={() => setCleaningKitchen((current) => !current)} />
-                              <span>Incluir cocina</span>
-                            </label>
-                            <label className={`onboarding-check-card ${cleaningLivingDining ? "active" : ""}`}>
-                              <input type="checkbox" checked={cleaningLivingDining} onChange={() => setCleaningLivingDining((current) => !current)} />
-                              <span>Incluir living / comedor</span>
-                            </label>
-                          </div>
-
-                          <div className="service-duration-extras">
-                            <strong>Extras que agregan tiempo</strong>
-                            <div className="onboarding-checkbox-grid onboarding-checkbox-grid-compact">
-                              {CLEANING_EXTRA_OPTIONS.map((extra) => (
-                                <label key={extra.value} className={`onboarding-check-card ${cleaningExtras.includes(extra.value) ? "active" : ""}`}>
-                                  <input
-                                    type="checkbox"
-                                    checked={cleaningExtras.includes(extra.value)}
-                                    onChange={() => toggleCleaningExtra(extra.value)}
-                                  />
-                                  <span>
-                                    {extra.label}
-                                    <small>+{extra.minutes} min</small>
-                                  </span>
-                                </label>
-                              ))}
-                            </div>
-                          </div>
-
-                          <div className={`service-duration-result ${cleaningEstimate ? "ready" : ""}`}>
-                            <strong>{cleaningEstimate ? `${cleaningEstimate.minHours} a ${cleaningEstimate.maxHours} horas` : "Completa los datos para estimar el tiempo"}</strong>
-                            <span>
-                              {cleaningEstimate
-                                ? `${cleaningEstimate.summary} Si quieres irte a la segura, reserva ${cleaningEstimate.recommendedHours} hora(s).`
-                                : "Te ayudaremos a calcular una recomendación antes de mostrar taskers."}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ) : null}
-                  {isIroningCategory && selectedServiceId ? (
-                    <div className="full service-prep-card" id="task-focos">
-                      <div className="panel-head">
-                        <h3>Ayúdanos a estimar el tiempo</h3>
-                        <p>Para planchado trabajamos por hora. Cuéntanos cuánta ropa tienes para sugerirte una duración realista.</p>
-                      </div>
-
-                      <div className="service-prep-summary">
-                        <strong>Planchado por hora</strong>
-                        <span>Luego podrás comparar taskers según agenda, valoración y tarifa por hora.</span>
-                      </div>
-
-                      <div className="service-duration-grid">
-                        <label>
-                          Cantidad de prendas
-                          <select value={ironingGarments} onChange={(event) => setIroningGarments(event.target.value)} required>
-                            <option value="">Selecciona</option>
-                            <option value="8">Hasta 8 prendas</option>
-                            <option value="15">9 a 15 prendas</option>
-                            <option value="25">16 a 25 prendas</option>
-                            <option value="35">26 a 35 prendas</option>
-                            <option value="45">36 a 45 prendas</option>
-                            <option value="60">Más de 45 prendas</option>
-                          </select>
-                        </label>
-                        <label>
-                          Textiles grandes
-                          <select value={ironingBulkyItems} onChange={(event) => setIroningBulkyItems(event.target.value)}>
-                            <option value="0">No</option>
-                            <option value="1">1 prenda grande</option>
-                            <option value="2">2 prendas grandes</option>
-                            <option value="3">3 o más</option>
-                          </select>
-                        </label>
-                      </div>
-
-                      <div className="service-duration-toggles">
-                        <label className={`onboarding-check-card ${ironingDelicates ? "active" : ""}`}>
-                          <input type="checkbox" checked={ironingDelicates} onChange={() => setIroningDelicates((current) => !current)} />
-                          <span>Incluye ropa delicada</span>
-                        </label>
-                      </div>
-
-                      <div className={`service-duration-result ${ironingEstimate ? "ready" : ""}`}>
-                        <strong>{ironingEstimate ? `${ironingEstimate.minHours} a ${ironingEstimate.maxHours} horas` : "Completa la cantidad de ropa para estimar el tiempo"}</strong>
+                  <div className="grid-form auth-flow-form service-request-form-main">
+                    {isCustomerSession && street.trim() ? (
+                      <div className="full auth-flow-note-card auth-flow-note-card-compact">
+                        <strong>Usaremos tu dirección guardada</strong>
+                        <span>{street}</span>
                         <span>
-                          {ironingEstimate
-                            ? `${ironingEstimate.summary} Si quieres irte a la segura, reserva ${ironingEstimate.recommendedHours} hora(s).`
-                            : "Te mostraremos un rango sugerido antes de buscar taskers."}
+                          {selectedCommune || detectedCommune
+                            ? `Comuna dentro de cobertura: ${selectedCommune || detectedCommune}`
+                            : "Si quieres cambiarla, edítala desde tu panel cliente."}
                         </span>
                       </div>
-                    </div>
-                  ) : null}
-                  {!isCleaningCategory && availableTaskOptions.length > 0 ? (
-                    <div className="full service-task-filter-card" id="task-focos">
-                      <div className="panel-head">
-                        <h3>Tareas o focos que necesitas</h3>
-                        <p>Opcional. Esto nos ayuda a mostrar taskers más alineados antes de entrar a resultados.</p>
-                      </div>
-                      <div className="onboarding-task-checklist onboarding-task-checklist-compact">
-                        <div className="onboarding-task-checklist-head onboarding-task-checklist-head-neutral">
-                          <span>Lista de tareas</span>
-                          <span>Agregar</span>
+                    ) : (
+                      <>
+                        <label>
+                          Dirección
+                          <input
+                            value={street}
+                            onChange={(event) => {
+                              setStreet(event.target.value);
+                              setSelectedFromAutocomplete(false);
+                              setShowSuggestions(true);
+                            }}
+                            onFocus={() => setShowSuggestions(addressSuggestions.length > 0)}
+                            placeholder="Calle y número"
+                            required
+                          />
+                          {autocompleteLoading ? <p className="input-hint">Buscando direcciones...</p> : null}
+                          {showSuggestions && addressSuggestions.length > 0 ? (
+                            <div className="address-suggestions">
+                              {addressSuggestions.map((suggestion) => (
+                                <button
+                                  key={suggestion}
+                                  type="button"
+                                  className="address-suggestion-btn"
+                                  onClick={() => selectAddressSuggestion(suggestion)}
+                                >
+                                  {suggestion}
+                                </button>
+                              ))}
+                            </div>
+                          ) : null}
+                        </label>
+                        <label>
+                          Comuna disponible
+                          <select value={selectedCommune} onChange={(event) => setSelectedCommune(event.target.value)} required>
+                            <option value="">Selecciona una comuna</option>
+                            {ACTIVE_MVP_COMMUNES.map((commune) => (
+                              <option key={commune} value={commune}>
+                                {commune}
+                              </option>
+                            ))}
+                          </select>
+                          <p className="input-hint">Solo puedes buscar dentro de las comunas activas definidas por WeTask.</p>
+                        </label>
+                        <label>
+                          Departamento
+                          <input
+                            value={apartment}
+                            onChange={(event) => setApartment(event.target.value)}
+                            placeholder="Ej: 504, Torre B"
+                          />
+                        </label>
+                        <label>
+                          Referencia
+                          <input
+                            value={reference}
+                            onChange={(event) => setReference(event.target.value)}
+                            placeholder="Ej: portón gris, frente a la plaza"
+                          />
+                        </label>
+                        <div className="full auth-flow-note-card">
+                          <strong>Comuna para la búsqueda</strong>
+                          <span>{selectedCommune || detectedCommune || "Selecciona una comuna activa para continuar."}</span>
                         </div>
-                        {availableTaskOptions.map((task) => (
-                          <label key={task.value} className={`onboarding-task-checklist-row ${selectedTasks.includes(task.value) ? "checked" : ""}`}>
-                            <span className="onboarding-task-checklist-label">{task.label}</span>
-                            <span className="onboarding-task-checklist-control">
-                              <input type="checkbox" checked={selectedTasks.includes(task.value)} onChange={() => toggleTask(task.value)} />
-                              <span className="onboarding-task-checklist-box" aria-hidden />
-                            </span>
-                          </label>
-                        ))}
+                      </>
+                    )}
+                    <label className="full">
+                      {isCleaningCategory ? "Elige el tipo de limpieza" : "Tipo de servicio"}
+                      <div className={`auth-service-grid ${autoAdvanceOnServiceSelect ? "auth-service-grid-compact" : "auth-service-grid-cleaning"}`}>
+                        {visibleServices.map((service) => {
+                          const cleaningDefinition = category.slug === "limpieza" ? getCleaningServiceDefinition(service.slug) : null;
+                          const chefDefinition = category.slug === "chef" ? getChefServiceDefinition(service.slug) : null;
+                          const isActive = selectedServiceId === service.id;
+                          return (
+                            <label
+                              key={service.id}
+                              className={`auth-service-card ${isActive ? "active" : ""} ${autoAdvanceOnServiceSelect ? "auth-service-card-collapsible" : ""}`}
+                            >
+                              <input
+                                type="radio"
+                                name="selectedService"
+                                value={service.id}
+                                checked={isActive}
+                                onChange={() => {
+                                  setSelectedServiceId(service.id);
+                                  if (autoAdvanceOnServiceSelect) {
+                                    goToPros(service.id);
+                                  }
+                                }}
+                                required
+                              />
+                              <div className="auth-service-card-head">
+                                <strong>{service.name}</strong>
+                                <span className="auth-service-price-inline">
+                                  Desde <strong>${new Intl.NumberFormat("es-CL").format(getServiceDisplayPrice(service))}</strong>
+                                  {chefDefinition ? "" : "/h"}
+                                </span>
+                              </div>
+                              <span>{cleaningDefinition?.forClients ?? chefDefinition?.forClients ?? service.description}</span>
+                              {isActive ? (
+                                <div className="auth-service-card-detail">
+                                  {isCleaningCategory && cleaningEstimate ? (
+                                    <span>
+                                      Tiempo sugerido: {cleaningEstimate.minHours} a {cleaningEstimate.maxHours} horas · Recomendado: {cleaningEstimate.recommendedHours} h.
+                                    </span>
+                                  ) : null}
+                                  {cleaningDefinition ? <span>Incluye: {cleaningDefinition.includes.slice(0, 4).join(", ")}.</span> : null}
+                                  {chefDefinition ? <span>Incluye: {chefDefinition.includes.slice(0, 4).join(", ")}.</span> : null}
+                                  {chefDefinition ? <span>Duración estimada: {chefDefinition.estimatedDurationLabel}.</span> : null}
+                                  {cleaningDefinition?.excludes?.length ? <span>No incluye: {cleaningDefinition.excludes.slice(0, 3).join(", ")}.</span> : null}
+                                  {chefDefinition?.excludes?.length ? <span>No incluye: {chefDefinition.excludes.slice(0, 3).join(", ")}.</span> : null}
+                                </div>
+                              ) : null}
+                            </label>
+                          );
+                        })}
                       </div>
-                    </div>
-                  ) : null}
-                  {!autoAdvanceOnServiceSelect ? (
-                    <div className="auth-flow-actions full">
-                      <button type="submit" className="cta">
-                        Ver taskers disponibles
-                      </button>
-                    </div>
-                  ) : null}
-                </form>
-
-                {coverageNote ? <p className="feedback error">{coverageNote}</p> : null}
-                {coverageNote === COVERAGE_UNAVAILABLE_MESSAGE ? (
-                  <form className="service-coverage-form" onSubmit={saveCoverageEmail}>
-                    <label>
-                      Email para aviso de cobertura
-                      <input
-                        type="email"
-                        value={coverageEmail}
-                        onChange={(event) => setCoverageEmail(event.target.value)}
-                        placeholder="tuemail@dominio.com"
-                        required
-                      />
                     </label>
-                    <button type="submit" className="cta" disabled={savingCoverageEmail}>
-                      {savingCoverageEmail ? "Guardando..." : "Avisarme por email"}
-                    </button>
-                  </form>
-                ) : null}
-                {coverageEmailStatus ? <p className="feedback ok">{coverageEmailStatus}</p> : null}
+                    {isCleaningCategory && !selectedCleaningDefinition ? (
+                      <div className="full auth-flow-note-card auth-flow-note-card-compact">
+                        <strong>Primero elige el tipo de limpieza</strong>
+                        <span>Después te pediremos solo los detalles necesarios para estimar la duración y mostrar taskers compatibles.</span>
+                      </div>
+                    ) : null}
+                  </div>
+                </section>
+              </section>
 
-                <p className="minimal-note">Si no hay cobertura en tu zona puedes activar “Avisarme cuando haya”.</p>
-              </>
+              {showPreparationSection ? (
+                <section className="service-request-detail-shell">
+                  <div className="service-request-detail-panel">
+                    {showCleaningDetails ? (
+                      <div className="service-prep-card service-prep-card-cleaning" id="task-focos">
+                        <div className="panel-head">
+                          <h3>Cuéntanos los detalles del servicio</h3>
+                          <p>{cleaningDetailsIntro}</p>
+                        </div>
+                        <div className="service-prep-columns">
+                          {availableTaskOptions.length > 0 ? (
+                            <div className="service-task-filter-card service-task-filter-card-embedded">
+                              <div className="panel-head">
+                                <h3>Tareas o focos que necesitas</h3>
+                                <p>Opcional. Esto nos ayuda a mostrar taskers más alineados antes de entrar a resultados.</p>
+                              </div>
+                              <div className="onboarding-task-checklist onboarding-task-checklist-compact">
+                                <div className="onboarding-task-checklist-head onboarding-task-checklist-head-neutral">
+                                  <span>Lista de tareas</span>
+                                  <span>Agregar</span>
+                                </div>
+                                {availableTaskOptions.map((task) => (
+                                  <label key={task.value} className={`onboarding-task-checklist-row ${selectedTasks.includes(task.value) ? "checked" : ""}`}>
+                                    <span className="onboarding-task-checklist-label">{task.label}</span>
+                                    <span className="onboarding-task-checklist-control">
+                                      <input type="checkbox" checked={selectedTasks.includes(task.value)} onChange={() => toggleTask(task.value)} />
+                                      <span className="onboarding-task-checklist-box" aria-hidden />
+                                    </span>
+                                  </label>
+                                ))}
+                              </div>
+                            </div>
+                          ) : null}
+
+                          <div className="service-duration-card">
+                            <div className="panel-head">
+                              <h3>Ayúdanos a estimar la duración</h3>
+                              <p>Con esto te recomendamos cuántas horas reservar según tu espacio y el alcance de esta limpieza.</p>
+                            </div>
+
+                            <div className="service-duration-grid">
+                              <label>
+                                Habitaciones
+                                <select value={cleaningBedrooms} onChange={(event) => setCleaningBedrooms(event.target.value)} required>
+                                  <option value="">Selecciona</option>
+                                  <option value="0">Estudio / sin dormitorios</option>
+                                  <option value="1">1 habitación</option>
+                                  <option value="2">2 habitaciones</option>
+                                  <option value="3">3 habitaciones</option>
+                                  <option value="4">4 habitaciones</option>
+                                  <option value="5">5 o más</option>
+                                </select>
+                              </label>
+                              <label>
+                                Baños
+                                <select value={cleaningBathrooms} onChange={(event) => setCleaningBathrooms(event.target.value)} required>
+                                  <option value="">Selecciona</option>
+                                  <option value="1">1 baño</option>
+                                  <option value="2">2 baños</option>
+                                  <option value="3">3 baños</option>
+                                  <option value="4">4 baños</option>
+                                  <option value="5">5 o más</option>
+                                </select>
+                              </label>
+                              <label>
+                                Tamaño aproximado
+                                <select value={cleaningSize} onChange={(event) => setCleaningSize(event.target.value)} required>
+                                  <option value="">Selecciona</option>
+                                  {CLEANING_SIZE_OPTIONS.map((option) => (
+                                    <option key={option.value} value={option.value}>
+                                      {option.label} · {option.helper}
+                                    </option>
+                                  ))}
+                                </select>
+                              </label>
+                              <label>
+                                Nivel de suciedad
+                                <select value={cleaningDirt} onChange={(event) => setCleaningDirt(event.target.value)} required>
+                                  <option value="">Selecciona</option>
+                                  {CLEANING_DIRT_LEVEL_OPTIONS.map((option) => (
+                                    <option key={option.value} value={option.value}>
+                                      {option.label}
+                                    </option>
+                                  ))}
+                                </select>
+                              </label>
+                              <label className="full">
+                                Estado del espacio
+                                <select value={cleaningOccupancy} onChange={(event) => setCleaningOccupancy(event.target.value)} required>
+                                  <option value="">Selecciona</option>
+                                  {CLEANING_OCCUPANCY_OPTIONS.map((option) => (
+                                    <option key={option.value} value={option.value}>
+                                      {option.label}
+                                    </option>
+                                  ))}
+                                </select>
+                              </label>
+                            </div>
+
+                            <div className="service-duration-toggles">
+                              <label className={`onboarding-check-card ${cleaningKitchen ? "active" : ""}`}>
+                                <input type="checkbox" checked={cleaningKitchen} onChange={() => setCleaningKitchen((current) => !current)} />
+                                <span>Incluir cocina</span>
+                              </label>
+                              <label className={`onboarding-check-card ${cleaningLivingDining ? "active" : ""}`}>
+                                <input type="checkbox" checked={cleaningLivingDining} onChange={() => setCleaningLivingDining((current) => !current)} />
+                                <span>Incluir living / comedor</span>
+                              </label>
+                            </div>
+
+                            <div className="service-duration-extras">
+                              <strong>Extras que agregan tiempo</strong>
+                              <div className="onboarding-checkbox-grid onboarding-checkbox-grid-compact">
+                                {CLEANING_EXTRA_OPTIONS.map((extra) => (
+                                  <label key={extra.value} className={`onboarding-check-card ${cleaningExtras.includes(extra.value) ? "active" : ""}`}>
+                                    <input
+                                      type="checkbox"
+                                      checked={cleaningExtras.includes(extra.value)}
+                                      onChange={() => toggleCleaningExtra(extra.value)}
+                                    />
+                                    <span>
+                                      {extra.label}
+                                      <small>+{extra.minutes} min</small>
+                                    </span>
+                                  </label>
+                                ))}
+                              </div>
+                            </div>
+
+                            <div className={`service-duration-result ${cleaningEstimate ? "ready" : ""}`}>
+                              <strong>{cleaningEstimate ? `${cleaningEstimate.minHours} a ${cleaningEstimate.maxHours} horas` : "Completa los datos para estimar el tiempo"}</strong>
+                              <span>
+                                {cleaningEstimate
+                                  ? `${cleaningEstimate.summary} Si quieres irte a la segura, reserva ${cleaningEstimate.recommendedHours} hora(s).`
+                                  : "Te ayudaremos a calcular una recomendación antes de mostrar taskers."}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ) : null}
+
+                    {showIroningDetails ? (
+                      <div className="service-prep-card" id="task-focos">
+                        <div className="panel-head">
+                          <h3>Ayúdanos a estimar el tiempo</h3>
+                          <p>Para planchado trabajamos por hora. Cuéntanos cuánta ropa tienes para sugerirte una duración realista.</p>
+                        </div>
+
+                        <div className="service-prep-summary">
+                          <strong>Planchado por hora</strong>
+                          <span>Luego podrás comparar taskers según agenda, valoración y tarifa por hora.</span>
+                        </div>
+
+                        <div className="service-duration-grid">
+                          <label>
+                            Cantidad de prendas
+                            <select value={ironingGarments} onChange={(event) => setIroningGarments(event.target.value)} required>
+                              <option value="">Selecciona</option>
+                              <option value="8">Hasta 8 prendas</option>
+                              <option value="15">9 a 15 prendas</option>
+                              <option value="25">16 a 25 prendas</option>
+                              <option value="35">26 a 35 prendas</option>
+                              <option value="45">36 a 45 prendas</option>
+                              <option value="60">Más de 45 prendas</option>
+                            </select>
+                          </label>
+                          <label>
+                            Textiles grandes
+                            <select value={ironingBulkyItems} onChange={(event) => setIroningBulkyItems(event.target.value)}>
+                              <option value="0">No</option>
+                              <option value="1">1 prenda grande</option>
+                              <option value="2">2 prendas grandes</option>
+                              <option value="3">3 o más</option>
+                            </select>
+                          </label>
+                        </div>
+
+                        <div className="service-duration-toggles">
+                          <label className={`onboarding-check-card ${ironingDelicates ? "active" : ""}`}>
+                            <input type="checkbox" checked={ironingDelicates} onChange={() => setIroningDelicates((current) => !current)} />
+                            <span>Incluye ropa delicada</span>
+                          </label>
+                        </div>
+
+                        <div className={`service-duration-result ${ironingEstimate ? "ready" : ""}`}>
+                          <strong>{ironingEstimate ? `${ironingEstimate.minHours} a ${ironingEstimate.maxHours} horas` : "Completa la cantidad de ropa para estimar el tiempo"}</strong>
+                          <span>
+                            {ironingEstimate
+                              ? `${ironingEstimate.summary} Si quieres irte a la segura, reserva ${ironingEstimate.recommendedHours} hora(s).`
+                              : "Te mostraremos un rango sugerido antes de buscar taskers."}
+                          </span>
+                        </div>
+                      </div>
+                    ) : null}
+
+                    {showGenericTaskFocus ? (
+                      <div className="service-task-filter-card" id="task-focos">
+                        <div className="panel-head">
+                          <h3>Tareas o focos que necesitas</h3>
+                          <p>Opcional. Esto nos ayuda a mostrar taskers más alineados antes de entrar a resultados.</p>
+                        </div>
+                        <div className="onboarding-task-checklist onboarding-task-checklist-compact">
+                          <div className="onboarding-task-checklist-head onboarding-task-checklist-head-neutral">
+                            <span>Lista de tareas</span>
+                            <span>Agregar</span>
+                          </div>
+                          {availableTaskOptions.map((task) => (
+                            <label key={task.value} className={`onboarding-task-checklist-row ${selectedTasks.includes(task.value) ? "checked" : ""}`}>
+                              <span className="onboarding-task-checklist-label">{task.label}</span>
+                              <span className="onboarding-task-checklist-control">
+                                <input type="checkbox" checked={selectedTasks.includes(task.value)} onChange={() => toggleTask(task.value)} />
+                                <span className="onboarding-task-checklist-box" aria-hidden />
+                              </span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    ) : null}
+
+                    {!autoAdvanceOnServiceSelect ? (
+                      <div className="auth-flow-actions service-request-detail-actions">
+                        <button type="submit" className="cta">
+                          Ver taskers disponibles
+                        </button>
+                      </div>
+                    ) : null}
+                  </div>
+                </section>
+              ) : null}
+            </form>
+
+            {coverageNote ? <p className="feedback error">{coverageNote}</p> : null}
+            {coverageNote === COVERAGE_UNAVAILABLE_MESSAGE ? (
+              <form className="service-coverage-form" onSubmit={saveCoverageEmail}>
+                <label>
+                  Email para aviso de cobertura
+                  <input
+                    type="email"
+                    value={coverageEmail}
+                    onChange={(event) => setCoverageEmail(event.target.value)}
+                    placeholder="tuemail@dominio.com"
+                    required
+                  />
+                </label>
+                <button type="submit" className="cta" disabled={savingCoverageEmail}>
+                  {savingCoverageEmail ? "Guardando..." : "Avisarme por email"}
+                </button>
+              </form>
             ) : null}
-          </section>
-        </section>
+            {coverageEmailStatus ? <p className="feedback ok">{coverageEmailStatus}</p> : null}
+
+            <p className="minimal-note">Si no hay cobertura en tu zona puedes activar “Avisarme cuando haya”.</p>
+          </>
+        ) : null}
       </div>
     </main>
   );
