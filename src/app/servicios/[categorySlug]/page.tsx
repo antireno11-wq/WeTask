@@ -4,28 +4,19 @@ import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { MarketNav } from "@/components/market-nav";
-import { BABYSITTER_TASK_INCLUDED_OPTIONS } from "@/lib/babysitter-scope";
 import { getChefServiceDefinition } from "@/lib/chef-service-types";
-import { CLEANING_TASK_INCLUDED_OPTIONS, getCleaningTaskOptionsForService } from "@/lib/cleaning-scope";
 import {
   CLEANING_DIRT_LEVEL_OPTIONS,
   CLEANING_EXTRA_OPTIONS,
   CLEANING_OCCUPANCY_OPTIONS,
   CLEANING_SIZE_OPTIONS,
-  estimateCleaningDuration,
   isCleaningDirtLevel,
   isCleaningExtraTask,
   isCleaningOccupancy,
-  isCleaningSizeBand,
-  parseCleaningServiceSlug
+  isCleaningSizeBand
 } from "@/lib/cleaning-duration-estimator";
 import { ACTIVE_CLEANING_SERVICE_SLUGS, getCleaningServiceDefinition } from "@/lib/cleaning-service-types";
 import { ACTIVE_MVP_COMMUNES, COVERAGE_UNAVAILABLE_MESSAGE, inferCommuneFromAddress, normalizeCommune } from "@/lib/communes";
-import { estimateIroningDuration } from "@/lib/ironing-duration-estimator";
-import { MAKEUP_TASK_INCLUDED_OPTIONS } from "@/lib/makeup-scope";
-import { PET_TASK_INCLUDED_OPTIONS } from "@/lib/pet-scope";
-import { TEACHER_TASK_INCLUDED_OPTIONS } from "@/lib/teacher-scope";
-import { TRAINER_TASK_INCLUDED_OPTIONS } from "@/lib/trainer-scope";
 
 type Category = {
   id: string;
@@ -37,15 +28,11 @@ type Category = {
 
 type TaskFilterOption = { value: string; label: string };
 
-const TASK_FILTER_OPTIONS_BY_CATEGORY: Record<string, TaskFilterOption[]> = {
-  limpieza: [...CLEANING_TASK_INCLUDED_OPTIONS],
-  mascotas: [...PET_TASK_INCLUDED_OPTIONS],
-  babysitter: [...BABYSITTER_TASK_INCLUDED_OPTIONS],
-  "profesor-particular": [...TEACHER_TASK_INCLUDED_OPTIONS],
-  "personal-trainer": [...TRAINER_TASK_INCLUDED_OPTIONS],
-  chef: [],
-  maquillaje: [...MAKEUP_TASK_INCLUDED_OPTIONS],
-  planchado: []
+type DurationEstimate = {
+  minHours: number;
+  maxHours: number;
+  recommendedHours: number;
+  summary: string;
 };
 
 export default function ServicioCategoriaPage() {
@@ -70,19 +57,23 @@ export default function ServicioCategoriaPage() {
   const [autocompleteLoading, setAutocompleteLoading] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [selectedFromAutocomplete, setSelectedFromAutocomplete] = useState(false);
+  const [availableTaskOptions, setAvailableTaskOptions] = useState<TaskFilterOption[]>([]);
+  const [cleaningDetailsIntro, setCleaningDetailsIntro] = useState(
+    "Completa estos datos para recomendarte cuántas horas reservar según tu espacio y el alcance del servicio."
+  );
+  const [cleaningEstimate, setCleaningEstimate] = useState<DurationEstimate | null>(null);
+  const [ironingEstimate, setIroningEstimate] = useState<DurationEstimate | null>(null);
 
   const [selectedServiceId, setSelectedServiceId] = useState(query.get("serviceId") ?? "");
   const [street, setStreet] = useState(query.get("address") ?? "");
   const [apartment, setApartment] = useState(query.get("apartment") ?? "");
   const [reference, setReference] = useState(query.get("reference") ?? "");
   const city = query.get("city") ?? "Santiago";
-  const categoryTaskOptions = useMemo(() => TASK_FILTER_OPTIONS_BY_CATEGORY[categorySlug] ?? [], [categorySlug]);
   const [selectedTasks, setSelectedTasks] = useState<string[]>(
     (query.get("tasks") ?? "")
       .split(",")
       .map((item) => item.trim())
       .filter(Boolean)
-      .filter((item) => categoryTaskOptions.some((option) => option.value === item))
   );
   const [cleaningBedrooms, setCleaningBedrooms] = useState(query.get("cleaningBedrooms") ?? "");
   const [cleaningBathrooms, setCleaningBathrooms] = useState(query.get("cleaningBathrooms") ?? "");
@@ -251,16 +242,15 @@ export default function ServicioCategoriaPage() {
     return () => window.clearTimeout(timer);
   }, [isCustomerSession, skipAddressStep]);
 
-  const selectedCleaningServiceSlug = useMemo(() => {
-    if (!isCleaningCategory || !category || !selectedServiceId) return null;
-    const service = category.services.find((item) => item.id === selectedServiceId);
-    return parseCleaningServiceSlug(service?.slug);
-  }, [category, isCleaningCategory, selectedServiceId]);
+  const selectedService = useMemo(
+    () => category?.services.find((item) => item.id === selectedServiceId) ?? null,
+    [category, selectedServiceId]
+  );
 
   const selectedCleaningDefinition = useMemo(() => {
-    if (!selectedCleaningServiceSlug) return null;
-    return getCleaningServiceDefinition(selectedCleaningServiceSlug);
-  }, [selectedCleaningServiceSlug]);
+    if (!isCleaningCategory || !selectedService?.slug) return null;
+    return getCleaningServiceDefinition(selectedService.slug);
+  }, [isCleaningCategory, selectedService?.slug]);
 
   const getServiceDisplayPrice = (service: Category["services"][number]) => {
     if (category?.slug !== "limpieza") return service.basePriceClp;
@@ -278,28 +268,6 @@ export default function ServicioCategoriaPage() {
       .sort((a, b) => (orderMap.get(a.slug as (typeof ACTIVE_CLEANING_SERVICE_SLUGS)[number]) ?? 999) - (orderMap.get(b.slug as (typeof ACTIVE_CLEANING_SERVICE_SLUGS)[number]) ?? 999));
   }, [category]);
 
-  const availableTaskOptions = useMemo(() => {
-    if (!isCleaningCategory) return categoryTaskOptions;
-    return getCleaningTaskOptionsForService(selectedCleaningServiceSlug);
-  }, [categoryTaskOptions, isCleaningCategory, selectedCleaningServiceSlug]);
-
-  const cleaningDetailsIntro = useMemo(() => {
-    switch (selectedCleaningServiceSlug) {
-      case "limpieza-hogar":
-        return "Ahora cuéntanos cómo es tu casa y si hay focos específicos para calcular mejor el tiempo recomendado.";
-      case "limpieza-profunda":
-        return "Queremos entender el nivel de detalle y las zonas más exigentes para recomendar una duración realista.";
-      case "limpieza-por-horas":
-        return "Dinos el tamaño del espacio y tus prioridades para sugerirte cuántas horas conviene reservar.";
-      case "limpieza-post-mudanza":
-        return "Necesitamos saber cómo está el espacio y qué extras incluye para estimar bien un aseo de entrega o entrada.";
-      case "limpieza-oficina":
-        return "Cuéntanos el tamaño y estado del lugar para recomendar cuántas horas necesita tu limpieza de oficina.";
-      default:
-        return "Completa estos datos para recomendarte cuántas horas reservar según tu espacio y el alcance del servicio.";
-    }
-  }, [selectedCleaningServiceSlug]);
-
   useEffect(() => {
     if (!category) return;
     if (selectedServiceId && visibleServices.some((service) => service.id === selectedServiceId)) return;
@@ -310,48 +278,82 @@ export default function ServicioCategoriaPage() {
     setSelectedTasks((current) => current.filter((item) => availableTaskOptions.some((option) => option.value === item)));
   }, [availableTaskOptions]);
 
-  const cleaningEstimate = useMemo(() => {
-    if (!selectedCleaningServiceSlug) return null;
-    const bedrooms = Number(cleaningBedrooms);
-    const bathrooms = Number(cleaningBathrooms);
-    if (!Number.isFinite(bedrooms) || !Number.isFinite(bathrooms)) return null;
-    if (!isCleaningSizeBand(cleaningSize) || !isCleaningDirtLevel(cleaningDirt) || !isCleaningOccupancy(cleaningOccupancy)) return null;
+  useEffect(() => {
+    if (!category) return;
 
-    return estimateCleaningDuration({
-      serviceSlug: selectedCleaningServiceSlug,
-      bedrooms,
-      bathrooms,
-      sizeBand: cleaningSize,
-      dirtLevel: cleaningDirt,
-      occupancy: cleaningOccupancy,
-      hasKitchen: cleaningKitchen,
-      hasLivingDining: cleaningLivingDining,
-      extras: cleaningExtras.filter(isCleaningExtraTask)
-    });
+    const controller = new AbortController();
+
+    const loadPreparation = async () => {
+      try {
+        const response = await fetch("/api/marketplace/service-preparation", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          signal: controller.signal,
+          body: JSON.stringify({
+            categorySlug: category.slug,
+            serviceSlug: selectedService?.slug ?? null,
+            cleaning: {
+              bedrooms: cleaningBedrooms ? Number(cleaningBedrooms) : null,
+              bathrooms: cleaningBathrooms ? Number(cleaningBathrooms) : null,
+              sizeBand: cleaningSize || null,
+              dirtLevel: cleaningDirt || null,
+              occupancy: cleaningOccupancy || null,
+              hasKitchen: cleaningKitchen,
+              hasLivingDining: cleaningLivingDining,
+              extras: cleaningExtras
+            },
+            ironing: {
+              garments: ironingGarments ? Number(ironingGarments) : null,
+              bulkyItems: ironingBulkyItems ? Number(ironingBulkyItems) : 0,
+              includesDelicates: ironingDelicates
+            }
+          })
+        });
+
+        if (!response.ok) return;
+        const data = (await response.json()) as {
+          taskOptions?: TaskFilterOption[];
+          cleaningDetailsIntro?: string | null;
+          cleaningEstimate?: DurationEstimate | null;
+          ironingEstimate?: DurationEstimate | null;
+        };
+
+        if (!controller.signal.aborted) {
+          setAvailableTaskOptions(Array.isArray(data.taskOptions) ? data.taskOptions : []);
+          setCleaningDetailsIntro(
+            data.cleaningDetailsIntro ??
+              "Completa estos datos para recomendarte cuántas horas reservar según tu espacio y el alcance del servicio."
+          );
+          setCleaningEstimate(data.cleaningEstimate ?? null);
+          setIroningEstimate(data.ironingEstimate ?? null);
+        }
+      } catch {
+        if (!controller.signal.aborted) {
+          setAvailableTaskOptions([]);
+          setCleaningEstimate(null);
+          setIroningEstimate(null);
+        }
+      }
+    };
+
+    void loadPreparation();
+
+    return () => controller.abort();
   }, [
-    cleaningBathrooms,
+    category,
+    selectedService?.slug,
     cleaningBedrooms,
+    cleaningBathrooms,
+    cleaningSize,
     cleaningDirt,
-    cleaningExtras,
+    cleaningOccupancy,
     cleaningKitchen,
     cleaningLivingDining,
-    cleaningOccupancy,
-    cleaningSize,
-    selectedCleaningServiceSlug
+    cleaningExtras,
+    ironingGarments,
+    ironingBulkyItems,
+    ironingDelicates
   ]);
-
-  const ironingEstimate = useMemo(() => {
-    if (!isIroningCategory || !selectedServiceId) return null;
-    const garments = Number(ironingGarments);
-    const bulkyItems = Number(ironingBulkyItems || 0);
-    if (!Number.isFinite(garments) || garments <= 0) return null;
-    if (!Number.isFinite(bulkyItems) || bulkyItems < 0) return null;
-    return estimateIroningDuration({
-      garments,
-      bulkyItems,
-      includesDelicates: ironingDelicates
-    });
-  }, [ironingBulkyItems, ironingDelicates, ironingGarments, isIroningCategory, selectedServiceId]);
 
   const saveCoverageEmail = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
