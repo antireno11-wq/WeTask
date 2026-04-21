@@ -7935,7 +7935,7 @@ textarea {
 
 .service-request-detail-shell {
   width: min(1240px, 100%);
-  margin: 0 auto;
+  margin: 0;
 }
 
 .service-request-detail-panel {
