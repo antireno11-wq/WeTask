@@ -364,18 +364,15 @@ export default function ServiceProsPage() {
                 href={`/servicios/${categorySlug}?${contextQuery}`}
                 className="cta ghost small"
               >
-                Cambiar dirección y horario
+                Cambiar dirección o servicio
               </Link>
-              <button type="button" className="cta ghost small" onClick={() => setNotifyMessage("Te avisaremos cuando haya cobertura en tu zona.")}>
-                Avisarme cuando haya
-              </button>
             </div>
 
             {loading ? <p className="empty">Buscando taskers...</p> : null}
             {error ? <p className="feedback error">{error}</p> : null}
             {notifyMessage ? <p className={`feedback ${usedCategoryFallback ? "warn" : "ok"}`}>{notifyMessage}</p> : null}
             {!loading && !error && professionals.length === 0 ? (
-              <p className="feedback error">No encontramos taskers en esa zona y horario. Prueba otro horario, otra dirección o menos filtros.</p>
+              <p className="feedback error">No encontramos taskers para esa zona o esos filtros. Prueba otra dirección o ajusta los detalles del servicio.</p>
             ) : null}
 
             <section className="we-results-list">
