@@ -1275,13 +1275,6 @@ export default function ProDetailPage() {
                         <p>{materialsSupport}</p>
                       </div>
                     </div>
-                    <div className="we-pro-tags">
-                      {offeredServices.map((service) => (
-                        <span key={service} className="we-tag">
-                          {service}
-                        </span>
-                      ))}
-                    </div>
                   </article>
 
                   <section className="we-pro-duo-grid">
