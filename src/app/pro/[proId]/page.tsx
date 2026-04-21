@@ -1229,13 +1229,13 @@ export default function ProDetailPage() {
 
               <section className="we-pro-detail-layout" id="public-tasker-view">
                 <div className="we-pro-detail-main">
-                  {activeView === "perfil" ? (
-                    <>
-                  <article className="auth-flow-panel client-dashboard-section">
-                    <h2>Perfil del tasker</h2>
-                    <div className="we-trust-grid">
-                      <div className={`we-trust-card ${hasIdentityProof ? "ok" : ""}`}>
-                        <span className="we-trust-check" aria-hidden>{hasIdentityProof ? "✓" : "•"}</span>
+	                  {activeView === "perfil" ? (
+	                    <>
+	                  <article className="auth-flow-panel client-dashboard-section">
+	                    <h2>Seguridad</h2>
+	                    <div className="we-trust-grid">
+	                      <div className={`we-trust-card ${hasIdentityProof ? "ok" : ""}`}>
+	                        <span className="we-trust-check" aria-hidden>{hasIdentityProof ? "✓" : "•"}</span>
                         <div>
                           <strong>Identidad confirmada</strong>
                           <p>{hasIdentityProof ? "Subió ambos lados de su carnet para validación." : "Aún no informa validación completa."}</p>
@@ -1247,9 +1247,13 @@ export default function ProDetailPage() {
                           <strong>Antecedentes revisados</strong>
                           <p>{hasBackgroundCheck ? "Tiene certificado de antecedentes cargado en su perfil." : "Aún no informa certificado de antecedentes."}</p>
                         </div>
-                      </div>
-                    </div>
-                    <div className="we-info-grid we-profile-quick-grid">
+	                      </div>
+	                    </div>
+	                  </article>
+
+	                  <article className="auth-flow-panel client-dashboard-section">
+	                    <h2>Perfil del tasker</h2>
+	                    <div className="we-info-grid we-profile-quick-grid">
                       <div>
                         <h3>Experiencia</h3>
                         <p>{experienceYears} años</p>
