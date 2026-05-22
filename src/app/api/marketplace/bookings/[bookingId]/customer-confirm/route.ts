@@ -1,6 +1,11 @@
-import { UserRole } from "@prisma/client";
+import { BookingStatus, UserRole } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { getRequestIdentity, hasRole } from "@/lib/auth";
+import {
+  assertTransition,
+  type BookingActor,
+  InvalidBookingTransitionError
+} from "@/lib/booking-state-machine";
 import { prisma } from "@/lib/prisma";
 
 export async function POST(req: NextRequest, context: { params: { bookingId: string } }) {
@@ -39,6 +44,19 @@ export async function POST(req: NextRequest, context: { params: { bookingId: str
       return NextResponse.json({ error: "No puedes confirmar mientras exista un reclamo abierto." }, { status: 400 });
     }
 
+    const actor: BookingActor = identity.role === UserRole.ADMIN ? "ADMIN" : "CUSTOMER";
+    try {
+      assertTransition(booking.status, BookingStatus.PAYOUT_SCHEDULED, actor);
+    } catch (transitionError) {
+      if (transitionError instanceof InvalidBookingTransitionError) {
+        return NextResponse.json(
+          { error: "El estado actual no permite confirmar el servicio.", from: transitionError.from },
+          { status: 409 }
+        );
+      }
+      throw transitionError;
+    }
+
     const payoutAmount = Math.max(booking.totalPriceClp - booking.platformFeeClp, 0);
 
     const result = await prisma.$transaction(async (tx) => {
@@ -56,7 +74,7 @@ export async function POST(req: NextRequest, context: { params: { bookingId: str
 
       await tx.booking.update({
         where: { id: booking.id },
-        data: { status: "PAYOUT_SCHEDULED" }
+        data: { status: BookingStatus.PAYOUT_SCHEDULED }
       });
 
       await tx.notification.create({

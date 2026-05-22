@@ -1,8 +1,13 @@
-import { UserRole } from "@prisma/client";
+import { BookingStatus, UserRole } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { sendBookingStatusEmailToCustomer } from "@/lib/booking-status-email";
 import { getRequestIdentity, hasRole } from "@/lib/auth";
+import {
+  assertTransition,
+  type BookingActor,
+  InvalidBookingTransitionError
+} from "@/lib/booking-state-machine";
 import { prisma } from "@/lib/prisma";
 
 const createDisputeSchema = z.object({
@@ -43,6 +48,24 @@ export async function POST(req: NextRequest) {
     const allowed = booking.customerId === input.openedById || booking.proId === input.openedById || identity.role === UserRole.ADMIN;
     if (!allowed) return NextResponse.json({ error: "No autorizado" }, { status: 403 });
 
+    const actor: BookingActor =
+      identity.role === UserRole.ADMIN
+        ? "ADMIN"
+        : identity.userId === booking.customerId
+          ? "CUSTOMER"
+          : "PRO";
+    try {
+      assertTransition(booking.status, BookingStatus.DISPUTE, actor);
+    } catch (transitionError) {
+      if (transitionError instanceof InvalidBookingTransitionError) {
+        return NextResponse.json(
+          { error: "Esta reserva no permite abrir un reclamo en su estado actual.", from: transitionError.from },
+          { status: 409 }
+        );
+      }
+      throw transitionError;
+    }
+
     const ticket = await prisma.disputeTicket.create({
       data: {
         bookingId: input.bookingId,
@@ -56,7 +79,7 @@ export async function POST(req: NextRequest) {
 
     await prisma.booking.update({
       where: { id: booking.id },
-      data: { status: "DISPUTE" }
+      data: { status: BookingStatus.DISPUTE }
     });
 
     const notifyIds = [booking.customerId, booking.proId].filter(Boolean) as string[];

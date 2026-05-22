@@ -1,16 +1,14 @@
-import { UserRole } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
-import { getRequestIdentity, hasRole } from "@/lib/auth";
+import { requireAdminRequest } from "@/lib/admin-access";
+import { recordAdminAction } from "@/lib/audit-log";
 import { prisma } from "@/lib/prisma";
 
 const HOLD_HOURS = 24;
 
 export async function POST(req: NextRequest) {
   try {
-    const identity = getRequestIdentity(req);
-    if (!hasRole(identity.role, [UserRole.ADMIN])) {
-      return NextResponse.json({ error: "No autorizado" }, { status: 403 });
-    }
+    const admin = await requireAdminRequest(req);
+    if (!admin.ok) return admin.response;
 
     const cutoff = new Date(Date.now() - HOLD_HOURS * 60 * 60 * 1000);
 
@@ -68,6 +66,20 @@ export async function POST(req: NextRequest) {
       });
 
       created.push({ bookingId: booking.id, payoutId: payout.id, amountClp: payout.amountClp });
+    }
+
+    if (created.length > 0) {
+      await recordAdminAction({
+        actorId: admin.identity.userId,
+        action: "payouts.process_timeouts",
+        target: { type: "PayoutBatch" },
+        after: {
+          holdHours: HOLD_HOURS,
+          reviewed: bookings.length,
+          created: created.length,
+          payouts: created
+        }
+      });
     }
 
     return NextResponse.json(
