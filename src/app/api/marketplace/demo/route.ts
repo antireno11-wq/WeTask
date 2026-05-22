@@ -5,8 +5,22 @@ import { prisma } from "@/lib/prisma";
 export const dynamic = "force-dynamic";
 
 export async function GET() {
+  if (process.env.NODE_ENV === "production") {
+    return NextResponse.json({ error: "Not Found" }, { status: 404 });
+  }
+
   try {
     const seed = await ensureMarketplaceDemoData();
+
+    if (!seed.customerId) {
+      return NextResponse.json({
+        customer: null,
+        customers: [],
+        professionals: [],
+        admin: null,
+        note: "Set SEED_DEMO_DATA=true to seed demo accounts."
+      });
+    }
 
     const [customer, customers, pros] = await Promise.all([
       prisma.user.findUnique({ where: { id: seed.customerId }, select: { id: true, fullName: true, email: true } }),

@@ -15,17 +15,6 @@ function isPublicMarketplaceApi(pathname: string) {
   return PUBLIC_MARKETPLACE_API_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
 }
 
-function decodeLegacySessionCookie(raw: string | undefined): { userId: string | null; role: UserRole | null } {
-  if (!raw) return { userId: null, role: null };
-  try {
-    const parsed = JSON.parse(decodeURIComponent(raw)) as { userId?: string; role?: UserRole };
-    if (!parsed?.userId || !parsed?.role) return { userId: null, role: null };
-    if (parsed.role !== "CUSTOMER" && parsed.role !== "PRO" && parsed.role !== "ADMIN") return { userId: null, role: null };
-    return { userId: parsed.userId, role: parsed.role };
-  } catch {
-    return { userId: null, role: null };
-  }
-}
 
 function toBase64(value: Uint8Array) {
   let output = "";
@@ -33,10 +22,18 @@ function toBase64(value: Uint8Array) {
   return btoa(output).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 
+function getEdgeSessionSecret(): string | null {
+  const secret = process.env.SESSION_SECRET;
+  if (secret && secret.length >= 16) return secret;
+  if (process.env.NODE_ENV === "production") return null;
+  return "dev-insecure-change-me";
+}
+
 async function decodeSignedSessionCookie(raw: string | undefined): Promise<{ userId: string | null; role: UserRole | null }> {
   if (!raw || !raw.includes(".")) return { userId: null, role: null };
   try {
-    const secret = process.env.SESSION_SECRET || "dev-insecure-change-me";
+    const secret = getEdgeSessionSecret();
+    if (!secret) return { userId: null, role: null };
     const [header, payload, signature] = raw.split(".");
     if (!header || !payload || !signature) return { userId: null, role: null };
 
@@ -75,8 +72,7 @@ function redirectToLogin(req: NextRequest, mode: "cliente" | "tasker" | "equipo"
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
   const rawSession = req.cookies.get(SESSION_COOKIE_NAME)?.value;
-  const signedSession = await decodeSignedSessionCookie(rawSession);
-  const session = signedSession.userId ? signedSession : decodeLegacySessionCookie(rawSession);
+  const session = await decodeSignedSessionCookie(rawSession);
 
   if (pathname.startsWith("/cliente")) {
     if (!hasRequiredRole(session.role, ["CUSTOMER", "ADMIN"])) return redirectToLogin(req, "cliente");

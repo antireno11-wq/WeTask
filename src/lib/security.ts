@@ -3,6 +3,15 @@ import { compare, hash } from "bcryptjs";
 
 const BCRYPT_ROUNDS = 12;
 
+function getSessionSecret(): string {
+  const secret = process.env.SESSION_SECRET;
+  if (secret && secret.length >= 16) return secret;
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("SESSION_SECRET is required in production (min 16 chars)");
+  }
+  return "dev-insecure-change-me";
+}
+
 export async function hashPassword(password: string) {
   return hash(password, BCRYPT_ROUNDS);
 }
@@ -28,7 +37,7 @@ function base64UrlDecode(value: string) {
 }
 
 export function signSession(payload: Record<string, unknown>) {
-  const secret = process.env.SESSION_SECRET || "dev-insecure-change-me";
+  const secret = getSessionSecret();
   const header = base64UrlEncode(JSON.stringify({ alg: "HS256", typ: "JWT" }));
   const body = base64UrlEncode(JSON.stringify(payload));
   const signature = createHmac("sha256", secret).update(`${header}.${body}`).digest("base64url");
@@ -37,7 +46,7 @@ export function signSession(payload: Record<string, unknown>) {
 
 export function verifySession<T>(token: string): T | null {
   try {
-    const secret = process.env.SESSION_SECRET || "dev-insecure-change-me";
+    const secret = getSessionSecret();
     const [header, body, signature] = token.split(".");
     if (!header || !body || !signature) return null;
 

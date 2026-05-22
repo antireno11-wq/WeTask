@@ -66,7 +66,11 @@ async function ensureRoleAssignment(userId: string, code: UserRole, label: strin
   });
 }
 
-export async function ensureMarketplaceDemoData() {
+export async function ensureMarketplaceDemoData(): Promise<{ customerId: string | null }> {
+  if (process.env.SEED_DEMO_DATA !== "true") {
+    return { customerId: null };
+  }
+
   const legacyCategory = await prisma.category.findUnique({ where: { slug: "manitas" } });
   if (legacyCategory) {
     await prisma.category.update({

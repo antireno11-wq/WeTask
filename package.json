@@ -17,6 +17,7 @@
   "dependencies": {
     "@prisma/client": "^5.20.0",
     "bcryptjs": "^2.4.3",
+    "google-auth-library": "^10.6.2",
     "next": "^14.2.18",
     "prisma": "^5.20.0",
     "react": "^18.3.1",
@@ -24,10 +25,10 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
     "@types/node": "^22.10.7",
     "@types/react": "^18.3.18",
     "@types/react-dom": "^18.3.5",
-    "@types/bcryptjs": "^2.4.6",
     "eslint": "^8.57.1",
     "eslint-config-next": "^14.2.18",
     "typescript": "^5.7.3"
