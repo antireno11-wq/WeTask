@@ -4,6 +4,7 @@ import { CleaningOnboardingStatus } from "@prisma/client";
 import { AdminHeroShell } from "@/components/admin-hero-shell";
 import { AdminCleaningReviewActions } from "@/components/admin-cleaning-review-actions";
 import { prisma } from "@/lib/prisma";
+import { resolveAssetUrlMap } from "@/lib/storage/r2";
 
 export const dynamic = "force-dynamic";
 
@@ -102,6 +103,13 @@ export default async function AdminCleaningOnboardingDetailPage({ params }: { pa
     onboarding.identityDocumentBackFile,
     onboarding.criminalRecordFile
   ].filter(Boolean).length;
+
+  const resolvedDocs = await resolveAssetUrlMap({
+    profilePhoto: onboarding.profilePhotoUrl,
+    identityFront: onboarding.identityDocumentFrontFile,
+    identityBack: onboarding.identityDocumentBackFile,
+    criminalRecord: onboarding.criminalRecordFile
+  });
 
   return (
     <AdminHeroShell>
@@ -246,10 +254,10 @@ export default async function AdminCleaningOnboardingDetailPage({ params }: { pa
         </div>
 
         <div className="admin-doc-grid">
-          <DocumentPreview label="Foto de perfil" value={onboarding.profilePhotoUrl} />
-          <DocumentPreview label="Carnet por delante" value={onboarding.identityDocumentFrontFile} />
-          <DocumentPreview label="Carnet por detrás" value={onboarding.identityDocumentBackFile} />
-          <DocumentPreview label="Certificado de antecedentes" value={onboarding.criminalRecordFile} />
+          <DocumentPreview label="Foto de perfil" value={resolvedDocs.profilePhoto} />
+          <DocumentPreview label="Carnet por delante" value={resolvedDocs.identityFront} />
+          <DocumentPreview label="Carnet por detrás" value={resolvedDocs.identityBack} />
+          <DocumentPreview label="Certificado de antecedentes" value={resolvedDocs.criminalRecord} />
         </div>
       </section>
 

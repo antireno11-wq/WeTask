@@ -671,6 +671,76 @@ function fileToDataUrl(file: File): Promise<string> {
   });
 }
 
+const UPLOAD_KINDS = [
+  "identity_front",
+  "identity_back",
+  "identity_selfie",
+  "criminal_record",
+  "profile_photo",
+  "chat_image",
+  "dispute_evidence"
+] as const;
+type UploadKind = (typeof UPLOAD_KINDS)[number];
+
+/**
+ * Sube un archivo (File o data URL) a object storage vía presigned URL.
+ * Devuelve la storage key (e.g. "users/<id>/<kind>/<uuid>.jpg").
+ * Si el servidor responde 503 (storage no configurado), retorna null y deja
+ * que el caller use el data URL como fallback legacy.
+ */
+async function uploadAssetViaPresign(input: {
+  source: File | { dataUrl: string; contentType: string };
+  kind: UploadKind;
+}): Promise<string | null> {
+  let blob: Blob;
+  let contentType: string;
+  let sizeBytes: number;
+
+  if (input.source instanceof File) {
+    blob = input.source;
+    contentType = input.source.type || "application/octet-stream";
+    sizeBytes = input.source.size;
+  } else {
+    const match = input.source.dataUrl.match(/^data:([^;]+);base64,(.+)$/);
+    if (!match) throw new Error("Data URL inválido para subir");
+    contentType = match[1] || input.source.contentType;
+    const binary = atob(match[2]);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
+    blob = new Blob([bytes], { type: contentType });
+    sizeBytes = blob.size;
+  }
+
+  const presignResponse = await fetch("/api/uploads/presign", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ kind: input.kind, contentType, sizeBytes })
+  });
+
+  if (presignResponse.status === 503) {
+    return null; // storage not configured; caller decides fallback
+  }
+
+  if (!presignResponse.ok) {
+    const detail = await presignResponse.json().catch(() => ({}));
+    throw new Error(detail?.error || `No se pudo preparar la carga (${presignResponse.status})`);
+  }
+
+  const { uploadUrl, key } = (await presignResponse.json()) as { uploadUrl: string; key: string };
+
+  const putResponse = await fetch(uploadUrl, {
+    method: "PUT",
+    headers: { "Content-Type": contentType },
+    body: blob
+  });
+
+  if (!putResponse.ok) {
+    throw new Error(`El archivo no se pudo subir al almacenamiento (${putResponse.status})`);
+  }
+
+  return key;
+}
+
 function loadImageElement(src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const image = new Image();
@@ -1928,6 +1998,26 @@ function CleaningOnboardingPageContent() {
       if (normalizedProfilePhoto && normalizedProfilePhoto !== draft.profilePhotoUrl) {
         setDraft((current) => ({ ...current, profilePhotoUrl: normalizedProfilePhoto }));
       }
+
+      let profilePhotoFinal = normalizedProfilePhoto || draft.profilePhotoUrl;
+      if (profilePhotoFinal && profilePhotoFinal.startsWith("data:")) {
+        try {
+          const uploadedKey = await uploadAssetViaPresign({
+            source: { dataUrl: profilePhotoFinal, contentType: "image/jpeg" },
+            kind: "profile_photo"
+          });
+          if (uploadedKey) {
+            // Persist the storage key server-side, but keep the local data URL
+            // in the draft so the in-session preview keeps working without
+            // additional fetches. On reload the server returns the key and the
+            // preview falls back to a placeholder.
+            profilePhotoFinal = uploadedKey;
+          }
+        } catch (uploadError) {
+          console.warn("[onboarding] profile_photo upload failed, keeping data url", uploadError);
+        }
+      }
+
       const addressOk = await validateHomeAddress();
       if (!addressOk) return;
 
@@ -1939,7 +2029,7 @@ function CleaningOnboardingPageContent() {
           documentId: draft.rut.trim(),
           referenceAddress: draft.address.trim(),
           baseCommune: draft.homeCommune,
-          profilePhotoUrl: normalizedProfilePhoto || draft.profilePhotoUrl
+          profilePhotoUrl: profilePhotoFinal
         });
       } else {
         const response = await fetch("/api/onboarding/cleaning/start", {
@@ -1953,7 +2043,7 @@ function CleaningOnboardingPageContent() {
             baseCommune: draft.homeCommune,
             referenceAddress: draft.address.trim(),
             documentId: draft.rut.trim(),
-            profilePhotoUrl: normalizedProfilePhoto || draft.profilePhotoUrl
+            profilePhotoUrl: profilePhotoFinal
           })
         });
         const data = (await response.json()) as {
@@ -4836,8 +4926,17 @@ function CleaningOnboardingPageContent() {
                       onChange={async (event) => {
                         const file = event.target.files?.[0];
                         if (!file) return;
-                        const content = await fileToDataUrl(file);
-                        updateDraft("identityDocumentFrontFile", content);
+                        try {
+                          const key = await uploadAssetViaPresign({ source: file, kind: "identity_front" });
+                          if (key) {
+                            updateDraft("identityDocumentFrontFile", key);
+                          } else {
+                            const content = await fileToDataUrl(file);
+                            updateDraft("identityDocumentFrontFile", content);
+                          }
+                        } catch (err) {
+                          alert(err instanceof Error ? err.message : "No se pudo subir el archivo");
+                        }
                       }}
                     />
                     {draft.identityDocumentFrontFile ? <p className="input-hint">Archivo cargado correctamente.</p> : null}
@@ -4850,8 +4949,17 @@ function CleaningOnboardingPageContent() {
                       onChange={async (event) => {
                         const file = event.target.files?.[0];
                         if (!file) return;
-                        const content = await fileToDataUrl(file);
-                        updateDraft("identityDocumentBackFile", content);
+                        try {
+                          const key = await uploadAssetViaPresign({ source: file, kind: "identity_back" });
+                          if (key) {
+                            updateDraft("identityDocumentBackFile", key);
+                          } else {
+                            const content = await fileToDataUrl(file);
+                            updateDraft("identityDocumentBackFile", content);
+                          }
+                        } catch (err) {
+                          alert(err instanceof Error ? err.message : "No se pudo subir el archivo");
+                        }
                       }}
                     />
                     {draft.identityDocumentBackFile ? <p className="input-hint">Archivo cargado correctamente.</p> : null}
@@ -4864,8 +4972,17 @@ function CleaningOnboardingPageContent() {
                       onChange={async (event) => {
                         const file = event.target.files?.[0];
                         if (!file) return;
-                        const content = await fileToDataUrl(file);
-                        updateDraft("criminalRecordFile", content);
+                        try {
+                          const key = await uploadAssetViaPresign({ source: file, kind: "criminal_record" });
+                          if (key) {
+                            updateDraft("criminalRecordFile", key);
+                          } else {
+                            const content = await fileToDataUrl(file);
+                            updateDraft("criminalRecordFile", content);
+                          }
+                        } catch (err) {
+                          alert(err instanceof Error ? err.message : "No se pudo subir el archivo");
+                        }
                       }}
                     />
                     {draft.criminalRecordFile ? <p className="input-hint">Archivo cargado correctamente.</p> : null}
