@@ -82,6 +82,15 @@ export default async function AdminCleaningOnboardingDetailPage({ params }: { pa
             }
           }
         }
+      },
+      reviewEvents: {
+        orderBy: { createdAt: "desc" },
+        take: 50,
+        include: {
+          actor: {
+            select: { fullName: true, email: true }
+          }
+        }
       }
     }
   });
@@ -244,7 +253,63 @@ export default async function AdminCleaningOnboardingDetailPage({ params }: { pa
         </div>
       </section>
 
+      <section className="admin-section-card">
+        <div className="admin-section-head">
+          <div>
+            <h3>Historial de revisión</h3>
+            <p>Cada acción del equipo queda registrada con motivo y autor.</p>
+          </div>
+        </div>
+
+        {onboarding.reviewEvents.length === 0 ? (
+          <p className="empty">Todavía no hay decisiones registradas para este tasker.</p>
+        ) : (
+          <ol style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: 14 }}>
+            {onboarding.reviewEvents.map((event) => (
+              <li
+                key={event.id}
+                style={{
+                  padding: "14px 16px",
+                  borderRadius: 16,
+                  border: "1px solid rgba(34,97,160,0.18)",
+                  background: "#f4f8fd"
+                }}
+              >
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+                  <strong>{actionLabel(event.action)}</strong>
+                  <span style={{ color: "#5f7691", fontSize: 13 }}>{formatDate(event.createdAt)}</span>
+                </div>
+                <p style={{ margin: "6px 0 0", color: "#48627d", fontSize: 14 }}>
+                  {event.statusBefore ?? "—"} → {event.statusAfter ?? "—"} · por{" "}
+                  {event.actor?.fullName || event.actor?.email || "Sistema"}
+                </p>
+                {event.notes ? (
+                  <p style={{ margin: "6px 0 0", color: "#17324d", whiteSpace: "pre-wrap" }}>{event.notes}</p>
+                ) : null}
+              </li>
+            ))}
+          </ol>
+        )}
+      </section>
+
       <AdminCleaningReviewActions onboardingId={onboarding.id} status={onboarding.status} />
     </AdminHeroShell>
   );
+}
+
+function actionLabel(action: string) {
+  switch (action) {
+    case "approve":
+      return "Aprobado";
+    case "request_correction":
+      return "Pidió correcciones";
+    case "activate":
+      return "Activado";
+    case "set_pending":
+      return "Vuelve a pendiente";
+    case "delete_record":
+      return "Eliminado";
+    default:
+      return action;
+  }
 }

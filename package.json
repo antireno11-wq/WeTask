@@ -10,6 +10,7 @@
     "lint": "next lint",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate deploy",
+    "prisma:migrate:dev": "prisma migrate dev",
     "prisma:push": "prisma db push --accept-data-loss",
     "prisma:seed": "node prisma/seed.mjs",
     "audit:tasker": "node scripts/audit-tasker-onboarding.mjs"
