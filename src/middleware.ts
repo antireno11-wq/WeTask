@@ -36,7 +36,11 @@ function toBase64(value: Uint8Array) {
 async function decodeSignedSessionCookie(raw: string | undefined): Promise<{ userId: string | null; role: UserRole | null }> {
   if (!raw || !raw.includes(".")) return { userId: null, role: null };
   try {
-    const secret = process.env.SESSION_SECRET || "dev-insecure-change-me";
+    const rawSecret = process.env.SESSION_SECRET;
+    if (!rawSecret && process.env.NODE_ENV === "production") {
+      throw new Error("CRITICAL: SESSION_SECRET is not configured in production environment.");
+    }
+    const secret = rawSecret || "dev-insecure-change-me";
     const [header, payload, signature] = raw.split(".");
     if (!header || !payload || !signature) return { userId: null, role: null };
 

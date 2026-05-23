@@ -2,7 +2,7 @@
 const nextConfig = {
   experimental: {
     serverActions: {
-      allowedOrigins: ["*"]
+      allowedOrigins: ["wetask.cl", "www.wetask.cl", "*.wetask.cl", "*.railway.app"]
     }
   }
 };

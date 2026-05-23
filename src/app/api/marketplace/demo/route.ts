@@ -9,7 +9,9 @@ export async function GET() {
     const seed = await ensureMarketplaceDemoData();
 
     const [customer, customers, pros] = await Promise.all([
-      prisma.user.findUnique({ where: { id: seed.customerId }, select: { id: true, fullName: true, email: true } }),
+      seed.customerId
+        ? prisma.user.findUnique({ where: { id: seed.customerId }, select: { id: true, fullName: true, email: true } })
+        : Promise.resolve(null),
       prisma.user.findMany({
         where: { role: "CUSTOMER", email: { contains: "demo" } },
         select: { id: true, fullName: true, email: true },
