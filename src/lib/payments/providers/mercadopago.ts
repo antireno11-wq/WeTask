@@ -120,8 +120,11 @@ function normalizePaymentResult(payload: any): ProviderPaymentResult {
   };
 }
 
-async function mpRequest(path: string, init: RequestInit & { idempotencyKey?: string }) {
-  const token = mpAccessToken();
+async function mpRequest(
+  path: string,
+  init: RequestInit & { idempotencyKey?: string; accessTokenOverride?: string }
+) {
+  const token = init.accessTokenOverride ?? mpAccessToken();
   const headers = new Headers(init.headers);
   headers.set("Authorization", `Bearer ${token}`);
   headers.set("Content-Type", "application/json");
@@ -136,6 +139,186 @@ async function mpRequest(path: string, init: RequestInit & { idempotencyKey?: st
   });
   const payload = await response.json().catch(() => ({}));
   return { response, payload };
+}
+
+// ---------------------------------------------------------------------------
+// MercadoPago Marketplace OAuth (Fase 5)
+// ---------------------------------------------------------------------------
+
+export type MercadoPagoOAuthTokenResponse = {
+  accessToken: string;
+  refreshToken: string | null;
+  userId: string;
+  publicKey: string | null;
+  expiresInSeconds: number | null;
+  scope: string | null;
+};
+
+function getOAuthClientId(): string {
+  const value = process.env.MERCADOPAGO_APP_ID;
+  if (!value) throw new Error("MERCADOPAGO_APP_ID no configurado");
+  return value;
+}
+
+function getOAuthClientSecret(): string {
+  const value = process.env.MERCADOPAGO_APP_SECRET;
+  if (!value) throw new Error("MERCADOPAGO_APP_SECRET no configurado");
+  return value;
+}
+
+export function getOAuthRedirectUri(): string {
+  const explicit = process.env.MERCADOPAGO_OAUTH_REDIRECT_URI?.trim();
+  if (explicit) return explicit;
+  const base = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/+$/, "") ?? "http://localhost:3000";
+  return `${base}/api/payments/mp/oauth/callback`;
+}
+
+export function isMercadoPagoOAuthConfigured(): boolean {
+  return Boolean(process.env.MERCADOPAGO_APP_ID && process.env.MERCADOPAGO_APP_SECRET);
+}
+
+export function getMercadoPagoAuthorizationUrl(state: string): string {
+  const clientId = getOAuthClientId();
+  const redirectUri = getOAuthRedirectUri();
+  const params = new URLSearchParams({
+    client_id: clientId,
+    response_type: "code",
+    platform_id: "mp",
+    redirect_uri: redirectUri,
+    state
+  });
+  return `https://auth.mercadopago.cl/authorization?${params.toString()}`;
+}
+
+export async function exchangeMercadoPagoCode(code: string): Promise<MercadoPagoOAuthTokenResponse> {
+  const response = await fetch("https://api.mercadopago.com/oauth/token", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+      Accept: "application/json"
+    },
+    body: new URLSearchParams({
+      client_id: getOAuthClientId(),
+      client_secret: getOAuthClientSecret(),
+      grant_type: "authorization_code",
+      code,
+      redirect_uri: getOAuthRedirectUri()
+    }).toString(),
+    cache: "no-store"
+  });
+  const payload: any = await response.json().catch(() => ({}));
+  if (!response.ok || !payload?.access_token) {
+    throw new Error(payload?.message || payload?.error || `MercadoPago OAuth code exchange falló (${response.status})`);
+  }
+  return {
+    accessToken: String(payload.access_token),
+    refreshToken: payload.refresh_token ? String(payload.refresh_token) : null,
+    userId: String(payload.user_id ?? ""),
+    publicKey: payload.public_key ? String(payload.public_key) : null,
+    expiresInSeconds: typeof payload.expires_in === "number" ? payload.expires_in : null,
+    scope: payload.scope ? String(payload.scope) : null
+  };
+}
+
+export async function refreshMercadoPagoToken(refreshToken: string): Promise<MercadoPagoOAuthTokenResponse> {
+  const response = await fetch("https://api.mercadopago.com/oauth/token", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+      Accept: "application/json"
+    },
+    body: new URLSearchParams({
+      client_id: getOAuthClientId(),
+      client_secret: getOAuthClientSecret(),
+      grant_type: "refresh_token",
+      refresh_token: refreshToken
+    }).toString(),
+    cache: "no-store"
+  });
+  const payload: any = await response.json().catch(() => ({}));
+  if (!response.ok || !payload?.access_token) {
+    throw new Error(payload?.message || payload?.error || `MercadoPago OAuth refresh falló (${response.status})`);
+  }
+  return {
+    accessToken: String(payload.access_token),
+    refreshToken: payload.refresh_token ? String(payload.refresh_token) : refreshToken,
+    userId: String(payload.user_id ?? ""),
+    publicKey: payload.public_key ? String(payload.public_key) : null,
+    expiresInSeconds: typeof payload.expires_in === "number" ? payload.expires_in : null,
+    scope: payload.scope ? String(payload.scope) : null
+  };
+}
+
+/**
+ * Crea un pago contra MercadoPago usando el access token del COLLECTOR (tasker)
+ * con application_fee retenido por WeTask. Modelo Marketplace.
+ *
+ * @param input pago estándar (token de tarjeta, monto, etc.)
+ * @param collectorAccessToken access_token OAuth del tasker
+ * @param applicationFeeClp comisión que retiene WeTask del monto
+ */
+export async function createMercadoPagoMarketplacePayment(
+  input: ProviderPaymentCreateInput,
+  options: { collectorAccessToken: string; applicationFeeClp: number }
+): Promise<ProviderPaymentResult> {
+  const body: Record<string, unknown> = {
+    transaction_amount: input.amount,
+    token: input.token,
+    card_id: input.cardId,
+    description: input.description,
+    installments: input.installments,
+    payment_method_id: input.paymentMethodId,
+    issuer_id: input.issuerId ? Number(input.issuerId) : undefined,
+    application_fee: options.applicationFeeClp,
+    payer: {
+      email: input.payerEmail,
+      ...(input.customerId
+        ? {
+            id: input.customerId,
+            type: "customer"
+          }
+        : {}),
+      identification:
+        input.payerIdentification?.type && input.payerIdentification?.number
+          ? {
+              type: input.payerIdentification.type,
+              number: input.payerIdentification.number
+            }
+          : undefined
+    },
+    external_reference: input.externalReference,
+    metadata: {
+      booking_id: input.externalReference,
+      marketplace: "WETASK"
+    }
+  };
+
+  const { response, payload } = await mpRequest("/v1/payments", {
+    method: "POST",
+    body: JSON.stringify(body),
+    idempotencyKey: input.idempotencyKey,
+    accessTokenOverride: options.collectorAccessToken
+  });
+
+  if (!response.ok) {
+    return {
+      provider: "MERCADOPAGO",
+      providerPaymentId: payload?.id ? String(payload.id) : null,
+      providerStatus: String(payload?.status ?? "error"),
+      status: "failed",
+      amount: input.amount,
+      currency: input.currency,
+      paymentMethod: input.paymentMethodId,
+      last4: null,
+      paidAt: null,
+      refundedAt: null,
+      raw: payload,
+      errorCode: payload?.error ? String(payload.error) : null,
+      errorMessage: payload?.message ? String(payload.message) : "Error creando pago marketplace en Mercado Pago"
+    };
+  }
+
+  return normalizePaymentResult(payload);
 }
 
 export async function checkMercadoPagoHealth(): Promise<MercadoPagoHealthReport> {

@@ -182,6 +182,7 @@ export async function GET(req: NextRequest) {
       where: {
         isVerified: true,
         user: {
+          mpAccountStatus: "ACTIVE",
           OR: [{ role: UserRole.PRO }, { roleAssignments: { some: { role: { code: UserRole.PRO } } } }]
         },
         slots:

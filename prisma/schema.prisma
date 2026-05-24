@@ -86,6 +86,12 @@ model User {
   phone                  String?
   birthDate              DateTime?
   mercadoPagoCustomerId  String?
+  mpAccessToken          String?
+  mpRefreshToken         String?
+  mpUserId               String?
+  mpTokenExpiresAt       DateTime?
+  mpAccountStatus        String?
+  mpConnectedAt          DateTime?
   role                   UserRole                 @default(CUSTOMER)
   authProvider           AuthProvider             @default(EMAIL)
   passwordHash           String?
@@ -109,6 +115,9 @@ model User {
   sessions               AuthSession[]
   adminAuditLogs         AdminAuditLog[]          @relation("AdminAuditLogActor")
   onboardingReviewEvents OnboardingReviewEvent[]  @relation("OnboardingReviewActor")
+  mpOAuthStates          MercadoPagoOAuthState[]
+
+  @@index([mpUserId])
 }
 
 model CustomerPaymentMethod {
@@ -405,31 +414,36 @@ model Message {
 }
 
 model Payment {
-  id                String        @id @default(cuid())
-  bookingId         String        @unique
-  provider          String        @default("MERCADOPAGO")
-  providerPaymentId String?
-  providerStatus    String?
-  currency          String        @default("CLP")
-  paymentMethod     String?
-  last4             String?
-  payerEmail        String?
-  rawResponseJson   Json?
-  refundedAt        DateTime?
-  idempotencyKey    String?       @unique
-  errorCode         String?
-  errorMessage      String?
-  amountClp         Int
-  platformFeeClp    Int           @default(0)
-  status            PaymentStatus @default(PENDING)
-  paidAt            DateTime?
-  createdAt         DateTime      @default(now())
-  updatedAt         DateTime      @updatedAt
-  booking           Booking       @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  id                  String        @id @default(cuid())
+  bookingId           String        @unique
+  provider            String        @default("MERCADOPAGO")
+  providerPaymentId   String?
+  providerStatus      String?
+  currency            String        @default("CLP")
+  paymentMethod       String?
+  last4               String?
+  payerEmail          String?
+  rawResponseJson     Json?
+  refundedAt          DateTime?
+  idempotencyKey      String?       @unique
+  errorCode           String?
+  errorMessage        String?
+  amountClp           Int
+  platformFeeClp      Int           @default(0)
+  applicationFeeClp   Int?
+  collectorMpUserId   String?
+  escrowStatus        String?
+  escrowReleasedAt    DateTime?
+  status              PaymentStatus @default(PENDING)
+  paidAt              DateTime?
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+  booking             Booking       @relation(fields: [bookingId], references: [id], onDelete: Cascade)
 
   @@index([provider, providerPaymentId])
   @@index([providerStatus])
   @@index([status, createdAt])
+  @@index([collectorMpUserId])
 }
 
 model Payout {
@@ -689,6 +703,17 @@ model AdminAuditLog {
 
   @@index([actorId, createdAt])
   @@index([targetType, targetId])
+}
+
+model MercadoPagoOAuthState {
+  id        String   @id @default(cuid())
+  userId    String
+  state     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
 }
 
 model OnboardingReviewEvent {

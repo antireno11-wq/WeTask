@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useMemo, useRef, useState, type ChangeEvent, type PointerEvent as ReactPointerEvent } from "react";
 import { MarketNav } from "@/components/market-nav";
+import { MercadoPagoConnectionCard } from "@/components/mercadopago-connection-card";
 import { ACTIVE_MVP_COMMUNES, inferCommuneFromAddress, normalizeCommune, normalizeCommuneList } from "@/lib/communes";
 import { CORE_SERVICES, type CoreTaskerServiceSlug } from "@/lib/core-services";
 import { geocodeAddress } from "@/lib/geo";
@@ -1162,6 +1163,8 @@ export default function ProPage() {
         </section>
 
         <div className="page client-dashboard-sections">
+          <MercadoPagoConnectionCard />
+
           {feedback ? <p className="feedback ok">{feedback}</p> : null}
           {error ? <p className="feedback error">{error}</p> : null}
 

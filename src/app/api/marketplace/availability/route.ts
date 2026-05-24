@@ -30,7 +30,10 @@ export async function GET(req: NextRequest) {
         professionalProfile: {
           userId: input.proId,
           coverageCity: input.city ? { equals: input.city, mode: "insensitive" } : undefined,
-          user: { role: "PRO" }
+          user: {
+            role: "PRO",
+            mpAccountStatus: "ACTIVE"
+          }
         },
         OR: input.serviceId ? [{ serviceId: null }, { serviceId: input.serviceId }] : undefined
       },

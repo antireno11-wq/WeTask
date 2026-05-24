@@ -400,15 +400,37 @@ export async function PATCH(req: NextRequest) {
           return onboardingUpdate;
         });
 
+        // Chequear si el tasker ya conectó MercadoPago. Si no, ajustamos el copy
+        // para empujarlo a hacerlo: sin esto su perfil no recibe reservas pagadas.
+        const proUserState = await prisma.user.findUnique({
+          where: { id: onboarding.userId },
+          select: { mpAccountStatus: true }
+        });
+        const mpConnected = proUserState?.mpAccountStatus === "ACTIVE";
+
         await notifyTaskerStatusChange({
           to: onboarding.user.email,
           fullName: onboarding.user.fullName,
-          subject: "WeTask: tu perfil fue aprobado",
+          subject: mpConnected
+            ? "WeTask: tu perfil fue aprobado"
+            : "WeTask: tu perfil fue aprobado — falta conectar MercadoPago",
           title: "Tu perfil fue aprobado",
-          message:
-            "Tu validación interna fue aprobada por el equipo de WeTask. Ya pasaste la revisión y tu perfil está listo para la activación final dentro de la plataforma.",
-          ctaLabel: "Ver mi perfil",
+          message: mpConnected
+            ? "Tu validación interna fue aprobada por el equipo de WeTask. Ya pasaste la revisión y tu perfil está listo para la activación final dentro de la plataforma."
+            : "Tu validación interna fue aprobada por el equipo de WeTask. Para empezar a recibir reservas pagadas necesitás conectar tu cuenta de MercadoPago desde tu panel — sin esto tu perfil no aparece en búsqueda.",
+          ctaLabel: mpConnected ? "Ver mi perfil" : "Conectar MercadoPago",
           ctaPath: "/pro"
+        });
+
+        // Notificación in-app (siempre crear)
+        await prisma.notification.create({
+          data: {
+            userId: onboarding.userId,
+            title: mpConnected ? "Tu perfil fue aprobado" : "Aprobado — falta conectar MercadoPago",
+            body: mpConnected
+              ? "El equipo aprobó tu perfil. Pronto vas a recibir tu primera reserva."
+              : "Tu perfil fue aprobado. Para empezar a recibir reservas pagadas conectá tu cuenta MercadoPago en /pro."
+          }
         });
 
         return NextResponse.json({ ok: true, onboarding: updated }, { status: 200 });
