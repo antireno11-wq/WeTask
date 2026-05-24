@@ -66,6 +66,8 @@ export async function POST(req: NextRequest) {
       throw transitionError;
     }
 
+    const dueDateAt = new Date(Date.now() + 5 * 24 * 60 * 60 * 1000);
+
     const ticket = await prisma.disputeTicket.create({
       data: {
         bookingId: input.bookingId,
@@ -73,7 +75,8 @@ export async function POST(req: NextRequest) {
         category: input.category,
         reason: input.reason,
         evidence: input.evidence,
-        status: "OPEN"
+        status: "OPEN",
+        dueDateAt
       }
     });
 

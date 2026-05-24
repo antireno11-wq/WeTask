@@ -473,6 +473,11 @@ model DisputeTicket {
   evidence        Json?
   resolution      String?
   refundAmountClp Int?
+  refundedProviderPaymentId String?
+  refundedAt      DateTime?
+  resolvedAt      DateTime?
+  resolvedById    String?
+  dueDateAt       DateTime?
   status          TicketStatus @default(OPEN)
   createdAt       DateTime     @default(now())
   updatedAt       DateTime     @updatedAt
@@ -480,6 +485,7 @@ model DisputeTicket {
 
   @@index([bookingId, status])
   @@index([status, createdAt])
+  @@index([dueDateAt])
 }
 
 model Notification {

@@ -309,6 +309,12 @@ export default async function AdminPage() {
           <span className="module-meta">Acceso para aprobaciones</span>
         </Link>
 
+        <Link href="/admin/disputes?status=OPEN" className="module-card module-link">
+          <h3>Reclamos y disputas</h3>
+          <p>Revisa reclamos abiertos, evidencia adjunta y emite reembolsos reales contra MercadoPago.</p>
+          <span className="module-meta">Resolución con reembolso real</span>
+        </Link>
+
       </div>
 
       <div className="admin-dashboard-grid">
