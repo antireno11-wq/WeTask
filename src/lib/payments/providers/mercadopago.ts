@@ -250,6 +250,44 @@ export async function refreshMercadoPagoToken(refreshToken: string): Promise<Mer
 }
 
 /**
+ * Re-consulta el estado de un pago directamente al collector (tasker)
+ * con su access_token, útil para reconciliación y para verificar que un
+ * payment con application_fee ya fue capturado y liberado al tasker.
+ *
+ * MercadoPago Marketplace libera el dinero al collector automáticamente
+ * según las reglas de la cuenta (típicamente entre días y horas). Este
+ * helper no fuerza el release sino que confirma el estado actual para
+ * que el cron actualice nuestra DB en consecuencia.
+ */
+export async function getMercadoPagoMarketplacePayment(
+  providerPaymentId: string,
+  collectorAccessToken: string
+): Promise<ProviderPaymentResult> {
+  const { response, payload } = await mpRequest(`/v1/payments/${providerPaymentId}`, {
+    method: "GET",
+    accessTokenOverride: collectorAccessToken
+  });
+  if (!response.ok) {
+    return {
+      provider: "MERCADOPAGO",
+      providerPaymentId,
+      providerStatus: String(payload?.status ?? "error"),
+      status: "failed",
+      amount: Number(payload?.transaction_amount ?? 0),
+      currency: String(payload?.currency_id ?? "CLP"),
+      paymentMethod: payload?.payment_method_id ? String(payload.payment_method_id) : null,
+      last4: payload?.card?.last_four_digits ? String(payload.card.last_four_digits) : null,
+      paidAt: null,
+      refundedAt: null,
+      raw: payload,
+      errorCode: payload?.error ? String(payload.error) : null,
+      errorMessage: payload?.message ? String(payload.message) : "No se pudo consultar pago marketplace"
+    };
+  }
+  return normalizePaymentResult(payload);
+}
+
+/**
  * Crea un pago contra MercadoPago usando el access token del COLLECTOR (tasker)
  * con application_fee retenido por WeTask. Modelo Marketplace.
  *
