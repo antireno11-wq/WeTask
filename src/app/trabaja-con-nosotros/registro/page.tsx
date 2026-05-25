@@ -2529,6 +2529,11 @@ function CleaningOnboardingPageContent() {
       setActiveStep(12);
       setFeedback("Registro completado. Tu perfil será revisado antes de activarse.");
       window.localStorage.removeItem(STORAGE_KEY);
+      // Redirect a la página celebrativa (Fase 9). Full nav para descartar
+      // el state pesado del wizard.
+      if (typeof window !== "undefined") {
+        window.location.href = "/trabaja-con-nosotros/en-revision";
+      }
     } catch (eventualError) {
       setError(eventualError instanceof Error ? eventualError.message : "Error inesperado");
     } finally {

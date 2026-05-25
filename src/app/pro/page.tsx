@@ -644,6 +644,25 @@ export default function ProPage() {
         const response = await fetch("/api/auth/session");
         const data = (await response.json()) as { session?: { userId: string } | null };
         if (data.session?.userId) {
+          // Si el tasker recién fue aprobado y nunca vio la pantalla
+          // celebrativa, redirigir a /pro/perfil-aprobado (Fase 9).
+          if (typeof window !== "undefined") {
+            const seenFlag = `wetask_perfil_aprobado_seen_${data.session.userId}`;
+            if (!window.localStorage.getItem(seenFlag)) {
+              try {
+                const obRes = await fetch("/api/onboarding/cleaning/me", { cache: "no-store" });
+                if (obRes.ok) {
+                  const obData = (await obRes.json()) as { onboarding?: { status?: string } };
+                  if (obData.onboarding?.status === "APROBADO") {
+                    window.location.href = "/pro/perfil-aprobado";
+                    return;
+                  }
+                }
+              } catch {
+                // si falla el check, seguir cargando el panel normal
+              }
+            }
+          }
           setProId(data.session.userId);
           await loadAll(data.session.userId);
         }
