@@ -194,6 +194,157 @@ export function buildAdminTaskerReviewEmailTemplate(payload: AdminTaskerReviewEm
   `;
 }
 
+type GenericTransactionalEmailPayload = {
+  fullName: string;
+  title: string;
+  intro: string;
+  bullets?: Array<{ label: string; value: string }>;
+  body?: string;
+  ctaLabel?: string;
+  ctaUrl?: string;
+};
+
+/**
+ * Template genérico transaccional reusable: header con brand, título,
+ * intro, opcional lista de bullets (key/value), opcional body extra, CTA.
+ * Lo usamos para confirmaciones de booking, recordatorios, payout
+ * liberado y reseña recibida — mantiene una sola estructura visual.
+ */
+export function buildGenericTransactionalEmail(payload: GenericTransactionalEmailPayload) {
+  const bulletsHtml = payload.bullets?.length
+    ? `<div style="margin:18px 0;padding:16px 20px;border-radius:18px;background:#f4f8fd;border:1px solid rgba(29,127,198,0.18);">
+        ${payload.bullets
+          .map(
+            (item) =>
+              `<p style="margin:4px 0;font-size:14px;color:#48627d;"><strong style="color:#17324d;">${item.label}:</strong> ${item.value}</p>`
+          )
+          .join("")}
+       </div>`
+    : "";
+
+  const ctaHtml =
+    payload.ctaUrl && payload.ctaLabel
+      ? `<div style="text-align:center;margin:24px 0 0;">
+          <a href="${payload.ctaUrl}" style="display:inline-block;padding:14px 24px;border-radius:999px;background:linear-gradient(135deg,#173e73 0%,#1d7fc6 100%);color:#ffffff;text-decoration:none;font-weight:800;">${payload.ctaLabel}</a>
+        </div>`
+      : "";
+
+  const bodyHtml = payload.body
+    ? `<p style="margin:16px 0 0;font-size:15px;line-height:1.7;color:#48627d;">${payload.body}</p>`
+    : "";
+
+  return `
+    <div style="margin:0;padding:32px 16px;background:#eef4fb;font-family:Arial,sans-serif;color:#17324d;">
+      <div style="max-width:620px;margin:0 auto;background:#ffffff;border-radius:28px;overflow:hidden;box-shadow:0 18px 46px rgba(21,58,97,0.14);border:1px solid rgba(34,97,160,0.12);">
+        ${buildEmailBrandHeader()}
+        <div style="padding:32px 36px 36px;">
+          <h1 style="margin:0 0 14px;font-size:24px;line-height:1.2;color:#17324d;">${payload.title}</h1>
+          <p style="margin:0 0 12px;font-size:16px;line-height:1.6;color:#48627d;">Hola ${payload.fullName},</p>
+          <p style="margin:0;font-size:16px;line-height:1.7;color:#48627d;">${payload.intro}</p>
+          ${bulletsHtml}
+          ${bodyHtml}
+          ${ctaHtml}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+export function buildBookingConfirmedTemplate(payload: {
+  fullName: string;
+  bookingId: string;
+  serviceName: string;
+  scheduledAt: string;
+  address: string;
+  totalClp: number;
+  ctaUrl: string;
+  role: "CUSTOMER" | "PRO";
+}) {
+  const isCustomer = payload.role === "CUSTOMER";
+  return buildGenericTransactionalEmail({
+    fullName: payload.fullName,
+    title: isCustomer ? "Tu reserva está confirmada" : "Recibiste una reserva nueva",
+    intro: isCustomer
+      ? "Tu pago se procesó correctamente y la reserva quedó confirmada. Te avisamos cuando el profesional esté en camino."
+      : "Un cliente reservó tu servicio y el pago ya quedó retenido en MercadoPago. Prepárate para la fecha pactada.",
+    bullets: [
+      { label: "Servicio", value: payload.serviceName },
+      { label: "Fecha", value: payload.scheduledAt },
+      { label: "Dirección", value: payload.address },
+      { label: "Monto", value: `$${payload.totalClp.toLocaleString("es-CL")}` }
+    ],
+    ctaLabel: isCustomer ? "Ver mi reserva" : "Ver detalles",
+    ctaUrl: payload.ctaUrl
+  });
+}
+
+export function buildBookingReminderTemplate(payload: {
+  fullName: string;
+  serviceName: string;
+  scheduledAt: string;
+  address: string;
+  hoursUntil: number;
+  ctaUrl: string;
+  role: "CUSTOMER" | "PRO";
+}) {
+  const isCustomer = payload.role === "CUSTOMER";
+  return buildGenericTransactionalEmail({
+    fullName: payload.fullName,
+    title: payload.hoursUntil === 1 ? "Tu servicio empieza pronto" : "Recordatorio: tu servicio es mañana",
+    intro: isCustomer
+      ? `Te recordamos que tu servicio empieza en aproximadamente ${payload.hoursUntil} hora(s).`
+      : `Recordá que tenés que llegar a la dirección en aproximadamente ${payload.hoursUntil} hora(s).`,
+    bullets: [
+      { label: "Servicio", value: payload.serviceName },
+      { label: "Hora", value: payload.scheduledAt },
+      { label: "Dirección", value: payload.address }
+    ],
+    ctaLabel: isCustomer ? "Ver detalles" : "Ir a la reserva",
+    ctaUrl: payload.ctaUrl
+  });
+}
+
+export function buildPayoutReleasedTemplate(payload: {
+  fullName: string;
+  bookingId: string;
+  amountClp: number;
+  ctaUrl: string;
+}) {
+  return buildGenericTransactionalEmail({
+    fullName: payload.fullName,
+    title: "Tu pago fue liberado",
+    intro: `Tu pago por la reserva ${payload.bookingId} ya está disponible en tu cuenta de MercadoPago.`,
+    bullets: [
+      { label: "Monto neto", value: `$${payload.amountClp.toLocaleString("es-CL")}` },
+      { label: "Reserva", value: payload.bookingId }
+    ],
+    body: "Tarda hasta 48h hábiles en aparecer reflejado en tu banco según las reglas de MercadoPago.",
+    ctaLabel: "Ver mis pagos",
+    ctaUrl: payload.ctaUrl
+  });
+}
+
+export function buildReviewReceivedTemplate(payload: {
+  fullName: string;
+  rating: number;
+  comment: string | null;
+  customerName: string;
+  serviceName: string;
+  ctaUrl: string;
+}) {
+  return buildGenericTransactionalEmail({
+    fullName: payload.fullName,
+    title: "Recibiste una nueva reseña",
+    intro: `${payload.customerName} dejó una reseña sobre ${payload.serviceName}.`,
+    bullets: [
+      { label: "Puntaje", value: `${payload.rating} / 5 estrellas` },
+      ...(payload.comment ? [{ label: "Comentario", value: payload.comment }] : [])
+    ],
+    ctaLabel: "Ver mi perfil público",
+    ctaUrl: payload.ctaUrl
+  });
+}
+
 export function buildTaskerStatusEmailTemplate(payload: TaskerStatusEmailTemplatePayload) {
   return `
     <div style="margin:0;padding:32px 16px;background:#eef4fb;font-family:Arial,sans-serif;color:#17324d;">

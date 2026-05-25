@@ -6,11 +6,23 @@ import { normalizeChefScope } from "@/lib/chef-scope";
 import { normalizeCleaningScope } from "@/lib/cleaning-scope";
 import { normalizeIroningScope } from "@/lib/ironing-scope";
 import { normalizeMakeupScope } from "@/lib/makeup-scope";
+import { notifyOnboardingSubmitted } from "@/lib/notification-events";
 import { buildAdminTaskerReviewEmailTemplate, sendPlatformEmail } from "@/lib/notifications";
 import { normalizePetScope } from "@/lib/pet-scope";
 import { normalizeTeacherScope } from "@/lib/teacher-scope";
 import { normalizeTrainerScope } from "@/lib/trainer-scope";
 import { prisma } from "@/lib/prisma";
+import {
+  taskerOnboardingStep3Schema,
+  taskerOnboardingStep4Schema,
+  taskerOnboardingStep5Schema,
+  taskerOnboardingStep6Schema,
+  taskerOnboardingStep7Schema,
+  taskerOnboardingStep8Schema,
+  taskerOnboardingStep9Schema,
+  taskerOnboardingStep10Schema,
+  taskerOnboardingStep11Schema
+} from "@/lib/validators";
 
 export const dynamic = "force-dynamic";
 
@@ -141,12 +153,115 @@ function listMissingFields(onboarding: Awaited<ReturnType<typeof prisma.cleaning
   return required.filter(([, value]) => missing(value)).map(([field]) => field);
 }
 
+function getStepPayload(step: number, onboarding: any, user: any) {
+  switch (step) {
+    case 3:
+      return {
+        fullName: user?.fullName,
+        email: user?.email,
+        phone: user?.phone,
+        documentId: onboarding?.documentId,
+        referenceAddress: onboarding?.referenceAddress,
+        baseCommune: onboarding?.baseCommune,
+        profilePhotoUrl: onboarding?.profilePhotoUrl
+      };
+    case 4:
+      return {
+        baseCommune: onboarding?.baseCommune,
+        serviceCommunes: onboarding?.serviceCommunes
+      };
+    case 5:
+      return {
+        categorySlug: onboarding?.categorySlug
+      };
+    case 6:
+      return {
+        yearsExperience: onboarding?.yearsExperience,
+        workMode: onboarding?.workMode
+      };
+    case 7:
+      return {
+        offeredServices: onboarding?.offeredServices,
+        experienceTypes: onboarding?.experienceTypes,
+        cleaningScope: onboarding?.cleaningScope,
+        petScope: onboarding?.petScope,
+        makeupScope: onboarding?.makeupScope,
+        ironingScope: onboarding?.ironingScope,
+        babysitterScope: onboarding?.babysitterScope,
+        chefScope: onboarding?.chefScope,
+        trainerScope: onboarding?.trainerScope,
+        teacherScope: onboarding?.teacherScope,
+        acceptsHomesWithPets: onboarding?.acceptsHomesWithPets,
+        acceptsHomesWithChildren: onboarding?.acceptsHomesWithChildren,
+        acceptsHomesWithElderly: onboarding?.acceptsHomesWithElderly,
+        worksWithClientProducts: onboarding?.worksWithClientProducts,
+        bringsOwnProducts: onboarding?.bringsOwnProducts,
+        bringsOwnTools: onboarding?.bringsOwnTools
+      };
+    case 8:
+      return {
+        availabilityMode: onboarding?.availabilityMode ?? "FIJA",
+        availabilityBlocks: onboarding?.availabilityBlocks
+      };
+    case 9:
+      return {
+        hourlyRateClp: onboarding?.hourlyRateClp,
+        serviceRates: onboarding?.serviceRates ?? [],
+        minBookingHours: onboarding?.minBookingHours,
+        weekendSurchargePct: onboarding?.weekendSurchargePct,
+        holidaySurchargePct: onboarding?.holidaySurchargePct,
+        remoteCommuneSurchargeClp: onboarding?.remoteCommuneSurchargeClp ?? 0
+      };
+    case 10:
+      return {
+        bankAccountHolder: onboarding?.bankAccountHolder,
+        bankAccountHolderRut: onboarding?.bankAccountHolderRut,
+        bankName: onboarding?.bankName,
+        bankAccountType: onboarding?.bankAccountType,
+        bankAccountNumber: onboarding?.bankAccountNumber,
+        identityDocumentFrontFile: onboarding?.identityDocumentFrontFile,
+        identityDocumentBackFile: onboarding?.identityDocumentBackFile,
+        criminalRecordFile: onboarding?.criminalRecordFile
+      };
+    case 11:
+      return {
+        acceptTerms: (onboarding?.acceptsCancellationPolicy && onboarding?.acceptsServiceProtocol && onboarding?.acceptsDataProcessing && onboarding?.confirmsCleaningScope) || false
+      };
+    default:
+      throw new Error(`Paso ${step} no soportado para validación individual`);
+  }
+}
+
+function getStepValidator(step: number) {
+  switch (step) {
+    case 3: return taskerOnboardingStep3Schema;
+    case 4: return taskerOnboardingStep4Schema;
+    case 5: return taskerOnboardingStep5Schema;
+    case 6: return taskerOnboardingStep6Schema;
+    case 7: return taskerOnboardingStep7Schema;
+    case 8: return taskerOnboardingStep8Schema;
+    case 9: return taskerOnboardingStep9Schema;
+    case 10: return taskerOnboardingStep10Schema;
+    case 11: return taskerOnboardingStep11Schema;
+    default:
+      throw new Error(`Paso ${step} no soportado para validación individual`);
+  }
+}
+
 export async function POST(req: NextRequest) {
   try {
     const identity = getRequestIdentity(req);
     if (!hasRole(identity.role, [UserRole.PRO, UserRole.ADMIN]) || !identity.userId) {
       return NextResponse.json({ error: "No autorizado" }, { status: 403 });
     }
+
+    let body: any = {};
+    try {
+      body = await req.json();
+    } catch {
+      // Empty body allowed for legacy full submissions
+    }
+    const step = body?.step ? Number(body.step) : undefined;
 
     const onboarding = await prisma.cleaningOnboarding.findUnique({
       where: { userId: identity.userId },
@@ -156,6 +271,7 @@ export async function POST(req: NextRequest) {
             id: true,
             fullName: true,
             email: true,
+            phone: true,
             roleAssignments: {
               select: {
                 role: {
@@ -169,6 +285,30 @@ export async function POST(req: NextRequest) {
         }
       }
     });
+
+    if (!onboarding) {
+      return NextResponse.json({ error: "Onboarding no encontrado" }, { status: 404 });
+    }
+
+    // Step-by-step dry-run validation request
+    if (step != null) {
+      try {
+        const payload = getStepPayload(step, onboarding, onboarding.user);
+        const validator = getStepValidator(step);
+        const result = validator.safeParse(payload);
+        if (!result.success) {
+          return NextResponse.json({
+            ok: false,
+            errors: result.error.flatten().fieldErrors
+          }, { status: 400 });
+        }
+        return NextResponse.json({ ok: true }, { status: 200 });
+      } catch (err) {
+        return NextResponse.json({
+          error: err instanceof Error ? err.message : "Error de validación del paso"
+        }, { status: 400 });
+      }
+    }
     const missingFields = listMissingFields(onboarding);
     if (missingFields.length > 0) {
       console.warn("[tasker-onboarding] submit blocked", {
@@ -193,6 +333,21 @@ export async function POST(req: NextRequest) {
         adminReviewNotes: null
       }
     });
+
+    // Notificación in-app + email al tasker "estamos revisando"
+    if (identity.userId) {
+      const taskerUser = await prisma.user.findUnique({
+        where: { id: identity.userId },
+        select: { id: true, fullName: true, email: true }
+      });
+      if (taskerUser) {
+        await notifyOnboardingSubmitted({
+          taskerUserId: taskerUser.id,
+          taskerEmail: taskerUser.email,
+          taskerName: taskerUser.fullName
+        });
+      }
+    }
 
     console.info("[tasker-onboarding] submitted for review", {
       userId: identity.userId,

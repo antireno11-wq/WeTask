@@ -1,6 +1,7 @@
 import { UserRole } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { getRequestIdentity, hasRole } from "@/lib/auth";
+import { notifyReviewReceived } from "@/lib/notification-events";
 import { prisma } from "@/lib/prisma";
 import { marketplaceReviewCreateSchema } from "@/lib/validators";
 
@@ -21,7 +22,11 @@ export async function POST(req: NextRequest) {
 
     const booking = await prisma.booking.findUnique({
       where: { id: input.bookingId },
-      include: { pro: true }
+      include: {
+        pro: { select: { id: true, fullName: true, email: true } },
+        customer: { select: { fullName: true } },
+        service: { select: { name: true } }
+      }
     });
 
     if (!booking) {
@@ -36,31 +41,52 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Solo el cliente de la reserva puede reseñar" }, { status: 403 });
     }
 
-    const review = await prisma.review.create({
-      data: {
-        bookingId: input.bookingId,
-        authorId: input.authorId,
-        rating: input.rating,
-        punctuality: input.punctuality,
-        quality: input.quality,
-        communication: input.communication,
-        comment: input.comment
-      }
-    });
-
-    if (booking.proId) {
-      const stats = await prisma.review.aggregate({
-        where: { booking: { proId: booking.proId } },
-        _avg: { rating: true },
-        _count: { rating: true }
+    // Crear review + recomputar rating del pro dentro de la misma transacción
+    // (fix race condition del audit).
+    const review = await prisma.$transaction(async (tx) => {
+      const created = await tx.review.create({
+        data: {
+          bookingId: input.bookingId,
+          authorId: input.authorId,
+          rating: input.rating,
+          punctuality: input.punctuality,
+          quality: input.quality,
+          communication: input.communication,
+          comment: input.comment
+        }
       });
 
-      await prisma.professionalProfile.updateMany({
-        where: { userId: booking.proId },
-        data: {
-          ratingAvg: stats._avg.rating ?? 0,
-          ratingsCount: stats._count.rating
-        }
+      if (booking.proId) {
+        const stats = await tx.review.aggregate({
+          where: { booking: { proId: booking.proId } },
+          _avg: { rating: true },
+          _count: { rating: true }
+        });
+        await tx.professionalProfile.updateMany({
+          where: { userId: booking.proId },
+          data: {
+            ratingAvg: stats._avg.rating ?? 0,
+            ratingsCount: stats._count.rating
+          }
+        });
+      }
+
+      return created;
+    });
+
+    if (booking.proId && booking.pro) {
+      await notifyReviewReceived({
+        pro: {
+          userId: booking.pro.id,
+          email: booking.pro.email,
+          fullName: booking.pro.fullName,
+          role: "PRO"
+        },
+        customerName: booking.customer.fullName,
+        serviceName: booking.service?.name ?? "el servicio",
+        rating: input.rating,
+        comment: input.comment ?? null,
+        bookingId: input.bookingId
       });
     }
 

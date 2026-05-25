@@ -8,6 +8,7 @@ import {
   type BookingActor,
   InvalidBookingTransitionError
 } from "@/lib/booking-state-machine";
+import { notifyDisputeOpened } from "@/lib/notification-events";
 import { prisma } from "@/lib/prisma";
 
 const createDisputeSchema = z.object({
@@ -85,15 +86,27 @@ export async function POST(req: NextRequest) {
       data: { status: BookingStatus.DISPUTE }
     });
 
-    const notifyIds = [booking.customerId, booking.proId].filter(Boolean) as string[];
-    if (notifyIds.length > 0) {
-      await prisma.notification.createMany({
-        data: notifyIds.map((userId) => ({
-          userId,
-          bookingId: booking.id,
-          title: "Disputa abierta",
-          body: "El pago quedó retenido mientras WeTask revisa el caso."
-        }))
+    // Notificaciones in-app + email vía helper centralizado.
+    const parties = await prisma.user.findMany({
+      where: { id: { in: [booking.customerId, booking.proId].filter(Boolean) as string[] } },
+      select: { id: true, fullName: true, email: true }
+    });
+    const customerUser = parties.find((u) => u.id === booking.customerId);
+    const proUser = parties.find((u) => u.id === booking.proId);
+
+    if (customerUser) {
+      await notifyDisputeOpened({
+        customer: {
+          userId: customerUser.id,
+          email: customerUser.email,
+          fullName: customerUser.fullName,
+          role: "CUSTOMER"
+        },
+        pro: proUser
+          ? { userId: proUser.id, email: proUser.email, fullName: proUser.fullName, role: "PRO" }
+          : null,
+        bookingId: booking.id,
+        reason: input.reason
       });
     }
 

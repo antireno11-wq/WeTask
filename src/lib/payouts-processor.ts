@@ -1,6 +1,6 @@
 import { BookingStatus, PaymentStatus, PayoutStatus, Prisma } from "@prisma/client";
 import { canTransition } from "@/lib/booking-state-machine";
-import { sendPlatformEmail } from "@/lib/notifications";
+import { notifyPayoutReleased } from "@/lib/notification-events";
 import { getMercadoPagoMarketplacePayment, getMercadoPagoPayment } from "@/lib/payments/providers/mercadopago";
 import { prisma } from "@/lib/prisma";
 
@@ -147,30 +147,26 @@ export async function processBookingsForPayout(): Promise<ProcessBookingsResult>
           });
         }
 
-        const notifications: Prisma.NotificationCreateManyInput[] = [];
+        // Notificación al CLIENTE cuando se libera (al tasker la envía
+        // notifyPayoutReleased fuera de la tx, así también va el email).
         if (payoutStatus === PayoutStatus.PAID) {
-          notifications.push({
-            userId: booking.proId!,
-            bookingId: booking.id,
-            title: "Tu pago fue liberado",
-            body: `Recibiste $${payoutAmount.toLocaleString("es-CL")} por la reserva ${booking.id}.`
-          });
-          notifications.push({
-            userId: booking.customerId,
-            bookingId: booking.id,
-            title: "Servicio cerrado",
-            body: "El pago del profesional quedó liberado. Gracias por usar WeTask."
+          await tx.notification.create({
+            data: {
+              userId: booking.customerId,
+              bookingId: booking.id,
+              title: "Servicio cerrado",
+              body: "El pago del profesional quedó liberado. Gracias por usar WeTask."
+            }
           });
         } else if (payoutStatus === PayoutStatus.PROCESSING && !booking.payout) {
-          notifications.push({
-            userId: booking.proId!,
-            bookingId: booking.id,
-            title: "Payout programado",
-            body: "Tu pago quedó programado y se libera en el próximo ciclo."
+          await tx.notification.create({
+            data: {
+              userId: booking.proId!,
+              bookingId: booking.id,
+              title: "Payout programado",
+              body: "Tu pago quedó programado y se libera en el próximo ciclo."
+            }
           });
-        }
-        if (notifications.length > 0) {
-          await tx.notification.createMany({ data: notifications });
         }
 
         return payout.id;
@@ -187,12 +183,22 @@ export async function processBookingsForPayout(): Promise<ProcessBookingsResult>
 
     if (payoutStatus === PayoutStatus.PAID) {
       result.paidOut += 1;
-      // Email fuera de la transacción.
-      void sendPlatformEmail({
-        to: booking.pro!.email,
-        subject: "WeTask: tu pago fue liberado",
-        text: `Hola ${booking.pro!.fullName},\n\nRecibiste $${payoutAmount.toLocaleString("es-CL")} CLP por la reserva ${booking.id}.\n\nEquipo WeTask`
-      }).catch(() => null);
+      // Notificación + email vía helper centralizado (la in-app ya se creó
+      // arriba en la tx para tener atomicidad; esta llamada agrega el email
+      // y otra notificación, pero notifyPayoutReleased es idempotente al
+      // nivel de UX — duplicar el feed es preferible a perder el email).
+      await notifyPayoutReleased({
+        pro: {
+          userId: booking.proId!,
+          email: booking.pro!.email,
+          fullName: booking.pro!.fullName,
+          role: "PRO"
+        },
+        bookingId: booking.id,
+        amountClp: payoutAmount
+      }).catch((err) => {
+        console.error("[payouts-processor] notify failed", { bookingId: booking.id, err });
+      });
     } else if (!booking.payout) {
       result.scheduled += 1;
     }

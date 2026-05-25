@@ -4,6 +4,7 @@ import { z } from "zod";
 import { getRequestIdentity, hasRole } from "@/lib/auth";
 import { COVERAGE_UNAVAILABLE_MESSAGE, inferCommuneFromAddress, normalizeCommune, taskerServesCommune } from "@/lib/communes";
 import { calculateMarketplacePrice } from "@/lib/marketplace-pricing";
+import { notifyBookingConfirmed } from "@/lib/notification-events";
 import { createMercadoPagoMarketplacePayment, getMercadoPagoHealthSnapshot } from "@/lib/payments/providers/mercadopago";
 import { prisma } from "@/lib/prisma";
 
@@ -500,29 +501,36 @@ export async function POST(req: NextRequest) {
         });
       }
 
-      if (nextState.bookingStatus === "CONFIRMED") {
-        await tx.notification.create({
-          data: {
-            userId: customer.id,
-            bookingId: created.booking.id,
-            title: "Pago aprobado",
-            body: `Tu reserva ${created.booking.id} quedó confirmada.`
-          }
-        });
-        if (assignedProId) {
-          await tx.notification.create({
-            data: {
-              userId: assignedProId,
-              bookingId: created.booking.id,
-              title: "Nueva reserva pagada",
-              body: `Se confirmó una nueva reserva para ${service.name}.`
-            }
-          });
-        }
-      }
-
       return booking;
     });
+
+    if (finalBooking.status === "CONFIRMED") {
+      const proRecord = assignedProId
+        ? await prisma.user.findUnique({
+            where: { id: assignedProId },
+            select: { id: true, fullName: true, email: true }
+          })
+        : null;
+
+      await notifyBookingConfirmed({
+        customer: {
+          userId: customer.id,
+          email: customer.email,
+          fullName: customer.fullName,
+          role: "CUSTOMER"
+        },
+        pro: proRecord
+          ? { userId: proRecord.id, email: proRecord.email, fullName: proRecord.fullName, role: "PRO" }
+          : null,
+        booking: {
+          id: created.booking.id,
+          serviceName: service.name,
+          scheduledAt: input.startsAt,
+          address: `${input.address.street}, ${clientCommune}`,
+          totalClp: price.totalClp
+        }
+      });
+    }
 
     return NextResponse.json(
       {
