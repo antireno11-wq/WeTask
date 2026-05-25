@@ -12,8 +12,21 @@ type MercadoPagoCardForm = {
   destroy?: () => void;
 };
 
+type MercadoPagoBrickInstance = {
+  unmount?: () => void;
+};
+
+type MercadoPagoBricksBuilder = {
+  create: (
+    kind: string,
+    containerId: string,
+    settings: Record<string, unknown>
+  ) => Promise<MercadoPagoBrickInstance>;
+};
+
 type MercadoPagoInstance = {
   cardForm: (config: Record<string, unknown>) => MercadoPagoCardForm;
+  bricks: () => MercadoPagoBricksBuilder;
 };
 
 type MercadoPagoConstructor = new (publicKey: string, options?: { locale?: string }) => MercadoPagoInstance;

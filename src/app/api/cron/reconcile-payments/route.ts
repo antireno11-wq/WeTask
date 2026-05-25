@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { recordAdminAction } from "@/lib/audit-log";
-import { reconcilePendingPayments } from "@/lib/payouts-processor";
+import { reconcilePendingPayments, releaseExpiredHolds } from "@/lib/payouts-processor";
 import { assertQStashRequest } from "@/lib/qstash";
 
 export const dynamic = "force-dynamic";
@@ -18,18 +18,21 @@ export async function POST(req: NextRequest) {
   if (!verdict.ok) return verdict.response as NextResponse;
 
   try {
-    const result = await reconcilePendingPayments();
+    const [paymentResult, holdResult] = await Promise.all([
+      reconcilePendingPayments(),
+      releaseExpiredHolds()
+    ]);
 
-    if (result.updated > 0 || result.failed > 0) {
+    if (paymentResult.updated > 0 || paymentResult.failed > 0 || holdResult.released > 0) {
       await recordAdminAction({
         actorId: null,
         action: "cron.reconcile_payments",
         target: { type: "PaymentBatch" },
-        after: result
+        after: { ...paymentResult, releasedHolds: holdResult.released }
       }).catch(() => null);
     }
 
-    return NextResponse.json({ ok: true, ...result }, { status: 200 });
+    return NextResponse.json({ ok: true, ...paymentResult, releasedHolds: holdResult.released }, { status: 200 });
   } catch (error) {
     return NextResponse.json(
       {

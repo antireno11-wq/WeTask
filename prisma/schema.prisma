@@ -313,6 +313,8 @@ model AvailabilitySlot {
   startsAt              DateTime
   endsAt                DateTime
   isAvailable           Boolean             @default(true)
+  holdExpiresAt         DateTime?
+  heldByUserId          String?
   createdAt             DateTime            @default(now())
   updatedAt             DateTime            @updatedAt
   professionalProfile   ProfessionalProfile @relation(fields: [professionalProfileId], references: [id], onDelete: Cascade)
@@ -320,6 +322,7 @@ model AvailabilitySlot {
   bookings              Booking[]           @relation("BookedSlot")
 
   @@index([professionalProfileId, startsAt, isAvailable])
+  @@index([holdExpiresAt])
 }
 
 model Address {

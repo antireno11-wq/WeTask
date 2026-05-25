@@ -35,7 +35,15 @@ export async function GET(req: NextRequest) {
             mpAccountStatus: "ACTIVE"
           }
         },
-        OR: input.serviceId ? [{ serviceId: null }, { serviceId: input.serviceId }] : undefined
+        // Combinamos dos filtros OR usando AND para no colisionar.
+        AND: [
+          // Excluir slots con hold vigente de OTRO usuario (5min mientras paga).
+          { OR: [{ holdExpiresAt: null }, { holdExpiresAt: { lt: now } }] },
+          // Filtrar por serviceId si viene.
+          input.serviceId
+            ? { OR: [{ serviceId: null }, { serviceId: input.serviceId }] }
+            : {}
+        ]
       },
       include: {
         professionalProfile: {

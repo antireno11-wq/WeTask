@@ -216,6 +216,30 @@ export async function processBookingsForPayout(): Promise<ProcessBookingsResult>
   return result;
 }
 
+/**
+ * Limpia los holds expirados sobre AvailabilitySlot (escenario: el cliente
+ * inició el wizard de pago, hizo hold de un slot, y abandonó sin pagar).
+ * Tras 5min sin pago confirmado, el slot vuelve a estar disponible para
+ * otros.
+ */
+export async function releaseExpiredHolds(): Promise<{ released: number }> {
+  const now = new Date();
+  const result = await prisma.availabilitySlot.updateMany({
+    where: {
+      holdExpiresAt: { lt: now, not: null },
+      // No liberar holds de slots que ya tienen un booking asociado:
+      // si hay booking el isAvailable=false es el real.
+      isAvailable: true,
+      bookings: { none: {} }
+    },
+    data: {
+      holdExpiresAt: null,
+      heldByUserId: null
+    }
+  });
+  return { released: result.count };
+}
+
 export type ReconcilePaymentsResult = {
   reviewed: number;
   updated: number;
