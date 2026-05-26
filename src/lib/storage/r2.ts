@@ -9,7 +9,8 @@ export const STORAGE_KINDS = [
   "criminal_record",
   "profile_photo",
   "chat_image",
-  "dispute_evidence"
+  "dispute_evidence",
+  "check_in_photo"
 ] as const;
 
 export type StorageKind = (typeof STORAGE_KINDS)[number];
@@ -42,6 +43,10 @@ export const STORAGE_LIMITS: Record<StorageKind, { maxBytes: number; allowedCont
   dispute_evidence: {
     maxBytes: 8 * 1024 * 1024,
     allowedContentTypes: ["image/jpeg", "image/png", "image/webp", "application/pdf"]
+  },
+  check_in_photo: {
+    maxBytes: 5 * 1024 * 1024,
+    allowedContentTypes: ["image/jpeg", "image/png", "image/webp"]
   }
 };
 

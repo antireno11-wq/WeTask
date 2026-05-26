@@ -197,6 +197,71 @@ export async function notifyBookingReminder(input: {
   );
 }
 
+export async function notifyOnTheWay(input: {
+  customer: Recipient;
+  pro: Recipient;
+  bookingId: string;
+  scheduledAt: Date;
+}) {
+  const baseUrl = appUrl();
+  const scheduledLabel = formatScheduledAt(input.scheduledAt);
+  await createNotification({
+    userId: input.customer.userId,
+    bookingId: input.bookingId,
+    title: `${input.pro.fullName.split(" ")[0]} ya viene en camino`,
+    body: `Tu profesional avisó que está saliendo hacia la dirección. Hora pactada: ${scheduledLabel}.`
+  });
+  void safelySend(
+    input.customer.email,
+    "WeTask: tu profesional va en camino",
+    `${input.pro.fullName} avisó que está en camino para tu reserva ${input.bookingId}.`,
+    buildGenericTransactionalEmail({
+      fullName: input.customer.fullName,
+      title: "Tu profesional ya viene en camino",
+      intro: `${input.pro.fullName} avisó que está saliendo hacia tu dirección.`,
+      bullets: [
+        { label: "Hora pactada", value: scheduledLabel },
+        { label: "Profesional", value: input.pro.fullName }
+      ],
+      ctaLabel: "Ver mi reserva",
+      ctaUrl: `${baseUrl}/cliente/reservas/${input.bookingId}`
+    }),
+    { event: "booking.on_the_way", bookingId: input.bookingId }
+  );
+}
+
+export async function notifyCheckedIn(input: {
+  customer: Recipient;
+  pro: Recipient;
+  bookingId: string;
+  checkInAt: Date;
+}) {
+  const baseUrl = appUrl();
+  const arrivedLabel = input.checkInAt.toLocaleString("es-CL", {
+    hour: "2-digit",
+    minute: "2-digit"
+  });
+  await createNotification({
+    userId: input.customer.userId,
+    bookingId: input.bookingId,
+    title: `${input.pro.fullName.split(" ")[0]} ya llegó`,
+    body: `Tu profesional marcó llegada a las ${arrivedLabel}.`
+  });
+  void safelySend(
+    input.customer.email,
+    "WeTask: tu profesional llegó",
+    `${input.pro.fullName} ya está en el lugar para tu reserva ${input.bookingId}.`,
+    buildGenericTransactionalEmail({
+      fullName: input.customer.fullName,
+      title: "Tu profesional llegó",
+      intro: `${input.pro.fullName} marcó llegada a la dirección a las ${arrivedLabel}.`,
+      ctaLabel: "Ver mi reserva",
+      ctaUrl: `${baseUrl}/cliente/reservas/${input.bookingId}`
+    }),
+    { event: "booking.checked_in", bookingId: input.bookingId }
+  );
+}
+
 export async function notifyBookingCompleted(
   input: { customer: Recipient; pro: Recipient | null; bookingId: string; serviceName: string },
   tx?: Prisma.TransactionClient

@@ -305,7 +305,7 @@ const dataUrlSchema = z
   .max(8_000_000, "Archivo demasiado grande para el MVP");
 
 const STORAGE_KEY_PATTERN =
-  /^users\/[a-zA-Z0-9_-]+\/(identity_front|identity_back|identity_selfie|criminal_record|profile_photo|chat_image|dispute_evidence)\/[a-zA-Z0-9_-]+\.(jpg|jpeg|png|webp|pdf|bin)$/i;
+  /^users\/[a-zA-Z0-9_-]+\/(identity_front|identity_back|identity_selfie|criminal_record|profile_photo|chat_image|dispute_evidence|check_in_photo)\/[a-zA-Z0-9_-]+\.(jpg|jpeg|png|webp|pdf|bin)$/i;
 
 function isStorageKeyValue(value: string): boolean {
   return STORAGE_KEY_PATTERN.test(value);

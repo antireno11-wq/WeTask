@@ -369,6 +369,12 @@ model Booking {
   proReviewRating  Int?
   proReviewComment String?
   proReviewedAt    DateTime?
+  onTheWayAt       DateTime?
+  checkInAt        DateTime?
+  checkInLat       Float?
+  checkInLng       Float?
+  checkInPhotoKey  String?
+  checkOutAt       DateTime?
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
   customer         User              @relation("CustomerBookings", fields: [customerId], references: [id], onDelete: Restrict)
