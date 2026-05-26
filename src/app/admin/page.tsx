@@ -1,9 +1,84 @@
 import Link from "next/link";
-import { CleaningOnboardingStatus, PayoutStatus, TicketStatus, UserRole } from "@prisma/client";
+import { CleaningOnboardingStatus, PaymentStatus, PayoutStatus, TicketStatus, UserRole } from "@prisma/client";
 import { AdminHeroShell } from "@/components/admin-hero-shell";
 import { formatPaymentRejectionReason } from "@/lib/payment-rejection";
 import { normalizeCommuneList } from "@/lib/communes";
 import { prisma } from "@/lib/prisma";
+
+type DailyBucket = { date: string; bookings: number; revenueClp: number };
+
+async function loadTodayStats() {
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const sevenDaysAgo = new Date(today.getTime() - 6 * 24 * 60 * 60 * 1000);
+
+  const [todayBookings, todayRevenue, last7DaysBookings, last7DaysPayments] = await Promise.all([
+    prisma.booking.count({ where: { createdAt: { gte: today } } }),
+    prisma.payment.aggregate({
+      where: { status: PaymentStatus.PAID, createdAt: { gte: today } },
+      _sum: { amountClp: true }
+    }),
+    prisma.booking.findMany({
+      where: { createdAt: { gte: sevenDaysAgo } },
+      select: { createdAt: true }
+    }),
+    prisma.payment.findMany({
+      where: { status: PaymentStatus.PAID, createdAt: { gte: sevenDaysAgo } },
+      select: { createdAt: true, amountClp: true }
+    })
+  ]);
+
+  const buckets = new Map<string, DailyBucket>();
+  for (let i = 0; i < 7; i += 1) {
+    const day = new Date(today.getTime() - (6 - i) * 24 * 60 * 60 * 1000);
+    const key = day.toISOString().slice(0, 10);
+    buckets.set(key, { date: key, bookings: 0, revenueClp: 0 });
+  }
+  for (const b of last7DaysBookings) {
+    const key = b.createdAt.toISOString().slice(0, 10);
+    const bucket = buckets.get(key);
+    if (bucket) bucket.bookings += 1;
+  }
+  for (const p of last7DaysPayments) {
+    const key = p.createdAt.toISOString().slice(0, 10);
+    const bucket = buckets.get(key);
+    if (bucket) bucket.revenueClp += p.amountClp;
+  }
+  return {
+    todayBookings,
+    todayRevenueClp: todayRevenue._sum.amountClp ?? 0,
+    last7Days: Array.from(buckets.values())
+  };
+}
+
+function renderMiniChart(data: DailyBucket[], metric: "bookings" | "revenueClp") {
+  const values = data.map((d) => (metric === "bookings" ? d.bookings : d.revenueClp));
+  const max = Math.max(1, ...values);
+  const width = 100;
+  const height = 36;
+  const barWidth = width / data.length - 1;
+  return (
+    <svg width="100%" height={height} viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" aria-hidden>
+      {data.map((d, i) => {
+        const v = metric === "bookings" ? d.bookings : d.revenueClp;
+        const h = (v / max) * (height - 4);
+        const x = i * (barWidth + 1);
+        const y = height - h;
+        return (
+          <rect
+            key={d.date}
+            x={x}
+            y={y}
+            width={barWidth}
+            height={h}
+            fill={i === data.length - 1 ? "#18a6d5" : "#cfe2f3"}
+            rx={1.5}
+          />
+        );
+      })}
+    </svg>
+  );
+}
 
 export const dynamic = "force-dynamic";
 
@@ -218,6 +293,7 @@ export default async function AdminPage() {
 
   const taskerDaily = roleDailyCopy(newTaskersToday, newTaskersYesterday);
   const customerDaily = roleDailyCopy(newCustomersToday, newCustomersYesterday);
+  const todayStats = await loadTodayStats();
 
   return (
     <AdminHeroShell>
@@ -229,6 +305,32 @@ export default async function AdminPage() {
         </div>
         <Link href="/admin/team" className="cta admin-head-action">
           Gestionar equipo
+        </Link>
+      </div>
+
+      <div className="module-grid admin-metrics-grid" style={{ marginBottom: 18 }}>
+        <article className="module-card admin-metric-card" style={{ display: "grid", gap: 10 }}>
+          <span className="metric-label">Reservas hoy</span>
+          <strong>{todayStats.todayBookings}</strong>
+          <p>Bookings creados desde las 00:00.</p>
+          <div style={{ marginTop: 4 }}>
+            {renderMiniChart(todayStats.last7Days, "bookings")}
+            <span style={{ fontSize: 11, color: "#5f7691" }}>Últimos 7 días</span>
+          </div>
+        </article>
+        <article className="module-card admin-metric-card" style={{ display: "grid", gap: 10 }}>
+          <span className="metric-label">Ingresos cobrados hoy</span>
+          <strong>{money(todayStats.todayRevenueClp)}</strong>
+          <p>Pagos PAID procesados desde las 00:00 (bruto).</p>
+          <div style={{ marginTop: 4 }}>
+            {renderMiniChart(todayStats.last7Days, "revenueClp")}
+            <span style={{ fontSize: 11, color: "#5f7691" }}>Últimos 7 días</span>
+          </div>
+        </article>
+        <Link href="/admin/disputes?status=OPEN" className="module-card module-link admin-metric-card">
+          <span className="metric-label">Reclamos abiertos hoy</span>
+          <strong>{openDisputes}</strong>
+          <p>Casos OPEN o IN_REVIEW esperando resolución.</p>
         </Link>
       </div>
 

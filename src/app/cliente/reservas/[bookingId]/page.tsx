@@ -394,6 +394,11 @@ export default function ClienteBookingActionsPage() {
                     <button className="cta" type="button" onClick={confirmService}>
                       Confirmar servicio
                     </button>
+                    {["AWAITING_CUSTOMER_CONFIRMATION", "PAYOUT_SCHEDULED", "COMPLETED"].includes(booking.status) ? (
+                      <Link className="cta" href={`/cliente/reservas/${bookingId}/calificar`}>
+                        Calificar al profesional
+                      </Link>
+                    ) : null}
                     <Link className="cta ghost" href={`/cliente/reservas/${bookingId}/problema`}>
                       Reportar problema
                     </Link>
