@@ -76,8 +76,35 @@ function redirectToLogin(req: NextRequest, mode: "cliente" | "tasker" | "equipo"
   return NextResponse.redirect(loginUrl);
 }
 
+const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
+const RATE_LIMIT_WINDOW_MS = 60 * 1000; // 1 minute
+const RATE_LIMIT_MAX_REQUESTS = 10; // max 10 requests per window
+
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
+
+  // Rate Limiting for Auth Routes
+  if (pathname === "/api/auth/login" || pathname === "/api/auth/register") {
+    const ip = req.ip || req.headers.get("x-forwarded-for") || "unknown";
+    const now = Date.now();
+    const limitData = rateLimitMap.get(ip);
+
+    if (!limitData || now > limitData.resetTime) {
+      rateLimitMap.set(ip, {
+        count: 1,
+        resetTime: now + RATE_LIMIT_WINDOW_MS
+      });
+    } else {
+      limitData.count += 1;
+      if (limitData.count > RATE_LIMIT_MAX_REQUESTS) {
+        return NextResponse.json(
+          { error: "Demasiados intentos de acceso. Intente nuevamente en un minuto." },
+          { status: 429 }
+        );
+      }
+    }
+  }
+
   const rawSession = req.cookies.get(SESSION_COOKIE_NAME)?.value;
   const signedSession = await decodeSignedSessionCookie(rawSession);
   const session = signedSession.userId ? signedSession : decodeLegacySessionCookie(rawSession);

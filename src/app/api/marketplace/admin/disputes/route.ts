@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getRequestIdentity, hasRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { refundProviderPayment } from "@/lib/payments/provider-adapter";
 
 const resolveSchema = z.object({
   disputeId: z.string().min(1),
@@ -69,6 +70,30 @@ export async function PATCH(req: NextRequest) {
     });
 
     if (input.status === "RESOLVED" && typeof input.refundAmountClp === "number" && input.refundAmountClp > 0) {
+      const payment = await prisma.payment.findUnique({
+        where: { bookingId: dispute.bookingId }
+      });
+
+      if (payment && payment.providerPaymentId && !payment.providerPaymentId.startsWith("sim_")) {
+        try {
+          const refundResult = await refundProviderPayment(payment.provider as any, {
+            providerPaymentId: payment.providerPaymentId,
+            amount: input.refundAmountClp
+          });
+          if (refundResult.status !== "refunded") {
+            throw new Error(refundResult.errorMessage || "La pasarela de pago rechazó el reembolso");
+          }
+        } catch (refundError) {
+          return NextResponse.json(
+            {
+              error: "No se pudo procesar el reembolso en Mercado Pago",
+              detail: refundError instanceof Error ? refundError.message : "Error de comunicación"
+            },
+            { status: 502 }
+          );
+        }
+      }
+
       await prisma.booking.update({
         where: { id: dispute.bookingId },
         data: {
@@ -81,6 +106,18 @@ export async function PATCH(req: NextRequest) {
         where: { bookingId: dispute.bookingId },
         data: { status: "PARTIAL_REFUNDED" }
       });
+
+      // Free slot if booking is refunded
+      const booking = await prisma.booking.findUnique({
+        where: { id: dispute.bookingId },
+        select: { bookedSlotId: true }
+      });
+      if (booking?.bookedSlotId) {
+        await prisma.availabilitySlot.updateMany({
+          where: { id: booking.bookedSlotId },
+          data: { isAvailable: true }
+        });
+      }
     }
 
     return NextResponse.json({ dispute: updated }, { status: 200 });

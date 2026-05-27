@@ -288,6 +288,31 @@ async function createCenteredProfilePhoto(dataUrl: string, focusX: number, focus
   return canvas.toDataURL("image/jpeg", 0.92);
 }
 
+function dataUrlToBlob(dataUrl: string): Blob {
+  const parts = dataUrl.split(",");
+  const mime = parts[0]?.match(/:(.*?);/)?.[1] || "image/jpeg";
+  const binary = atob(parts[1] || "");
+  const array = [];
+  for (let i = 0; i < binary.length; i++) {
+    array.push(binary.charCodeAt(i));
+  }
+  return new Blob([new Uint8Array(array)], { type: mime });
+}
+
+async function uploadFile(file: File): Promise<string> {
+  const formData = new FormData();
+  formData.append("file", file);
+  const response = await fetch("/api/storage/upload", {
+    method: "POST",
+    body: formData
+  });
+  const data = await response.json();
+  if (!response.ok || !data.url) {
+    throw new Error(data.error || "No se pudo subir el archivo");
+  }
+  return data.url;
+}
+
 export default function ProPage() {
   const [proId, setProId] = useState("");
   const [proName, setProName] = useState("");
@@ -894,8 +919,16 @@ export default function ProPage() {
       const isAddressValid = await validateCoverageAddress();
       if (!isAddressValid) return;
       const normalizedProfilePhoto = profilePhotoUrl ? await createCenteredProfilePhoto(profilePhotoUrl, photoFocus.x, photoFocus.y) : null;
-      if (normalizedProfilePhoto && normalizedProfilePhoto !== profilePhotoUrl) {
-        setProfilePhotoUrl(normalizedProfilePhoto);
+      let finalPhotoUrl = normalizedProfilePhoto;
+      if (finalPhotoUrl && finalPhotoUrl.startsWith("data:")) {
+        try {
+          const blob = dataUrlToBlob(finalPhotoUrl);
+          const file = new File([blob], "avatar.jpg", { type: "image/jpeg" });
+          finalPhotoUrl = await uploadFile(file);
+          setProfilePhotoUrl(finalPhotoUrl);
+        } catch (uploadError) {
+          throw new Error("No se pudo subir la foto de perfil al servidor. Inténtalo de nuevo.");
+        }
       }
 
       const payloadServiceCommunes = normalizeCommuneList(serviceCommunes.length > 0 ? serviceCommunes : [coverageComuna]);
@@ -908,7 +941,7 @@ export default function ProPage() {
         body: JSON.stringify({
           proId,
           bio: bio.trim() || null,
-          profilePhotoUrl: normalizedProfilePhoto,
+          profilePhotoUrl: finalPhotoUrl,
           coverageStreet: coverageStreet.trim() || null,
           coverageComuna: coverageComuna.trim() || null,
           coverageCity: coverageCity.trim() || null,

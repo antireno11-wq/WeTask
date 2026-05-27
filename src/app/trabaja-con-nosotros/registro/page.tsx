@@ -671,6 +671,32 @@ function fileToDataUrl(file: File): Promise<string> {
   });
 }
 
+function dataUrlToBlob(dataUrl: string): Blob {
+  const parts = dataUrl.split(",");
+  const mime = parts[0]?.match(/:(.*?);/)?.[1] || "image/jpeg";
+  const binary = atob(parts[1] || "");
+  const array = [];
+  for (let i = 0; i < binary.length; i++) {
+    array.push(binary.charCodeAt(i));
+  }
+  return new Blob([new Uint8Array(array)], { type: mime });
+}
+
+async function uploadFile(file: File): Promise<string> {
+  const formData = new FormData();
+  formData.append("file", file);
+  const response = await fetch("/api/storage/upload", {
+    method: "POST",
+    body: formData
+  });
+  const data = await response.json();
+  if (!response.ok || !data.url) {
+    throw new Error(data.error || "No se pudo subir el archivo");
+  }
+  return data.url;
+}
+
+
 function loadImageElement(src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const image = new Image();
@@ -1925,9 +1951,21 @@ function CleaningOnboardingPageContent() {
     setFeedback("");
     try {
       const normalizedProfilePhoto = await createCenteredProfilePhoto(draft.profilePhotoUrl, photoFocus.x, photoFocus.y);
-      if (normalizedProfilePhoto && normalizedProfilePhoto !== draft.profilePhotoUrl) {
-        setDraft((current) => ({ ...current, profilePhotoUrl: normalizedProfilePhoto }));
+      let finalPhotoUrl = normalizedProfilePhoto || draft.profilePhotoUrl;
+      
+      if (finalPhotoUrl && finalPhotoUrl.startsWith("data:")) {
+        try {
+          const blob = dataUrlToBlob(finalPhotoUrl);
+          const file = new File([blob], "profile.jpg", { type: "image/jpeg" });
+          finalPhotoUrl = await uploadFile(file);
+          setDraft((current) => ({ ...current, profilePhotoUrl: finalPhotoUrl }));
+        } catch (uploadError) {
+          setError("No se pudo subir la foto de perfil al servidor. Intente de nuevo.");
+          setSaving(false);
+          return;
+        }
       }
+
       const addressOk = await validateHomeAddress();
       if (!addressOk) return;
 
@@ -1939,7 +1977,7 @@ function CleaningOnboardingPageContent() {
           documentId: draft.rut.trim(),
           referenceAddress: draft.address.trim(),
           baseCommune: draft.homeCommune,
-          profilePhotoUrl: normalizedProfilePhoto || draft.profilePhotoUrl
+          profilePhotoUrl: finalPhotoUrl
         });
       } else {
         const response = await fetch("/api/onboarding/cleaning/start", {
@@ -1953,7 +1991,7 @@ function CleaningOnboardingPageContent() {
             baseCommune: draft.homeCommune,
             referenceAddress: draft.address.trim(),
             documentId: draft.rut.trim(),
-            profilePhotoUrl: normalizedProfilePhoto || draft.profilePhotoUrl
+            profilePhotoUrl: finalPhotoUrl
           })
         });
         const data = (await response.json()) as {
@@ -4833,42 +4871,69 @@ function CleaningOnboardingPageContent() {
                     <input
                       type="file"
                       accept="image/png,image/jpeg"
+                      disabled={saving}
                       onChange={async (event) => {
                         const file = event.target.files?.[0];
                         if (!file) return;
-                        const content = await fileToDataUrl(file);
-                        updateDraft("identityDocumentFrontFile", content);
+                        setError("");
+                        setSaving(true);
+                        try {
+                          const uploadedUrl = await uploadFile(file);
+                          updateDraft("identityDocumentFrontFile", uploadedUrl);
+                        } catch (uploadError) {
+                          setError("No se pudo subir la foto del carnet (frontal). Intente de nuevo.");
+                        } finally {
+                          setSaving(false);
+                        }
                       }}
                     />
-                    {draft.identityDocumentFrontFile ? <p className="input-hint">Archivo cargado correctamente.</p> : null}
+                    {draft.identityDocumentFrontFile ? <p className="input-hint" style={{ color: "#22c55e" }}>Archivo cargado correctamente.</p> : null}
                   </label>
                   <label className="full">
                     Carnet por atrás
                     <input
                       type="file"
                       accept="image/png,image/jpeg"
+                      disabled={saving}
                       onChange={async (event) => {
                         const file = event.target.files?.[0];
                         if (!file) return;
-                        const content = await fileToDataUrl(file);
-                        updateDraft("identityDocumentBackFile", content);
+                        setError("");
+                        setSaving(true);
+                        try {
+                          const uploadedUrl = await uploadFile(file);
+                          updateDraft("identityDocumentBackFile", uploadedUrl);
+                        } catch (uploadError) {
+                          setError("No se pudo subir la foto del carnet (reverso). Intente de nuevo.");
+                        } finally {
+                          setSaving(false);
+                        }
                       }}
                     />
-                    {draft.identityDocumentBackFile ? <p className="input-hint">Archivo cargado correctamente.</p> : null}
+                    {draft.identityDocumentBackFile ? <p className="input-hint" style={{ color: "#22c55e" }}>Archivo cargado correctamente.</p> : null}
                   </label>
                   <label className="full">
                     Certificado de antecedentes
                     <input
                       type="file"
                       accept=".pdf,image/png,image/jpeg"
+                      disabled={saving}
                       onChange={async (event) => {
                         const file = event.target.files?.[0];
                         if (!file) return;
-                        const content = await fileToDataUrl(file);
-                        updateDraft("criminalRecordFile", content);
+                        setError("");
+                        setSaving(true);
+                        try {
+                          const uploadedUrl = await uploadFile(file);
+                          updateDraft("criminalRecordFile", uploadedUrl);
+                        } catch (uploadError) {
+                          setError("No se pudo subir el certificado de antecedentes. Intente de nuevo.");
+                        } finally {
+                          setSaving(false);
+                        }
                       }}
                     />
-                    {draft.criminalRecordFile ? <p className="input-hint">Archivo cargado correctamente.</p> : null}
+                    {draft.criminalRecordFile ? <p className="input-hint" style={{ color: "#22c55e" }}>Archivo cargado correctamente.</p> : null}
                   </label>
                   <label>
                     RUT del titular
