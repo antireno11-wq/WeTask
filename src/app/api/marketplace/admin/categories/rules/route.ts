@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdminRequest } from "@/lib/admin-access";
 import { recordAdminAction } from "@/lib/audit-log";
+import { invalidateMarketplaceCatalog } from "@/lib/cache-tags";
 import { prisma } from "@/lib/prisma";
 import { marketplaceAdminFeeSchema } from "@/lib/validators";
 
@@ -44,6 +45,8 @@ export async function PATCH(req: NextRequest) {
 
       return category;
     });
+
+    invalidateMarketplaceCatalog();
 
     return NextResponse.json({ category: result }, { status: 200 });
   } catch (error) {

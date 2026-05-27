@@ -1,6 +1,7 @@
 import { createHmac, timingSafeEqual } from "crypto";
 import { BookingStatus, PaymentStatus, Prisma } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
+import { emitBoletaForPaymentIfNeeded } from "@/lib/billing/boleta-hook";
 import { sendBookingStatusEmailToCustomer } from "@/lib/booking-status-email";
 import {
   assertTransition,
@@ -208,6 +209,10 @@ export async function POST(req: NextRequest) {
         previousStatus: payment.booking.status,
         nextStatus: nextState.bookingStatus
       });
+    }
+
+    if (nextState.paymentStatus === PaymentStatus.PAID) {
+      void emitBoletaForPaymentIfNeeded(payment.id);
     }
 
     return NextResponse.json(

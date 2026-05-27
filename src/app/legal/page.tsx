@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { AuthHeroNav } from "@/components/auth-hero-nav";
 
 export default function LegalPage() {
@@ -43,6 +44,12 @@ export default function LegalPage() {
             <p>
               Si un profesional trabaja por fuera de WeTask, pierde trazabilidad, reputación y posicionamiento dentro de la
               plataforma, por lo que ese servicio no suma al ranking ni a sus beneficios.
+            </p>
+
+            <h3>Privacidad y datos personales</h3>
+            <p>
+              El tratamiento de datos personales se rige por la <Link href="/legal/privacidad">Política de privacidad</Link>,
+              redactada conforme a la Ley 19.628 de Chile.
             </p>
 
             <h3>Consultas</h3>

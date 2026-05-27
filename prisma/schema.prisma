@@ -96,7 +96,10 @@ model User {
   authProvider           AuthProvider             @default(EMAIL)
   passwordHash           String?
   termsAcceptedAt        DateTime?
+  termsVersionId         String?
   emailVerifiedAt        DateTime?
+  deletedAt              DateTime?
+  scheduledDeletionAt    DateTime?
   createdAt              DateTime                 @default(now())
   updatedAt              DateTime                 @updatedAt
   bookings               Booking[]                @relation("CustomerBookings")
@@ -445,6 +448,11 @@ model Payment {
   escrowReleasedAt    DateTime?
   status              PaymentStatus @default(PENDING)
   paidAt              DateTime?
+  boletaFolio         String?
+  boletaUrl           String?
+  boletaStatus        String?
+  boletaEmittedAt     DateTime?
+  boletaErrorMessage  String?
   createdAt           DateTime      @default(now())
   updatedAt           DateTime      @updatedAt
   booking             Booking       @relation(fields: [bookingId], references: [id], onDelete: Cascade)
@@ -692,4 +700,15 @@ model OnboardingReviewEvent {
   actor        User?                     @relation("OnboardingReviewActor", fields: [actorId], references: [id], onDelete: SetNull)
 
   @@index([onboardingId, createdAt])
+}
+
+model TermsVersion {
+  id          String   @id @default(cuid())
+  version     String   @unique
+  title       String
+  content     String
+  publishedAt DateTime
+  createdAt   DateTime @default(now())
+
+  @@index([publishedAt])
 }

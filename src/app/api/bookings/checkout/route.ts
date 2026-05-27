@@ -2,6 +2,7 @@ import { PaymentStatus, UserRole } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getRequestIdentity, hasRole } from "@/lib/auth";
+import { emitBoletaForPaymentIfNeeded } from "@/lib/billing/boleta-hook";
 import { COVERAGE_UNAVAILABLE_MESSAGE, inferCommuneFromAddress, normalizeCommune, taskerServesCommune } from "@/lib/communes";
 import { calculateMarketplacePrice } from "@/lib/marketplace-pricing";
 import { notifyBookingConfirmed } from "@/lib/notification-events";
@@ -505,6 +506,8 @@ export async function POST(req: NextRequest) {
     });
 
     if (finalBooking.status === "CONFIRMED") {
+      void emitBoletaForPaymentIfNeeded(created.payment.id);
+
       const proRecord = assignedProId
         ? await prisma.user.findUnique({
             where: { id: assignedProId },
