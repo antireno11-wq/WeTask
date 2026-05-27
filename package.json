@@ -13,15 +13,22 @@
     "prisma:migrate:dev": "prisma migrate dev",
     "prisma:push": "prisma db push --accept-data-loss",
     "prisma:seed": "node prisma/seed.mjs",
-    "audit:tasker": "node scripts/audit-tasker-onboarding.mjs"
+    "audit:tasker": "node scripts/audit-tasker-onboarding.mjs",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1052.0",
     "@aws-sdk/s3-request-presigner": "^3.1052.0",
     "@prisma/client": "^5.20.0",
+    "@upstash/ratelimit": "^2.0.8",
+    "@upstash/redis": "^1.38.0",
     "bcryptjs": "^2.4.3",
     "google-auth-library": "^10.6.2",
     "next": "^14.2.18",
+    "pino": "^10.3.1",
     "prisma": "^5.20.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
@@ -32,9 +39,11 @@
     "@types/node": "^22.10.7",
     "@types/react": "^18.3.18",
     "@types/react-dom": "^18.3.5",
+    "@vitest/coverage-v8": "^4.1.7",
     "eslint": "^8.57.1",
     "eslint-config-next": "^14.2.18",
-    "typescript": "^5.7.3"
+    "typescript": "^5.7.3",
+    "vitest": "^4.1.7"
   },
   "engines": {
     "node": ">=20.0.0"

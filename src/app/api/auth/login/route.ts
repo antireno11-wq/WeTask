@@ -4,6 +4,7 @@ import { ensureMarketplaceDemoData } from "@/lib/marketplace-demo-data";
 import { encodeSessionCookie, SESSION_COOKIE_NAME } from "@/lib/auth";
 import { ensurePrimaryAdminUser } from "@/lib/primary-admin";
 import { prisma } from "@/lib/prisma";
+import { getClientIp, rateLimit, tooManyRequestsResponse } from "@/lib/rate-limit";
 import { verifyPassword } from "@/lib/security";
 import { hasAssignedRole, resolveLoginRole } from "@/lib/user-roles";
 
@@ -19,6 +20,12 @@ export async function POST(req: NextRequest) {
     if (!body.userId && !body.email) {
       return NextResponse.json({ error: "Debes enviar userId o email" }, { status: 400 });
     }
+
+    // Rate limit: 5 intentos/min por (IP + email) — protege contra brute force.
+    const ip = getClientIp(req);
+    const identifier = `${ip}:${body.email ?? body.userId ?? "anon"}`;
+    const rl = await rateLimit("auth.login", identifier, "5/m");
+    if (!rl.success) return tooManyRequestsResponse(rl) as unknown as NextResponse;
 
     const user = body.userId
       ? await prisma.user.findUnique({

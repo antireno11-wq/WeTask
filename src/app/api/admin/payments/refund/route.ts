@@ -9,6 +9,7 @@ import {
 } from "@/lib/booking-state-machine";
 import { refundProviderPayment } from "@/lib/payments/provider-adapter";
 import { prisma } from "@/lib/prisma";
+import { rateLimit, tooManyRequestsResponse } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
@@ -25,6 +26,12 @@ const refundSchema = z
 export async function POST(req: NextRequest) {
   const admin = await requireAdminRequest(req);
   if (!admin.ok) return admin.response;
+
+  // 10 refunds/h por admin — protección contra clicks accidentales o
+  // admin comprometido. Es muy poco para volumen real pero suficiente
+  // operacionalmente.
+  const rl = await rateLimit("admin.refund", admin.identity.userId ?? "unknown", "10/h");
+  if (!rl.success) return tooManyRequestsResponse(rl) as unknown as NextResponse;
 
   try {
     const body = await req.json();

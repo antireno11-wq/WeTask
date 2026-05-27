@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { OAuth2Client, type TokenPayload } from "google-auth-library";
 import { encodeSessionCookie, SESSION_COOKIE_NAME } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getClientIp, rateLimit, tooManyRequestsResponse } from "@/lib/rate-limit";
 import { resolveLoginRole } from "@/lib/user-roles";
 
 export const dynamic = "force-dynamic";
@@ -28,6 +29,11 @@ async function verifyGoogleIdToken(idToken: string): Promise<TokenPayload | null
 
 export async function POST(req: NextRequest) {
   try {
+    // Rate limit OAuth: 10/min por IP — protege contra account enumeration.
+    const ip = getClientIp(req);
+    const rl = await rateLimit("auth.oauth", ip, "10/m");
+    if (!rl.success) return tooManyRequestsResponse(rl) as unknown as NextResponse;
+
     const body = (await req.json()) as OAuthPayload;
     const provider = body.provider === "APPLE" ? "APPLE" : body.provider === "GOOGLE" ? "GOOGLE" : null;
     const role = body.role === "PRO" ? UserRole.PRO : UserRole.CUSTOMER;

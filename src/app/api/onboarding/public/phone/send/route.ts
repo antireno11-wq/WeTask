@@ -4,6 +4,7 @@ import {
   PUBLIC_ONBOARDING_PHONE_COOKIE,
   PUBLIC_ONBOARDING_PHONE_VERIFIED_COOKIE
 } from "@/lib/onboarding-phone";
+import { getClientIp, rateLimit, tooManyRequestsResponse } from "@/lib/rate-limit";
 import { randomToken, sha256 } from "@/lib/security";
 import { sendTwilioSms } from "@/lib/twilio-sms";
 import { cleaningOnboardingPhoneSendSchema } from "@/lib/validators";
@@ -19,6 +20,14 @@ export async function POST(req: NextRequest) {
     if (phone.length < 7) {
       return NextResponse.json({ error: "Debes ingresar un teléfono válido" }, { status: 400 });
     }
+
+    // OTP costoso (Twilio): 3 envíos/h por número + 10/h por IP para
+    // limitar abusos y costo. El rate-limit IP cubre el caso de un atacante
+    // probando muchos números desde la misma máquina.
+    const phoneRl = await rateLimit("otp.phone", phone, "3/h");
+    if (!phoneRl.success) return tooManyRequestsResponse(phoneRl) as unknown as NextResponse;
+    const ipRl = await rateLimit("otp.phone.ip", getClientIp(req), "10/h");
+    if (!ipRl.success) return tooManyRequestsResponse(ipRl) as unknown as NextResponse;
 
     const code = randomToken(6).replace(/[^0-9]/g, "").slice(0, 6).padEnd(6, "0");
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
