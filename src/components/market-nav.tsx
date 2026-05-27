@@ -64,7 +64,7 @@ export function MarketNav() {
     : [
         { href: "/", label: "Inicio" },
         { href: "/como-funciona", label: "Cómo funciona" },
-        { href: "/services", label: "Servicios" },
+        { href: "/servicios", label: "Servicios" },
       ];
   const guestLinks = isAdminArea
     ? []

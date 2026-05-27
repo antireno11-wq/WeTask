@@ -554,52 +554,6 @@ model CoverageWaitlist {
   @@index([commune, createdAt])
 }
 
-enum TechnicianVerificationStatus {
-  PENDING
-  UNDER_REVIEW
-  APPROVED
-  REJECTED
-}
-
-model Technician {
-  id                   String                       @id @default(cuid())
-  fullName             String                       @map("full_name")
-  rut                  String                       @unique
-  birthDate            DateTime                     @map("birth_date")
-  phone                String
-  email                String
-  address              String
-  commune              String
-  lat                  Float?
-  lng                  Float?
-  specialties          Json
-  yearsExperience      Int                          @map("years_experience")
-  description          String
-  certifications       Json?
-  portfolioImages      Json                         @map("portfolio_images")
-  criminalRecordFile   String                       @map("criminal_record_file")
-  identityDocument     String                       @map("identity_document")
-  identitySelfie       String                       @map("identity_selfie")
-  affidavitAccepted    Boolean                      @default(false) @map("affidavit_accepted")
-  references           String?
-  coverageRadiusKm     Int                          @map("coverage_radius_km")
-  availableCommunes    Json                         @map("available_communes")
-  serviceCommunes      Json?                        @map("service_communes")
-  availabilitySchedule String                       @map("availability_schedule")
-  transportType        String                       @map("transport_type")
-  verificationStatus   TechnicianVerificationStatus @default(PENDING) @map("verification_status")
-  score                Int                          @default(0)
-  reviewNotes          String?                      @map("review_notes")
-  source               String                       @default("trabaja-con-nosotros")
-  createdAt            DateTime                     @default(now()) @map("created_at")
-  updatedAt            DateTime                     @updatedAt @map("updated_at")
-
-  @@index([createdAt])
-  @@index([commune, verificationStatus])
-  @@index([score])
-  @@map("technicians")
-}
-
 model CleaningOnboarding {
   id                         String                    @id @default(cuid())
   userId                     String                    @unique

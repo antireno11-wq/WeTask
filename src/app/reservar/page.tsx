@@ -377,7 +377,7 @@ export default function ReservarPage() {
     const suggestedHours = parseCleaningRecommendedHours(params.get("recommendedHours"));
     const estimatedMinHours = params.get("estimatedMinHours");
     const estimatedMaxHours = params.get("estimatedMaxHours");
-    const addressLine = params.get("address");
+    const addressLine = params.get("address") ?? params.get("street");
     const city = params.get("city");
     const commune = params.get("commune") ?? params.get("comuna");
     const postalCode = params.get("postalCode");

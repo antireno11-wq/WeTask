@@ -72,7 +72,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         priority: 0.8
       },
       {
-        url: `${baseUrl}/profesionales/${profile.userId}`,
+        url: `${baseUrl}/pro/${profile.userId}`,
         lastModified: profile.updatedAt,
         changeFrequency: "daily" as const,
         priority: 0.6

@@ -51,7 +51,7 @@ export default function ComoFuncionaPage() {
             </div>
 
             <div className="auth-flow-actions">
-              <Link href="/services" className="cta">
+              <Link href="/servicios" className="cta">
                 Ver servicios
               </Link>
               <Link href="/solicitar-tecnico" className="cta ghost">
