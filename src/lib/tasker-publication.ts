@@ -140,12 +140,27 @@ function getOnboardingServiceSlugs(value: Prisma.JsonValue | null): string[] {
   return value.filter((item): item is string => typeof item === "string");
 }
 
+function parseOnboardingServiceRates(value: Prisma.JsonValue | null): Map<string, number> {
+  const map = new Map<string, number>();
+  if (!Array.isArray(value)) return map;
+  for (const item of value) {
+    if (!item || typeof item !== "object") continue;
+    const entry = item as { serviceSlug?: unknown; hourlyRateClp?: unknown };
+    if (typeof entry.serviceSlug !== "string") continue;
+    const rate = typeof entry.hourlyRateClp === "number" ? entry.hourlyRateClp : Number(entry.hourlyRateClp);
+    if (!Number.isFinite(rate) || rate <= 0) continue;
+    map.set(entry.serviceSlug, rate);
+  }
+  return map;
+}
+
 async function syncTaskerServicesForCategory(input: {
   professionalProfileId: string;
   categorySlug: string;
   hourlyRateClp: number | null;
   minBookingHours: number | null | undefined;
   offeredServices: string[];
+  perServiceRates?: Map<string, number>;
 }, tx?: Prisma.TransactionClient) {
   const client = tx || prisma;
   const normalizedCategorySlug = normalizeTaskerCategorySlug(input.categorySlug);
@@ -204,6 +219,8 @@ async function syncTaskerServicesForCategory(input: {
 
   let updated = 0;
   for (const service of services) {
+    const priceClp =
+      input.perServiceRates?.get(service.slug) ?? input.hourlyRateClp ?? service.basePriceClp;
     await client.taskerService.upsert({
       where: {
         professionalProfileId_serviceId: {
@@ -215,13 +232,13 @@ async function syncTaskerServicesForCategory(input: {
         professionalProfileId: input.professionalProfileId,
         categoryId: category.id,
         serviceId: service.id,
-        priceClp: input.hourlyRateClp ?? service.basePriceClp,
+        priceClp,
         minBooking: input.minBookingHours ?? category.minHours,
         isActive: true
       },
       update: {
         categoryId: category.id,
-        priceClp: input.hourlyRateClp ?? service.basePriceClp,
+        priceClp,
         minBooking: input.minBookingHours ?? category.minHours,
         isActive: true
       }
@@ -259,6 +276,7 @@ export async function syncTaskerMarketplaceServicesFromOnboarding(userId: string
           categorySlug: true,
           offeredServices: true,
           hourlyRateClp: true,
+          serviceRates: true,
           minBookingHours: true,
           profilePhotoUrl: true,
           shortDescription: true,
@@ -328,12 +346,15 @@ export async function syncTaskerMarketplaceServicesFromOnboarding(userId: string
     }
   });
 
+  const perServiceRates = parseOnboardingServiceRates(onboarding.serviceRates);
+
   const mainSync = await syncTaskerServicesForCategory({
     professionalProfileId: profile.id,
     categorySlug: onboarding.categorySlug,
     hourlyRateClp: onboarding.hourlyRateClp,
     minBookingHours: onboarding.minBookingHours,
-    offeredServices: getOnboardingServiceSlugs(onboarding.offeredServices)
+    offeredServices: getOnboardingServiceSlugs(onboarding.offeredServices),
+    perServiceRates
   }, tx);
 
   const additionalCategories = await client.taskerCategoryProfile.findMany({

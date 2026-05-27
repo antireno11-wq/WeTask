@@ -50,18 +50,6 @@ export async function POST(req: NextRequest) {
             }
           }
         },
-        professionalProfile: {
-          create: {
-            avatarUrl: input.profilePhotoUrl ?? null,
-            avatarPositionX: input.profilePhotoPositionX,
-            avatarPositionY: input.profilePhotoPositionY,
-            isVerified: false,
-            verificationStatus: "PENDING_REVIEW",
-            coverageComuna: baseCommune,
-            coverageCity: "Santiago",
-            serviceRadiusKm: 8
-          }
-        },
         cleaningOnboarding: {
           create: {
             status: CleaningOnboardingStatus.BORRADOR,
