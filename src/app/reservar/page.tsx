@@ -7,68 +7,12 @@ import { MarketNav } from "@/components/market-nav";
 import { getChefServiceDefinition } from "@/lib/chef-service-types";
 import { parseCleaningRecommendedHours } from "@/lib/cleaning-duration-estimator";
 import { ACTIVE_MVP_COMMUNES, COVERAGE_UNAVAILABLE_MESSAGE, inferCommuneFromAddress, normalizeCommune } from "@/lib/communes";
+import BookingProsList from "./components/BookingProsList";
+import BookingScheduleStep from "./components/BookingScheduleStep";
+import BookingServiceStep from "./components/BookingServiceStep";
+import type { BookingResponse, CardFormData, MatchProfessional, SavedPaymentMethod, Service, Slot } from "./types";
 
 export const dynamic = "force-dynamic";
-
-type Service = {
-  id: string;
-  slug: string;
-  name: string;
-  description: string;
-  basePriceClp: number;
-};
-
-type Slot = {
-  id: string;
-  startsAt: string;
-  endsAt: string;
-  service: { id: string; name: string } | null;
-};
-
-type MatchProfessional = {
-  id: string;
-  userId: string;
-  fullName: string;
-  profilePhotoUrl?: string | null;
-  ratingAvg: number;
-  ratingsCount: number;
-  hourlyRateFromClp: number | null;
-  distanceKm: number;
-  nextAvailableAt: string | null;
-  coverageCity: string | null;
-  serviceRadiusKm: number;
-  taskerServices: Array<{ serviceId: string | null; serviceName: string | null }>;
-  slots: Slot[];
-};
-
-type BookingResponse = {
-  id: string;
-  status: string;
-  paymentStatus: string;
-  totalPriceClp: number;
-};
-
-type SavedPaymentMethod = {
-  id: string;
-  brand: string | null;
-  last4: string;
-  expirationMonth: number | null;
-  expirationYear: number | null;
-  cardholderName: string | null;
-  payerEmail: string | null;
-  paymentMethodId: string | null;
-  isDefault: boolean;
-};
-
-type CardFormData = {
-  token?: string;
-  paymentMethodId?: string;
-  issuerId?: string;
-  installments?: string | number;
-  cardholderEmail?: string;
-  identificationType?: string;
-  identificationNumber?: string;
-};
 
 const DIETARY_OPTIONS = [
   "Sin gluten",
@@ -964,411 +908,91 @@ export default function ReservarPage() {
         </section>
 
         <div className="page client-dashboard-sections booking-flow-sections">
-          <section className="auth-flow-panel client-dashboard-section">
-            {quickCheckoutMode ? (
-              <>
-                <div className="panel-head auth-flow-panel-head">
-                  <h2>Tasker seleccionado</h2>
-                  <p>Ya elegiste un tasker. En este paso solo define la fecha, la hora de inicio y cuántas horas quieres reservar.</p>
-                </div>
-
-                <div className="booking-checkout-summary">
-                  <div className="booking-checkout-tasker-card">
-                    <div className="booking-checkout-tasker-avatar" aria-hidden>
-                      {selectedPro?.profilePhotoUrl ? (
-                        <img src={selectedPro.profilePhotoUrl} alt="" className="booking-checkout-tasker-avatar-image" />
-                      ) : (
-                        initials(selectedPro?.fullName ?? "Tasker")
-                      )}
-                    </div>
-                    <div className="booking-checkout-tasker-copy">
-                      <strong>{selectedPro?.fullName ?? "Cargando profesional"}</strong>
-                      <span>{starsText(selectedPro?.ratingAvg ?? 0)} {Number(selectedPro?.ratingAvg ?? 0).toFixed(1)} ({selectedPro?.ratingsCount ?? 0})</span>
-                    </div>
-                  </div>
-                  <p>
-                    Servicio: <strong>{selectedService?.name ?? "Servicio seleccionado"}</strong>
-                  </p>
-                  <p>
-                    Fecha y hora: <strong>{selectedStartAt ? formatBookingDateTime(selectedStartAt) : "Selecciona bloque y hora"}</strong>
-                  </p>
-                  <p>
-                    Dirección: <strong>{address.street}, {address.commune}, {address.city}</strong>
-                  </p>
-                </div>
-
-                <div className="cta-row">
-                  <button
-                    className="cta ghost"
-                    type="button"
-                    onClick={() => {
-                      setTaskerFlowLocked(false);
-                      setBookingStage("agenda");
-                    }}
-                  >
-                    Editar búsqueda
-                  </button>
-                </div>
-              </>
-            ) : (
-              <>
-                <div className="panel-head auth-flow-panel-head">
-                  <h2>Busca tu servicio</h2>
-                  <p>Completa la ubicación, elige la fecha deseada y encuentra profesionales disponibles en tiempo real.</p>
-                </div>
-
-                <form className="grid-form auth-flow-form" onSubmit={searchPros}>
-                  <label>
-                    Ciudad
-                    <input value={address.city} onChange={(e) => setAddress((prev) => ({ ...prev, city: e.target.value }))} required />
-                  </label>
-                  <label>
-                    Comuna
-                    <select value={address.commune} onChange={(e) => setAddress((prev) => ({ ...prev, commune: e.target.value }))} required>
-                      {ACTIVE_MVP_COMMUNES.map((commune) => (
-                        <option key={commune} value={commune}>
-                          {commune}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label>
-                    Código postal
-                    <input value={address.postalCode} onChange={(e) => setAddress((prev) => ({ ...prev, postalCode: e.target.value }))} required />
-                  </label>
-                  <label className="full">
-                    Calle
-                    <input value={address.street} onChange={(e) => setAddress((prev) => ({ ...prev, street: e.target.value }))} required />
-                  </label>
-
-                  <label>
-                    Servicio
-                    <select value={filters.serviceId} onChange={(e) => setFilters((prev) => ({ ...prev, serviceId: e.target.value }))}>
-                      <option value="">Selecciona</option>
-                      {services.map((service) => (
-                        <option key={service.id} value={service.id}>
-                          {service.name}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label>
-                    Fecha deseada
-                    <input type="date" value={filters.date} onChange={(e) => setFilters((prev) => ({ ...prev, date: e.target.value }))} />
-                  </label>
-                  <label>
-                    ID cliente
-                    <input value={customerId} onChange={(e) => setCustomerId(e.target.value)} placeholder="cliente demo o real" required />
-                  </label>
-
-                  <div className="cta-row">
-                    <button className="cta ghost" type="button" onClick={useGeolocation}>
-                      Usar geolocalización
-                    </button>
-                    <button className="cta" type="submit" disabled={loadingSearch || loadingServices}>
-                      {loadingSearch ? "Buscando..." : "Buscar profesionales"}
-                    </button>
-                  </div>
-                </form>
-              </>
-            )}
-          </section>
+          <BookingServiceStep
+            address={address}
+            setAddress={setAddress}
+            filters={filters}
+            setFilters={setFilters}
+            customerId={customerId}
+            setCustomerId={setCustomerId}
+            services={services}
+            loadingSearch={loadingSearch}
+            loadingServices={loadingServices}
+            searchPros={searchPros}
+            useGeolocation={useGeolocation}
+            quickCheckoutMode={quickCheckoutMode}
+            selectedPro={selectedPro}
+            selectedService={selectedService}
+            selectedStartAt={selectedStartAt}
+            formatBookingDateTime={formatBookingDateTime}
+            starsText={starsText}
+            initials={initials}
+            setTaskerFlowLocked={setTaskerFlowLocked}
+            setBookingStage={setBookingStage}
+          />
 
           {bookingStage === "agenda" ? (
           <div className={`booking-flow-grid ${quickCheckoutMode ? "booking-flow-grid-compact" : ""}`}>
             {!quickCheckoutMode ? (
-              <section className="auth-flow-panel client-dashboard-section">
-                <div className="panel-head auth-flow-panel-head">
-                  <h2>Profesionales disponibles</h2>
-                  <p>Ordenados por distancia, disponibilidad, valoración y precio estimado por hora.</p>
-                </div>
-
-                <div className="list booking-results-list">
-                  {matches.map((pro) => (
-                    <article className={`booking-card ${selectedProId === pro.userId ? "selected-pro" : ""}`} key={pro.id}>
-                      <div className="booking-head">
-                        <h3>{pro.fullName}</h3>
-                        <span className="status status-completed">{pro.distanceKm} km</span>
-                      </div>
-                      <p>
-                        <strong>Rating:</strong> {starsText(pro.ratingAvg)} {pro.ratingAvg.toFixed(1)} ({pro.ratingsCount})
-                      </p>
-                      <p>
-                        <strong>Precio/hora:</strong> {pro.hourlyRateFromClp ? clp(pro.hourlyRateFromClp) : "Por definir"}
-                      </p>
-                      <p>
-                        <strong>Próxima hora:</strong> {pro.nextAvailableAt ? new Date(pro.nextAvailableAt).toLocaleString("es-ES") : "Sin slots"}
-                      </p>
-                      <p>
-                        <strong>Cobertura:</strong> hasta {pro.serviceRadiusKm} km
-                      </p>
-                      <button
-                        className="cta small"
-                        type="button"
-                        onClick={() => {
-                          setSelectedProId(pro.userId);
-                          setTaskerFlowLocked(true);
-                          setBookingStage("agenda");
-                          const firstDay = isoDay(pro.slots[0]?.startsAt ?? "");
-                          setSelectedDay(firstDay);
-                          setSelectedSlotId("");
-                          setSelectedStartAt("");
-                        }}
-                      >
-                        Elegir profesional
-                      </button>
-                    </article>
-                  ))}
-                  {!loadingSearch && matches.length === 0 ? <p className="empty">Aún no hay profesionales cargados para esta búsqueda.</p> : null}
-                </div>
-              </section>
+              <BookingProsList
+                matches={matches}
+                selectedProId={selectedProId}
+                setSelectedProId={setSelectedProId}
+                setTaskerFlowLocked={setTaskerFlowLocked}
+                setBookingStage={setBookingStage}
+                setSelectedDay={setSelectedDay}
+                setSelectedSlotId={setSelectedSlotId}
+                setSelectedStartAt={setSelectedStartAt}
+                starsText={starsText}
+                clp={clp}
+                isoDay={isoDay}
+                loadingSearch={loadingSearch}
+              />
             ) : null}
 
             {selectedPro ? (
               <div className={quickCheckoutMode ? "booking-selection-column booking-selection-column-wide" : "booking-selection-column"}>
-                <section className="auth-flow-panel client-dashboard-section booking-agenda-section">
-                  <div className="panel-head auth-flow-panel-head">
-                    <h2>Agenda y detalles de la reserva</h2>
-                    <p>Selecciona un día, luego elige el bloque, la hora de inicio y la cantidad de horas del servicio.</p>
-                  </div>
-
-                  <div className="booking-agenda-shell">
-                    <div className="booking-agenda-overview">
-                      <article className="availability-stat-card tone-indigo">
-                        <span>Hoy</span>
-                        <strong>{todaySlots.length}</strong>
-                        <p>bloque(s) abiertos hoy</p>
-                      </article>
-                      <article className="availability-stat-card tone-peach">
-                        <span>Disponibles</span>
-                        <strong>{selectedPro.slots.length}</strong>
-                        <p>horarios visibles para reservar</p>
-                      </article>
-                      <article className="availability-stat-card tone-sky">
-                        <span>Días activos</span>
-                        <strong>{daysWithSlotsCount}</strong>
-                        <p>días con agenda cargada</p>
-                      </article>
-                      <article className="availability-stat-card tone-mint">
-                        <span>Próximo</span>
-                        <strong>{nextAvailableSlot ? new Date(nextAvailableSlot.startsAt).toLocaleDateString("es-CL", { day: "2-digit", month: "2-digit" }) : "--"}</strong>
-                        <p>{nextAvailableSlot ? new Date(nextAvailableSlot.startsAt).toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" }) : "Sin bloques cercanos"}</p>
-                      </article>
-                    </div>
-
-                    <div className="availability-board-card booking-availability-board">
-                      <div className="availability-board-head">
-                        <div>
-                          <p className="availability-eyebrow">Calendario</p>
-                          <h3>{selectedMonthLabel}</h3>
-                        </div>
-                        <div className="availability-month-nav">
-                          <button
-                            type="button"
-                            className="availability-month-nav-btn"
-                            onClick={() => {
-                              const next = shiftMonthKey(selectedDateKey, -1);
-                              setSelectedDay(next);
-                            }}
-                          >
-                            ‹
-                          </button>
-                          <button
-                            type="button"
-                            className="availability-month-nav-btn"
-                            onClick={() => {
-                              const next = shiftMonthKey(selectedDateKey, 1);
-                              setSelectedDay(next);
-                            }}
-                          >
-                            ›
-                          </button>
-                        </div>
-                      </div>
-
-                      <div className="availability-weekdays">
-                        {["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"].map((day) => (
-                          <span key={day}>{day}</span>
-                        ))}
-                      </div>
-
-                      <div className="availability-month-grid">
-                        {monthCalendarDays.map((day) => {
-                          const slotCount = slotsByDay.get(day.key)?.length ?? 0;
-                          const isToday = day.key === todayKey;
-                          const isSelected = day.key === selectedDay;
-
-                          return (
-                            <button
-                              key={day.key}
-                              type="button"
-                              className={[
-                                "availability-day-card",
-                                !day.isCurrentMonth ? "muted" : "",
-                                isToday ? "today" : "",
-                                isSelected ? "selected" : ""
-                              ]
-                                .filter(Boolean)
-                                .join(" ")}
-                              onClick={() => {
-                                setSelectedDay(day.key);
-                                setSelectedSlotId("");
-                                setSelectedStartAt("");
-                              }}
-                            >
-                              <span className="availability-day-number">{day.date.getDate()}</span>
-                              <span className="availability-day-meta">{slotCount > 0 ? `${slotCount} horario(s)` : "Sin horarios"}</span>
-                              <span className="availability-day-dots" aria-hidden>
-                                {slotCount > 0 ? <span className="availability-dot free" /> : <span className="availability-dot" />}
-                              </span>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-
-                    <div className="availability-task-panel booking-availability-task-panel">
-                      <div className="availability-task-head">
-                        <div>
-                          <p className="availability-eyebrow">Día elegido</p>
-                          <h4>{selectedDayLabel}</h4>
-                        </div>
-                        <span className="availability-selected-pill">{selectedSlots.length} bloque(s)</span>
-                      </div>
-
-                      {selectedSlots.length === 0 ? (
-                        <div className="availability-empty-state">
-                          <strong>No hay horarios abiertos ese día.</strong>
-                          <p>Prueba con otro día del calendario para ver la disponibilidad de este tasker.</p>
-                        </div>
-                      ) : (
-                        <div className="availability-task-list">
-                          {selectedSlots.map((slot) => (
-                            <article key={slot.id} className={`availability-task-item open booking-availability-task-item ${selectedSlotId === slot.id ? "is-selected" : ""}`}>
-                              <div className="availability-task-time">
-                                {new Date(slot.startsAt).toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" })}
-                                <span />
-                                {new Date(slot.endsAt).toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" })}
-                              </div>
-                              <div className="availability-task-copy">
-                                <strong>{slot.service?.name ?? selectedService?.name ?? "Bloque disponible"}</strong>
-                                <p>Primero elige este bloque base y luego define tu hora de inicio y duración.</p>
-                              </div>
-                              <div className="availability-task-actions">
-                                <button
-                                  type="button"
-                                  className="cta small"
-                                  onClick={() => {
-                                    setSelectedSlotId(slot.id);
-                                    setSelectedStartAt(new Date(slot.startsAt).toISOString());
-                                  }}
-                                >
-                                  {selectedSlotId === slot.id ? "Bloque elegido" : "Usar este bloque"}
-                                </button>
-                              </div>
-                            </article>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="booking-agenda-detail-card">
-                      <div className="grid-form auth-flow-form booking-agenda-form">
-                        <label>
-                          Hora de inicio
-                          <select value={selectedStartAt} onChange={(e) => setSelectedStartAt(e.target.value)} disabled={!selectedSlot}>
-                            {!selectedSlot ? <option value="">Primero elige un bloque</option> : null}
-                            {startOptions.map((startAt) => (
-                              <option key={startAt} value={startAt}>
-                                {new Date(startAt).toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" })}
-                              </option>
-                            ))}
-                          </select>
-                        </label>
-                        <label>
-                          Horas del servicio
-                          <select value={hours} onChange={(e) => setHours(clampBookingHours(Number(e.target.value) || 1))} disabled={!selectedSlot}>
-                            {hourOptions.map((hourOption) => (
-                              <option key={hourOption} value={hourOption}>
-                                {hourOption} hora{hourOption === 1 ? "" : "s"}
-                              </option>
-                            ))}
-                          </select>
-                          {recommendedHours ? (
-                            <small className="input-hint">
-                              Recomendación WeTask: {estimatedHoursRange ? `${estimatedHoursRange} · ` : ""}
-                              reserva sugerida {recommendedHours} hora(s).
-                            </small>
-                          ) : null}
-                        </label>
-                        <label className="full">
-                          Detalles del trabajo
-                          <textarea value={details} onChange={(e) => setDetails(e.target.value)} />
-                        </label>
-                        {isChefService ? (
-                          <div className="full auth-flow-note-card">
-                            <strong>¿Deberíamos saber algo sobre tu alimentación?</strong>
-                            <span>Cuéntanos si necesitas comida libre de alérgenos, sin gluten, APLV u otra consideración importante.</span>
-                            <div className="inline-checks" style={{ marginTop: 12 }}>
-                              {DIETARY_OPTIONS.map((option) => (
-                                <label key={option}>
-                                  <input
-                                    type="checkbox"
-                                    checked={dietaryFlags.includes(option)}
-                                    onChange={(event) =>
-                                      setDietaryFlags((current) =>
-                                        event.target.checked ? Array.from(new Set([...current, option])) : current.filter((item) => item !== option)
-                                      )
-                                    }
-                                  />
-                                  {option}
-                                </label>
-                              ))}
-                            </div>
-                            <textarea
-                              style={{ marginTop: 12 }}
-                              value={dietaryNotes}
-                              onChange={(event) => setDietaryNotes(event.target.value)}
-                              placeholder="Ejemplo: una persona es celíaca, evitar contaminación cruzada, sin mariscos, menú infantil, etc."
-                            />
-                          </div>
-                        ) : null}
-                      </div>
-
-                      <div className="price-box booking-price-box">
-                        <div className="booking-price-box-head">
-                          <strong>Total estimado de la reserva</strong>
-                          <span>{clp(total)}</span>
-                        </div>
-                        <p>Tarifa referencial del tasker: {clp(baseHourly)}/h</p>
-                        {selectedSlot && selectedStartAt ? (
-                          <p>
-                            Horario elegido: <strong>{formatBookingDateTime(selectedStartAt)}</strong> · duración <strong>{hours} hora(s)</strong>
-                          </p>
-                        ) : (
-                          <p>Elige un bloque, la hora de inicio y cuántas horas necesitas para continuar.</p>
-                        )}
-                        {recommendedHours ? (
-                          <p>
-                            Tiempo recomendado: <strong>{recommendedHours} hora(s)</strong>
-                            {estimatedHoursRange ? ` · Rango estimado ${estimatedHoursRange}` : ""}
-                          </p>
-                        ) : null}
-                      </div>
-
-                      <div className="cta-row">
-                        <button
-                          className="cta"
-                          type="button"
-                          disabled={!selectedSlot || !selectedStartAt}
-                          onClick={() => setBookingStage("checkout")}
-                        >
-                          Continuar al checkout
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </section>
+                <BookingScheduleStep
+                  selectedPro={selectedPro}
+                  selectedService={selectedService}
+                  todayKey={todayKey}
+                  selectedDateKey={selectedDateKey}
+                  selectedMonthLabel={selectedMonthLabel}
+                  selectedDayLabel={selectedDayLabel}
+                  selectedDay={selectedDay}
+                  setSelectedDay={setSelectedDay}
+                  selectedSlotId={selectedSlotId}
+                  setSelectedSlotId={setSelectedSlotId}
+                  selectedStartAt={selectedStartAt}
+                  setSelectedStartAt={setSelectedStartAt}
+                  hours={hours}
+                  setHours={setHours}
+                  details={details}
+                  setDetails={setDetails}
+                  isChefService={isChefService}
+                  dietaryFlags={dietaryFlags}
+                  setDietaryFlags={setDietaryFlags}
+                  dietaryNotes={dietaryNotes}
+                  setDietaryNotes={setDietaryNotes}
+                  todaySlots={todaySlots}
+                  daysWithSlotsCount={daysWithSlotsCount}
+                  nextAvailableSlot={nextAvailableSlot}
+                  monthCalendarDays={monthCalendarDays}
+                  slotsByDay={slotsByDay}
+                  selectedSlots={selectedSlots}
+                  startOptions={startOptions}
+                  hourOptions={hourOptions}
+                  recommendedHours={recommendedHours}
+                  estimatedHoursRange={estimatedHoursRange}
+                  baseHourly={baseHourly}
+                  total={total}
+                  clp={clp}
+                  formatBookingDateTime={formatBookingDateTime}
+                  shiftMonthKey={shiftMonthKey}
+                  clampBookingHours={clampBookingHours}
+                  setBookingStage={setBookingStage}
+                  selectedSlot={selectedSlot}
+                />
               </div>
             ) : null}
           </div>
