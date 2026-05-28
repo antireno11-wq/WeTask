@@ -1,3 +1,5 @@
+import { logger } from "@/lib/logger";
+
 type EmailPayload = {
   to: string;
   subject: string;
@@ -32,11 +34,10 @@ export async function sendPlatformEmail(payload: EmailPayload): Promise<void> {
   const config = getEmailDeliveryConfig();
 
   if (!config.configured || !config.apiKey || !config.from) {
-    console.warn("[email] skipped: resend not configured", {
-      to: payload.to,
-      subject: payload.subject,
-      missing: config.missing
-    });
+    logger.warn(
+      { to: payload.to, subject: payload.subject, missing: config.missing },
+      "email skipped: resend not configured"
+    );
     return;
   }
 
@@ -58,23 +59,18 @@ export async function sendPlatformEmail(payload: EmailPayload): Promise<void> {
   if (!response.ok) {
     const detail = await response.text().catch(() => "");
     const cleanDetail = detail.replace(/\s+/g, " ").trim();
-    console.error("[email] resend delivery failed", {
-      to: payload.to,
-      subject: payload.subject,
-      status: response.status,
-      from: config.from,
-      detail: cleanDetail
-    });
+    logger.error(
+      { to: payload.to, subject: payload.subject, status: response.status, from: config.from, detail: cleanDetail },
+      "email resend delivery failed"
+    );
     throw new Error(cleanDetail ? `No se pudo enviar correo (${response.status}): ${cleanDetail}` : `No se pudo enviar correo (${response.status})`);
   }
 
   const data = (await response.json().catch(() => null)) as { id?: string } | null;
-  console.info("[email] sent", {
-    to: payload.to,
-    subject: payload.subject,
-    from: config.from,
-    emailId: data?.id ?? null
-  });
+  logger.info(
+    { to: payload.to, subject: payload.subject, from: config.from, emailId: data?.id ?? null },
+    "email sent"
+  );
 }
 
 type VerificationEmailTemplatePayload = {

@@ -1,6 +1,7 @@
 import { BookingStatus, Prisma } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { recordAdminAction } from "@/lib/audit-log";
+import { logError } from "@/lib/logger";
 import { notifyBookingReminder } from "@/lib/notification-events";
 import { prisma } from "@/lib/prisma";
 import { assertQStashRequest } from "@/lib/qstash";
@@ -88,10 +89,7 @@ export async function POST(req: NextRequest) {
           });
           sentForBooking += 1;
         } catch (err) {
-          console.error("[cron-reminders] customer notify failed", {
-            bookingId: booking.id,
-            detail: err instanceof Error ? err.message : err
-          });
+          logError("cron-reminders.customer_notify", err, { bookingId: booking.id });
         }
 
         if (booking.pro) {
@@ -108,10 +106,7 @@ export async function POST(req: NextRequest) {
             });
             sentForBooking += 1;
           } catch (err) {
-            console.error("[cron-reminders] pro notify failed", {
-              bookingId: booking.id,
-              detail: err instanceof Error ? err.message : err
-            });
+            logError("cron-reminders.pro_notify", err, { bookingId: booking.id });
           }
         }
 

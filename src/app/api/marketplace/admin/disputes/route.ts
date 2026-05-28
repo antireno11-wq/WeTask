@@ -8,6 +8,7 @@ import {
   canTransition,
   InvalidBookingTransitionError
 } from "@/lib/booking-state-machine";
+import { logger } from "@/lib/logger";
 import { sendPlatformEmail } from "@/lib/notifications";
 import { refundProviderPayment } from "@/lib/payments/provider-adapter";
 import { prisma } from "@/lib/prisma";
@@ -360,11 +361,14 @@ export async function PATCH(req: NextRequest) {
       if (txError instanceof InvalidBookingTransitionError) {
         // El refund a MP ya pasó pero la DB falló: el admin tiene que
         // reconciliar manualmente. Loguear con detalle.
-        console.error("[disputes] Refund MP exitoso pero transición DB inválida", {
-          disputeId: dispute.id,
-          bookingStatus: dispute.booking.status,
-          providerPaymentId: dispute.booking.payment?.providerPaymentId
-        });
+        logger.error(
+          {
+            disputeId: dispute.id,
+            bookingStatus: dispute.booking.status,
+            providerPaymentId: dispute.booking.payment?.providerPaymentId
+          },
+          "disputes: refund MP exitoso pero transicion DB invalida"
+        );
         return NextResponse.json(
           {
             error: "El reembolso se procesó en Mercado Pago pero la actualización en DB falló. Contactar soporte.",

@@ -1,4 +1,5 @@
 import { Prisma } from "@prisma/client";
+import { logError } from "@/lib/logger";
 import {
   buildBookingConfirmedTemplate,
   buildBookingReminderTemplate,
@@ -51,12 +52,7 @@ async function safelySend(
   try {
     await sendPlatformEmail({ to, subject, text, html });
   } catch (err) {
-    console.error("[notification-events] email failed", {
-      to,
-      subject,
-      metadata,
-      detail: err instanceof Error ? err.message : err
-    });
+    logError("notification-events.send_email", err, { to, subject, metadata });
   }
 }
 
@@ -68,10 +64,7 @@ async function createNotification(
   try {
     await client.notification.create({ data });
   } catch (err) {
-    console.error("[notification-events] notification insert failed", {
-      data,
-      detail: err instanceof Error ? err.message : err
-    });
+    logError("notification-events.create_notification", err, { data });
   }
 }
 

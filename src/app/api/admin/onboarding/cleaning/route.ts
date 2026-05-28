@@ -2,6 +2,7 @@ import { CleaningOnboardingStatus, Prisma } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdminRequest } from "@/lib/admin-access";
 import { normalizeCommuneList } from "@/lib/communes";
+import { logError, logger } from "@/lib/logger";
 import { buildTaskerStatusEmailTemplate, sendPlatformEmail } from "@/lib/notifications";
 import { prisma } from "@/lib/prisma";
 import {
@@ -42,11 +43,7 @@ async function notifyTaskerStatusChange(params: {
       })
     });
   } catch (error) {
-    console.error("[tasker-admin] status email failed", {
-      to: params.to,
-      subject: params.subject,
-      detail: error instanceof Error ? error.message : "Error desconocido"
-    });
+    logError("tasker-admin.status_email", error, { to: params.to, subject: params.subject });
   }
 }
 
@@ -564,14 +561,17 @@ export async function PATCH(req: NextRequest) {
         return { updated, marketplaceSync, syncResult };
       });
 
-      console.info("[tasker-admin] activation audit", {
-        onboardingId: input.onboardingId,
-        userId: onboarding.userId,
-        syncedServices: result.marketplaceSync.updated,
-        createdSlots: result.syncResult.created,
-        publication: result.syncResult.publication,
-        reason: result.syncResult.reason
-      });
+      logger.info(
+        {
+          onboardingId: input.onboardingId,
+          userId: onboarding.userId,
+          syncedServices: result.marketplaceSync.updated,
+          createdSlots: result.syncResult.created,
+          publication: result.syncResult.publication,
+          reason: result.syncResult.reason
+        },
+        "tasker activation audit"
+      );
 
       await notifyTaskerStatusChange({
         to: onboarding.user.email,

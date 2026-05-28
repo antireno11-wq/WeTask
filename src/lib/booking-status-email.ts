@@ -1,4 +1,5 @@
 import { BookingStatus } from "@prisma/client";
+import { logError, logger } from "@/lib/logger";
 import { sendPlatformEmail } from "@/lib/notifications";
 import { resolvePublicAppUrl } from "@/lib/public-app-url";
 import { prisma } from "@/lib/prisma";
@@ -215,18 +216,20 @@ export async function sendBookingStatusEmailToCustomer(payload: BookingEmailPayl
         ctaUrl
       })
     });
-    console.info("[booking-email] status update sent", {
-      bookingId: booking.id,
-      to: booking.customer.email,
-      previousStatus: payload.previousStatus ?? null,
-      nextStatus: payload.nextStatus
-    });
+    logger.info(
+      {
+        bookingId: booking.id,
+        to: booking.customer.email,
+        previousStatus: payload.previousStatus ?? null,
+        nextStatus: payload.nextStatus
+      },
+      "booking status email sent"
+    );
   } catch (error) {
-    console.error("[booking-email] status update failed", {
+    logError("booking-email.status_update", error, {
       bookingId: payload.bookingId,
       previousStatus: payload.previousStatus ?? null,
-      nextStatus: payload.nextStatus,
-      detail: error instanceof Error ? error.message : "unknown"
+      nextStatus: payload.nextStatus
     });
   }
 }

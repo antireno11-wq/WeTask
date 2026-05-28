@@ -5,6 +5,7 @@ import { supportsChefRequestedTasks } from "@/lib/chef-scope";
 import { supportsCleaningRequestedTasks } from "@/lib/cleaning-scope";
 import { distanceKm, geocodeAddress } from "@/lib/geo";
 import { supportsIroningRequestedTasks } from "@/lib/ironing-scope";
+import { logger } from "@/lib/logger";
 import { supportsMakeupRequestedTasks } from "@/lib/makeup-scope";
 import { COVERAGE_UNAVAILABLE_MESSAGE, inferCommuneFromAddress, normalizeCommune, taskerServesCommune } from "@/lib/communes";
 import { ensureMarketplaceDemoData } from "@/lib/marketplace-demo-data";
@@ -165,12 +166,15 @@ export async function GET(req: NextRequest) {
         for (const onboarding of onboardingsToSync) {
           const syncResult = await syncTaskerMarketplaceServicesFromOnboarding(onboarding.userId);
           if (syncResult.updated > 0 || syncResult.reason === "synced") {
-            console.info("[tasker-search] synced tasker services from onboarding", {
-              userId: onboarding.userId,
-              categorySlug: requestedCoreService.slug,
-              syncedServices: syncResult.updated,
-              reason: syncResult.reason
-            });
+            logger.info(
+              {
+                userId: onboarding.userId,
+                categorySlug: requestedCoreService.slug,
+                syncedServices: syncResult.updated,
+                reason: syncResult.reason
+              },
+              "tasker-search: synced tasker services from onboarding"
+            );
           }
         }
       }
@@ -307,11 +311,14 @@ export async function GET(req: NextRequest) {
           if (activeTaskerServices.length === 0 || !hasRequestedTaskerService) {
             const serviceSync = await syncTaskerMarketplaceServicesFromOnboarding(profile.user.id);
             if (serviceSync.updated > 0) {
-              console.info("[tasker-search] synced onboarding services", {
-                userId: profile.user.id,
-                updatedServices: serviceSync.updated,
-                reason: serviceSync.reason
-              });
+              logger.info(
+                {
+                  userId: profile.user.id,
+                  updatedServices: serviceSync.updated,
+                  reason: serviceSync.reason
+                },
+                "tasker-search: synced onboarding services"
+              );
               activeTaskerServices = await prisma.taskerService.findMany({
                 where: {
                   professionalProfileId: profile.id,
@@ -382,10 +389,10 @@ export async function GET(req: NextRequest) {
           if (profile.slots.length === 0 && profile.user.cleaningOnboarding?.availabilityBlocks) {
             const syncResult = await syncTaskerAvailabilitySlotsFromOnboarding(profile.user.id);
             if (syncResult.created > 0) {
-              console.info("[tasker-search] synced onboarding availability", {
-                userId: profile.user.id,
-                createdSlots: syncResult.created
-              });
+              logger.info(
+                { userId: profile.user.id, createdSlots: syncResult.created },
+                "tasker-search: synced onboarding availability"
+              );
               profile.slots = await prisma.availabilitySlot.findMany({
                 where: {
                   professionalProfileId: profile.id,
@@ -505,19 +512,22 @@ export async function GET(req: NextRequest) {
       })
       .slice(0, input.limit);
 
-    console.info("[tasker-search] search audit", {
-      categoryId: input.categoryId ?? null,
-      serviceId: input.serviceId ?? null,
-      classSubject: input.classSubject ?? null,
-      classMusicType: input.classMusicType ?? null,
-      classMode: input.classMode ?? null,
-      classLevel: input.classLevel ?? null,
-      commune: clientCommune,
-      requestedTasks: input.tasks,
-      profilesLoaded: profiles.length,
-      matched: matched.length,
-      filtered: filterStats
-    });
+    logger.info(
+      {
+        categoryId: input.categoryId ?? null,
+        serviceId: input.serviceId ?? null,
+        classSubject: input.classSubject ?? null,
+        classMusicType: input.classMusicType ?? null,
+        classMode: input.classMode ?? null,
+        classLevel: input.classLevel ?? null,
+        commune: clientCommune,
+        requestedTasks: input.tasks,
+        profilesLoaded: profiles.length,
+        matched: matched.length,
+        filtered: filterStats
+      },
+      "tasker-search audit"
+    );
 
     return NextResponse.json({
       customerLocation: {

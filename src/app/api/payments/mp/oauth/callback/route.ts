@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { logError } from "@/lib/logger";
 import { exchangeMercadoPagoCode, isMercadoPagoOAuthConfigured } from "@/lib/payments/providers/mercadopago";
 import { prisma } from "@/lib/prisma";
 
@@ -42,7 +43,7 @@ export async function GET(req: NextRequest) {
   try {
     tokenResponse = await exchangeMercadoPagoCode(code);
   } catch (error) {
-    console.error("[mp-oauth] exchange failed", error);
+    logError("mp-oauth.exchange", error, { stateId: stored.id });
     await prisma.mercadoPagoOAuthState.delete({ where: { id: stored.id } }).catch(() => null);
     return redirectWith(req, "/pro", { mpError: "exchange_failed" });
   }

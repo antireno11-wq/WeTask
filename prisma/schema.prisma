@@ -190,6 +190,13 @@ model PasswordResetToken {
   @@index([userId, expiresAt])
 }
 
+/// RESERVADO. Hoy las sesiones son cookies HMAC-firmadas JWT-shape sin
+/// estado server-side (ver src/lib/security.ts:signSession). Este modelo
+/// existe para una feature futura: revocación de sesiones ("cerrar sesión
+/// en todos los dispositivos") + auditoría de logins. Cuando se implemente
+/// va a necesitar agregar userAgent, ipAddress y lastSeenAt. Por ahora
+/// account-cleanup-processor lo borra al hard-delete por seguridad
+/// preventiva, pero ninguna ruta INSERTA filas.
 model AuthSession {
   id        String    @id @default(cuid())
   userId    String

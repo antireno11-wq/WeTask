@@ -5,6 +5,7 @@ import { normalizeBabysitterScope } from "@/lib/babysitter-scope";
 import { normalizeChefScope } from "@/lib/chef-scope";
 import { normalizeCleaningScope } from "@/lib/cleaning-scope";
 import { normalizeIroningScope } from "@/lib/ironing-scope";
+import { logger } from "@/lib/logger";
 import { normalizeMakeupScope } from "@/lib/makeup-scope";
 import { notifyOnboardingSubmitted } from "@/lib/notification-events";
 import { buildAdminTaskerReviewEmailTemplate, sendPlatformEmail } from "@/lib/notifications";
@@ -311,10 +312,10 @@ export async function POST(req: NextRequest) {
     }
     const missingFields = listMissingFields(onboarding);
     if (missingFields.length > 0) {
-      console.warn("[tasker-onboarding] submit blocked", {
-        userId: identity.userId,
-        missingFields
-      });
+      logger.warn(
+        { userId: identity.userId, missingFields },
+        "tasker-onboarding: submit blocked"
+      );
       return NextResponse.json(
         {
           error: "Faltan campos obligatorios antes de enviar a revisión",
@@ -349,12 +350,15 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    console.info("[tasker-onboarding] submitted for review", {
-      userId: identity.userId,
-      onboardingId: updated.id,
-      status: updated.status,
-      currentStep: updated.currentStep
-    });
+    logger.info(
+      {
+        userId: identity.userId,
+        onboardingId: updated.id,
+        status: updated.status,
+        currentStep: updated.currentStep
+      },
+      "tasker-onboarding: submitted for review"
+    );
 
     const adminEmailsFromEnv = (process.env.ADMIN_ONBOARDING_ALERT_EMAILS ?? "")
       .split(",")
@@ -415,20 +419,26 @@ export async function POST(req: NextRequest) {
           reason: item.result.status === "rejected" ? String(item.result.reason) : ""
         }));
 
-      console.info("[tasker-onboarding] review alert emails processed", {
-        onboardingId: updated.id,
-        recipients: recipientEmails,
-        sentCount: recipientEmails.length - failures.length,
-        failedCount: failures.length,
-        failures
-      });
+      logger.info(
+        {
+          onboardingId: updated.id,
+          recipients: recipientEmails,
+          sentCount: recipientEmails.length - failures.length,
+          failedCount: failures.length,
+          failures
+        },
+        "tasker-onboarding: review alert emails processed"
+      );
     } else {
-      console.warn("[tasker-onboarding] no review alert recipients configured", {
-        onboardingId: updated.id,
-        primaryAdminEmailConfigured: Boolean(primaryAdminEmail),
-        adminUsersFound: adminUsers.length,
-        alertEnvConfigured: adminEmailsFromEnv.length > 0
-      });
+      logger.warn(
+        {
+          onboardingId: updated.id,
+          primaryAdminEmailConfigured: Boolean(primaryAdminEmail),
+          adminUsersFound: adminUsers.length,
+          alertEnvConfigured: adminEmailsFromEnv.length > 0
+        },
+        "tasker-onboarding: no review alert recipients configured"
+      );
     }
 
     return NextResponse.json({ ok: true, onboarding: updated }, { status: 200 });

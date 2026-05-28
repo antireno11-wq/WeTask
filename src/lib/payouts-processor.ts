@@ -1,5 +1,6 @@
 import { BookingStatus, PaymentStatus, PayoutStatus, Prisma } from "@prisma/client";
 import { canTransition } from "@/lib/booking-state-machine";
+import { logError } from "@/lib/logger";
 import { notifyPayoutReleased } from "@/lib/notification-events";
 import { getMercadoPagoMarketplacePayment, getMercadoPagoPayment } from "@/lib/payments/providers/mercadopago";
 import { prisma } from "@/lib/prisma";
@@ -174,10 +175,7 @@ export async function processBookingsForPayout(): Promise<ProcessBookingsResult>
       payoutId = tx;
     } catch (err) {
       result.failed += 1;
-      console.error("[payouts-processor] failed to schedule payout", {
-        bookingId: booking.id,
-        error: err instanceof Error ? err.message : err
-      });
+      logError("payouts-processor.schedule_payout", err, { bookingId: booking.id });
       continue;
     }
 
@@ -197,7 +195,7 @@ export async function processBookingsForPayout(): Promise<ProcessBookingsResult>
         bookingId: booking.id,
         amountClp: payoutAmount
       }).catch((err) => {
-        console.error("[payouts-processor] notify failed", { bookingId: booking.id, err });
+        logError("payouts-processor.notify_payout_released", err, { bookingId: booking.id });
       });
     } else if (!booking.payout) {
       result.scheduled += 1;
@@ -350,10 +348,7 @@ export async function reconcilePendingPayments(): Promise<ReconcilePaymentsResul
       });
     } catch (err) {
       result.failed += 1;
-      console.error("[payouts-processor] reconcile failed", {
-        paymentId: payment.id,
-        error: err instanceof Error ? err.message : err
-      });
+      logError("payouts-processor.reconcile_payment", err, { paymentId: payment.id });
     }
   }
 
