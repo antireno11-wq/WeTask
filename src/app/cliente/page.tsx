@@ -3,122 +3,16 @@
 import Link from "next/link";
 import { ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { MarketNav } from "@/components/market-nav";
-
-type Booking = {
-  id: string;
-  status: string;
-  scheduledAt: string;
-  totalPriceClp: number;
-  addressLine1: string;
-  comuna: string;
-  city: string | null;
-  postalCode: string | null;
-  service: { name: string };
-  pro: { fullName: string } | null;
-  review?: { id: string; rating: number; comment?: string | null } | null;
-};
-
-type Notification = {
-  id: string;
-  title: string;
-  body: string;
-  createdAt: string;
-};
-
-type SessionPayload = {
-  userId: string;
-  fullName?: string | null;
-  email?: string | null;
-};
-
-type PaymentMethod = {
-  id: string;
-  brand: string | null;
-  last4: string;
-  expirationMonth: number | null;
-  expirationYear: number | null;
-  cardholderName: string | null;
-  payerEmail: string | null;
-  paymentMethodId: string | null;
-  isDefault: boolean;
-};
-
-type CardFormData = {
-  token?: string;
-  paymentMethodId?: string;
-  issuerId?: string;
-  cardholderEmail?: string;
-  identificationType?: string;
-  identificationNumber?: string;
-};
-
-type ClientView = "resumen" | "perfil" | "pagos" | "reservas" | "notificaciones";
-
-const STATUS_LABELS: Record<string, string> = {
-  PENDING: "Pendiente",
-  PENDING_PAYMENT: "Pago pendiente",
-  ACCEPTED: "Aceptado por el tasker",
-  ASSIGNED: "Tasker asignado",
-  CONFIRMED: "Reserva confirmada",
-  IN_PROGRESS: "Servicio en curso",
-  AWAITING_CUSTOMER_CONFIRMATION: "Esperando tu confirmación",
-  COMPLETED: "Trabajo realizado",
-  PAYOUT_SCHEDULED: "Pago programado",
-  PAID_OUT: "Pago realizado",
-  DISPUTE_OPEN: "Disputa abierta",
-  DISPUTE: "Disputa abierta",
-  CANCELLED: "Cancelado",
-  REFUNDED: "Reembolsado",
-  PAYMENT_FAILED: "Pago fallido"
-};
-
-function clp(value: number) {
-  return new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP", maximumFractionDigits: 0 }).format(value);
-}
-
-function formatBookingDate(value: string) {
-  return new Date(value).toLocaleString("es-CL", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-    hour: "2-digit",
-    minute: "2-digit"
-  });
-}
+import ClientNotificationsView from "./components/ClientNotificationsView";
+import ClientReservasView from "./components/ClientReservasView";
+import type { Booking, CardFormData, ClientView, Notification, PaymentMethod, SessionPayload } from "./types";
+import { clp, describeMercadoPagoError, formatBookingDate, getCardTokenFromData, statusClassByBooking, statusLabelByBooking } from "./utils";
 
 function bookingEyebrow(status: string, scheduledAt: string) {
   if (status === "COMPLETED") return "Servicio realizado";
   if (status === "IN_PROGRESS") return "Servicio en curso";
   if (new Date(scheduledAt).getTime() >= Date.now()) return "Próxima visita";
   return "Servicio agendado";
-}
-
-function describeMercadoPagoError(error: unknown) {
-  if (error instanceof Error && error.message.trim()) return error.message;
-  if (error && typeof error === "object") {
-    const maybeMessage =
-      "message" in error && typeof error.message === "string"
-        ? error.message
-        : "cause" in error && typeof error.cause === "string"
-          ? error.cause
-          : "type" in error && typeof error.type === "string"
-            ? error.type
-            : "";
-    if (maybeMessage.trim()) return maybeMessage;
-    return JSON.stringify(error);
-  }
-  return "No pudimos inicializar el formulario de tarjeta. Revisa que la Public Key de Mercado Pago sea correcta y que no estés mezclando credenciales de prueba y producción.";
-}
-
-function getCardTokenFromData(cardData: CardFormData & { token?: string | { id?: string } | null }) {
-  if (typeof cardData.token === "string") return cardData.token;
-  if (cardData.token && typeof cardData.token === "object") {
-    const nestedToken = cardData.token as { id?: string };
-    if (typeof nestedToken.id === "string") {
-      return nestedToken.id;
-    }
-  }
-  return "";
 }
 
 export default function ClientePage() {
@@ -604,15 +498,6 @@ export default function ClientePage() {
     setShowSuggestions(false);
   };
 
-  const statusClassByBooking = (status: string) => {
-    if (status === "COMPLETED") return "status-completed";
-    if (status === "CANCELLED" || status === "REFUNDED") return "status-cancelled";
-    if (status === "ACCEPTED" || status === "IN_PROGRESS" || status === "ASSIGNED" || status === "CONFIRMED") {
-      return "status-accepted";
-    }
-    return "status-pending";
-  };
-  const statusLabelByBooking = (status: string) => STATUS_LABELS[status] ?? status;
   const quickAccessCards = [
     {
       title: "Próximas",
@@ -1046,89 +931,9 @@ export default function ClientePage() {
             </section>
           ) : null}
 
-          {activeView === "notificaciones" ? (
-            <section className="auth-flow-panel client-dashboard-section">
-            <div className="panel-head client-dashboard-panel-head">
-              <h2>Notificaciones</h2>
-              <p>Mensajes y actualizaciones sobre tus reservas.</p>
-            </div>
-            <div className="list client-dashboard-list">
-              {notifications.length === 0 ? (
-                <p className="empty">Sin notificaciones por ahora.</p>
-              ) : (
-                notifications.map((item) => (
-                  <article className="booking-card client-dashboard-card" key={item.id}>
-                    <p>
-                      <strong>{item.title}</strong>
-                    </p>
-                    <p>{item.body}</p>
-                    <p>{new Date(item.createdAt).toLocaleString("es-ES")}</p>
-                  </article>
-                ))
-              )}
-            </div>
-            </section>
-          ) : null}
+          {activeView === "notificaciones" ? <ClientNotificationsView notifications={notifications} /> : null}
 
-          {activeView === "reservas" ? (
-            <section className="auth-flow-panel client-dashboard-section">
-            <div className="panel-head client-dashboard-panel-head">
-              <h2>Servicios</h2>
-              <p>Estado y detalle de tus reservas activas e históricas.</p>
-            </div>
-            <div className="list client-dashboard-list">
-              {bookings.length === 0 ? (
-                <p className="empty">Todavía no tienes reservas. Cuando hagas la primera, aparecerá aquí.</p>
-              ) : (
-                bookings.map((booking) => (
-                  <article className="booking-card client-dashboard-card" key={booking.id}>
-                    <div className="booking-head">
-                      <h3>{booking.service.name}</h3>
-                      <span className={`status ${statusClassByBooking(booking.status)}`}>{statusLabelByBooking(booking.status)}</span>
-                    </div>
-                    <p className="client-booking-eyebrow">{bookingEyebrow(booking.status, booking.scheduledAt)}</p>
-                    <p>
-                      <strong>Pago protegido:</strong> {booking.status === "COMPLETED" ? "cerrado o liberado" : booking.status === "CANCELLED" || booking.status === "REFUNDED" ? "resuelto" : "retenido hasta tu confirmación o hasta que venza el plazo sin reclamo"}
-                    </p>
-                    <p>
-                      <strong>Fecha:</strong> {formatBookingDate(booking.scheduledAt)}
-                    </p>
-                    <p>
-                      <strong>Profesional:</strong> {booking.pro?.fullName ?? "Pendiente"}
-                    </p>
-                    <p>
-                      <strong>Ubicación:</strong> {[booking.addressLine1, booking.comuna, booking.city].filter(Boolean).join(", ")}
-                    </p>
-                    <p>
-                      <strong>Total:</strong> {clp(booking.totalPriceClp)}
-                    </p>
-                    {booking.review?.id ? (
-                      <p className="client-booking-review-line">
-                        <strong>Valoración:</strong> {booking.review.rating}/5 estrellas
-                      </p>
-                    ) : null}
-                    <div className="booking-actions">
-                      <Link className="cta small" href={`/cliente/reservas/${booking.id}`}>
-                        Ver servicio
-                      </Link>
-                      {booking.status === "COMPLETED" ? (
-                        booking.review?.id ? (
-                          <button type="button" className="cta small cta-rating done" disabled>
-                            Valorado
-                          </button>
-                        ) : (
-                          <Link className="cta small cta-rating" href={`/cliente/reservas/${booking.id}`}>
-                            Valorar
-                          </Link>
-                        )
-                      ) : null}
-                    </div>
-                  </article>
-                ))
-              )}
-            </div>
-            </section>
-          ) : null}
+          {activeView === "reservas" ? <ClientReservasView bookings={bookings} /> : null}
         </div>
       </div>
     </main>
