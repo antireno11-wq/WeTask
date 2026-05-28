@@ -40,6 +40,7 @@ import {
   weekdayToDayKey
 } from "./utils";
 
+export default function ProPage() {
   const [proId, setProId] = useState("");
   const [proName, setProName] = useState("");
   const [categorySlug, setCategorySlug] = useState("");
