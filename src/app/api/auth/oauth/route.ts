@@ -4,6 +4,7 @@ import { OAuth2Client, type TokenPayload } from "google-auth-library";
 import { encodeSessionCookie, SESSION_COOKIE_NAME } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getClientIp, rateLimit, tooManyRequestsResponse } from "@/lib/rate-limit";
+import { getCurrentTermsVersionId } from "@/lib/terms-version";
 import { resolveLoginRole } from "@/lib/user-roles";
 
 export const dynamic = "force-dynamic";
@@ -67,6 +68,7 @@ export async function POST(req: NextRequest) {
 
     const email = claims.email.trim().toLowerCase();
     const fullName = (claims.name || claims.given_name || email.split("@")[0]).trim();
+    const termsVersionId = await getCurrentTermsVersionId();
 
     const user = await prisma.user.upsert({
       where: { email },
@@ -74,6 +76,7 @@ export async function POST(req: NextRequest) {
         fullName,
         authProvider: provider,
         termsAcceptedAt: new Date(),
+        termsVersionId: termsVersionId ?? undefined,
         emailVerifiedAt: new Date()
       },
       create: {
@@ -82,6 +85,7 @@ export async function POST(req: NextRequest) {
         role,
         authProvider: provider,
         termsAcceptedAt: new Date(),
+        termsVersionId: termsVersionId ?? undefined,
         emailVerifiedAt: new Date(),
         roleAssignments: {
           create: {
