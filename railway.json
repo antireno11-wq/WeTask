@@ -4,7 +4,7 @@
     "builder": "NIXPACKS"
   },
   "deploy": {
-    "startCommand": "npm run prisma:migrate && npm run start",
+    "startCommand": "(npx prisma migrate resolve --applied 0_init || echo 'baseline 0_init ya aplicado, continuando') && npm run prisma:migrate && npm run start",
     "restartPolicyType": "ON_FAILURE",
     "restartPolicyMaxRetries": 10
   }
