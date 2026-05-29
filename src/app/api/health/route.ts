@@ -81,3 +81,4 @@ export async function GET() {
   cache = { builtAt: now, payload };
   return NextResponse.json(payload, { status: payload.ok ? 200 : 503 });
 }
+

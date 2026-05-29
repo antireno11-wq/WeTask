@@ -16,7 +16,15 @@ async function ensureRoleAssignment(userId: string, code: UserRole, label: strin
   });
 }
 
+declare global {
+  var primaryAdminSeeded: boolean | undefined;
+}
+
 export async function ensurePrimaryAdminUser() {
+  if (global.primaryAdminSeeded) {
+    return null;
+  }
+
   const email = process.env.PRIMARY_ADMIN_EMAIL?.trim().toLowerCase();
   const password = process.env.PRIMARY_ADMIN_PASSWORD?.trim();
   const fullName = process.env.PRIMARY_ADMIN_FULL_NAME?.trim() || "Administrador principal WeTask";
@@ -57,5 +65,7 @@ export async function ensurePrimaryAdminUser() {
 
   await ensureRoleAssignment(user.id, UserRole.ADMIN, "Admin");
 
+  global.primaryAdminSeeded = true;
   return user;
 }
+
