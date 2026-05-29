@@ -41,7 +41,11 @@ export async function POST(req: NextRequest, context: { params: { bookingId: str
 
     const updated = await prisma.booking.update({
       where: { id: booking.id },
-      data: { status: BookingStatus.AWAITING_CUSTOMER_CONFIRMATION }
+      data: {
+        status: BookingStatus.AWAITING_CUSTOMER_CONFIRMATION,
+        // Señal de finalización del tasker, anclaje para el auto-confirm (G8).
+        checkOutAt: booking.checkOutAt ?? new Date()
+      }
     });
 
     if (booking.customerId) {

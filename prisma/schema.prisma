@@ -482,6 +482,8 @@ model Payout {
   updatedAt   DateTime     @updatedAt
   booking     Booking      @relation(fields: [bookingId], references: [id], onDelete: Cascade)
   pro         User         @relation(fields: [proId], references: [id], onDelete: Restrict)
+
+  @@index([status, updatedAt])
 }
 
 model Review {

@@ -41,6 +41,7 @@ export async function GET(req: NextRequest) {
       pendingTaskersCorrection,
       openDisputes,
       pendingPayouts,
+      failedPayouts,
       last7DaysBookings,
       last7DaysPayments
     ] = await Promise.all([
@@ -61,6 +62,8 @@ export async function GET(req: NextRequest) {
       prisma.payout.count({
         where: { status: { in: [PayoutStatus.PENDING, PayoutStatus.PROCESSING] } }
       }),
+      // G5: payouts fallidos requieren atención del operador.
+      prisma.payout.count({ where: { status: PayoutStatus.FAILED } }),
       prisma.booking.findMany({
         where: { createdAt: { gte: sevenDaysAgo } },
         select: { createdAt: true }
@@ -97,6 +100,7 @@ export async function GET(req: NextRequest) {
         pendingTaskersCorrection,
         openDisputes,
         pendingPayouts,
+        failedPayouts,
         last7Days
       },
       { status: 200 }

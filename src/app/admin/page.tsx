@@ -204,6 +204,7 @@ export default async function AdminPage() {
     activePros,
     openDisputes,
     pendingPayouts,
+    failedPayouts,
     admins,
     taskersTotal,
     customersTotal,
@@ -221,6 +222,7 @@ export default async function AdminPage() {
       prisma.professionalProfile.count({ where: { isVerified: true } }),
       prisma.disputeTicket.count({ where: { status: { in: [TicketStatus.OPEN, TicketStatus.IN_REVIEW] } } }),
       prisma.payout.count({ where: { status: { in: [PayoutStatus.PENDING, PayoutStatus.PROCESSING] } } }),
+      prisma.payout.count({ where: { status: PayoutStatus.FAILED } }),
       prisma.user.count({ where: { role: UserRole.ADMIN } }),
       prisma.user.count({
         where: {
@@ -360,11 +362,19 @@ export default async function AdminPage() {
           <strong>{openDisputes}</strong>
           <p>Casos que todavía necesitan seguimiento del equipo.</p>
         </article>
-        <article className="module-card admin-metric-card">
+        <Link href="/admin/payouts?status=PROCESSING" className="module-card module-link admin-metric-card">
           <span className="metric-label">Payouts pendientes</span>
           <strong>{pendingPayouts}</strong>
           <p>Pagos a profesionales que aún no se han completado.</p>
-        </article>
+        </Link>
+        <Link
+          href="/admin/payouts?status=FAILED"
+          className={`module-card module-link admin-metric-card${failedPayouts > 0 ? " admin-metric-card-alert" : ""}`}
+        >
+          <span className="metric-label">Payouts fallidos</span>
+          <strong>{failedPayouts}</strong>
+          <p>Pagos trabados que requieren reintento manual.</p>
+        </Link>
       </div>
 
       <div className="module-grid">

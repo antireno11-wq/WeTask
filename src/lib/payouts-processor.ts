@@ -5,7 +5,10 @@ import { notifyPayoutReleased } from "@/lib/notification-events";
 import { getMercadoPagoMarketplacePayment, getMercadoPagoPayment } from "@/lib/payments/providers/mercadopago";
 import { prisma } from "@/lib/prisma";
 
-const HOLD_HOURS = 24;
+// Ventana de auto-confirmación por silencio del cliente antes de liberar el
+// payout. Configurable por env; default 72h para dar tiempo real a detectar
+// un mal trabajo antes de que el dinero se libere (G8).
+const HOLD_HOURS = Number(process.env.PAYOUT_HOLD_HOURS) || 72;
 const RECONCILE_THRESHOLD_MINUTES = 10;
 
 export type ProcessBookingsResult = {
@@ -60,7 +63,15 @@ export async function processBookingsForPayout(): Promise<ProcessBookingsResult>
     }
   });
 
-  const eligible = candidates.filter((b) => b.disputes.length === 0 && b.proId && b.pro);
+  const eligible = candidates.filter((b) => {
+    if (b.disputes.length > 0 || !b.proId || !b.pro) return false;
+    // Auto-confirm por SILENCIO (AWAITING): exige una señal positiva de
+    // finalización (checkOutAt). Nunca auto-liberamos un booking que no pasó
+    // por una acción de cierre real del tasker (G8). El path explícito del
+    // cliente (PAYOUT_SCHEDULED) no requiere esto: el cliente ya consintió.
+    if (b.status === BookingStatus.AWAITING_CUSTOMER_CONFIRMATION && !b.checkOutAt) return false;
+    return true;
+  });
 
   const result: ProcessBookingsResult = {
     reviewed: candidates.length,
@@ -230,6 +241,45 @@ export async function processBookingsForPayout(): Promise<ProcessBookingsResult>
   }
 
   return result;
+}
+
+/**
+ * Reintenta el payout de UN booking puntual (G5 — botón de retry del admin).
+ * Resetea el Payout a PENDING y, si el booking no está en un estado terminal,
+ * lo deja en PAYOUT_SCHEDULED para que `processBookingsForPayout` lo re-evalúe
+ * contra MercadoPago en la misma llamada. Devuelve el resultado del booking.
+ */
+export async function retryPayoutForBooking(
+  bookingId: string
+): Promise<{ ok: boolean; reason?: string; booking?: ProcessBookingsResult["bookings"][number] }> {
+  const booking = await prisma.booking.findUnique({
+    where: { id: bookingId },
+    include: { payout: true }
+  });
+
+  if (!booking) return { ok: false, reason: "Reserva no encontrada" };
+  if (!booking.payout) return { ok: false, reason: "La reserva no tiene payout" };
+
+  // Estados terminales donde el retry no aplica.
+  if (booking.status === BookingStatus.REFUNDED || booking.status === BookingStatus.CANCELLED) {
+    return { ok: false, reason: `El booking está en estado terminal ${booking.status}; no se puede reintentar el payout.` };
+  }
+
+  // Reabrir el payout y reponer el booking en PAYOUT_SCHEDULED si quedó atascado
+  // en AWAITING (el cliente ya pasó por confirmación o el hold venció).
+  await prisma.$transaction(async (tx) => {
+    await tx.payout.update({ where: { id: booking.payout!.id }, data: { status: PayoutStatus.PENDING, paidAt: null } });
+    if (
+      booking.status === BookingStatus.AWAITING_CUSTOMER_CONFIRMATION ||
+      booking.status === BookingStatus.PAYOUT_SCHEDULED
+    ) {
+      await tx.booking.update({ where: { id: booking.id }, data: { status: BookingStatus.PAYOUT_SCHEDULED } });
+    }
+  });
+
+  const result = await processBookingsForPayout();
+  const match = result.bookings.find((b) => b.bookingId === bookingId);
+  return { ok: true, booking: match };
 }
 
 /**
