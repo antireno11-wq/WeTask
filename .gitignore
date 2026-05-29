@@ -30,3 +30,8 @@ context.md
 tmp_webel/
 tmp_*/
 
+# Playwright
+playwright-report/
+test-results/
+.playwright/
+

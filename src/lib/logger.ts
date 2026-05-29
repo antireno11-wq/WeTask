@@ -60,4 +60,16 @@ export function logError(scope: string, error: unknown, extra: Record<string, un
   const message = error instanceof Error ? error.message : "unknown";
   const stack = error instanceof Error ? error.stack : undefined;
   logger.error({ scope, ...extra, err: { message, stack } }, message);
+
+  // Reenviar a Sentry en producción (fail-suave: si no hay DSN no hace nada)
+  if (isProd && error instanceof Error) {
+    try {
+      // Lazy import para no romper edge runtime si Sentry no está disponible
+      void import("@sentry/nextjs").then(({ captureException }) => {
+        captureException(error, { extra: { scope, ...extra } });
+      });
+    } catch {
+      // Sentry no disponible en este runtime — ignorar
+    }
+  }
 }

@@ -17,8 +17,6 @@ jobs:
     timeout-minutes: 15
 
     env:
-      # Build-time placeholders. Fase 0 exige SESSION_SECRET en prod;
-      # acá lo seteamos solo para que `next build` no aborte en CI.
       DATABASE_URL: "postgresql://user:pass@localhost:5432/ci?schema=public"
       SESSION_SECRET: "ci-placeholder-session-secret-32-bytes-min"
       NEXT_PUBLIC_APP_URL: "http://localhost:3000"
@@ -52,3 +50,62 @@ jobs:
 
       - name: Next build
         run: npm run build
+
+  e2e:
+    name: E2E Playwright
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # Solo en push a main — PRs sin secrets de staging usarían credenciales vacías
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: checks
+
+    env:
+      NODE_ENV: production
+      SESSION_SECRET: ${{ secrets.SESSION_SECRET }}
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      NEXT_PUBLIC_APP_URL: ${{ secrets.PLAYWRIGHT_BASE_URL || 'http://localhost:3000' }}
+      APP_URL: ${{ secrets.PLAYWRIGHT_BASE_URL || 'http://localhost:3000' }}
+      SEED_DEMO_DATA: "true"
+      PRIMARY_ADMIN_EMAIL: ${{ secrets.PRIMARY_ADMIN_EMAIL }}
+      PRIMARY_ADMIN_PASSWORD: ${{ secrets.PRIMARY_ADMIN_PASSWORD }}
+      E2E_CUSTOMER_EMAIL: ${{ secrets.E2E_CUSTOMER_EMAIL }}
+      E2E_CUSTOMER_PASS: ${{ secrets.E2E_CUSTOMER_PASS }}
+      E2E_PRO_EMAIL: ${{ secrets.E2E_PRO_EMAIL }}
+      E2E_PRO_PASS: ${{ secrets.E2E_PRO_PASS }}
+      E2E_ADMIN_EMAIL: ${{ secrets.PRIMARY_ADMIN_EMAIL }}
+      E2E_ADMIN_PASS: ${{ secrets.PRIMARY_ADMIN_PASSWORD }}
+      PLAYWRIGHT_BASE_URL: ${{ secrets.PLAYWRIGHT_BASE_URL || 'http://localhost:3000' }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Prisma generate
+        run: npx prisma generate
+
+      - name: Build (solo si no hay URL de staging externa)
+        if: ${{ !secrets.PLAYWRIGHT_BASE_URL }}
+        run: npm run build
+
+      - name: Run E2E tests
+        run: npx playwright test --reporter=list
+
+      - name: Upload Playwright report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 14
