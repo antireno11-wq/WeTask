@@ -40,9 +40,14 @@ export async function processBookingsForPayout(): Promise<ProcessBookingsResult>
 
   const candidates = await prisma.booking.findMany({
     where: {
-      status: BookingStatus.AWAITING_CUSTOMER_CONFIRMATION,
       paymentStatus: PaymentStatus.PAID,
-      updatedAt: { lte: cutoff }
+      OR: [
+        // Auto-confirm por silencio del cliente: solo tras el hold de 24h.
+        { status: BookingStatus.AWAITING_CUSTOMER_CONFIRMATION, updatedAt: { lte: cutoff } },
+        // El cliente YA confirmó explícitamente (customer-confirm) → procesar sin esperar.
+        // Sin este caso, los payouts de bookings confirmados quedaban atascados para siempre (G1).
+        { status: BookingStatus.PAYOUT_SCHEDULED }
+      ]
     },
     include: {
       payment: true,
@@ -72,35 +77,45 @@ export async function processBookingsForPayout(): Promise<ProcessBookingsResult>
     let escrowStatus = booking.payment?.escrowStatus ?? "HELD";
     let providerStatus: string | null = null;
 
-    // Re-fetch provider status para saber si MP ya liberó el dinero al
-    // collector. Si tenemos collector access token usamos marketplace
-    // endpoint; si no, fallback al endpoint plataforma.
-    if (booking.payment?.providerPaymentId) {
+    const isScheduled = booking.status === BookingStatus.PAYOUT_SCHEDULED;
+
+    if (!isScheduled) {
+      // FASE 1 — el cliente confirmó (customer-confirm) o pasó el hold de 24h:
+      // solo PROGRAMAMOS el payout (PENDING) y movemos el booking a
+      // PAYOUT_SCHEDULED. NO liberamos el escrow todavía: eso ocurre en la
+      // fase 2, cuando MercadoPago confirma que el dinero salió del escrow.
+      payoutStatus = PayoutStatus.PENDING;
+    } else if (booking.payment?.providerPaymentId) {
+      // FASE 2 — booking ya programado: consultamos a MP y liberamos SOLO si el
+      // dinero realmente salió del escrow (money_release_date pasado, G7).
       try {
         const providerResult = booking.pro!.mpAccessToken
           ? await getMercadoPagoMarketplacePayment(booking.payment.providerPaymentId, booking.pro!.mpAccessToken)
           : await getMercadoPagoPayment(booking.payment.providerPaymentId);
         providerStatus = providerResult.providerStatus;
-        // En MP Marketplace, el dinero queda en escrow hasta release_date.
-        // Si vemos status "approved" + "money_release_date" pasado, asumimos
-        // liberado. Como heurística pragmática consideramos el approved
-        // estable como "RELEASED" tras pasar el hold local de 24h.
-        if (providerResult.status === "approved") {
+        const releaseDate = providerResult.moneyReleaseDate ?? null;
+        const releaseDuePassed = !releaseDate || releaseDate.getTime() <= Date.now();
+
+        if (providerResult.reachable === false) {
+          // Fallo de transporte (MP caído/rate-limit): reintentar el próximo ciclo (G6).
+          payoutStatus = PayoutStatus.PROCESSING;
+        } else if (providerResult.status === "approved" && releaseDuePassed) {
           payoutStatus = PayoutStatus.PAID;
           escrowStatus = "RELEASED";
+        } else if (providerResult.status === "approved") {
+          // Aprobado pero el escrow sigue retenido por MP hasta money_release_date (G7):
+          // mantener HELD y reintentar en el próximo ciclo.
+          payoutStatus = PayoutStatus.PROCESSING;
         } else if (providerResult.status === "refunded") {
-          // El pago ya fue reembolsado: no procede payout.
           payoutStatus = PayoutStatus.FAILED;
           escrowStatus = "REFUNDED";
         } else {
           payoutStatus = PayoutStatus.PROCESSING;
         }
       } catch {
-        // Si MP no responde, dejamos el payout en PROCESSING para reintento.
         payoutStatus = PayoutStatus.PROCESSING;
       }
     } else {
-      // Sin providerPaymentId no podemos confirmar release: dejamos PENDING.
       payoutStatus = PayoutStatus.PENDING;
     }
 
@@ -126,12 +141,15 @@ export async function processBookingsForPayout(): Promise<ProcessBookingsResult>
           }
         });
 
-        // Transición de booking solo si es legal.
-        const nextStatus =
-          payoutStatus === PayoutStatus.PAID
+        // Transición respetando la state machine de 2 pasos:
+        // FASE 1 (AWAITING) → PAYOUT_SCHEDULED.
+        // FASE 2 (ya programado + escrow liberado) → COMPLETED.
+        const nextStatus = !isScheduled
+          ? BookingStatus.PAYOUT_SCHEDULED
+          : payoutStatus === PayoutStatus.PAID
             ? BookingStatus.COMPLETED
-            : BookingStatus.PAYOUT_SCHEDULED;
-        if (canTransition(booking.status, nextStatus, "SYSTEM")) {
+            : booking.status;
+        if (nextStatus !== booking.status && canTransition(booking.status, nextStatus, "SYSTEM")) {
           await tx.booking.update({
             where: { id: booking.id },
             data: { status: nextStatus }
@@ -159,13 +177,13 @@ export async function processBookingsForPayout(): Promise<ProcessBookingsResult>
               body: "El pago del profesional quedó liberado. Gracias por usar WeTask."
             }
           });
-        } else if (payoutStatus === PayoutStatus.PROCESSING && !booking.payout) {
+        } else if (!isScheduled && !booking.payout) {
           await tx.notification.create({
             data: {
               userId: booking.proId!,
               bookingId: booking.id,
               title: "Payout programado",
-              body: "Tu pago quedó programado y se libera en el próximo ciclo."
+              body: "Tu pago quedó programado y se libera cuando MercadoPago libere el escrow."
             }
           });
         }
@@ -197,7 +215,7 @@ export async function processBookingsForPayout(): Promise<ProcessBookingsResult>
       }).catch((err) => {
         logError("payouts-processor.notify_payout_released", err, { bookingId: booking.id });
       });
-    } else if (!booking.payout) {
+    } else if (!isScheduled && !booking.payout) {
       result.scheduled += 1;
     }
 
@@ -294,14 +312,35 @@ export async function reconcilePendingPayments(): Promise<ReconcilePaymentsResul
     details: []
   };
 
+  // Solo marcamos un pago como FAILED definitivamente tras esta antigüedad.
+  // Antes de eso, un MP "no aprobado" puede ser un webhook aún en camino (G6).
+  const FAILED_MIN_AGE_MS = 48 * 60 * 60 * 1000;
+
   for (const payment of pending) {
     if (!payment.providerPaymentId) continue;
     try {
       const providerResult = await getMercadoPagoPayment(payment.providerPaymentId);
+
+      // Fallo de transporte (MP caído/rate-limit): NO tocar el pago, reintentar
+      // el próximo ciclo. Nunca cancelar un booking ni liberar su slot por esto (G6).
+      if (providerResult.reachable === false) {
+        result.failed += 1;
+        continue;
+      }
+
       const nextPaymentStatus = PROVIDER_STATUS_TO_PAYMENT[providerResult.status];
       const nextBookingStatus = PROVIDER_STATUS_TO_BOOKING[providerResult.status];
       if (!nextPaymentStatus || nextPaymentStatus === payment.status) {
         continue; // sin cambios
+      }
+
+      // No marcar FAILED un pago joven: probablemente el webhook de aprobación
+      // todavía no llegó. Esperar hasta FAILED_MIN_AGE_MS antes de cancelar (G6).
+      if (
+        nextPaymentStatus === PaymentStatus.FAILED &&
+        Date.now() - payment.createdAt.getTime() < FAILED_MIN_AGE_MS
+      ) {
+        continue;
       }
 
       await prisma.$transaction(async (tx) => {

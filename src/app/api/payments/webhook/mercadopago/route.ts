@@ -113,20 +113,16 @@ export async function POST(req: NextRequest) {
       .filter(Boolean)
       .join(":");
 
-    try {
-      await prisma.processedWebhookEvent.create({
-        data: {
-          provider: "MERCADOPAGO",
-          eventId,
-          payloadJson: body && Object.keys(body).length > 0 ? (body as Prisma.InputJsonValue) : Prisma.JsonNull
-        }
-      });
-    } catch (err) {
-      // Unique constraint violation = duplicado; respondemos 200 idempotente.
-      if (err && typeof err === "object" && (err as { code?: string }).code === "P2002") {
-        return NextResponse.json({ ok: true, duplicate: true }, { status: 200 });
-      }
-      throw err;
+    // Fast-path de idempotencia: si YA procesamos este evento, salimos sin
+    // llamar a MP ni tocar nada. El marcador autoritativo se inserta DENTRO de
+    // la transacción de abajo (G3), para que marcador y mutación commiteen o
+    // reviertan juntos. Así, si la tx falla, el reintento de MP NO se descarta
+    // como "duplicado" y el pago no queda congelado.
+    const alreadyProcessed = await prisma.processedWebhookEvent.findUnique({
+      where: { provider_eventId: { provider: "MERCADOPAGO", eventId } }
+    });
+    if (alreadyProcessed) {
+      return NextResponse.json({ ok: true, duplicate: true }, { status: 200 });
     }
 
     const providerResult = await getProviderPayment("MERCADOPAGO", providerPaymentId);
@@ -162,46 +158,65 @@ export async function POST(req: NextRequest) {
     // sincronizando el Payment.
     const transitionAllowed = canTransition(payment.booking.status, nextState.bookingStatus, "SYSTEM");
 
-    await prisma.$transaction(async (tx) => {
-      await tx.payment.update({
-        where: { id: payment.id },
-        data: {
-          providerPaymentId: providerResult.providerPaymentId ?? providerPaymentId,
-          providerStatus: providerResult.providerStatus,
-          status: nextState.paymentStatus,
-          paidAt: providerResult.paidAt,
-          refundedAt: providerResult.refundedAt,
-          paymentMethod: providerResult.paymentMethod ?? payment.paymentMethod,
-          last4: providerResult.last4 ?? payment.last4,
-          rawResponseJson: providerResult.raw as any,
-          errorCode: providerResult.errorCode ?? null,
-          errorMessage: providerResult.errorMessage ?? null
-        }
-      });
-
-      if (transitionAllowed) {
-        await tx.booking.update({
-          where: { id: payment.bookingId },
+    try {
+      await prisma.$transaction(async (tx) => {
+        // Marcador de idempotencia DENTRO de la tx (G3): si la mutación falla,
+        // este insert se revierte y MP puede reintentar. El unique constraint
+        // (provider, eventId) protege contra dos webhooks concurrentes.
+        await tx.processedWebhookEvent.create({
           data: {
-            status: nextState.bookingStatus,
-            paymentStatus: nextState.paymentStatus
+            provider: "MERCADOPAGO",
+            eventId,
+            payloadJson: body && Object.keys(body).length > 0 ? (body as Prisma.InputJsonValue) : Prisma.JsonNull
           }
         });
-      } else {
-        // Solo sincronizamos paymentStatus si la transición de status no aplica.
-        await tx.booking.update({
-          where: { id: payment.bookingId },
-          data: { paymentStatus: nextState.paymentStatus }
-        });
-      }
 
-      if (nextState.bookingStatus === BookingStatus.PAYMENT_FAILED && payment.booking.bookedSlotId && transitionAllowed) {
-        await tx.availabilitySlot.updateMany({
-          where: { id: payment.booking.bookedSlotId },
-          data: { isAvailable: true }
+        await tx.payment.update({
+          where: { id: payment.id },
+          data: {
+            providerPaymentId: providerResult.providerPaymentId ?? providerPaymentId,
+            providerStatus: providerResult.providerStatus,
+            status: nextState.paymentStatus,
+            paidAt: providerResult.paidAt,
+            refundedAt: providerResult.refundedAt,
+            paymentMethod: providerResult.paymentMethod ?? payment.paymentMethod,
+            last4: providerResult.last4 ?? payment.last4,
+            rawResponseJson: providerResult.raw as any,
+            errorCode: providerResult.errorCode ?? null,
+            errorMessage: providerResult.errorMessage ?? null
+          }
         });
+
+        if (transitionAllowed) {
+          await tx.booking.update({
+            where: { id: payment.bookingId },
+            data: {
+              status: nextState.bookingStatus,
+              paymentStatus: nextState.paymentStatus
+            }
+          });
+        } else {
+          // Solo sincronizamos paymentStatus si la transición de status no aplica.
+          await tx.booking.update({
+            where: { id: payment.bookingId },
+            data: { paymentStatus: nextState.paymentStatus }
+          });
+        }
+
+        if (nextState.bookingStatus === BookingStatus.PAYMENT_FAILED && payment.booking.bookedSlotId && transitionAllowed) {
+          await tx.availabilitySlot.updateMany({
+            where: { id: payment.booking.bookedSlotId },
+            data: { isAvailable: true }
+          });
+        }
+      });
+    } catch (err) {
+      // Webhook concurrente ganó la carrera del unique constraint = duplicado real.
+      if (err && typeof err === "object" && (err as { code?: string }).code === "P2002") {
+        return NextResponse.json({ ok: true, duplicate: true }, { status: 200 });
       }
-    });
+      throw err; // otro error → 500, marcador revertido, MP reintenta
+    }
 
     if (transitionAllowed) {
       void sendBookingStatusEmailToCustomer({

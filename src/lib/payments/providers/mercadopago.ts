@@ -89,6 +89,7 @@ function mapStatus(rawStatus: string | undefined): ProviderPaymentResult["status
     case "approved":
       return "approved";
     case "refunded":
+    case "charged_back":
       return "refunded";
     case "cancelled":
     case "rejected":
@@ -98,7 +99,9 @@ function mapStatus(rawStatus: string | undefined): ProviderPaymentResult["status
     case "authorized":
       return "pending";
     default:
-      return "failed";
+      // Un status desconocido NO es un fallo definitivo (G6): tratarlo como
+      // pending evita cancelar bookings sanos ante respuestas inesperadas de MP.
+      return "pending";
   }
 }
 
@@ -116,7 +119,9 @@ function normalizePaymentResult(payload: any): ProviderPaymentResult {
     refundedAt: parseDate(payload?.date_last_updated),
     raw: payload,
     errorCode: payload?.status_detail ? String(payload.status_detail) : null,
-    errorMessage: payload?.status_detail ? String(payload.status_detail) : null
+    errorMessage: payload?.status_detail ? String(payload.status_detail) : null,
+    reachable: true,
+    moneyReleaseDate: parseDate(payload?.money_release_date)
   };
 }
 
@@ -268,11 +273,13 @@ export async function getMercadoPagoMarketplacePayment(
     accessTokenOverride: collectorAccessToken
   });
   if (!response.ok) {
+    // Fallo de transporte (timeout/5xx/rate-limit): NO es un pago fallido (G6).
     return {
       provider: "MERCADOPAGO",
       providerPaymentId,
       providerStatus: String(payload?.status ?? "error"),
-      status: "failed",
+      status: "pending",
+      reachable: false,
       amount: Number(payload?.transaction_amount ?? 0),
       currency: String(payload?.currency_id ?? "CLP"),
       paymentMethod: payload?.payment_method_id ? String(payload.payment_method_id) : null,
@@ -466,11 +473,13 @@ export async function createMercadoPagoPayment(input: ProviderPaymentCreateInput
 export async function getMercadoPagoPayment(providerPaymentId: string): Promise<ProviderPaymentResult> {
   const { response, payload } = await mpRequest(`/v1/payments/${providerPaymentId}`, { method: "GET" });
   if (!response.ok) {
+    // Fallo de transporte (timeout/5xx/rate-limit): NO es un pago fallido (G6).
     return {
       provider: "MERCADOPAGO",
       providerPaymentId,
       providerStatus: String(payload?.status ?? "error"),
-      status: "failed",
+      status: "pending",
+      reachable: false,
       amount: Number(payload?.transaction_amount ?? 0),
       currency: String(payload?.currency_id ?? "CLP"),
       paymentMethod: payload?.payment_method_id ? String(payload.payment_method_id) : null,

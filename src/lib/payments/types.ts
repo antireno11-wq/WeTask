@@ -35,6 +35,18 @@ export type ProviderPaymentResult = {
   raw: unknown;
   errorCode?: string | null;
   errorMessage?: string | null;
+  /**
+   * `false` cuando el proveedor no respondió OK (timeout, 5xx, rate-limit).
+   * Distingue un fallo de TRANSPORTE de un fallo de NEGOCIO: un pago no debe
+   * marcarse FAILED solo porque MercadoPago estuvo caído un momento (G6).
+   * `undefined` se trata como alcanzable (true).
+   */
+  reachable?: boolean;
+  /**
+   * Fecha en que MercadoPago libera el dinero del escrow al collector
+   * (`money_release_date`). El payout no debe marcarse PAID antes de esto (G7).
+   */
+  moneyReleaseDate?: Date | null;
 };
 
 export type ProviderRefundInput = {
