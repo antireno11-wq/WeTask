@@ -67,6 +67,20 @@ export async function POST(req: NextRequest) {
       throw transitionError;
     }
 
+    // Ventana de reclamo: solo se puede disputar dentro de los N días desde que
+    // el tasker cerró el servicio (checkOutAt). Pasado ese plazo el servicio se
+    // considera cerrado y no se aceptan disputas (G9). El admin no tiene límite.
+    const DISPUTE_WINDOW_DAYS = Number(process.env.DISPUTE_WINDOW_DAYS) || 3;
+    if (identity.role !== UserRole.ADMIN && booking.checkOutAt) {
+      const windowEndMs = booking.checkOutAt.getTime() + DISPUTE_WINDOW_DAYS * 24 * 60 * 60 * 1000;
+      if (Date.now() > windowEndMs) {
+        return NextResponse.json(
+          { error: `El plazo para abrir un reclamo (${DISPUTE_WINDOW_DAYS} días desde el servicio) ya venció.` },
+          { status: 409 }
+        );
+      }
+    }
+
     const dueDateAt = new Date(Date.now() + 5 * 24 * 60 * 60 * 1000);
 
     const ticket = await prisma.disputeTicket.create({

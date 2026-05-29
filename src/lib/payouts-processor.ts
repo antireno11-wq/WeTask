@@ -144,10 +144,42 @@ export async function processBookingsForPayout(): Promise<ProcessBookingsResult>
             }
           }));
 
+        // Clawback (G4/G9): al liberar, descontamos del payout las deudas
+        // pendientes del tasker (reembolsos resueltos tras liberar escrow de
+        // bookings anteriores). El monto del payout se reduce y las deudas
+        // cubiertas se marcan RECOVERED. Nota: el recobro efectivo depende del
+        // modelo de disbursement; aquí queda registrado el neto y el ledger.
+        let netAmount = payoutAmount;
+        if (payoutStatus === PayoutStatus.PAID && booking.proId) {
+          const pendingClawbacks = await tx.payoutClawback.findMany({
+            where: { proId: booking.proId, status: "PENDING" },
+            orderBy: { createdAt: "asc" }
+          });
+          let available = payoutAmount;
+          for (const cb of pendingClawbacks) {
+            if (available <= 0) break;
+            if (cb.amountClp <= available) {
+              available -= cb.amountClp;
+              await tx.payoutClawback.update({
+                where: { id: cb.id },
+                data: { status: "RECOVERED", recoveredAt: new Date() }
+              });
+            } else {
+              await tx.payoutClawback.update({
+                where: { id: cb.id },
+                data: { amountClp: cb.amountClp - available }
+              });
+              available = 0;
+            }
+          }
+          netAmount = available;
+        }
+
         await tx.payout.update({
           where: { id: payout.id },
           data: {
             status: payoutStatus,
+            amountClp: payoutStatus === PayoutStatus.PAID ? netAmount : payout.amountClp,
             paidAt: payoutStatus === PayoutStatus.PAID ? new Date() : null
           }
         });

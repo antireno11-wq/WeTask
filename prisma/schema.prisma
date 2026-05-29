@@ -111,6 +111,7 @@ model User {
   professionalProfile    ProfessionalProfile?
   cleaningOnboarding     CleaningOnboarding?
   payouts                Payout[]
+  payoutClawbacks        PayoutClawback[]
   notifications          Notification[]
   roleAssignments        UserRoleAssignment[]
   emailVerifications     EmailVerificationToken[]
@@ -484,6 +485,25 @@ model Payout {
   pro         User         @relation(fields: [proId], references: [id], onDelete: Restrict)
 
   @@index([status, updatedAt])
+}
+
+/// Deuda de un tasker hacia la plataforma cuando se reembolsa a un cliente
+/// DESPUÉS de que el escrow ya fue liberado al tasker (G4/G9). Se descuenta
+/// de sus payouts futuros. status: PENDING | RECOVERED | WAIVED.
+model PayoutClawback {
+  id          String    @id @default(cuid())
+  proId       String
+  bookingId   String
+  disputeId   String?
+  amountClp   Int
+  reason      String
+  status      String    @default("PENDING")
+  createdAt   DateTime  @default(now())
+  recoveredAt DateTime?
+  pro         User      @relation(fields: [proId], references: [id], onDelete: Cascade)
+
+  @@index([proId, status])
+  @@index([bookingId])
 }
 
 model Review {

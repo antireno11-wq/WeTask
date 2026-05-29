@@ -178,9 +178,11 @@ export async function PATCH(req: NextRequest) {
                 provider: true,
                 providerPaymentId: true,
                 status: true,
-                amountClp: true
+                amountClp: true,
+                escrowStatus: true
               }
-            }
+            },
+            payout: { select: { id: true, status: true, amountClp: true } }
           }
         }
       }
@@ -190,16 +192,17 @@ export async function PATCH(req: NextRequest) {
     const wantsRefund = input.status === "RESOLVED" && typeof input.refundAmountClp === "number" && input.refundAmountClp > 0;
     const refundAmount = wantsRefund ? input.refundAmountClp! : 0;
 
-    // Si pide refund, validamos antes de tocar el provider que la transición
-    // de Booking sea legal y que tengamos providerPaymentId.
+    // G4/G9: ¿el escrow ya se liberó al tasker? Si es así, MercadoPago no puede
+    // revertir esos fondos. En vez de un refund vía MP (que fallaría o saldría de
+    // fondos de la plataforma), registramos un CLAWBACK contra el tasker que se
+    // descuenta de sus payouts futuros (decisión B), y bloqueamos el refund
+    // automático a MP (decisión C). El reembolso al cliente se gestiona aparte.
+    const escrowReleased =
+      dispute.booking.payment?.escrowStatus === "RELEASED" || dispute.booking.payout?.status === "PAID";
+    const useClawback = wantsRefund && escrowReleased;
+
     if (wantsRefund) {
-      if (!dispute.booking.payment?.providerPaymentId || dispute.booking.payment.provider !== "MERCADOPAGO") {
-        return NextResponse.json(
-          { error: "Este pago no admite reembolso automático (sin providerPaymentId o provider distinto a MERCADOPAGO)" },
-          { status: 400 }
-        );
-      }
-      if (refundAmount > dispute.booking.payment.amountClp) {
+      if (refundAmount > (dispute.booking.payment?.amountClp ?? 0)) {
         return NextResponse.json(
           { error: "El monto a reembolsar no puede exceder el monto cobrado" },
           { status: 400 }
@@ -207,20 +210,24 @@ export async function PATCH(req: NextRequest) {
       }
       if (!canTransition(dispute.booking.status, BookingStatus.REFUNDED, "ADMIN")) {
         return NextResponse.json(
-          {
-            error: `No se permite refund desde el estado ${dispute.booking.status}`,
-            from: dispute.booking.status
-          },
+          { error: `No se permite refund desde el estado ${dispute.booking.status}`, from: dispute.booking.status },
           { status: 409 }
+        );
+      }
+      // El refund vía MP requiere providerPaymentId; el clawback no (no toca MP).
+      if (!useClawback && (!dispute.booking.payment?.providerPaymentId || dispute.booking.payment.provider !== "MERCADOPAGO")) {
+        return NextResponse.json(
+          { error: "Este pago no admite reembolso automático (sin providerPaymentId o provider distinto a MERCADOPAGO)" },
+          { status: 400 }
         );
       }
     }
 
     // Llamamos al proveedor ANTES de la transacción para no mantener la
     // transacción abierta durante una llamada HTTP. Si el proveedor falla,
-    // la DB se queda intacta.
+    // la DB se queda intacta. NO se llama a MP cuando usamos clawback.
     let providerRefundResult: Awaited<ReturnType<typeof refundProviderPayment>> | null = null;
-    if (wantsRefund) {
+    if (wantsRefund && !useClawback) {
       providerRefundResult = await refundProviderPayment("MERCADOPAGO", {
         providerPaymentId: dispute.booking.payment!.providerPaymentId!,
         amount: refundAmount
@@ -277,7 +284,26 @@ export async function PATCH(req: NextRequest) {
               paymentStatus: nextPaymentStatus!
             }
           });
-          if (dispute.booking.payment) {
+          if (useClawback) {
+            // Escrow ya liberado: registramos la deuda del tasker (G4/G9) en vez
+            // de tocar MP. Se recuperará de sus payouts futuros.
+            await tx.payoutClawback.create({
+              data: {
+                proId: dispute.booking.proId!,
+                bookingId: dispute.bookingId,
+                disputeId: dispute.id,
+                amountClp: refundAmount,
+                reason: input.resolution?.trim() || "Reembolso resuelto tras liberación del escrow",
+                status: "PENDING"
+              }
+            });
+            if (dispute.booking.payment) {
+              await tx.payment.update({
+                where: { id: dispute.booking.payment.id },
+                data: { status: nextPaymentStatus!, escrowStatus: "CONTESTED" }
+              });
+            }
+          } else if (dispute.booking.payment) {
             await tx.payment.update({
               where: { id: dispute.booking.payment.id },
               data: {
@@ -356,7 +382,19 @@ export async function PATCH(req: NextRequest) {
         refundAmountClp: refundAmount
       });
 
-      return NextResponse.json({ dispute: result }, { status: 200 });
+      return NextResponse.json(
+        {
+          dispute: result,
+          clawback: useClawback
+            ? {
+                registered: true,
+                amountClp: refundAmount,
+                note: "El escrow ya estaba liberado al tasker. Se registró un clawback que se descontará de sus payouts futuros. El reembolso al cliente debe gestionarse manualmente (MercadoPago no revierte fondos ya liberados)."
+              }
+            : null
+        },
+        { status: 200 }
+      );
     } catch (txError) {
       if (txError instanceof InvalidBookingTransitionError) {
         // El refund a MP ya pasó pero la DB falló: el admin tiene que
