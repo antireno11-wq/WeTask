@@ -3,7 +3,7 @@ import { compare, hash } from "bcryptjs";
 
 const BCRYPT_ROUNDS = 12;
 
-function getSessionSecret(): string {
+export function getSessionSecret(): string {
   const secret = process.env.SESSION_SECRET;
   if (secret && secret.length >= 16) return secret;
   if (process.env.NODE_ENV === "production") {
@@ -34,17 +34,6 @@ function base64UrlEncode(value: string) {
 
 function base64UrlDecode(value: string) {
   return Buffer.from(value, "base64url").toString("utf8");
-}
-
-export function getSessionSecret(): string {
-  const secret = process.env.SESSION_SECRET;
-  if (!secret) {
-    if (process.env.NODE_ENV === "production") {
-      throw new Error("CRITICAL: SESSION_SECRET is not configured in production environment.");
-    }
-    return "dev-insecure-change-me";
-  }
-  return secret;
 }
 
 export function signSession(payload: Record<string, unknown>) {
