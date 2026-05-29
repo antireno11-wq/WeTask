@@ -1,0 +1,2 @@
+# Los scripts shell deben usar LF siempre — en Linux (Railway) CRLF rompe el intérprete.
+*.sh text eol=lf
