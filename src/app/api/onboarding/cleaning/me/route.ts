@@ -202,6 +202,8 @@ export async function PATCH(req: NextRequest) {
         referenceAddress: parsed.referenceAddress.trim(),
         coverageLatitude: coords.lat,
         coverageLongitude: coords.lng,
+        // El teléfono se da por válido al ingresarlo (sin verificación SMS).
+        phoneValidatedAt: onboarding.phoneValidatedAt ?? new Date(),
         currentStep: Math.max(onboarding.currentStep, 4)
       };
 

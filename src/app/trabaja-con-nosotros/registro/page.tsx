@@ -202,7 +202,6 @@ function CleaningOnboardingPageContent() {
   const [error, setError] = useState("");
   const [feedback, setFeedback] = useState("");
   const [submitMissingFields, setSubmitMissingFields] = useState<MissingFieldItem[]>([]);
-  const [smsPreview, setSmsPreview] = useState("");
   const [cleaningScopeScreen, setCleaningScopeScreen] = useState<CleaningScopeScreen>(1);
   const [petScopeScreen, setPetScopeScreen] = useState<PetScopeScreen>(1);
   const [makeupScopeScreen, setMakeupScopeScreen] = useState<MakeupScopeScreen>(1);
@@ -1121,60 +1120,6 @@ function CleaningOnboardingPageContent() {
     setOnboarding(data.onboarding);
   };
 
-  const phoneVerificationBasePath =
-    session?.role === "PRO" || session?.role === "ADMIN" ? "/api/onboarding/cleaning/phone" : "/api/onboarding/public/phone";
-
-  const sendPhoneCode = async () => {
-    if (!isValidChileanMobilePhone(draft.phone)) {
-      setError("Ingresa tu teléfono con formato +569 y 8 números.");
-      return;
-    }
-    setSaving(true);
-    setError("");
-    setFeedback("");
-    setSmsPreview("");
-    try {
-      const response = await fetch(`${phoneVerificationBasePath}/send`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone: draft.phone.trim() })
-      });
-      const data = (await response.json()) as { ok?: boolean; codePreview?: string; error?: string; detail?: string };
-      if (!response.ok || !data.ok) throw new Error(data.detail || data.error || "No se pudo enviar el código");
-      setFeedback("Código enviado por SMS.");
-      setSmsPreview(data.codePreview ?? "");
-    } catch (eventualError) {
-      setError(eventualError instanceof Error ? eventualError.message : "Error inesperado");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const verifyPhoneCode = async () => {
-    setSaving(true);
-    setError("");
-    setFeedback("");
-    try {
-      const response = await fetch(`${phoneVerificationBasePath}/verify`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code: draft.smsCode.trim() })
-      });
-      const data = (await response.json()) as { ok?: boolean; onboarding?: OnboardingPayload; error?: string; detail?: string };
-      if (!response.ok || !data.ok) throw new Error(data.detail || data.error || "No se pudo verificar el teléfono");
-      if (data.onboarding) {
-        setOnboarding(data.onboarding);
-      }
-      setDraft((current) => ({ ...current, phoneVerified: true }));
-      setFeedback("Teléfono verificado correctamente.");
-      setActiveStep(3);
-    } catch (eventualError) {
-      setError(eventualError instanceof Error ? eventualError.message : "Error inesperado");
-    } finally {
-      setSaving(false);
-    }
-  };
-
   const continueStep1 = () => {
     setError("");
     setFeedback("");
@@ -1195,7 +1140,6 @@ function CleaningOnboardingPageContent() {
     setError("");
     setFeedback("");
     setSubmitMissingFields([]);
-    setSmsPreview("");
     setAddressSuggestions([]);
     setShowSuggestions(false);
     setSelectedFromAutocomplete(false);
@@ -1229,10 +1173,8 @@ function CleaningOnboardingPageContent() {
       setError("Ingresa tu teléfono con formato +569 y 8 números.");
       return;
     }
-    if (!draft.phoneVerified) {
-      setError("Debes verificar tu teléfono antes de continuar.");
-      return;
-    }
+    // Sin verificación SMS: el teléfono se da por válido al ingresarlo.
+    setDraft((current) => ({ ...current, phoneVerified: true }));
     setError("");
     setFeedback("");
     setActiveStep(3);
@@ -1326,17 +1268,7 @@ function CleaningOnboardingPageContent() {
           throw new Error(data.detail || data.error || "No se pudo iniciar el registro");
         }
         setSession(data.session);
-        if (draft.phoneVerified && !data.onboarding.phoneValidatedAt) {
-          const claimResponse = await fetch("/api/onboarding/cleaning/phone/claim", { method: "POST" });
-          const claimData = (await claimResponse.json()) as { ok?: boolean; onboarding?: OnboardingPayload; error?: string; detail?: string };
-          if (claimResponse.ok && claimData.ok && claimData.onboarding) {
-            setOnboarding(claimData.onboarding);
-          } else {
-            setOnboarding(data.onboarding);
-          }
-        } else {
-          setOnboarding(data.onboarding);
-        }
+        setOnboarding(data.onboarding);
       }
       setActiveStep(4);
     } catch (eventualError) {
@@ -2084,46 +2016,27 @@ function CleaningOnboardingPageContent() {
 
             {activeStep === 2 ? (
               <div className="onboarding-screen">
-                <h3>Verificación de teléfono</h3>
+                <h3>Tu teléfono de contacto</h3>
                 <label>
                   Teléfono
-                  <div className="onboarding-inline-action-row">
-                    <input
-                      value={draft.phone}
-                      onChange={(event) => {
-                        const nextPhone = normalizeChileanMobileInput(event.target.value);
-                        setDraft((current) => ({
-                          ...current,
-                          phone: nextPhone,
-                          phoneVerified: false,
-                          smsCode: ""
-                        }));
-                        setSmsPreview("");
-                      }}
-                      inputMode="numeric"
-                      maxLength={13}
-                      placeholder="+56912345678"
-                    />
-                    <button type="button" className="cta ghost small" onClick={sendPhoneCode} disabled={saving}>
-                      {saving ? "Enviando..." : "Enviar código"}
-                    </button>
-                  </div>
+                  <input
+                    value={draft.phone}
+                    onChange={(event) => {
+                      const nextPhone = normalizeChileanMobileInput(event.target.value);
+                      setDraft((current) => ({ ...current, phone: nextPhone }));
+                    }}
+                    inputMode="numeric"
+                    maxLength={13}
+                    placeholder="+56912345678"
+                  />
                   <p className="input-hint">El prefijo `+569` queda fijo. Solo debes ingresar los 8 números restantes.</p>
                 </label>
-                <label>
-                  Código SMS
-                  <input value={draft.smsCode} onChange={(event) => updateDraft("smsCode", event.target.value)} placeholder="123456" maxLength={6} />
-                </label>
-                {smsPreview ? <p className="onboarding-dev-note">Código dev: <strong>{smsPreview}</strong></p> : null}
                 <div className="auth-flow-actions">
-                  <button type="button" className="cta" onClick={verifyPhoneCode} disabled={saving}>
-                    {saving ? "Verificando..." : "Validar código"}
+                  <button type="button" className="cta" onClick={continueStep2}>
+                    Continuar
                   </button>
                   <button type="button" className="cta ghost" onClick={previousStep}>
                     Volver
-                  </button>
-                  <button type="button" className="cta ghost" onClick={continueStep2}>
-                    Continuar
                   </button>
                 </div>
               </div>
