@@ -1,13 +1,16 @@
 #!/bin/sh
 set -e
 
-# Baseline idempotente: marca la migración 0_init como aplicada si la DB
-# ya tenía el schema (creado antes con `prisma db push`). Si ya está
-# marcada, el comando falla y el `|| echo` lo absorbe sin cortar el deploy.
-npx prisma migrate resolve --applied 0_init || echo "baseline 0_init ya aplicado, continuando"
+# Sincroniza el schema con la DB. Usamos `db push` (sin --accept-data-loss)
+# porque la DB de prod se construyó incrementalmente con db push y le faltan
+# tablas nuevas (ej. TermsVersion). Sin la flag, db push SOLO aplica cambios
+# aditivos (crear tablas/columnas) y aborta si algo requiere perder datos,
+# así que es seguro sobre datos productivos.
+npx prisma db push --skip-generate
 
-# Aplica migraciones pendientes (no-op si no hay nuevas).
-npm run prisma:migrate
+# Siembra la versión vigente de Términos y Condiciones (idempotente: crea v1
+# solo si no existe). El "|| echo" evita cortar el arranque si el seed falla.
+node scripts/seed-terms-version-v1.mjs || echo "seed de TermsVersion omitido (continuando)"
 
 # Arranca el servidor Next.
 npm run start
