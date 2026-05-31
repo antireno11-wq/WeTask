@@ -25,7 +25,9 @@ function toBase64(value: Uint8Array) {
 function getEdgeSessionSecret(): string | null {
   const secret = process.env.SESSION_SECRET;
   if (secret && secret.length >= 16) return secret;
-  if (process.env.NODE_ENV === "production") return null;
+  // AUTH-02: fail-closed. El fallback inseguro sólo en development/test local.
+  const env = process.env.NODE_ENV;
+  if (env !== "development" && env !== "test") return null;
   return "dev-insecure-change-me";
 }
 

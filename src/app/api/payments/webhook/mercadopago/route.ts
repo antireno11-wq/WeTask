@@ -9,7 +9,9 @@ import {
   InvalidBookingTransitionError
 } from "@/lib/booking-state-machine";
 import { getProviderPayment } from "@/lib/payments/provider-adapter";
+import { getMercadoPagoMarketplacePayment } from "@/lib/payments/providers/mercadopago";
 import { prisma } from "@/lib/prisma";
+import { decryptSecret } from "@/lib/token-encryption";
 
 export const dynamic = "force-dynamic";
 
@@ -125,27 +127,43 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true, duplicate: true }, { status: 200 });
     }
 
-    const providerResult = await getProviderPayment("MERCADOPAGO", providerPaymentId);
-    const externalReference =
-      (providerResult.raw as any)?.external_reference ??
-      (providerResult.raw as any)?.metadata?.booking_id ??
-      null;
-
-    const payment = await prisma.payment.findFirst({
-      where: {
-        provider: "MERCADOPAGO",
-        OR: [{ providerPaymentId }, externalReference ? { bookingId: String(externalReference) } : undefined].filter(Boolean) as any
-      },
-      include: {
-        booking: {
-          select: {
-            id: true,
-            bookedSlotId: true,
-            status: true
-          }
+    // PAY-01: en el modelo marketplace, el payment.id pertenece a la cuenta del COLLECTOR
+    // (tasker), no a la plataforma. Resolvemos primero el Payment local para obtener el token
+    // del collector y consultamos a MP con ESE token. Sólo si no lo encontramos por
+    // providerPaymentId caemos al token de plataforma para recuperar el external_reference.
+    const bookingInclude = {
+      booking: {
+        select: {
+          id: true,
+          bookedSlotId: true,
+          status: true,
+          pro: { select: { mpAccessToken: true } }
         }
       }
+    } as const;
+
+    let payment = await prisma.payment.findFirst({
+      where: { provider: "MERCADOPAGO", providerPaymentId },
+      include: bookingInclude
     });
+
+    const collectorToken = decryptSecret(payment?.booking?.pro?.mpAccessToken);
+    const providerResult = collectorToken
+      ? await getMercadoPagoMarketplacePayment(providerPaymentId, collectorToken)
+      : await getProviderPayment("MERCADOPAGO", providerPaymentId);
+
+    if (!payment) {
+      const externalReference =
+        (providerResult.raw as any)?.external_reference ??
+        (providerResult.raw as any)?.metadata?.booking_id ??
+        null;
+      if (externalReference) {
+        payment = await prisma.payment.findFirst({
+          where: { provider: "MERCADOPAGO", bookingId: String(externalReference) },
+          include: bookingInclude
+        });
+      }
+    }
 
     if (!payment) {
       return NextResponse.json({ ok: true, ignored: true, reason: "payment_not_found" }, { status: 200 });

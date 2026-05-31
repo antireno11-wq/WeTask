@@ -62,7 +62,7 @@ export function LoginRolePanel({
     setNextPath(new URLSearchParams(window.location.search).get("next"));
   }, []);
 
-  const login = async (payload: { userId?: string; email?: string; password?: string }) => {
+  const login = async (payload: { email?: string; password?: string }) => {
     setLoading(true);
     setError("");
     setFeedback("");
@@ -131,7 +131,8 @@ export function LoginRolePanel({
         setFeedback("Si tu cuenta existe, te enviamos un correo para restablecer tu contraseña.");
       } else {
         setFeedback(
-          data.tokenPreview
+          // UX-01: nunca mostrar el token en producción, aunque el backend lo enviara.
+          data.tokenPreview && process.env.NODE_ENV !== "production"
             ? `Este ambiente no tiene correo configurado todavía. Token de prueba: ${data.tokenPreview}`
             : "Este ambiente no tiene correo configurado todavía para recuperación de contraseña."
         );
@@ -173,7 +174,8 @@ export function LoginRolePanel({
         return;
       }
       setFeedback(
-        data.codePreview
+        // UX-01: el código de prueba sólo se muestra fuera de producción.
+        data.codePreview && process.env.NODE_ENV !== "production"
           ? `Te reenviamos el correo de validación. Código de prueba: ${data.codePreview}`
           : "Te reenviamos el correo de validación. Revisa tu bandeja de entrada."
       );

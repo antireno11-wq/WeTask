@@ -44,7 +44,9 @@ export async function POST(req: NextRequest) {
           select: {
             id: true,
             status: true,
-            paymentStatus: true
+            paymentStatus: true,
+            proId: true,
+            payout: { select: { status: true } }
           }
         }
       }
@@ -54,8 +56,24 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Pago no encontrado" }, { status: 404 });
     }
 
+    // PAY-02: guarda de idempotencia — nunca ejecutar un segundo refund sobre un pago ya reembolsado.
+    if (payment.status === PaymentStatus.REFUNDED || payment.providerStatus === "refunded") {
+      return NextResponse.json(
+        { error: "Este pago ya fue reembolsado", paymentId: payment.id, bookingId: payment.bookingId },
+        { status: 409 }
+      );
+    }
+
     if (payment.provider !== "MERCADOPAGO" || !payment.providerPaymentId) {
       return NextResponse.json({ error: "Este pago no soporta reembolso automático" }, { status: 400 });
+    }
+
+    // PAY-06: el monto del refund nunca puede superar lo cobrado.
+    if (input.amount && input.amount > payment.amountClp) {
+      return NextResponse.json(
+        { error: `El monto excede lo cobrado (${payment.amountClp} CLP)` },
+        { status: 400 }
+      );
     }
 
     try {
@@ -71,6 +89,62 @@ export async function POST(req: NextRequest) {
         );
       }
       throw transitionError;
+    }
+
+    // PAY-03: si el escrow YA fue liberado al tasker, un refund automático a MP haría que la
+    // plataforma pague de su bolsillo la parte del tasker. En ese caso NO se toca MP: se registra
+    // un CLAWBACK contra el tasker (se recupera de payouts futuros) y el reembolso al cliente se
+    // gestiona aparte — mismo criterio que el flujo de disputas (G4/G9).
+    const escrowReleased = payment.escrowStatus === "RELEASED" || payment.booking.payout?.status === "PAID";
+
+    if (escrowReleased) {
+      if (!payment.booking.proId) {
+        return NextResponse.json(
+          { error: "Escrow liberado sin tasker asociado; gestionar refund manualmente" },
+          { status: 409 }
+        );
+      }
+      const refundAmount = input.amount ?? payment.amountClp;
+      const proId = payment.booking.proId;
+      await prisma.$transaction(async (tx) => {
+        await tx.payoutClawback.create({
+          data: {
+            proId,
+            bookingId: payment.bookingId,
+            amountClp: refundAmount,
+            reason: "Refund admin tras liberación del escrow",
+            status: "PENDING"
+          }
+        });
+        await tx.payment.update({
+          where: { id: payment.id },
+          data: { status: PaymentStatus.REFUNDED, escrowStatus: "CONTESTED", refundedAt: new Date() }
+        });
+        await tx.booking.update({
+          where: { id: payment.bookingId },
+          data: { status: BookingStatus.REFUNDED, paymentStatus: PaymentStatus.REFUNDED }
+        });
+        await recordAdminAction(
+          {
+            actorId: admin.identity.userId,
+            action: "payment.refund.clawback",
+            target: { type: "Payment", id: payment.id },
+            before: { bookingId: payment.bookingId, paymentStatus: payment.status, bookingStatus: payment.booking.status },
+            after: { paymentStatus: PaymentStatus.REFUNDED, clawbackAmountClp: refundAmount, escrowStatus: "CONTESTED" }
+          },
+          tx
+        );
+      });
+      return NextResponse.json(
+        {
+          ok: true,
+          clawback: true,
+          bookingId: payment.bookingId,
+          paymentId: payment.id,
+          note: "Escrow ya liberado: refund a MP omitido, se registró clawback. Gestionar reembolso al cliente aparte."
+        },
+        { status: 200 }
+      );
     }
 
     const providerResult = await refundProviderPayment("MERCADOPAGO", {
@@ -95,6 +169,8 @@ export async function POST(req: NextRequest) {
         data: {
           status: PaymentStatus.REFUNDED,
           providerStatus: "refunded",
+          // PAY-12: dejar el escrow consistente tras el refund.
+          escrowStatus: "REFUNDED",
           refundedAt: providerResult.refundedAt ?? new Date(),
           rawResponseJson: providerResult.raw as any
         }

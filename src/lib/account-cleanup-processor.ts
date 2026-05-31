@@ -1,6 +1,7 @@
 import { logError, logger } from "@/lib/logger";
 import { refreshMercadoPagoToken } from "@/lib/payments/providers/mercadopago";
 import { prisma } from "@/lib/prisma";
+import { decryptSecret, encryptSecretNullable } from "@/lib/token-encryption";
 
 export type HardDeleteResult = {
   reviewed: number;
@@ -144,7 +145,11 @@ export async function refreshExpiringMpTokens(): Promise<RefreshMpTokensResult> 
   for (const user of candidates) {
     if (!user.mpRefreshToken) continue;
     try {
-      const refreshed = await refreshMercadoPagoToken(user.mpRefreshToken);
+      // PAY-04: el refresh token está cifrado at-rest; se descifra para llamar a MP
+      // y se vuelven a cifrar los tokens devueltos.
+      const decryptedRefresh = decryptSecret(user.mpRefreshToken);
+      if (!decryptedRefresh) continue;
+      const refreshed = await refreshMercadoPagoToken(decryptedRefresh);
       const nextExpiresAt = refreshed.expiresInSeconds
         ? new Date(Date.now() + refreshed.expiresInSeconds * 1000)
         : null;
@@ -152,8 +157,8 @@ export async function refreshExpiringMpTokens(): Promise<RefreshMpTokensResult> 
       await prisma.user.update({
         where: { id: user.id },
         data: {
-          mpAccessToken: refreshed.accessToken,
-          mpRefreshToken: refreshed.refreshToken ?? user.mpRefreshToken,
+          mpAccessToken: encryptSecretNullable(refreshed.accessToken),
+          mpRefreshToken: encryptSecretNullable(refreshed.refreshToken) ?? user.mpRefreshToken,
           mpTokenExpiresAt: nextExpiresAt
         }
       });

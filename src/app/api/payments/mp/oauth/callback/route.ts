@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { logError } from "@/lib/logger";
 import { exchangeMercadoPagoCode, isMercadoPagoOAuthConfigured } from "@/lib/payments/providers/mercadopago";
 import { prisma } from "@/lib/prisma";
+import { encryptSecretNullable } from "@/lib/token-encryption";
 
 export const dynamic = "force-dynamic";
 
@@ -56,8 +57,9 @@ export async function GET(req: NextRequest) {
     await tx.user.update({
       where: { id: stored.userId },
       data: {
-        mpAccessToken: tokenResponse.accessToken,
-        mpRefreshToken: tokenResponse.refreshToken,
+        // PAY-04: tokens cifrados at-rest (AES-256-GCM).
+        mpAccessToken: encryptSecretNullable(tokenResponse.accessToken),
+        mpRefreshToken: encryptSecretNullable(tokenResponse.refreshToken),
         mpUserId: tokenResponse.userId,
         mpTokenExpiresAt: expiresAt,
         mpAccountStatus: "ACTIVE",

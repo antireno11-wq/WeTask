@@ -86,11 +86,13 @@ export default function RegistroPage() {
       if (data.emailVerificationRequired) {
         setVerificationRequired(true);
         setEmailDeliveryConfigured(data.emailDeliveryConfigured !== false);
-        setVerificationPreview(data.verificationTokenPreview ?? "");
+        // UX-01: el código dev nunca se expone en producción.
+        const preview = process.env.NODE_ENV !== "production" ? data.verificationTokenPreview ?? "" : "";
+        setVerificationPreview(preview);
         setFeedback(
           data.emailDeliveryConfigured === false
-            ? `Cuenta creada, pero el correo de verificación no está configurado en este ambiente.${data.verificationTokenPreview ? ` Código dev: ${data.verificationTokenPreview}` : ""}`
-            : `Cuenta creada. Revisa tu correo e ingresa aquí el código de verificación.${data.verificationTokenPreview ? ` Código dev: ${data.verificationTokenPreview}` : ""}`
+            ? `Cuenta creada, pero el correo de verificación no está configurado en este ambiente.${preview ? ` Código dev: ${preview}` : ""}`
+            : `Cuenta creada. Revisa tu correo e ingresa aquí el código de verificación.${preview ? ` Código dev: ${preview}` : ""}`
         );
         return;
       }
@@ -168,8 +170,10 @@ export default function RegistroPage() {
         return;
       }
 
-      setVerificationPreview(data.codePreview ?? "");
-      setFeedback(`Te enviamos un nuevo código.${data.codePreview ? ` Código dev: ${data.codePreview}` : ""}`);
+      // UX-01: el código dev nunca se expone en producción.
+      const codePreview = process.env.NODE_ENV !== "production" ? data.codePreview ?? "" : "";
+      setVerificationPreview(codePreview);
+      setFeedback(`Te enviamos un nuevo código.${codePreview ? ` Código dev: ${codePreview}` : ""}`);
     } catch (e) {
       setError(normalizeEmailError(e instanceof Error ? e.message : "Error inesperado"));
     } finally {

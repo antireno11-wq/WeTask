@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { UserRole } from "@prisma/client";
+import { getRequestIdentity } from "@/lib/auth";
 import { COVERAGE_UNAVAILABLE_MESSAGE, normalizeCommune } from "@/lib/communes";
 import { prisma } from "@/lib/prisma";
 import { hasAssignedRole } from "@/lib/user-roles";
@@ -7,6 +8,12 @@ import { createBookingSchema, listBookingsQuerySchema } from "@/lib/validators";
 
 export async function GET(req: NextRequest) {
   try {
+    // BOOK-08: exige identidad y restringe la consulta al propio usuario (evita IDOR).
+    const identity = getRequestIdentity(req);
+    if (!identity.userId || !identity.role) {
+      return NextResponse.json({ error: "No autenticado" }, { status: 401 });
+    }
+
     const searchParams = req.nextUrl.searchParams;
     const input = listBookingsQuerySchema.parse({
       customerId: searchParams.get("customerId") ?? undefined,
@@ -15,11 +22,12 @@ export async function GET(req: NextRequest) {
       limit: searchParams.get("limit") ?? undefined
     });
 
-    const where = {
-      customerId: input.customerId,
-      proId: input.proId,
-      status: input.status
-    };
+    const where =
+      identity.role === UserRole.ADMIN
+        ? { customerId: input.customerId, proId: input.proId, status: input.status }
+        : identity.role === UserRole.PRO
+          ? { proId: identity.userId, status: input.status }
+          : { customerId: identity.userId, status: input.status };
 
     const bookings = await prisma.booking.findMany({
       where,
@@ -46,8 +54,18 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+    // BOOK-01: exige identidad; un no-admin sólo puede crear reservas para sí mismo.
+    const identity = getRequestIdentity(req);
+    if (!identity.userId || !identity.role) {
+      return NextResponse.json({ error: "No autenticado" }, { status: 401 });
+    }
+
     const body = await req.json();
     const input = createBookingSchema.parse(body);
+
+    if (identity.role !== UserRole.ADMIN && input.customerId !== identity.userId) {
+      return NextResponse.json({ error: "No autorizado" }, { status: 403 });
+    }
 
     const [service, customer] = await Promise.all([
       prisma.service.findUnique({ where: { id: input.serviceId } }),

@@ -316,14 +316,26 @@ export async function syncTaskerMarketplaceServicesFromOnboarding(userId: string
     onboarding.status = CleaningOnboardingStatus.ACTIVO;
   }
 
+  // PRO-01: el estado de verificación se DERIVA del onboarding, nunca se fuerza a "verificado".
+  // Sólo un onboarding APROBADO/ACTIVO (revisado por un admin) marca el perfil como verificado.
+  const isVerified =
+    onboarding.status === CleaningOnboardingStatus.APROBADO ||
+    onboarding.status === CleaningOnboardingStatus.ACTIVO;
+  const verificationStatus =
+    onboarding.status === CleaningOnboardingStatus.ACTIVO
+      ? "ACTIVE"
+      : onboarding.status === CleaningOnboardingStatus.APROBADO
+        ? "APPROVED"
+        : "PENDING_REVIEW";
+
   const profile = await client.professionalProfile.upsert({
     where: { userId },
     create: {
       userId,
       avatarUrl: onboarding.profilePhotoUrl,
       bio: onboarding.shortDescription,
-      isVerified: true,
-      verificationStatus: "APPROVED",
+      isVerified,
+      verificationStatus,
       coverageStreet: onboarding.referenceAddress,
       coverageComuna: onboarding.baseCommune,
       coverageCity: "Santiago",
@@ -335,8 +347,8 @@ export async function syncTaskerMarketplaceServicesFromOnboarding(userId: string
     update: {
       avatarUrl: onboarding.profilePhotoUrl ?? undefined,
       bio: onboarding.shortDescription,
-      isVerified: true,
-      verificationStatus: "APPROVED",
+      isVerified,
+      verificationStatus,
       coverageStreet: onboarding.referenceAddress,
       coverageComuna: onboarding.baseCommune,
       coverageLatitude: onboarding.coverageLatitude ?? undefined,

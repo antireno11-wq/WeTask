@@ -8,6 +8,7 @@ import { calculateMarketplacePrice } from "@/lib/marketplace-pricing";
 import { notifyBookingConfirmed } from "@/lib/notification-events";
 import { createMercadoPagoMarketplacePayment, getMercadoPagoHealthSnapshot } from "@/lib/payments/providers/mercadopago";
 import { prisma } from "@/lib/prisma";
+import { decryptSecret } from "@/lib/token-encryption";
 
 export const dynamic = "force-dynamic";
 
@@ -429,7 +430,8 @@ export async function POST(req: NextRequest) {
           cardId: savedPaymentMethod?.providerCardId
         },
         {
-          collectorAccessToken: proMpCreds.mpAccessToken!,
+          // PAY-04: el token viene cifrado at-rest; se descifra sólo en memoria al usarlo.
+          collectorAccessToken: decryptSecret(proMpCreds.mpAccessToken)!,
           applicationFeeClp: price.platformFeeClp
         }
       );

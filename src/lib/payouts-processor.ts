@@ -4,6 +4,7 @@ import { logError } from "@/lib/logger";
 import { notifyPayoutReleased } from "@/lib/notification-events";
 import { getMercadoPagoMarketplacePayment, getMercadoPagoPayment } from "@/lib/payments/providers/mercadopago";
 import { prisma } from "@/lib/prisma";
+import { decryptSecret } from "@/lib/token-encryption";
 
 // Ventana de auto-confirmación por silencio del cliente antes de liberar el
 // payout. Configurable por env; default 72h para dar tiempo real a detectar
@@ -100,8 +101,9 @@ export async function processBookingsForPayout(): Promise<ProcessBookingsResult>
       // FASE 2 — booking ya programado: consultamos a MP y liberamos SOLO si el
       // dinero realmente salió del escrow (money_release_date pasado, G7).
       try {
-        const providerResult = booking.pro!.mpAccessToken
-          ? await getMercadoPagoMarketplacePayment(booking.payment.providerPaymentId, booking.pro!.mpAccessToken)
+        const collectorToken = decryptSecret(booking.pro!.mpAccessToken);
+        const providerResult = collectorToken
+          ? await getMercadoPagoMarketplacePayment(booking.payment.providerPaymentId, collectorToken)
           : await getMercadoPagoPayment(booking.payment.providerPaymentId);
         providerStatus = providerResult.providerStatus;
         const releaseDate = providerResult.moneyReleaseDate ?? null;
@@ -382,7 +384,7 @@ export async function reconcilePendingPayments(): Promise<ReconcilePaymentsResul
       providerPaymentId: { not: null }
     },
     include: {
-      booking: { select: { id: true, status: true, bookedSlotId: true } }
+      booking: { select: { id: true, status: true, bookedSlotId: true, pro: { select: { mpAccessToken: true } } } }
     },
     take: 100
   });
@@ -401,7 +403,11 @@ export async function reconcilePendingPayments(): Promise<ReconcilePaymentsResul
   for (const payment of pending) {
     if (!payment.providerPaymentId) continue;
     try {
-      const providerResult = await getMercadoPagoPayment(payment.providerPaymentId);
+      // PAY-01: consultar con el token del collector (pago marketplace); fallback a plataforma.
+      const reconcileToken = decryptSecret(payment.booking.pro?.mpAccessToken);
+      const providerResult = reconcileToken
+        ? await getMercadoPagoMarketplacePayment(payment.providerPaymentId, reconcileToken)
+        : await getMercadoPagoPayment(payment.providerPaymentId);
 
       // Fallo de transporte (MP caído/rate-limit): NO tocar el pago, reintentar
       // el próximo ciclo. Nunca cancelar un booking ni liberar su slot por esto (G6).

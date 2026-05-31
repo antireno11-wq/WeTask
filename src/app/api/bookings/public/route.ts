@@ -1,27 +1,26 @@
 import { UserRole } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
+import { getRequestIdentity } from "@/lib/auth";
 import { COVERAGE_UNAVAILABLE_MESSAGE, normalizeCommune } from "@/lib/communes";
 import { prisma } from "@/lib/prisma";
 import { publicBookingsQuerySchema, publicCreateBookingSchema } from "@/lib/validators";
 
 export async function GET(req: NextRequest) {
   try {
+    // BOOK-08: ya no se consulta por email arbitrario; exige sesión y devuelve sólo lo propio.
+    const identity = getRequestIdentity(req);
+    if (!identity.userId) {
+      return NextResponse.json({ error: "No autenticado" }, { status: 401 });
+    }
+
     const searchParams = req.nextUrl.searchParams;
     const input = publicBookingsQuerySchema.parse({
-      email: searchParams.get("email") ?? undefined,
+      email: searchParams.get("email") ?? "placeholder@scoped.local",
       limit: searchParams.get("limit") ?? undefined
     });
 
-    const email = input.email.trim().toLowerCase();
-
-    const customer = await prisma.user.findUnique({ where: { email } });
-
-    if (!customer) {
-      return NextResponse.json({ bookings: [] }, { status: 200 });
-    }
-
     const bookings = await prisma.booking.findMany({
-      where: { customerId: customer.id },
+      where: { customerId: identity.userId },
       include: {
         service: { select: { id: true, name: true, slug: true } },
         pro: { select: { id: true, fullName: true } }
@@ -44,6 +43,13 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+    // BOOK-01: exige sesión y crea la reserva para el usuario autenticado.
+    // Se eliminó el upsert por email, que permitía sobrescribir datos de cualquier usuario.
+    const identity = getRequestIdentity(req);
+    if (!identity.userId || !identity.role) {
+      return NextResponse.json({ error: "No autenticado" }, { status: 401 });
+    }
+
     const body = await req.json();
     const input = publicCreateBookingSchema.parse(body);
 
@@ -53,28 +59,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Servicio no disponible" }, { status: 400 });
     }
 
-    const normalizedEmail = input.email.trim().toLowerCase();
-
-    const existingUser = await prisma.user.findUnique({ where: { email: normalizedEmail } });
-
-    if (existingUser && existingUser.role === UserRole.PRO) {
-      return NextResponse.json({ error: "Este correo ya pertenece a un prestador" }, { status: 400 });
+    const customer = await prisma.user.findUnique({ where: { id: identity.userId } });
+    if (!customer || customer.role === UserRole.PRO) {
+      return NextResponse.json({ error: "Cuenta no válida para reservar" }, { status: 403 });
     }
-
-    const customer = await prisma.user.upsert({
-      where: { email: normalizedEmail },
-      update: {
-        fullName: input.fullName.trim(),
-        phone: input.phone?.trim() || null,
-        role: UserRole.CUSTOMER
-      },
-      create: {
-        email: normalizedEmail,
-        fullName: input.fullName.trim(),
-        phone: input.phone?.trim() || null,
-        role: UserRole.CUSTOMER
-      }
-    });
 
     const booking = await prisma.booking.create({
       data: {

@@ -1,4 +1,4 @@
-import { createHash, createHmac, randomBytes } from "crypto";
+import { createHash, createHmac, randomBytes, timingSafeEqual } from "crypto";
 import { compare, hash } from "bcryptjs";
 
 const BCRYPT_ROUNDS = 12;
@@ -6,8 +6,11 @@ const BCRYPT_ROUNDS = 12;
 export function getSessionSecret(): string {
   const secret = process.env.SESSION_SECRET;
   if (secret && secret.length >= 16) return secret;
-  if (process.env.NODE_ENV === "production") {
-    throw new Error("SESSION_SECRET is required in production (min 16 chars)");
+  // AUTH-02: fail-closed. El fallback inseguro SOLO se permite en desarrollo/test local.
+  // Cualquier otro NODE_ENV (production, preview, undefined, mal configurado) exige el secreto.
+  const env = process.env.NODE_ENV;
+  if (env !== "development" && env !== "test") {
+    throw new Error("SESSION_SECRET is required (min 16 chars)");
   }
   return "dev-insecure-change-me";
 }
@@ -50,8 +53,14 @@ export function verifySession<T>(token: string): T | null {
     const [header, body, signature] = token.split(".");
     if (!header || !body || !signature) return null;
 
-    const expected = createHmac("sha256", secret).update(`${header}.${body}`).digest("base64url");
-    if (expected !== signature) return null;
+    // AUTH-02: validar explícitamente el algoritmo del header (rechaza alg:none / variantes).
+    const parsedHeader = JSON.parse(base64UrlDecode(header)) as { alg?: string };
+    if (parsedHeader.alg !== "HS256") return null;
+
+    // AUTH-02: comparación de firma en tiempo constante.
+    const expected = createHmac("sha256", secret).update(`${header}.${body}`).digest();
+    const provided = Buffer.from(signature, "base64url");
+    if (expected.length !== provided.length || !timingSafeEqual(expected, provided)) return null;
 
     const payload = JSON.parse(base64UrlDecode(body)) as T & { exp?: number };
     if (typeof payload.exp === "number" && payload.exp < Math.floor(Date.now() / 1000)) {

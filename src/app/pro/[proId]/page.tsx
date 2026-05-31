@@ -83,9 +83,8 @@ type CleaningOnboardingSummary = {
   baseCommune: string | null;
   maxTravelKm: number | null;
   serviceCommunes?: unknown;
-  identityDocumentFrontFile?: string | null;
-  identityDocumentBackFile?: string | null;
-  criminalRecordFile?: string | null;
+  hasIdentityDocuments?: boolean | null;
+  hasCriminalRecord?: boolean | null;
 };
 
 type ProfessionalDetail = {
@@ -1086,8 +1085,8 @@ export default function ProDetailPage() {
     onboarding?.shortDescription?.trim() ||
     "Tasker con experiencia en servicios a domicilio, buena valoración y agenda activa durante la semana.";
   const experienceYears = onboarding?.yearsExperience ?? 6;
-  const hasIdentityProof = Boolean(onboarding?.identityDocumentFrontFile && onboarding?.identityDocumentBackFile);
-  const hasBackgroundCheck = Boolean(onboarding?.criminalRecordFile);
+  const hasIdentityProof = Boolean(onboarding?.hasIdentityDocuments);
+  const hasBackgroundCheck = Boolean(onboarding?.hasCriminalRecord);
   const offeredServices = toLabelList(onboarding?.offeredServices, demoOfferedServices);
   const experienceTypes = toLabelList(onboarding?.experienceTypes, demoExperienceTypes);
   const languages = toLabelList(onboarding?.languages, demoLanguages);

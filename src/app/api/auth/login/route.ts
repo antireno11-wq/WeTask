@@ -15,48 +15,42 @@ export async function POST(req: NextRequest) {
     await ensureMarketplaceDemoData();
     await ensurePrimaryAdminUser();
 
-    const body = (await req.json()) as { userId?: string; email?: string; password?: string; role?: UserRole };
+    const body = (await req.json()) as { email?: string; password?: string; role?: UserRole };
 
-    if (!body.userId && !body.email) {
-      return NextResponse.json({ error: "Debes enviar userId o email" }, { status: 400 });
+    // AUTH-01: el login SIEMPRE exige email + contraseña (o token OAuth en su propio endpoint).
+    // Se eliminó el camino de login por `userId`, que emitía sesión sin prueba de identidad.
+    if (!body.email) {
+      return NextResponse.json({ error: "Debes ingresar email y contraseña" }, { status: 400 });
     }
 
     // Rate limit: 5 intentos/min por (IP + email) — protege contra brute force.
     const ip = getClientIp(req);
-    const identifier = `${ip}:${body.email ?? body.userId ?? "anon"}`;
+    const identifier = `${ip}:${body.email}`;
     const rl = await rateLimit("auth.login", identifier, "5/m");
     if (!rl.success) return tooManyRequestsResponse(rl) as unknown as NextResponse;
 
-    const user = body.userId
-      ? await prisma.user.findUnique({
-          where: { id: body.userId },
-          select: {
-            id: true,
-            email: true,
-            fullName: true,
-            role: true,
-            passwordHash: true,
-            authProvider: true,
-            emailVerifiedAt: true,
-            roleAssignments: { select: { role: { select: { code: true } } } }
-          }
-        })
-      : await prisma.user.findUnique({
-          where: { email: body.email! },
-          select: {
-            id: true,
-            email: true,
-            fullName: true,
-            role: true,
-            passwordHash: true,
-            authProvider: true,
-            emailVerifiedAt: true,
-            roleAssignments: { select: { role: { select: { code: true } } } }
-          }
-        });
+    const user = await prisma.user.findUnique({
+      where: { email: body.email },
+      select: {
+        id: true,
+        email: true,
+        fullName: true,
+        role: true,
+        passwordHash: true,
+        authProvider: true,
+        emailVerifiedAt: true,
+        roleAssignments: { select: { role: { select: { code: true } } } }
+      }
+    });
+
+    // AUTH-07: respuesta única para "no existe" y "credenciales inválidas" (evita enumeración).
+    const invalidCredentials = () =>
+      NextResponse.json({ error: "Credenciales inválidas" }, { status: 401 });
 
     if (!user) {
-      return NextResponse.json({ error: "Usuario no encontrado" }, { status: 404 });
+      // Igualamos el costo: ejecutamos un verify dummy para no filtrar por timing.
+      await verifyPassword(body.password ?? "", "$2a$12$0000000000000000000000000000000000000000000000000000");
+      return invalidCredentials();
     }
 
     const requestedRole = body.role ?? user.role;
@@ -66,31 +60,21 @@ export async function POST(req: NextRequest) {
     const canBypassEmailVerification = hasAssignedRole(user, effectiveRequestedRole) && effectiveRequestedRole === UserRole.ADMIN;
 
     if (requestedRole === UserRole.ADMIN && !canLoginAsRequestedRole) {
-      return NextResponse.json({ error: "El rol no coincide con el usuario" }, { status: 400 });
+      return invalidCredentials();
     }
 
-    if (!body.userId) {
-      if (user.authProvider === "EMAIL") {
-        if (!body.password || !user.passwordHash) {
-          return NextResponse.json({ error: "Debes ingresar email y contraseña" }, { status: 400 });
-        }
-        const ok = await verifyPassword(body.password, user.passwordHash);
-        if (!ok) {
-          const isTaskerAccount = hasAssignedRole(user, UserRole.PRO);
-          return NextResponse.json(
-            {
-              error: isTaskerAccount
-                ? "La contraseña no coincide. Si tu cuenta tasker fue creada antes, usa 'Olvidé mi contraseña' para crear una nueva."
-                : "Credenciales inválidas"
-            },
-            { status: 401 }
-          );
-        }
+    if (user.authProvider === "EMAIL") {
+      if (!body.password || !user.passwordHash) {
+        return NextResponse.json({ error: "Debes ingresar email y contraseña" }, { status: 400 });
       }
+      const ok = await verifyPassword(body.password, user.passwordHash);
+      if (!ok) {
+        return invalidCredentials();
+      }
+    }
 
-      if (!user.emailVerifiedAt && !canBypassEmailVerification) {
-        return NextResponse.json({ error: "Debes verificar tu correo antes de ingresar" }, { status: 403 });
-      }
+    if (!user.emailVerifiedAt && !canBypassEmailVerification) {
+      return NextResponse.json({ error: "Debes verificar tu correo antes de ingresar" }, { status: 403 });
     }
 
     const sessionRole = resolveLoginRole(user, effectiveRequestedRole);

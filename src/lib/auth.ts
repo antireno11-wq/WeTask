@@ -50,12 +50,19 @@ export function getRequestIdentity(req: NextRequest): RequestIdentity {
     return cookieIdentity;
   }
 
-  if (process.env.NODE_ENV === "production") {
+  // AUTH-03: el header-auth (impersonación por x-user-*) es un backdoor de pruebas.
+  // Sólo se permite en development/test local Y exige un secreto compartido en el header,
+  // de modo que un NODE_ENV mal configurado o un staging accesible nunca lo habiliten.
+  const env = process.env.NODE_ENV;
+  if (env !== "development" && env !== "test") {
     return { userId: null, role: null };
   }
 
-  const allowHeaderAuth = process.env.ALLOW_HEADER_AUTH === "true";
-  if (!allowHeaderAuth) {
+  const headerAuthSecret = process.env.HEADER_AUTH_SECRET;
+  if (process.env.ALLOW_HEADER_AUTH !== "true" || !headerAuthSecret) {
+    return { userId: null, role: null };
+  }
+  if (req.headers.get("x-header-auth-secret") !== headerAuthSecret) {
     return { userId: null, role: null };
   }
 
