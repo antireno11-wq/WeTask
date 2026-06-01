@@ -1,7 +1,7 @@
 import { BookingStatus, Prisma } from "@prisma/client";
+import { logError, safeErrorDetail } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
 import { recordAdminAction } from "@/lib/audit-log";
-import { logError } from "@/lib/logger";
 import { notifyBookingReminder } from "@/lib/notification-events";
 import { prisma } from "@/lib/prisma";
 import { assertQStashRequest } from "@/lib/qstash";
@@ -137,7 +137,7 @@ export async function POST(req: NextRequest) {
       {
         ok: false,
         error: "Error en cron de recordatorios",
-        detail: error instanceof Error ? error.message : "Error desconocido"
+        detail: safeErrorDetail(error)
       },
       { status: 500 }
     );

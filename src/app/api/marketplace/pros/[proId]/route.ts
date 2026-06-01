@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { safeErrorDetail } from "@/lib/logger";
 import { ensureMarketplaceDemoData } from "@/lib/marketplace-demo-data";
 import { prisma } from "@/lib/prisma";
 
@@ -110,7 +111,7 @@ export async function GET(_: Request, context: { params: { proId: string } }) {
     return NextResponse.json(
       {
         error: "No se pudo cargar el profesional",
-        detail: error instanceof Error ? error.message : "Error desconocido"
+        detail: safeErrorDetail(error)
       },
       { status: 400 }
     );

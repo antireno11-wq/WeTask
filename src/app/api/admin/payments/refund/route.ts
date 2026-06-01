@@ -1,4 +1,5 @@
 import { BookingStatus, PaymentStatus } from "@prisma/client";
+import { safeErrorDetail } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { requireAdminRequest } from "@/lib/admin-access";
@@ -210,7 +211,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(
       {
         error: "No se pudo reembolsar el pago",
-        detail: error instanceof Error ? error.message : "Error desconocido"
+        detail: safeErrorDetail(error)
       },
       { status: 400 }
     );

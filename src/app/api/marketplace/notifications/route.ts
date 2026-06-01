@@ -1,4 +1,5 @@
 import { Prisma, UserRole } from "@prisma/client";
+import { safeErrorDetail } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getRequestIdentity, hasRole } from "@/lib/auth";
@@ -58,7 +59,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(
       {
         error: "No se pudieron cargar notificaciones",
-        detail: error instanceof Error ? error.message : "Error desconocido"
+        detail: safeErrorDetail(error)
       },
       { status: 400 }
     );
@@ -105,7 +106,7 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json(
       {
         error: "No se pudo actualizar notificaciones",
-        detail: error instanceof Error ? error.message : "Error desconocido"
+        detail: safeErrorDetail(error)
       },
       { status: 400 }
     );

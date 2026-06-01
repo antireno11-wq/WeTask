@@ -1,4 +1,5 @@
 import { CleaningOnboardingStatus, Prisma, UserRole } from "@prisma/client";
+import { safeErrorDetail } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
 import { getRequestIdentity, hasRole } from "@/lib/auth";
 import { getChefServiceDefinition, isChefServiceRateWithinRange, isChefServiceSlug } from "@/lib/chef-service-types";
@@ -145,7 +146,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(
       {
         error: "No se pudo cargar onboarding",
-        detail: error instanceof Error ? error.message : "Error desconocido"
+        detail: safeErrorDetail(error)
       },
       { status: 400 }
     );
@@ -401,7 +402,7 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json(
       {
         error: "No se pudo guardar etapa de onboarding",
-        detail: error instanceof Error ? error.message : "Error desconocido"
+        detail: safeErrorDetail(error)
       },
       { status: 400 }
     );
@@ -448,7 +449,7 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json(
       {
         error: "No se pudo reiniciar onboarding",
-        detail: error instanceof Error ? error.message : "Error desconocido"
+        detail: safeErrorDetail(error)
       },
       { status: 400 }
     );

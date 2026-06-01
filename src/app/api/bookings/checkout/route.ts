@@ -1,4 +1,5 @@
 import { PaymentStatus, UserRole } from "@prisma/client";
+import { safeErrorDetail } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getRequestIdentity, hasRole } from "@/lib/auth";
@@ -568,7 +569,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(
       {
         error: isConflict ? error.message : "No se pudo procesar checkout",
-        detail: error instanceof Error ? error.message : "Error desconocido"
+        detail: safeErrorDetail(error)
       },
       { status: isConflict ? 409 : 400 }
     );

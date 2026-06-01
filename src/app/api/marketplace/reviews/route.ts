@@ -1,4 +1,5 @@
 import { UserRole } from "@prisma/client";
+import { safeErrorDetail } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
 import { getRequestIdentity, hasRole } from "@/lib/auth";
 import { notifyReviewReceived } from "@/lib/notification-events";
@@ -97,7 +98,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(
       {
         error: "No se pudo crear la reseña",
-        detail: error instanceof Error ? error.message : "Error desconocido"
+        detail: safeErrorDetail(error)
       },
       { status: 400 }
     );

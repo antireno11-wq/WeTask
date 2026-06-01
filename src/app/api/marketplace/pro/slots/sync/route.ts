@@ -1,4 +1,5 @@
 import { UserRole } from "@prisma/client";
+import { safeErrorDetail } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
 import { getRequestIdentity, hasRole } from "@/lib/auth";
 import { syncTaskerAvailabilitySlotsFromOnboarding } from "@/lib/tasker-publication";
@@ -32,7 +33,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(
       {
         error: "No se pudo sincronizar la disponibilidad semanal",
-        detail: error instanceof Error ? error.message : "Error desconocido"
+        detail: safeErrorDetail(error)
       },
       { status: 400 }
     );

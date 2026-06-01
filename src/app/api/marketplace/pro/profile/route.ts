@@ -1,4 +1,5 @@
 import { UserRole } from "@prisma/client";
+import { safeErrorDetail } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
 import { getRequestIdentity, hasRole } from "@/lib/auth";
 import { normalizeCommuneList } from "@/lib/communes";
@@ -102,7 +103,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(
       {
         error: "No se pudo cargar perfil del profesional",
-        detail: error instanceof Error ? error.message : "Error desconocido"
+        detail: safeErrorDetail(error)
       },
       { status: 400 }
     );
@@ -199,7 +200,7 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json(
       {
         error: "No se pudo actualizar perfil del profesional",
-        detail: error instanceof Error ? error.message : "Error desconocido"
+        detail: safeErrorDetail(error)
       },
       { status: 400 }
     );

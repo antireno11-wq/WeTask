@@ -1,8 +1,8 @@
 import { CleaningOnboardingStatus, Prisma } from "@prisma/client";
+import { logError, logger, safeErrorDetail } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdminRequest } from "@/lib/admin-access";
 import { normalizeCommuneList } from "@/lib/communes";
-import { logError, logger } from "@/lib/logger";
 import { buildTaskerStatusEmailTemplate, sendPlatformEmail } from "@/lib/notifications";
 import { prisma } from "@/lib/prisma";
 import {
@@ -610,7 +610,7 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json(
       {
         error: "No se pudo actualizar onboarding",
-        detail: error instanceof Error ? error.message : "Error desconocido"
+        detail: safeErrorDetail(error)
       },
       { status: 400 }
     );

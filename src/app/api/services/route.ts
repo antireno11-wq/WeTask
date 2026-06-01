@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { safeErrorDetail } from "@/lib/logger";
 import { unstable_cache } from "next/cache";
 import { prisma } from "@/lib/prisma";
 
@@ -34,7 +35,7 @@ export async function GET() {
     return NextResponse.json(
       {
         error: "No se pudieron listar los servicios",
-        detail: error instanceof Error ? error.message : "Error desconocido"
+        detail: safeErrorDetail(error)
       },
       { status: 400 }
     );

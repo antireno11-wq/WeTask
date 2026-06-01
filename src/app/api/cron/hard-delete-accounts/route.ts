@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { safeErrorDetail } from "@/lib/logger";
 import { hardDeleteExpiredAccounts } from "@/lib/account-cleanup-processor";
 import { recordAdminAction } from "@/lib/audit-log";
 import { assertQStashRequest } from "@/lib/qstash";
@@ -34,7 +35,7 @@ export async function POST(req: NextRequest) {
       {
         ok: false,
         error: "Error procesando hard-delete",
-        detail: error instanceof Error ? error.message : "Error desconocido"
+        detail: safeErrorDetail(error)
       },
       { status: 500 }
     );

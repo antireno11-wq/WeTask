@@ -1,11 +1,11 @@
 import { CleaningOnboardingStatus, UserRole } from "@prisma/client";
+import { logger, safeErrorDetail } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
 import { getRequestIdentity, hasRole } from "@/lib/auth";
 import { normalizeBabysitterScope } from "@/lib/babysitter-scope";
 import { normalizeChefScope } from "@/lib/chef-scope";
 import { normalizeCleaningScope } from "@/lib/cleaning-scope";
 import { normalizeIroningScope } from "@/lib/ironing-scope";
-import { logger } from "@/lib/logger";
 import { normalizeMakeupScope } from "@/lib/makeup-scope";
 import { notifyOnboardingSubmitted } from "@/lib/notification-events";
 import { buildAdminTaskerReviewEmailTemplate, sendPlatformEmail } from "@/lib/notifications";
@@ -446,7 +446,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(
       {
         error: "No se pudo enviar perfil a revisión",
-        detail: error instanceof Error ? error.message : "Error desconocido"
+        detail: safeErrorDetail(error)
       },
       { status: 400 }
     );

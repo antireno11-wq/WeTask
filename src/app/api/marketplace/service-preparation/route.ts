@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import { safeErrorDetail } from "@/lib/logger";
 import { prepareServiceRequest } from "@/lib/service-preparation";
 
 export const dynamic = "force-dynamic";
@@ -35,7 +36,9 @@ export async function POST(req: NextRequest) {
     const result = prepareServiceRequest(input);
     return NextResponse.json(result);
   } catch (error) {
-    const detail = error instanceof Error ? error.message : "No se pudo preparar el servicio";
-    return NextResponse.json({ error: detail }, { status: 400 });
+    return NextResponse.json(
+      { error: "No se pudo preparar el servicio", detail: safeErrorDetail(error) },
+      { status: 400 }
+    );
   }
 }

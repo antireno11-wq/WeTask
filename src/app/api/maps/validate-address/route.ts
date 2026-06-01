@@ -80,7 +80,7 @@ export async function GET(request: NextRequest) {
     );
   } catch (error) {
     return NextResponse.json(
-      { valid: false, error: error instanceof Error ? error.message : "Error validando dirección." },
+      { valid: false, error: "Error validando dirección." },
       { status: 500 }
     );
   }

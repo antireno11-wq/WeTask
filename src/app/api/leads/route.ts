@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { safeErrorDetail } from "@/lib/logger";
 import { prisma } from "@/lib/prisma";
 import { getClientIp, rateLimit, tooManyRequestsResponse } from "@/lib/rate-limit";
 import { serviceLeadCreateSchema } from "@/lib/validators";
@@ -31,7 +32,7 @@ export async function POST(req: NextRequest) {
       {
         ok: false,
         error: "No se pudo registrar la solicitud",
-        detail: error instanceof Error ? error.message : "Error desconocido"
+        detail: safeErrorDetail(error)
       },
       { status: 400 }
     );

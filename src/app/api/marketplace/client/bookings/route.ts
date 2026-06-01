@@ -1,4 +1,5 @@
 import { UserRole } from "@prisma/client";
+import { safeErrorDetail } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
 import { getRequestIdentity, hasRole } from "@/lib/auth";
 import { ensureMarketplaceDemoData } from "@/lib/marketplace-demo-data";
@@ -43,7 +44,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(
       {
         error: "No se pudieron listar reservas del cliente",
-        detail: error instanceof Error ? error.message : "Error desconocido"
+        detail: safeErrorDetail(error)
       },
       { status: 400 }
     );

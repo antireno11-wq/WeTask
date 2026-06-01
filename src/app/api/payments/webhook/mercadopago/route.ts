@@ -1,4 +1,5 @@
 import { createHmac, timingSafeEqual } from "crypto";
+import { safeErrorDetail } from "@/lib/logger";
 import { BookingStatus, PaymentStatus, Prisma } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { emitBoletaForPaymentIfNeeded } from "@/lib/billing/boleta-hook";
@@ -275,7 +276,7 @@ export async function POST(req: NextRequest) {
       {
         ok: false,
         error: "Webhook Mercado Pago falló",
-        detail: error instanceof Error ? error.message : "Error desconocido"
+        detail: safeErrorDetail(error)
       },
       { status: 500 }
     );

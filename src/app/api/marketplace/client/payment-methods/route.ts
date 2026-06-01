@@ -1,4 +1,5 @@
 import { UserRole } from "@prisma/client";
+import { safeErrorDetail } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getRequestIdentity, hasRole } from "@/lib/auth";
@@ -102,7 +103,7 @@ export async function GET(req: NextRequest) {
     );
   } catch (error) {
     return NextResponse.json(
-      { error: "No se pudieron cargar los medios de pago", detail: error instanceof Error ? error.message : "Error desconocido" },
+      { error: "No se pudieron cargar los medios de pago", detail: safeErrorDetail(error) },
       { status: 400 }
     );
   }
@@ -196,7 +197,7 @@ export async function POST(req: NextRequest) {
     );
   } catch (error) {
     return NextResponse.json(
-      { error: "No se pudo guardar la tarjeta", detail: error instanceof Error ? error.message : "Error desconocido" },
+      { error: "No se pudo guardar la tarjeta", detail: safeErrorDetail(error) },
       { status: 400 }
     );
   }
@@ -232,7 +233,7 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ ok: true }, { status: 200 });
   } catch (error) {
     return NextResponse.json(
-      { error: "No se pudo actualizar el medio de pago", detail: error instanceof Error ? error.message : "Error desconocido" },
+      { error: "No se pudo actualizar el medio de pago", detail: safeErrorDetail(error) },
       { status: 400 }
     );
   }
@@ -276,7 +277,7 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json({ ok: true }, { status: 200 });
   } catch (error) {
     return NextResponse.json(
-      { error: "No se pudo eliminar el medio de pago", detail: error instanceof Error ? error.message : "Error desconocido" },
+      { error: "No se pudo eliminar el medio de pago", detail: safeErrorDetail(error) },
       { status: 400 }
     );
   }

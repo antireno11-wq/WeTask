@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { safeErrorDetail } from "@/lib/logger";
 import { z } from "zod";
 import { getRequestIdentity } from "@/lib/auth";
 import {
@@ -40,7 +41,7 @@ export async function POST(req: NextRequest) {
     input = presignSchema.parse(body);
   } catch (error) {
     return NextResponse.json(
-      { error: "Solicitud inválida", detail: error instanceof Error ? error.message : "bad_request" },
+      { error: "Solicitud inválida", detail: safeErrorDetail(error) },
       { status: 400 }
     );
   }
@@ -83,7 +84,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(
       {
         error: "No se pudo generar la URL de carga",
-        detail: error instanceof Error ? error.message : "presign_failed"
+        detail: safeErrorDetail(error)
       },
       { status: 500 }
     );

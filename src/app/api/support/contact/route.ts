@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { safeErrorDetail } from "@/lib/logger";
 import { z } from "zod";
 import { sendPlatformEmail } from "@/lib/notifications";
 import { getClientIp, rateLimit, tooManyRequestsResponse } from "@/lib/rate-limit";
@@ -88,7 +89,7 @@ export async function POST(req: NextRequest) {
       {
         ok: false,
         error: "No se pudo enviar el mensaje",
-        detail: error instanceof Error ? error.message : "Error desconocido"
+        detail: safeErrorDetail(error)
       },
       { status: 500 }
     );

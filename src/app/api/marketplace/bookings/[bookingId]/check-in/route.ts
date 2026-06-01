@@ -1,4 +1,5 @@
 import { BookingStatus, UserRole } from "@prisma/client";
+import { safeErrorDetail } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getRequestIdentity, hasRole } from "@/lib/auth";
@@ -140,7 +141,7 @@ export async function POST(req: NextRequest, context: { params: { bookingId: str
     }
   } catch (error) {
     return NextResponse.json(
-      { error: "No se pudo registrar el check-in", detail: error instanceof Error ? error.message : "Error desconocido" },
+      { error: "No se pudo registrar el check-in", detail: safeErrorDetail(error) },
       { status: 500 }
     );
   }

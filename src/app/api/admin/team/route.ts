@@ -1,4 +1,5 @@
 import { AuthProvider, UserRole } from "@prisma/client";
+import { safeErrorDetail } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { requireAdminRequest } from "@/lib/admin-access";
@@ -675,7 +676,7 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json(
       {
         error: "No se pudo actualizar el acceso interno",
-        detail: error instanceof Error ? error.message : "Error desconocido"
+        detail: safeErrorDetail(error)
       },
       { status: 400 }
     );

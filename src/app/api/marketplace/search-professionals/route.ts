@@ -1,11 +1,11 @@
 import { UserRole } from "@prisma/client";
+import { logger, safeErrorDetail } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
 import { supportsBabysitterRequestedTasks } from "@/lib/babysitter-scope";
 import { supportsChefRequestedTasks } from "@/lib/chef-scope";
 import { supportsCleaningRequestedTasks } from "@/lib/cleaning-scope";
 import { distanceKm, geocodeAddress } from "@/lib/geo";
 import { supportsIroningRequestedTasks } from "@/lib/ironing-scope";
-import { logger } from "@/lib/logger";
 import { supportsMakeupRequestedTasks } from "@/lib/makeup-scope";
 import { COVERAGE_UNAVAILABLE_MESSAGE, inferCommuneFromAddress, normalizeCommune, taskerServesCommune } from "@/lib/communes";
 import { ensureMarketplaceDemoData } from "@/lib/marketplace-demo-data";
@@ -542,7 +542,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(
       {
         error: "No se pudo buscar profesionales por dirección",
-        detail: error instanceof Error ? error.message : "Error desconocido"
+        detail: safeErrorDetail(error)
       },
       { status: 400 }
     );

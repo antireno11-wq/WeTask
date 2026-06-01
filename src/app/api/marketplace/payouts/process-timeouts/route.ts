@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { safeErrorDetail } from "@/lib/logger";
 import { requireAdminRequest } from "@/lib/admin-access";
 import { recordAdminAction } from "@/lib/audit-log";
 import { processBookingsForPayout } from "@/lib/payouts-processor";
@@ -31,7 +32,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(
       {
         error: "No se pudieron procesar los payouts automáticos",
-        detail: error instanceof Error ? error.message : "Error desconocido"
+        detail: safeErrorDetail(error)
       },
       { status: 500 }
     );

@@ -1,4 +1,5 @@
 import { Prisma, UserRole } from "@prisma/client";
+import { safeErrorDetail } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
 import { getRequestIdentity, hasRole } from "@/lib/auth";
 import { normalizeCommuneList } from "@/lib/communes";
@@ -75,7 +76,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(
       {
         error: "No se pudieron cargar las categorías del tasker",
-        detail: error instanceof Error ? error.message : "Error desconocido"
+        detail: safeErrorDetail(error)
       },
       { status: 400 }
     );
@@ -165,7 +166,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(
       {
         error: "No se pudo guardar la categoría adicional",
-        detail: error instanceof Error ? error.message : "Error desconocido"
+        detail: safeErrorDetail(error)
       },
       { status: 400 }
     );
@@ -229,7 +230,7 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json(
       {
         error: "No se pudo desactivar la categoría adicional",
-        detail: error instanceof Error ? error.message : "Error desconocido"
+        detail: safeErrorDetail(error)
       },
       { status: 400 }
     );

@@ -1,4 +1,5 @@
 import { BookingStatus, UserRole } from "@prisma/client";
+import { safeErrorDetail } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
 import { getRequestIdentity, hasRole } from "@/lib/auth";
 import {
@@ -103,7 +104,7 @@ export async function POST(req: NextRequest, context: { params: { bookingId: str
     return NextResponse.json(
       {
         error: "No se pudo confirmar el servicio",
-        detail: error instanceof Error ? error.message : "Error desconocido"
+        detail: safeErrorDetail(error)
       },
       { status: 400 }
     );

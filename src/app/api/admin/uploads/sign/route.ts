@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { safeErrorDetail } from "@/lib/logger";
 import { requireAdminRequest } from "@/lib/admin-access";
 import { getPresignedReadUrl, isStorageConfigured, isStorageKey } from "@/lib/storage/r2";
 
@@ -27,7 +28,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(
       {
         error: "No se pudo generar la URL de lectura",
-        detail: error instanceof Error ? error.message : "sign_failed"
+        detail: safeErrorDetail(error)
       },
       { status: 500 }
     );

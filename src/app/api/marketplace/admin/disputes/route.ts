@@ -1,4 +1,5 @@
 import { BookingStatus, PaymentStatus, Prisma, TicketStatus } from "@prisma/client";
+import { logger, safeErrorDetail } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { requireAdminRequest } from "@/lib/admin-access";
@@ -8,7 +9,6 @@ import {
   canTransition,
   InvalidBookingTransitionError
 } from "@/lib/booking-state-machine";
-import { logger } from "@/lib/logger";
 import { sendPlatformEmail } from "@/lib/notifications";
 import { refundProviderPayment } from "@/lib/payments/provider-adapter";
 import { prisma } from "@/lib/prisma";
@@ -99,7 +99,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(
       {
         error: "No se pudieron listar disputas",
-        detail: error instanceof Error ? error.message : "Error desconocido"
+        detail: safeErrorDetail(error)
       },
       { status: 400 }
     );
@@ -434,7 +434,7 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json(
       {
         error: "No se pudo actualizar disputa",
-        detail: error instanceof Error ? error.message : "Error desconocido"
+        detail: safeErrorDetail(error)
       },
       { status: 400 }
     );

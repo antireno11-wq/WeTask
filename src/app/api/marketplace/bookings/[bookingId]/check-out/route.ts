@@ -1,4 +1,5 @@
 import { BookingStatus, UserRole } from "@prisma/client";
+import { safeErrorDetail } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
 import { getRequestIdentity, hasRole } from "@/lib/auth";
 import {
@@ -104,7 +105,7 @@ export async function POST(req: NextRequest, context: { params: { bookingId: str
     return NextResponse.json({ ok: true, booking: updated }, { status: 200 });
   } catch (error) {
     return NextResponse.json(
-      { error: "No se pudo cerrar el servicio", detail: error instanceof Error ? error.message : "Error desconocido" },
+      { error: "No se pudo cerrar el servicio", detail: safeErrorDetail(error) },
       { status: 500 }
     );
   }

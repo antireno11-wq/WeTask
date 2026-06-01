@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { safeErrorDetail } from "@/lib/logger";
 import { z } from "zod";
 import { normalizeCommune } from "@/lib/communes";
 import { prisma } from "@/lib/prisma";
@@ -39,7 +40,7 @@ export async function POST(req: NextRequest) {
       {
         ok: false,
         error: "No se pudo registrar tu interés de cobertura",
-        detail: error instanceof Error ? error.message : "Error desconocido"
+        detail: safeErrorDetail(error)
       },
       { status: 400 }
     );

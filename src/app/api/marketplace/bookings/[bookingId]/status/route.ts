@@ -1,4 +1,5 @@
 import { UserRole } from "@prisma/client";
+import { safeErrorDetail } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
 import { getRequestIdentity, hasRole } from "@/lib/auth";
 import { sendBookingStatusEmailToCustomer } from "@/lib/booking-status-email";
@@ -64,7 +65,7 @@ export async function PATCH(req: NextRequest, context: { params: { bookingId: st
     return NextResponse.json(
       {
         error: "No se pudo actualizar el estado",
-        detail: error instanceof Error ? error.message : "Error desconocido"
+        detail: safeErrorDetail(error)
       },
       { status: 400 }
     );

@@ -1,4 +1,5 @@
 import { UserRole } from "@prisma/client";
+import { safeErrorDetail } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
 import { getRequestIdentity, hasRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -51,7 +52,7 @@ export async function PATCH(req: NextRequest, context: { params: { slotId: strin
     return NextResponse.json(
       {
         error: "No se pudo actualizar slot",
-        detail: error instanceof Error ? error.message : "Error desconocido"
+        detail: safeErrorDetail(error)
       },
       { status: 400 }
     );
@@ -81,7 +82,7 @@ export async function DELETE(req: NextRequest, context: { params: { slotId: stri
     return NextResponse.json(
       {
         error: "No se pudo eliminar slot",
-        detail: error instanceof Error ? error.message : "Error desconocido"
+        detail: safeErrorDetail(error)
       },
       { status: 400 }
     );

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { safeErrorDetail } from "@/lib/logger";
 import { recordAdminAction } from "@/lib/audit-log";
 import { reconcilePendingPayments, releaseExpiredHolds } from "@/lib/payouts-processor";
 import { assertQStashRequest } from "@/lib/qstash";
@@ -38,7 +39,7 @@ export async function POST(req: NextRequest) {
       {
         ok: false,
         error: "Error reconciliando pagos",
-        detail: error instanceof Error ? error.message : "Error desconocido"
+        detail: safeErrorDetail(error)
       },
       { status: 500 }
     );

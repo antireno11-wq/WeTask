@@ -57,7 +57,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ predictions }, { status: 200 });
   } catch (error) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Error obteniendo sugerencias de dirección." },
+      { error: "Error obteniendo sugerencias de dirección." },
       { status: 500 }
     );
   }

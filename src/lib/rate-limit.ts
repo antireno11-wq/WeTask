@@ -148,11 +148,18 @@ export async function rateLimit(
  * Extrae la IP del cliente de los headers usuales en Next.js + Railway.
  */
 export function getClientIp(req: Request): string {
+  // PRO-09: preferimos `x-real-ip`, que setea el proxy de borde de confianza (Railway/edge)
+  // y el cliente no puede falsificar. `x-forwarded-for` SÍ es manipulable por el cliente
+  // (puede prependir IPs falsas), así que se usa sólo como fallback en entornos sin x-real-ip.
+  // Además, los rate-limits sensibles combinan la IP con un identificador no-spoofeable
+  // (email/teléfono/userId), de modo que el spoofeo de IP no basta para evadirlos.
+  const realIp = req.headers.get("x-real-ip")?.trim();
+  if (realIp) return realIp;
   const forwarded = req.headers.get("x-forwarded-for");
   if (forwarded) {
-    return forwarded.split(",")[0]?.trim() ?? "unknown";
+    return forwarded.split(",")[0]?.trim() || "unknown";
   }
-  return req.headers.get("x-real-ip") ?? "unknown";
+  return "unknown";
 }
 
 /**

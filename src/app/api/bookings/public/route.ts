@@ -1,4 +1,5 @@
 import { UserRole } from "@prisma/client";
+import { safeErrorDetail } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
 import { getRequestIdentity } from "@/lib/auth";
 import { COVERAGE_UNAVAILABLE_MESSAGE, normalizeCommune } from "@/lib/communes";
@@ -34,7 +35,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(
       {
         error: "No se pudieron listar tus reservas",
-        detail: error instanceof Error ? error.message : "Error desconocido"
+        detail: safeErrorDetail(error)
       },
       { status: 400 }
     );
@@ -82,14 +83,14 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ booking }, { status: 201 });
   } catch (error) {
-    const detail = error instanceof Error ? error.message : "Error desconocido";
-    if (detail.includes("Comuna fuera de cobertura MVP")) {
+    const rawMessage = error instanceof Error ? error.message : "";
+    if (rawMessage.includes("Comuna fuera de cobertura MVP")) {
       return NextResponse.json({ error: COVERAGE_UNAVAILABLE_MESSAGE }, { status: 400 });
     }
     return NextResponse.json(
       {
         error: "No se pudo crear la reserva",
-        detail
+        detail: safeErrorDetail(error)
       },
       { status: 400 }
     );

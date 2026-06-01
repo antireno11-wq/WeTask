@@ -1,4 +1,5 @@
 import { CleaningOnboardingStatus, PaymentStatus, PayoutStatus, TicketStatus } from "@prisma/client";
+import { safeErrorDetail } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdminRequest } from "@/lib/admin-access";
 import { prisma } from "@/lib/prisma";
@@ -109,7 +110,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(
       {
         error: "No se pudieron calcular stats",
-        detail: error instanceof Error ? error.message : "Error desconocido"
+        detail: safeErrorDetail(error)
       },
       { status: 500 }
     );

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { safeErrorDetail } from "@/lib/logger";
 import { requireAdminRequest } from "@/lib/admin-access";
 import { recordAdminAction } from "@/lib/audit-log";
 import { invalidateMarketplaceCatalog } from "@/lib/cache-tags";
@@ -53,7 +54,7 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json(
       {
         error: "No se pudieron actualizar reglas de categoria",
-        detail: error instanceof Error ? error.message : "Error desconocido"
+        detail: safeErrorDetail(error)
       },
       { status: 400 }
     );

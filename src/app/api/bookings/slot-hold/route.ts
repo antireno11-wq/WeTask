@@ -1,4 +1,5 @@
 import { UserRole } from "@prisma/client";
+import { safeErrorDetail } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getRequestIdentity, hasRole } from "@/lib/auth";
@@ -31,7 +32,7 @@ export async function POST(req: NextRequest) {
     input = holdSchema.parse(await req.json());
   } catch (error) {
     return NextResponse.json(
-      { error: "Solicitud inválida", detail: error instanceof Error ? error.message : "bad_request" },
+      { error: "Solicitud inválida", detail: safeErrorDetail(error) },
       { status: 400 }
     );
   }

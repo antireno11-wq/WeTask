@@ -665,14 +665,6 @@ export const taskerOnboardingStep11Schema = z.object({
   acceptTerms: z.boolean().refine((v) => v, { message: "Debes aceptar los términos y condiciones" })
 });
 
-export const cleaningOnboardingPhoneSendSchema = z.object({
-  phone: chileanMobilePhoneSchema.optional()
-});
-
-export const cleaningOnboardingPhoneVerifySchema = z.object({
-  code: z.string().regex(/^\d{6}$/, "Código inválido")
-});
-
 export const cleaningOnboardingAdminActionSchema = z.object({
   onboardingId: z.string().min(1).optional(),
   action: z.enum(["request_correction", "approve", "activate", "set_pending", "delete_record", "clear_all"]),
