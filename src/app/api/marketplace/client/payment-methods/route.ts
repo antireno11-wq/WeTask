@@ -96,6 +96,9 @@ export async function GET(req: NextRequest) {
           cardholderName: item.cardholderName,
           payerEmail: item.payerEmail,
           paymentMethodId: item.paymentMethodId,
+          // Necesario para re-tokenizar la tarjeta guardada con CVV en el checkout
+          // (modelo marketplace: el token se genera fresco y se cobra en la cuenta del pro).
+          providerCardId: item.providerCardId,
           isDefault: item.isDefault
         }))
       },

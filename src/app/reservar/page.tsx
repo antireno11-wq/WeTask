@@ -168,6 +168,7 @@ export default function ReservarPage() {
   const [savedPaymentMethods, setSavedPaymentMethods] = useState<SavedPaymentMethod[]>([]);
   const [loadingSavedPaymentMethods, setLoadingSavedPaymentMethods] = useState(false);
   const [selectedSavedPaymentMethodId, setSelectedSavedPaymentMethodId] = useState("");
+  const [savedCardCvv, setSavedCardCvv] = useState("");
   const [showNewCardForm, setShowNewCardForm] = useState(false);
   const [preferredSlotId, setPreferredSlotId] = useState("");
   const [preferredStartsAt, setPreferredStartsAt] = useState("");
@@ -777,6 +778,33 @@ export default function ReservarPage() {
         throw new Error("No pudimos tokenizar tu tarjeta. Revisa los datos e inténtalo nuevamente.");
       }
 
+      // Modelo marketplace (split): una tarjeta guardada vive en el Customer de la
+      // plataforma y NO se puede cobrar directo en la cuenta del proveedor. Por eso
+      // regeneramos un token fresco desde el cardId + CVV (public key de la plataforma)
+      // y ese token sí es válido para el pago con application_fee en la cuenta del pro.
+      let savedCardToken: string | undefined;
+      if (!showNewCardForm && selectedSavedPaymentMethod) {
+        if (!selectedSavedPaymentMethod.providerCardId) {
+          throw new Error("Esta tarjeta guardada no se puede usar. Agrégala nuevamente.");
+        }
+        if (savedCardCvv.length < 3) {
+          throw new Error("Ingresa el código de seguridad (CVV) de tu tarjeta.");
+        }
+        const MercadoPagoCtor = typeof window !== "undefined" ? (window as any).MercadoPago : null;
+        if (!MercadoPagoCtor || !mercadoPagoPublicKey) {
+          throw new Error("No pudimos inicializar el pago. Recarga la página e inténtalo de nuevo.");
+        }
+        const mp = new MercadoPagoCtor(mercadoPagoPublicKey, { locale: "es-CL" });
+        const tokenResult = await mp.createCardToken({
+          cardId: selectedSavedPaymentMethod.providerCardId,
+          securityCode: savedCardCvv
+        });
+        savedCardToken = tokenResult?.id;
+        if (!savedCardToken) {
+          throw new Error("No pudimos validar tu tarjeta guardada. Revisa el CVV.");
+        }
+      }
+
       const payerEmail = (
         selectedSavedPaymentMethod?.payerEmail ||
         cardData?.cardholderEmail ||
@@ -813,7 +841,7 @@ export default function ReservarPage() {
             travelFeeClp: 0
           },
           payment: {
-            token: cardData?.token,
+            token: cardData?.token ?? savedCardToken,
             paymentMethodId: selectedSavedPaymentMethod?.paymentMethodId ?? cardData?.paymentMethodId,
             issuerId: cardData?.issuerId,
             installments: Number(cardData?.installments || 1),
@@ -1095,6 +1123,24 @@ export default function ReservarPage() {
                     ))}
                   </div>
                 )}
+
+                {!showNewCardForm && selectedSavedPaymentMethod ? (
+                  <div className="booking-checkout-cvv">
+                    <label htmlFor="saved-card-cvv">
+                      Código de seguridad (CVV){selectedSavedPaymentMethod.last4 ? ` de tu tarjeta ••••${selectedSavedPaymentMethod.last4}` : ""}
+                    </label>
+                    <input
+                      id="saved-card-cvv"
+                      inputMode="numeric"
+                      autoComplete="cc-csc"
+                      maxLength={4}
+                      value={savedCardCvv}
+                      onChange={(e) => setSavedCardCvv(e.target.value.replace(/\D/g, ""))}
+                      placeholder="123"
+                    />
+                    <small>Por seguridad pedimos el CVV cada vez que usas una tarjeta guardada.</small>
+                  </div>
+                ) : null}
 
                 <div className="cta-row booking-checkout-method-actions">
                   <Link className="cta ghost small" href="/cliente">

@@ -45,6 +45,7 @@ export type SavedPaymentMethod = {
   cardholderName: string | null;
   payerEmail: string | null;
   paymentMethodId: string | null;
+  providerCardId: string | null;
   isDefault: boolean;
 };
 

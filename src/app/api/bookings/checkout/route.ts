@@ -124,7 +124,11 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: "La tarjeta guardada no pertenece al cliente" }, { status: 400 });
       }
     }
-    if (!savedPaymentMethod && !input.payment.token) {
+    // Modelo marketplace (split): SIEMPRE se cobra con un token de tarjeta (generado en el
+    // navegador con la public key de la plataforma). Para tarjetas guardadas, el frontend
+    // regenera un token fresco desde el cardId + CVV — por eso el token es obligatorio
+    // también con savedCardId, y NO se reutiliza el customer/card de la cuenta plataforma.
+    if (!input.payment.token) {
       return NextResponse.json({ error: "Faltan los datos de la tarjeta para procesar el pago" }, { status: 400 });
     }
 
@@ -442,9 +446,9 @@ export async function POST(req: NextRequest) {
                   type: input.payment.payerIdentificationType,
                   number: input.payment.payerIdentificationNumber
                 }
-              : undefined,
-          customerId: savedPaymentMethod?.providerCustomerId,
-          cardId: savedPaymentMethod?.providerCardId
+              : undefined
+          // No se pasa customerId/cardId: pertenecen al Customer de la plataforma y no son
+          // válidos para cobrar en la cuenta del collector. El token fresco es suficiente.
         },
         {
           // PAY-04: el token viene cifrado at-rest; se descifra sólo en memoria al usarlo.
