@@ -260,6 +260,19 @@ export async function PATCH(req: NextRequest) {
       });
 
       await prisma.$transaction(async (tx) => {
+        // ADM-11: dejar rastro de esta operación masiva destructiva (antes no se auditaba).
+        await tx.adminAuditLog.create({
+          data: {
+            actorId: admin.identity.userId,
+            action: "onboarding.clear_all",
+            targetType: "CleaningOnboarding",
+            targetId: "*",
+            beforeJson: {
+              deletedCount: allOnboardings.length,
+              userIds: allOnboardings.map((o) => o.userId)
+            }
+          }
+        });
         for (const item of allOnboardings) {
           await deleteOnboardingAndProfessionalData(tx, item.userId, item.id);
         }
@@ -268,7 +281,8 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json(
         {
           ok: true,
-          message: "Se eliminaron todas las inscripciones anteriores."
+          message: "Se eliminaron todas las inscripciones anteriores.",
+          deletedCount: allOnboardings.length
         },
         { status: 200 }
       );

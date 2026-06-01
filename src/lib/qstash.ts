@@ -99,7 +99,10 @@ export async function assertQStashRequest(req: Request): Promise<
       })
     };
   }
-  if (verdict === "unverifiable" && process.env.NODE_ENV === "production") {
+  // BOOK-11: fuera de development/test exigimos firma válida. Antes sólo se rechazaba en
+  // production, así que un NODE_ENV mal configurado (preview/staging) dejaba los crons
+  // (payouts, borrado de cuentas) disparables sin firma.
+  if (verdict === "unverifiable" && process.env.NODE_ENV !== "development" && process.env.NODE_ENV !== "test") {
     return {
       ok: false,
       response: new Response(

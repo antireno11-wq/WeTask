@@ -9,6 +9,7 @@ import {
   PRE_CONFIRMATION_CHAT_BLOCK_MESSAGE
 } from "@/lib/chat-safety";
 import { prisma } from "@/lib/prisma";
+import { rateLimit, tooManyRequestsResponse } from "@/lib/rate-limit";
 
 const messageSchema = z.object({
   body: z.string().min(1).max(1000),
@@ -69,6 +70,10 @@ export async function POST(req: NextRequest, context: { params: { bookingId: str
     const access = await canAccessBooking(identity.userId, identity.role, context.params.bookingId);
     if (!access.ok) return NextResponse.json({ error: "No autorizado" }, { status: 403 });
     if (!access.booking) return NextResponse.json({ error: "Reserva no encontrada" }, { status: 404 });
+
+    // BOOK-15: limita el spam de mensajes por usuario+reserva.
+    const rl = await rateLimit("chat.message", `${identity.userId}:${context.params.bookingId}`, "20/m");
+    if (!rl.success) return tooManyRequestsResponse(rl) as unknown as NextResponse;
 
     const body = await req.json();
     const input = messageSchema.parse(body);

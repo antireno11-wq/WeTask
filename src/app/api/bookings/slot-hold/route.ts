@@ -4,10 +4,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getRequestIdentity, hasRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { rateLimit, tooManyRequestsResponse } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
 const HOLD_DURATION_MINUTES = 5;
+// BOOK-10: tope de holds simultáneos por usuario (evita bloquear toda la agenda de un pro).
+const MAX_ACTIVE_HOLDS = 3;
 
 const holdSchema = z.object({
   slotId: z.string().min(1)
@@ -37,8 +40,26 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  // BOOK-10: rate-limit por usuario contra abuso del endpoint.
+  const rl = await rateLimit("slot.hold", identity.userId, "30/m");
+  if (!rl.success) return tooManyRequestsResponse(rl) as unknown as NextResponse;
+
   const holdExpiresAt = new Date(Date.now() + HOLD_DURATION_MINUTES * 60 * 1000);
   const now = new Date();
+
+  // BOOK-10: limita la cantidad de holds activos distintos por usuario. No cuenta el
+  // propio slot (permite refrescar un hold vigente) ni a los ADMIN.
+  if (identity.role !== UserRole.ADMIN) {
+    const activeHolds = await prisma.availabilitySlot.count({
+      where: { heldByUserId: identity.userId, holdExpiresAt: { gt: now }, id: { not: input.slotId } }
+    });
+    if (activeHolds >= MAX_ACTIVE_HOLDS) {
+      return NextResponse.json(
+        { error: "Tienes demasiados horarios reservados a la vez. Completa o libera uno antes de seguir." },
+        { status: 429 }
+      );
+    }
+  }
 
   // Lock optimista: solo tomamos el slot si está available o si su hold ya
   // expiró o si el hold actual nos pertenece (refresh idempotente).

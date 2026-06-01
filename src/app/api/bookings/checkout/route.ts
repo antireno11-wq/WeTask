@@ -240,12 +240,17 @@ export async function POST(req: NextRequest) {
       hourlyRateClp = pro.professionalProfile.taskerServices[0]?.priceClp ?? hourlyRateClp;
     }
 
+    // PAY-10/BOOK-14: el travelFeeClp lo envía el cliente y no debe poder inflar el monto
+    // que recibe el tasker. Lo acotamos a un máximo razonable server-side.
+    const MAX_TRAVEL_FEE_CLP = 15000;
+    const travelFeeClp = Math.min(Math.max(0, input.extras?.travelFeeClp ?? 0), MAX_TRAVEL_FEE_CLP);
+
     const price = calculateMarketplacePrice({
       hourlyRateClp,
       hours: input.hours,
       materials: Boolean(input.extras?.materials),
       urgency: Boolean(input.extras?.urgency),
-      travelFeeClp: input.extras?.travelFeeClp ?? 0,
+      travelFeeClp,
       materialFeeDefaultClp: serviceCategory.materialFeeDefaultClp,
       urgencyFeeClp: serviceCategory.urgencyFeeClp,
       platformFeePct: Number(serviceCategory.basePlatformFeePct)

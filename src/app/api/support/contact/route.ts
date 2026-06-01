@@ -14,6 +14,17 @@ const contactSchema = z.object({
   message: z.string().trim().min(10, "Escribe un mensaje más completo")
 });
 
+// ADM-10: escapa entidades HTML para que el contenido del usuario no inyecte markup
+// (enlaces/imágenes/tracking) en el correo que recibe el equipo de soporte.
+function escapeHtml(value: string) {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 function getSupportInboxEmail() {
   return (
     process.env.SUPPORT_EMAIL?.trim() ||
@@ -33,6 +44,14 @@ export async function POST(req: NextRequest) {
 
     const supportInbox = getSupportInboxEmail();
     const safePhone = input.phone.trim() || "No informado";
+    // Versiones escapadas para interpolar en el HTML del correo.
+    const h = {
+      name: escapeHtml(input.name),
+      email: escapeHtml(input.email),
+      reason: escapeHtml(input.reason),
+      message: escapeHtml(input.message),
+      phone: escapeHtml(safePhone)
+    };
 
     await sendPlatformEmail({
       to: supportInbox,
@@ -53,18 +72,18 @@ export async function POST(req: NextRequest) {
           <div style="max-width:680px;margin:0 auto;background:#ffffff;border-radius:28px;overflow:hidden;box-shadow:0 18px 46px rgba(21,58,97,0.14);border:1px solid rgba(34,97,160,0.12);">
             <div style="padding:28px 32px 18px;background:linear-gradient(135deg,#173e73 0%,#1d7fc6 100%);">
               <p style="margin:0;font-size:13px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#d8ecff;">Nuevo mensaje de contacto</p>
-              <h1 style="margin:10px 0 0;font-size:28px;line-height:1.12;color:#ffffff;">${input.reason}</h1>
+              <h1 style="margin:10px 0 0;font-size:28px;line-height:1.12;color:#ffffff;">${h.reason}</h1>
             </div>
             <div style="padding:28px 32px 32px;">
               <div style="display:grid;gap:10px;margin:0 0 24px;padding:18px 20px;border-radius:20px;background:#f4f8fd;border:1px solid rgba(29,127,198,0.18);">
-                <p style="margin:0;"><strong>Nombre:</strong> ${input.name}</p>
-                <p style="margin:0;"><strong>Correo:</strong> ${input.email}</p>
-                <p style="margin:0;"><strong>Teléfono:</strong> ${safePhone}</p>
-                <p style="margin:0;"><strong>Motivo:</strong> ${input.reason}</p>
+                <p style="margin:0;"><strong>Nombre:</strong> ${h.name}</p>
+                <p style="margin:0;"><strong>Correo:</strong> ${h.email}</p>
+                <p style="margin:0;"><strong>Teléfono:</strong> ${h.phone}</p>
+                <p style="margin:0;"><strong>Motivo:</strong> ${h.reason}</p>
               </div>
               <div style="padding:20px;border-radius:20px;background:#ffffff;border:1px solid rgba(34,97,160,0.12);">
                 <p style="margin:0 0 8px;font-size:13px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#1d7fc6;">Mensaje</p>
-                <p style="margin:0;font-size:16px;line-height:1.7;color:#48627d;white-space:pre-wrap;">${input.message}</p>
+                <p style="margin:0;font-size:16px;line-height:1.7;color:#48627d;white-space:pre-wrap;">${h.message}</p>
               </div>
             </div>
           </div>
