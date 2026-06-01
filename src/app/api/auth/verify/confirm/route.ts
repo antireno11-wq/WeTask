@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { safeErrorDetail } from "@/lib/logger";
 import { prisma } from "@/lib/prisma";
 import { getClientIp, rateLimit, tooManyRequestsResponse } from "@/lib/rate-limit";
 import { sha256 } from "@/lib/security";
@@ -36,6 +37,6 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ ok: true }, { status: 200 });
   } catch (error) {
-    return NextResponse.json({ error: "No se pudo verificar correo", detail: error instanceof Error ? error.message : "Error desconocido" }, { status: 400 });
+    return NextResponse.json({ error: "No se pudo verificar correo", detail: safeErrorDetail(error) }, { status: 400 });
   }
 }

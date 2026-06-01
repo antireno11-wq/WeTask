@@ -275,7 +275,11 @@ export default function ReservarPage() {
   const baseHourly = selectedPro?.hourlyRateFromClp ?? services.find((s) => s.id === filters.serviceId)?.basePriceClp ?? 0;
   const extrasTotal = 0;
   const subtotal = baseHourly * hours;
-  const commission = Math.round(subtotal * 0.12);
+  // UX-12: la comisión real es por categoría (serviceCategory.basePlatformFeePct) y se
+  // calcula server-side en el checkout. Este 12% es sólo un ESTIMADO para la vista previa;
+  // el monto autoritativo lo confirma el backend al pagar (de ahí "Total estimado" en la UI).
+  const ESTIMATED_PLATFORM_FEE_PCT = 0.12;
+  const commission = Math.round(subtotal * ESTIMATED_PLATFORM_FEE_PCT);
   const total = subtotal + extrasTotal + commission;
 
   const loadServices = async () => {
@@ -1174,9 +1178,13 @@ export default function ReservarPage() {
                   className="cta"
                   type="button"
                   onClick={submitCheckout}
-                  disabled={loadingCheckout || !selectedSlot || !selectedStartAt || (showNewCardForm ? !cardFormReady : !selectedSavedPaymentMethod)}
+                  disabled={loadingCheckout || checkoutState === "processing" || checkoutState === "approved" || !selectedSlot || !selectedStartAt || (showNewCardForm ? !cardFormReady : !selectedSavedPaymentMethod)}
                 >
-                  {loadingCheckout ? "Procesando pago..." : "Pagar y confirmar reserva"}
+                  {checkoutState === "approved"
+                    ? "Redirigiendo..."
+                    : loadingCheckout || checkoutState === "processing"
+                      ? "Procesando pago..."
+                      : "Pagar y confirmar reserva"}
                 </button>
                 <Link className="cta ghost" href="/cliente">
                   Ver mis reservas

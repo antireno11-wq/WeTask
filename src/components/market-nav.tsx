@@ -47,10 +47,17 @@ export function MarketNav() {
   }, [session?.role, pathname]);
 
   const logout = async () => {
-    await fetch("/api/auth/logout", { method: "POST" });
-    setSession(null);
-    router.push("/");
-    router.refresh();
+    // UX-15: si el logout falla, NO limpiamos la UI (la cookie sigue viva) para no dar
+    // una falsa sensación de sesión cerrada en equipos compartidos.
+    try {
+      const res = await fetch("/api/auth/logout", { method: "POST" });
+      if (!res.ok) throw new Error("logout_failed");
+      setSession(null);
+      router.push("/");
+      router.refresh();
+    } catch {
+      window.alert("No pudimos cerrar tu sesión. Revisa tu conexión e inténtalo de nuevo.");
+    }
   };
 
   const role = session?.role ?? null;

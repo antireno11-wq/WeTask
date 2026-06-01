@@ -2,6 +2,7 @@ import { UserRole } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { ensureMarketplaceDemoData } from "@/lib/marketplace-demo-data";
 import { encodeSessionCookie, SESSION_COOKIE_NAME } from "@/lib/auth";
+import { safeErrorDetail } from "@/lib/logger";
 import { ensurePrimaryAdminUser } from "@/lib/primary-admin";
 import { prisma } from "@/lib/prisma";
 import { getClientIp, rateLimit, tooManyRequestsResponse } from "@/lib/rate-limit";
@@ -107,7 +108,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(
       {
         error: "No se pudo iniciar sesión",
-        detail: error instanceof Error ? error.message : "Error desconocido"
+        detail: safeErrorDetail(error)
       },
       { status: 400 }
     );

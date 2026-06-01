@@ -102,7 +102,15 @@ export function LoginRolePanel({
 
   const submitByEmail = async (event: FormEvent) => {
     event.preventDefault();
-    if (!email.trim()) return;
+    // UX-06: validación explícita con feedback (antes fallaba en silencio).
+    if (!email.trim()) {
+      setError("Ingresa tu correo.");
+      return;
+    }
+    if (!password) {
+      setError("Ingresa tu contraseña.");
+      return;
+    }
     await login({ email: email.trim(), password });
   };
 
@@ -222,12 +230,12 @@ export function LoginRolePanel({
       <form id="wetask-login-form" className="login-form-shell" onSubmit={submitByEmail}>
         <label>
           Email
-          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="usuario@wetask.cl" />
+          <input type="email" required autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="usuario@wetask.cl" />
         </label>
         <label>
           Contraseña
           <div className="password-field">
-            <input type={showPassword ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="********" />
+            <input type={showPassword ? "text" : "password"} required autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="********" />
             <button type="button" className="password-toggle" onClick={() => setShowPassword((current) => !current)}>
               {showPassword ? "Ocultar" : "Mostrar"}
             </button>

@@ -18,7 +18,7 @@ export default function ClientReservasView({ bookings }: { bookings: Booking[] }
           bookings.map((booking) => (
             <article className="booking-card client-dashboard-card" key={booking.id}>
               <div className="booking-head">
-                <h3>{booking.service.name}</h3>
+                <h3>{booking.service?.name ?? "Servicio"}</h3>
                 <span className={`status ${statusClassByBooking(booking.status)}`}>
                   {statusLabelByBooking(booking.status)}
                 </span>

@@ -56,6 +56,15 @@ export const logger: Logger = pino({
   timestamp: () => `,"time":"${new Date().toISOString()}"`
 });
 
+/**
+ * Detalle de error seguro para devolver al cliente: en producción NO se expone el
+ * mensaje crudo (evita fingerprinting del schema / enumeración). En dev sí, para depurar.
+ */
+export function safeErrorDetail(error: unknown): string | undefined {
+  if (isProd) return undefined;
+  return error instanceof Error ? error.message : "Error desconocido";
+}
+
 export function logError(scope: string, error: unknown, extra: Record<string, unknown> = {}) {
   const message = error instanceof Error ? error.message : "unknown";
   const stack = error instanceof Error ? error.stack : undefined;

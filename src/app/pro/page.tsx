@@ -419,6 +419,11 @@ export default function ProPage() {
       try {
         const response = await fetch("/api/auth/session");
         const data = (await response.json()) as { session?: { userId: string } | null };
+        // UX-03: sin sesión válida, enviar a login en vez de dejar el panel vacío.
+        if (!response.ok || !data.session?.userId) {
+          window.location.assign("/ingresar/tasker?next=/pro");
+          return;
+        }
         if (data.session?.userId) {
           // Si el tasker recién fue aprobado y nunca vio la pantalla
           // celebrativa, redirigir a /pro/perfil-aprobado (Fase 9).
@@ -443,7 +448,8 @@ export default function ProPage() {
           await loadAll(data.session.userId);
         }
       } catch {
-        // noop
+        // UX-03: la carga falló — mostramos un error en vez de un panel fantasma vacío.
+        setError("No pudimos cargar tu panel. Revisa tu conexión y recarga la página.");
       }
     };
     void bootstrap();

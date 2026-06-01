@@ -2,6 +2,7 @@ import { UserRole } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { OAuth2Client, type TokenPayload } from "google-auth-library";
 import { encodeSessionCookie, SESSION_COOKIE_NAME } from "@/lib/auth";
+import { safeErrorDetail } from "@/lib/logger";
 import { prisma } from "@/lib/prisma";
 import { verifyOAuthToken } from "@/lib/oauth-verifier";
 import { getClientIp, rateLimit, tooManyRequestsResponse } from "@/lib/rate-limit";
@@ -179,7 +180,7 @@ export async function POST(req: NextRequest) {
     return response;
   } catch (error) {
     return NextResponse.json(
-      { error: "No se pudo autenticar con proveedor", detail: error instanceof Error ? error.message : "Error desconocido" },
+      { error: "No se pudo autenticar con proveedor", detail: safeErrorDetail(error) },
       { status: 400 }
     );
   }

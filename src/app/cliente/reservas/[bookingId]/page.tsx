@@ -93,6 +93,8 @@ export default function ClienteBookingActionsPage() {
   const [feedback, setFeedback] = useState("");
   const [error, setError] = useState("");
   const [isSendingMessage, setIsSendingMessage] = useState(false);
+  const [confirming, setConfirming] = useState(false);
+  const [loadFailed, setLoadFailed] = useState(false);
   const [activeView, setActiveView] = useState<BookingDetailView>("resumen");
 
   const bookingEnd = useMemo(() => {
@@ -104,9 +106,11 @@ export default function ClienteBookingActionsPage() {
     const load = async () => {
       try {
         const sessionRes = await fetch("/api/auth/session");
-        const sessionData = (await sessionRes.json()) as { session?: { userId: string } | null; error?: string; detail?: string };
+        const sessionData = (await sessionRes.json()) as { session?: { userId: string } | null };
         if (!sessionRes.ok || !sessionData.session?.userId) {
-          throw new Error(sessionData.detail || sessionData.error || "No se pudo cargar sesión");
+          // UX-04: sin sesión válida, enviamos a login en vez de dejar la pantalla colgada.
+          window.location.assign(`/ingresar/cliente?next=/cliente/reservas/${bookingId}`);
+          return;
         }
         setCustomerId(sessionData.session.userId);
 
@@ -116,21 +120,20 @@ export default function ClienteBookingActionsPage() {
             fetch(`/api/marketplace/bookings/${bookingId}/messages`)
           ]);
 
-          const bookingData = (await bookingResponse.json()) as { booking?: BookingDetail; error?: string; detail?: string };
-          const messagesData = (await messagesResponse.json()) as { messages?: BookingChatMessage[]; error?: string; detail?: string };
+          const bookingData = (await bookingResponse.json()) as { booking?: BookingDetail; error?: string };
+          const messagesData = (await messagesResponse.json()) as { messages?: BookingChatMessage[]; error?: string };
 
+          // UX-04: no exponemos data.detail (técnico) al usuario final.
           if (!bookingResponse.ok || !bookingData.booking) {
-            throw new Error(bookingData.detail || bookingData.error || "No se pudo cargar la reserva");
-          }
-          if (!messagesResponse.ok || !messagesData.messages) {
-            throw new Error(messagesData.detail || messagesData.error || "No se pudo cargar el chat");
+            throw new Error("No pudimos cargar esta reserva. Puede que no exista o no sea tuya.");
           }
 
           setBooking(bookingData.booking);
-          setMessages(messagesData.messages);
+          setMessages(messagesData.messages ?? []);
         }
       } catch (e) {
-        setError(e instanceof Error ? e.message : "Error inesperado");
+        setLoadFailed(true);
+        setError(e instanceof Error ? e.message : "No pudimos cargar esta reserva.");
       }
     };
     void load();
@@ -144,7 +147,14 @@ export default function ClienteBookingActionsPage() {
         const response = await fetch(`/api/marketplace/bookings/${bookingId}/messages`, { cache: "no-store" });
         const data = (await response.json()) as { messages?: BookingChatMessage[] };
         if (response.ok && data.messages) {
-          setMessages(data.messages);
+          // UX-11: merge en vez de reemplazo — no pisa un mensaje optimista que el
+          // servidor aún no devolvió en este ciclo de polling.
+          const server = data.messages;
+          setMessages((prev) => {
+            const serverIds = new Set(server.map((m) => m.id));
+            const pendingLocal = prev.filter((m) => !serverIds.has(m.id));
+            return [...server, ...pendingLocal];
+          });
         }
       } catch {
         // Silent polling refresh
@@ -186,19 +196,23 @@ export default function ClienteBookingActionsPage() {
   };
 
   const confirmService = async () => {
-    if (!bookingId || !customerId) return;
+    if (!bookingId || !customerId || confirming) return;
     setError("");
     setFeedback("");
     try {
+      // UX-02: evita doble confirmación (dispara liberación de pago).
+      setConfirming(true);
       const response = await fetch(`/api/marketplace/bookings/${bookingId}/customer-confirm`, { method: "POST" });
-      const data = (await response.json()) as { booking?: BookingDetail; ok?: boolean; error?: string; detail?: string };
-      if (!response.ok || (!data.booking && !data.ok)) throw new Error(data.detail || data.error || "No se pudo confirmar el servicio");
+      const data = (await response.json()) as { booking?: BookingDetail; ok?: boolean; error?: string };
+      if (!response.ok || (!data.booking && !data.ok)) throw new Error(data.error || "No se pudo confirmar el servicio");
       if (data.booking) {
         setBooking(data.booking);
       }
       setFeedback("Servicio confirmado. El pago quedó programado para el próximo ciclo automático.");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error inesperado");
+    } finally {
+      setConfirming(false);
     }
   };
 
@@ -212,7 +226,7 @@ export default function ClienteBookingActionsPage() {
         <section className="auth-flow-shell auth-flow-shell-wide client-dashboard-hero">
           <div className="auth-flow-copy client-dashboard-copy">
             <p className="auth-flow-kicker">Detalle de reserva</p>
-            <h1>{booking?.service.name ?? "Tu servicio en WeTask"}</h1>
+            <h1>{booking?.service?.name ?? "Tu servicio en WeTask"}</h1>
             <p>Revisa el costo, la dirección, el horario acordado con el profesional y todas las acciones disponibles desde un solo lugar.</p>
           </div>
 
@@ -236,6 +250,14 @@ export default function ClienteBookingActionsPage() {
                   <h3>Pago</h3>
                   <p>{PAYMENT_LABELS[booking.paymentStatus] ?? booking.paymentStatus}</p>
                   <small>Dinero protegido hasta confirmar el servicio o hasta que venza el plazo sin reclamo.</small>
+                </article>
+              </div>
+            ) : loadFailed ? (
+              <div className="client-booking-overview">
+                <article className="module-card client-dashboard-metric">
+                  <h3>No disponible</h3>
+                  <p>{error || "No pudimos cargar esta reserva."}</p>
+                  <Link className="cta" href="/cliente">Volver a mis reservas</Link>
                 </article>
               </div>
             ) : (
@@ -391,8 +413,8 @@ export default function ClienteBookingActionsPage() {
                   </div>
 
                   <div className="booking-actions">
-                    <button className="cta" type="button" onClick={confirmService}>
-                      Confirmar servicio
+                    <button className="cta" type="button" onClick={confirmService} disabled={confirming}>
+                      {confirming ? "Confirmando..." : "Confirmar servicio"}
                     </button>
                     {["AWAITING_CUSTOMER_CONFIRMATION", "PAYOUT_SCHEDULED", "COMPLETED"].includes(booking.status) ? (
                       <Link className="cta" href={`/cliente/reservas/${bookingId}/calificar`}>

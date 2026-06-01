@@ -448,6 +448,9 @@ export default function SolicitarTecnicoPage() {
 
               <div className="we-results-list">
               {visibleTaskers.map((tasker) => {
+                // UX-05: los taskers de ejemplo (fallback) no tienen perfil real → su CTA
+                // no debe enlazar a /pro/fallback-N (404).
+                const isFallback = tasker.userId.startsWith("fallback-");
                 const availabilityHref = `/pro/${tasker.userId}?date=${encodeURIComponent(serviceDate)}#availability`;
 
                 return (
@@ -476,9 +479,15 @@ export default function SolicitarTecnicoPage() {
                       <p className="we-pro-snippet">Perfil apto para {selectedCategoryName.toLowerCase()} con agenda activa y valoración alta.</p>
 
                       <div className="cta-row we-pro-actions">
-                        <Link href={availabilityHref} className="cta small">
-                          Ver disponibilidad
-                        </Link>
+                        {isFallback ? (
+                          <Link href="/servicios" className="cta small">
+                            Ver taskers disponibles
+                          </Link>
+                        ) : (
+                          <Link href={availabilityHref} className="cta small">
+                            Ver disponibilidad
+                          </Link>
+                        )}
                       </div>
                     </div>
                   </div>

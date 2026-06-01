@@ -144,7 +144,11 @@ export default function ProBookingDetailPage() {
       try {
         const response = await fetch(`/api/marketplace/bookings/${bookingId}/messages`, { cache: "no-store" });
         const data = (await response.json()) as { messages?: BookingChatMessage[] };
-        if (response.ok && data.messages) setMessages(data.messages);
+        if (response.ok && data.messages) {
+          // UX-11: merge en vez de reemplazo (no pisa mensajes optimistas).
+          const server = data.messages;
+          setMessages((prev) => [...server, ...prev.filter((m) => !new Set(server.map((s) => s.id)).has(m.id))]);
+        }
       } catch {
         // Silent polling refresh
       }

@@ -48,6 +48,7 @@ export default function ClienteBookingProblemPage() {
   const [reason, setReason] = useState("");
   const [evidence, setEvidence] = useState<EvidenceDraft[]>([]);
   const [submitting, setSubmitting] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
   const [feedback, setFeedback] = useState("");
   const [error, setError] = useState("");
 
@@ -117,7 +118,7 @@ export default function ClienteBookingProblemPage() {
 
   const submitProblem = async (event: FormEvent) => {
     event.preventDefault();
-    if (!bookingId || !customerId) return;
+    if (!bookingId || !customerId || submitting || submitted) return;
     if (reason.trim().length < 12) {
       setError("Cuéntanos un poco más sobre lo que pasó antes de enviar el reporte.");
       return;
@@ -138,10 +139,13 @@ export default function ClienteBookingProblemPage() {
           evidence
         })
       });
-      const data = (await response.json()) as { ticket?: { id: string }; error?: string; detail?: string };
+      const data = (await response.json()) as { ticket?: { id: string }; error?: string };
       if (!response.ok || !data.ticket) {
-        throw new Error(data.detail || data.error || "No se pudo enviar el reporte");
+        // UX-04: no exponemos detalle técnico; el backend ya devuelve mensajes claros.
+        throw new Error(data.error || "No se pudo enviar el reporte");
       }
+      // UX-07: tras enviar, bloqueamos el formulario para evitar reportes duplicados.
+      setSubmitted(true);
       setFeedback("Recibimos tu reporte. Nuestro equipo revisará el caso a la brevedad.");
       setReason("");
       setEvidence([]);
@@ -162,7 +166,7 @@ export default function ClienteBookingProblemPage() {
         <section className="auth-flow-shell auth-flow-shell-wide client-dashboard-hero">
           <div className="auth-flow-copy client-dashboard-copy">
             <p className="auth-flow-kicker">Reportar un problema</p>
-            <h1>{booking?.service.name ?? "Cuéntanos qué pasó"}</h1>
+            <h1>{booking?.service?.name ?? "Cuéntanos qué pasó"}</h1>
             <p>Explícanos lo ocurrido con claridad. Si tienes fotos, puedes adjuntarlas para que soporte revise mejor el caso.</p>
             <div className="auth-flow-actions">
               <Link className="cta ghost" href={`/cliente/reservas/${bookingId}`}>
@@ -245,8 +249,8 @@ export default function ClienteBookingProblemPage() {
               ) : null}
 
               <div className="full auth-flow-actions support-section-actions">
-                <button className="cta" type="submit" disabled={submitting}>
-                  {submitting ? "Enviando..." : "Enviar reporte"}
+                <button className="cta" type="submit" disabled={submitting || submitted}>
+                  {submitted ? "Reporte enviado" : submitting ? "Enviando..." : "Enviar reporte"}
                 </button>
                 <Link className="cta ghost" href={`/cliente/reservas/${bookingId}`}>
                   Cancelar

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { safeErrorDetail } from "@/lib/logger";
 import { buildVerificationEmailTemplate, sendPlatformEmail } from "@/lib/notifications";
 import { prisma } from "@/lib/prisma";
 import { resolvePublicAppUrl } from "@/lib/public-app-url";
@@ -61,6 +62,6 @@ export async function POST(req: NextRequest) {
       { status: 200 }
     );
   } catch (error) {
-    return NextResponse.json({ error: "No se pudo generar verificación", detail: error instanceof Error ? error.message : "Error desconocido" }, { status: 400 });
+    return NextResponse.json({ error: "No se pudo generar verificación", detail: safeErrorDetail(error) }, { status: 400 });
   }
 }

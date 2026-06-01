@@ -378,6 +378,13 @@ export default function ClientePage() {
   const handlePhotoChange = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
+    // UX-08: la foto se guarda como data URL en localStorage (cuota ~5MB). Una foto de
+    // cámara la supera y rompe el guardado en silencio. Limitamos a 1.5MB y avisamos.
+    if (file.size > 1_500_000) {
+      setError("La foto supera 1,5 MB. Sube una imagen más liviana.");
+      event.target.value = "";
+      return;
+    }
     const reader = new FileReader();
     reader.onload = () => {
       const next = typeof reader.result === "string" ? reader.result : "";
@@ -385,7 +392,7 @@ export default function ClientePage() {
       try {
         window.localStorage.setItem("wetask_customer_photo", next);
       } catch {
-        // Ignorar errores de almacenamiento local.
+        setError("No pudimos guardar la foto en este navegador (almacenamiento lleno).");
       }
     };
     reader.readAsDataURL(file);
