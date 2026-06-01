@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { encodeSessionCookie, SESSION_COOKIE_NAME } from "@/lib/auth";
 import { normalizeCommune } from "@/lib/communes";
 import { prisma } from "@/lib/prisma";
+import { getClientIp, rateLimit, tooManyRequestsResponse } from "@/lib/rate-limit";
 import { cleaningOnboardingStartSchema } from "@/lib/validators";
 import { hashPassword, randomToken, sha256 } from "@/lib/security";
 import { getCurrentTermsVersionId } from "@/lib/terms-version";
@@ -12,6 +13,10 @@ export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
   try {
+    // PRO-10: limita la creación masiva de cuentas PRO por IP.
+    const rl = await rateLimit("onboarding.start", getClientIp(req), "5/h");
+    if (!rl.success) return tooManyRequestsResponse(rl) as unknown as NextResponse;
+
     const body = await req.json();
     const input = cleaningOnboardingStartSchema.parse(body);
     const baseCommune = normalizeCommune(input.baseCommune) ?? input.baseCommune.trim();

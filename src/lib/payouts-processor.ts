@@ -432,6 +432,56 @@ export async function reconcilePendingPayments(): Promise<ReconcilePaymentsResul
 
       const nextPaymentStatus = PROVIDER_STATUS_TO_PAYMENT[providerResult.status];
       const nextBookingStatus = PROVIDER_STATUS_TO_BOOKING[providerResult.status];
+
+      // BOOK-09: pago que MP mantiene en `pending` por demasiado tiempo (no es fallo de
+      // transporte; MP respondió "pending"). Para pagos con tarjeta esto significa abandono;
+      // tras 24h liberamos el slot y cerramos la reserva para no perder disponibilidad.
+      // (Distinto del guard de 48h, que protege contra marcar FAILED mientras la aprobación
+      // viene en camino — aquí MP confirma explícitamente que sigue pendiente.)
+      const PENDING_STALE_MS = 24 * 60 * 60 * 1000;
+      if (
+        providerResult.status === "pending" &&
+        payment.status === PaymentStatus.PENDING &&
+        Date.now() - payment.createdAt.getTime() > PENDING_STALE_MS
+      ) {
+        await prisma.$transaction(async (tx) => {
+          await tx.payment.update({
+            where: { id: payment.id },
+            data: {
+              status: PaymentStatus.FAILED,
+              providerStatus: providerResult.providerStatus,
+              errorMessage: "stale_pending_auto_failed",
+              rawResponseJson: providerResult.raw as Prisma.InputJsonValue
+            }
+          });
+          if (canTransition(payment.booking.status, BookingStatus.PAYMENT_FAILED, "SYSTEM")) {
+            await tx.booking.update({
+              where: { id: payment.bookingId },
+              data: {
+                status: BookingStatus.PAYMENT_FAILED,
+                paymentStatus: PaymentStatus.FAILED,
+                bookedSlotId: null
+              }
+            });
+          }
+          if (payment.booking.bookedSlotId) {
+            await tx.availabilitySlot.updateMany({
+              where: { id: payment.booking.bookedSlotId },
+              data: { isAvailable: true }
+            });
+          }
+        });
+        result.updated += 1;
+        result.details.push({
+          paymentId: payment.id,
+          bookingId: payment.bookingId,
+          before: payment.status,
+          after: PaymentStatus.FAILED,
+          providerStatus: providerResult.providerStatus
+        });
+        continue;
+      }
+
       if (!nextPaymentStatus || nextPaymentStatus === payment.status) {
         continue; // sin cambios
       }

@@ -31,6 +31,12 @@ export const dynamic = "force-dynamic";
 
 const LEGACY_SEARCH_PUBLICATION_REQUIREMENTS = new Set(["onboarding_completed", "published", "status_active"]);
 
+// PRO-13: throttle del sync de servicios disparado por la búsqueda pública. Antes corría
+// un loop de escrituras por cada GET (amplificación/DoS). Ahora, como mucho una vez cada
+// 5 min por categoría y por instancia — la consistencia sigue siendo eventual.
+const SEARCH_SYNC_THROTTLE_MS = 5 * 60 * 1000;
+const lastSyncByCategory = new Map<string, number>();
+
 function buildSlotFiltersForCategory(categoryId?: string, serviceId?: string) {
   if (serviceId) {
     return [{ serviceId: null }, { serviceId }];
@@ -154,7 +160,10 @@ export async function GET(req: NextRequest) {
 
     if (requestedCategorySlug) {
       const requestedCoreService = getCoreServiceForTaskerCategory(requestedCategorySlug);
-      if (requestedCoreService) {
+      const lastSync = requestedCoreService ? lastSyncByCategory.get(requestedCoreService.slug) ?? 0 : 0;
+      const syncDue = Date.now() - lastSync > SEARCH_SYNC_THROTTLE_MS;
+      if (requestedCoreService && syncDue) {
+        lastSyncByCategory.set(requestedCoreService.slug, Date.now());
         const onboardingsToSync = await prisma.cleaningOnboarding.findMany({
           where: {
             categorySlug: requestedCoreService.slug,

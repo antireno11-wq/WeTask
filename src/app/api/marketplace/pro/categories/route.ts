@@ -1,4 +1,4 @@
-import { Prisma, UserRole } from "@prisma/client";
+import { BookingStatus, Prisma, UserRole } from "@prisma/client";
 import { safeErrorDetail } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
 import { getRequestIdentity, hasRole } from "@/lib/auth";
@@ -198,6 +198,42 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ error: "Tasker no encontrado" }, { status: 404 });
     }
 
+    const marketplaceCategorySlug = getMarketplaceCategorySlugForTaskerCategory(categorySlug);
+    const category = marketplaceCategorySlug
+      ? await prisma.category.findUnique({ where: { slug: marketplaceCategorySlug }, select: { id: true } })
+      : null;
+
+    // PRO-12: no permitir desactivar una categoría con reservas activas en sus servicios
+    // (dejaría reservas huérfanas respecto a su servicio/precio).
+    if (category) {
+      const activeBookings = await prisma.booking.count({
+        where: {
+          proId: auth.targetProId,
+          service: { categoryId: category.id },
+          status: {
+            in: [
+              BookingStatus.PENDING_PAYMENT,
+              BookingStatus.CONFIRMED,
+              BookingStatus.ACCEPTED,
+              BookingStatus.IN_PROGRESS,
+              BookingStatus.AWAITING_CUSTOMER_CONFIRMATION,
+              BookingStatus.PAYOUT_SCHEDULED,
+              BookingStatus.DISPUTE
+            ]
+          }
+        }
+      });
+      if (activeBookings > 0) {
+        return NextResponse.json(
+          {
+            error: "No puedes desactivar esta categoría: tienes reservas activas en sus servicios.",
+            activeBookings
+          },
+          { status: 409 }
+        );
+      }
+    }
+
     await prisma.taskerCategoryProfile.updateMany({
       where: {
         professionalProfileId: profile.id,
@@ -207,11 +243,6 @@ export async function DELETE(req: NextRequest) {
         isActive: false
       }
     });
-
-    const marketplaceCategorySlug = getMarketplaceCategorySlugForTaskerCategory(categorySlug);
-    const category = marketplaceCategorySlug
-      ? await prisma.category.findUnique({ where: { slug: marketplaceCategorySlug }, select: { id: true } })
-      : null;
 
     if (category) {
       await prisma.taskerService.updateMany({

@@ -387,6 +387,8 @@ model Booking {
   checkInLng       Float?
   checkInPhotoKey  String?
   checkOutAt       DateTime?
+  reminder24hSentAt DateTime?
+  reminder1hSentAt  DateTime?
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
   customer         User              @relation("CustomerBookings", fields: [customerId], references: [id], onDelete: Restrict)

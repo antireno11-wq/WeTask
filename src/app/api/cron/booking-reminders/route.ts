@@ -11,8 +11,8 @@ export const dynamic = "force-dynamic";
 const WINDOW_MINUTES = 30; // ventana de tolerancia para no perder reservas
 
 const REMINDER_WINDOWS = [
-  { hoursUntil: 24, marker: "REMINDER_24H" },
-  { hoursUntil: 1, marker: "REMINDER_1H" }
+  { hoursUntil: 24, marker: "REMINDER_24H", sentField: "reminder24hSentAt" },
+  { hoursUntil: 1, marker: "REMINDER_1H", sentField: "reminder1hSentAt" }
 ] as const;
 
 /**
@@ -42,7 +42,9 @@ export async function POST(req: NextRequest) {
           status: {
             in: [BookingStatus.CONFIRMED, BookingStatus.ACCEPTED, BookingStatus.IN_PROGRESS]
           },
-          scheduledAt: { gte: lowerBound, lte: upperBound }
+          scheduledAt: { gte: lowerBound, lte: upperBound },
+          // BOOK-12: idempotencia persistente — sólo los que aún no recibieron este recordatorio.
+          [window.sentField]: null
         },
         include: {
           customer: { select: { id: true, fullName: true, email: true } },
@@ -52,16 +54,13 @@ export async function POST(req: NextRequest) {
       });
 
       for (const booking of bookings) {
-        // Idempotencia: ya enviamos este recordatorio?
-        const recent = await prisma.notification.findFirst({
-          where: {
-            bookingId: booking.id,
-            title: window.hoursUntil === 1 ? "Tu servicio empieza pronto" : "Recordatorio: tu servicio es mañana",
-            createdAt: { gte: new Date(now.getTime() - 6 * 60 * 60 * 1000) }
-          },
-          select: { id: true }
+        // BOOK-12: marcamos el flag ANTES de notificar (claim atómico) para que dos
+        // ejecuciones solapadas del cron no envíen el mismo recordatorio dos veces.
+        const claim = await prisma.booking.updateMany({
+          where: { id: booking.id, [window.sentField]: null },
+          data: { [window.sentField]: now }
         });
-        if (recent) {
+        if (claim.count === 0) {
           totalSkipped += 1;
           continue;
         }

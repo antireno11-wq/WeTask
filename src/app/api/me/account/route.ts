@@ -1,3 +1,4 @@
+import { PayoutStatus } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { getRequestIdentity, SESSION_COOKIE_NAME } from "@/lib/auth";
 import { logger } from "@/lib/logger";
@@ -63,6 +64,30 @@ export async function DELETE(req: NextRequest) {
       {
         error: "Tienes reservas activas. Espera a que se completen o ábrelas como reclamo antes de eliminar tu cuenta.",
         activeBookings
+      },
+      { status: 409 }
+    );
+  }
+
+  // ADM-09: tampoco permitir el borrado con dinero o disputas en juego.
+  const [pendingPayouts, openDisputes] = await Promise.all([
+    prisma.payout.count({
+      where: { proId: identity.userId, status: { in: [PayoutStatus.PENDING, PayoutStatus.PROCESSING] } }
+    }),
+    prisma.disputeTicket.count({
+      where: {
+        status: { in: ["OPEN", "IN_REVIEW"] },
+        booking: { OR: [{ customerId: identity.userId }, { proId: identity.userId }] }
+      }
+    })
+  ]);
+
+  if (pendingPayouts > 0 || openDisputes > 0) {
+    return NextResponse.json(
+      {
+        error: "Tienes pagos o reclamos en curso. Deben resolverse antes de eliminar tu cuenta.",
+        pendingPayouts,
+        openDisputes
       },
       { status: 409 }
     );
