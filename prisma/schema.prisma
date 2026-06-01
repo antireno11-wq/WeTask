@@ -95,6 +95,7 @@ model User {
   role                   UserRole                 @default(CUSTOMER)
   authProvider           AuthProvider             @default(EMAIL)
   passwordHash           String?
+  sessionVersion         Int                      @default(0)
   termsAcceptedAt        DateTime?
   termsVersionId         String?
   emailVerifiedAt        DateTime?

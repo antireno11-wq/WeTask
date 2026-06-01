@@ -26,6 +26,12 @@ export async function POST(req: NextRequest, context: { params: { bookingId: str
       return NextResponse.json({ error: "No se puede finalizar sin pago confirmado" }, { status: 400 });
     }
 
+    // BOOK-05: no se puede cerrar un servicio sin haber registrado el check-in
+    // (señal mínima de que el tasker efectivamente se presentó).
+    if (!booking.checkInAt) {
+      return NextResponse.json({ error: "Debes registrar el check-in antes de finalizar el servicio." }, { status: 409 });
+    }
+
     const actor: BookingActor = identity.role === UserRole.ADMIN ? "ADMIN" : "PRO";
     try {
       assertTransition(booking.status, BookingStatus.AWAITING_CUSTOMER_CONFIRMATION, actor);

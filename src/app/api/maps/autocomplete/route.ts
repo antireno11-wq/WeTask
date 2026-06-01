@@ -1,9 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getClientIp, rateLimit, tooManyRequestsResponse } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
   try {
+    // ADM-01: endpoint facturable de Google y público (se usa en páginas pre-login).
+    // Lo protegemos con un rate-limit por IP para evitar abuso de cuota / factura ilimitada.
+    const rl = await rateLimit("maps.autocomplete", getClientIp(request), "30/m");
+    if (!rl.success) return tooManyRequestsResponse(rl) as unknown as NextResponse;
+
     const input = request.nextUrl.searchParams.get("input")?.trim() ?? "";
     if (input.length < 3) {
       return NextResponse.json({ predictions: [] }, { status: 200 });

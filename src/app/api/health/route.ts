@@ -25,15 +25,18 @@ type HealthPayload = {
 let cache: { builtAt: number; payload: HealthPayload } | null = null;
 const CACHE_TTL_MS = 30_000;
 
+const IS_PROD = process.env.NODE_ENV === "production";
+
 async function checkDatabase(): Promise<ComponentReport> {
   const started = Date.now();
   try {
     await prisma.$queryRaw`SELECT 1`;
     return { status: "ok", latencyMs: Date.now() - started };
   } catch (err) {
+    // ADM-02: nunca exponer el mensaje crudo del error de DB en un endpoint público.
     return {
       status: "down",
-      detail: err instanceof Error ? err.message : "DB query failed",
+      detail: IS_PROD ? "database unreachable" : err instanceof Error ? err.message : "DB query failed",
       latencyMs: Date.now() - started
     };
   }
@@ -64,11 +67,14 @@ async function buildHealthPayload(): Promise<HealthPayload> {
   const resend = checkResend();
   const ok =
     database.status === "ok" && mercadopago.status !== "down" && resend.status !== "down";
+  // ADM-02: en producción no enumeramos qué env vars faltan ni detalles internos.
+  const redact = (report: ComponentReport): ComponentReport =>
+    IS_PROD ? { status: report.status, latencyMs: report.latencyMs } : report;
   return {
     ok,
     service: "wetask",
     timestamp: new Date().toISOString(),
-    components: { database, mercadopago, resend }
+    components: { database: redact(database), mercadopago: redact(mercadopago), resend: redact(resend) }
   };
 }
 

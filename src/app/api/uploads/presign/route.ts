@@ -15,7 +15,10 @@ export const dynamic = "force-dynamic";
 const presignSchema = z.object({
   kind: z.enum(STORAGE_KINDS),
   contentType: z.string().min(3).max(120),
-  sizeBytes: z.coerce.number().int().positive().optional()
+  // PRO-07: obligatorio para poder validar el tamaño ANTES de firmar la URL
+  // (cierra el bypass de omitir sizeBytes). La enforcement dura en el objeto final
+  // requiere migrar a createPresignedPost con content-length-range.
+  sizeBytes: z.coerce.number().int().positive()
 });
 
 export async function POST(req: NextRequest) {
@@ -53,7 +56,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  if (typeof input.sizeBytes === "number" && input.sizeBytes > limits.maxBytes) {
+  if (input.sizeBytes > limits.maxBytes) {
     return NextResponse.json(
       {
         error: `El archivo excede el tamaño máximo permitido (${Math.round(limits.maxBytes / 1024 / 1024)} MB)`,

@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { ZodError } from "zod";
 import { getRequestIdentity, hasRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { rateLimit, tooManyRequestsResponse } from "@/lib/rate-limit";
 import { sha256 } from "@/lib/security";
 import { cleaningOnboardingPhoneVerifySchema } from "@/lib/validators";
 
@@ -14,6 +15,10 @@ export async function POST(req: NextRequest) {
     if (!hasRole(identity.role, [UserRole.PRO, UserRole.ADMIN]) || !identity.userId) {
       return NextResponse.json({ error: "No autorizado" }, { status: 403 });
     }
+
+    // PRO-05: limita la fuerza bruta del código OTP de 6 dígitos por usuario.
+    const rl = await rateLimit("otp.verify", identity.userId, "10/h");
+    if (!rl.success) return tooManyRequestsResponse(rl) as unknown as NextResponse;
 
     const body = await req.json();
     const input = cleaningOnboardingPhoneVerifySchema.parse(body);

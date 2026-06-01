@@ -5,6 +5,7 @@ import { normalizeCommune } from "@/lib/communes";
 import { buildVerificationEmailTemplate, sendPlatformEmail } from "@/lib/notifications";
 import { prisma } from "@/lib/prisma";
 import { resolvePublicAppUrl } from "@/lib/public-app-url";
+import { getClientIp, rateLimit, tooManyRequestsResponse } from "@/lib/rate-limit";
 import { hashPassword, randomToken, sha256 } from "@/lib/security";
 import { verifyPassword } from "@/lib/security";
 import { getCurrentTermsVersionId } from "@/lib/terms-version";
@@ -47,6 +48,10 @@ function isValidDocumentRef(value: string) {
 
 export async function POST(req: NextRequest) {
   try {
+    // AUTH-06: limita registro masivo / enumeración por IP.
+    const rl = await rateLimit("auth.register", getClientIp(req), "10/h");
+    if (!rl.success) return tooManyRequestsResponse(rl) as unknown as NextResponse;
+
     const body = (await req.json()) as RegisterPayload;
 
     const firstName = body.firstName?.trim();

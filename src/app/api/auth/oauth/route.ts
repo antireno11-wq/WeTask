@@ -139,6 +139,7 @@ export async function POST(req: NextRequest) {
         email: true,
         fullName: true,
         role: true,
+        sessionVersion: true,
         roleAssignments: { select: { role: { select: { code: true } } } }
       }
     });
@@ -167,7 +168,7 @@ export async function POST(req: NextRequest) {
     const response = NextResponse.json({ session: { ...user, role: sessionRole } }, { status: 200 });
     response.cookies.set({
       name: SESSION_COOKIE_NAME,
-      value: encodeSessionCookie({ userId: user.id, role: sessionRole, email: user.email, fullName: user.fullName }),
+      value: encodeSessionCookie({ userId: user.id, role: sessionRole, email: user.email, fullName: user.fullName, sessionVersion: user.sessionVersion }),
       path: "/",
       httpOnly: true,
       sameSite: "lax",

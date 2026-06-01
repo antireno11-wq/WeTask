@@ -66,6 +66,33 @@ export async function hardDeleteExpiredAccounts(): Promise<HardDeleteResult> {
         await tx.passwordResetToken.deleteMany({ where: { userId: user.id } });
         await tx.mercadoPagoOAuthState.deleteMany({ where: { userId: user.id } });
 
+        // ADM-07: borrar PII sensible del onboarding (cédula, antecedentes penales,
+        // datos bancarios, contacto de emergencia). No tiene justificación de retención
+        // contable y su conservación tras el "borrado" incumple el derecho de supresión.
+        await tx.cleaningOnboarding.updateMany({
+          where: { userId: user.id },
+          data: {
+            documentId: null,
+            birthDate: null,
+            referenceAddress: null,
+            emergencyContactName: null,
+            emergencyContactPhone: null,
+            identityDocumentFile: null,
+            identityDocumentFrontFile: null,
+            identityDocumentBackFile: null,
+            identitySelfieFile: null,
+            criminalRecordFile: null,
+            profilePhotoUrl: null,
+            bankAccountHolder: null,
+            bankAccountHolderRut: null,
+            bankName: null,
+            bankAccountType: null,
+            bankAccountNumber: null,
+            phoneVerificationCodeHash: null,
+            phoneVerificationExpiresAt: null
+          }
+        });
+
         // Anonimizar User (mantener id, role, createdAt para auditoría y FK)
         await tx.user.update({
           where: { id: user.id },

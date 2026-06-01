@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { buildVerificationEmailTemplate, sendPlatformEmail } from "@/lib/notifications";
 import { prisma } from "@/lib/prisma";
 import { resolvePublicAppUrl } from "@/lib/public-app-url";
+import { getClientIp, rateLimit, tooManyRequestsResponse } from "@/lib/rate-limit";
 import { randomToken, sha256 } from "@/lib/security";
 
 export const dynamic = "force-dynamic";
@@ -14,6 +15,10 @@ export async function POST(req: NextRequest) {
     if (!/^\S+@\S+\.\S+$/.test(email)) {
       return NextResponse.json({ error: "Error en el correo" }, { status: 400 });
     }
+
+    // AUTH-06: evita spam de correos de verificación (por email + IP).
+    const rl = await rateLimit("auth.verify.request", `${getClientIp(req)}:${email}`, "3/h");
+    if (!rl.success) return tooManyRequestsResponse(rl) as unknown as NextResponse;
 
     const user = await prisma.user.findUnique({ where: { email }, select: { id: true, authProvider: true, emailVerifiedAt: true } });
     if (!user) return NextResponse.json({ ok: true }, { status: 200 });

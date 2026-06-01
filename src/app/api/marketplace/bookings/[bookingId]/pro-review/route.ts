@@ -36,7 +36,8 @@ export async function POST(req: NextRequest, context: { params: { bookingId: str
       return NextResponse.json({ error: "No autorizado" }, { status: 403 });
     }
 
-    if (booking.status !== "COMPLETED") {
+    // BOOK-04: permitido desde PAYOUT_SCHEDULED (cliente ya confirmó) o COMPLETED.
+    if (booking.status !== "COMPLETED" && booking.status !== "PAYOUT_SCHEDULED") {
       return NextResponse.json({ error: "Solo puedes reseñar clientes en reservas finalizadas" }, { status: 400 });
     }
 

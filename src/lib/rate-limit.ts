@@ -62,13 +62,52 @@ function getLimiter(prefix: string, window: string): Ratelimit | null {
 }
 
 function parseWindow(window: string) {
+  const { count, unit } = parseWindowParts(window);
+  const duration =
+    unit === "s" ? "1 s" : unit === "m" ? "1 m" : unit === "h" ? "1 h" : "1 d";
+  return Ratelimit.slidingWindow(count, duration as `${number} ${"s" | "m" | "h" | "d"}`);
+}
+
+function parseWindowParts(window: string): { count: number; unit: string; ms: number } {
   const match = window.match(/^(\d+)\/(s|m|h|d)$/);
   if (!match) throw new Error(`Window inválido para rate-limit: ${window}`);
   const count = Number(match[1]);
   const unit = match[2];
-  const duration =
-    unit === "s" ? "1 s" : unit === "m" ? "1 m" : unit === "h" ? "1 h" : "1 d";
-  return Ratelimit.slidingWindow(count, duration as `${number} ${"s" | "m" | "h" | "d"}`);
+  const ms = unit === "s" ? 1000 : unit === "m" ? 60_000 : unit === "h" ? 3_600_000 : 86_400_000;
+  return { count, unit, ms };
+}
+
+/**
+ * AUTH-06/PRO-14: fallback en memoria (por instancia) para cuando Upstash no está
+ * configurado o falla. No es distribuido, pero evita el "fail-open" total: un atacante
+ * ya no obtiene intentos ilimitados contra login/OTP/refund si Redis cae.
+ */
+const memoryBuckets = new Map<string, number[]>();
+let lastMemorySweep = 0;
+
+function inMemoryLimit(scope: string, identifier: string, window: string): RateLimitDecision {
+  const { count, ms } = parseWindowParts(window);
+  const now = Date.now();
+  const key = `${scope}:${identifier}`;
+  const hits = (memoryBuckets.get(key) ?? []).filter((ts) => now - ts < ms);
+
+  // Barrido perezoso para no crecer sin límite (cada 5 min).
+  if (now - lastMemorySweep > 300_000) {
+    lastMemorySweep = now;
+    for (const [k, arr] of memoryBuckets) {
+      const fresh = arr.filter((ts) => now - ts < ms);
+      if (fresh.length === 0) memoryBuckets.delete(k);
+      else memoryBuckets.set(k, fresh);
+    }
+  }
+
+  if (hits.length >= count) {
+    const reset = (hits[0] ?? now) + ms;
+    return { success: false, limit: count, remaining: 0, reset, reason: "limited" };
+  }
+  hits.push(now);
+  memoryBuckets.set(key, hits);
+  return { success: true, limit: count, remaining: count - hits.length, reset: now + ms, reason: "ok" };
 }
 
 export type RateLimitDecision = {
@@ -86,7 +125,8 @@ export async function rateLimit(
 ): Promise<RateLimitDecision> {
   const limiter = getLimiter(scope, window);
   if (!limiter) {
-    return { success: true, limit: Infinity, remaining: Infinity, reset: 0, reason: "no_redis" };
+    // Sin Redis: usamos el limitador en memoria en vez de permitir todo.
+    return inMemoryLimit(scope, identifier, window);
   }
   try {
     const result = await limiter.limit(identifier);
@@ -98,9 +138,9 @@ export async function rateLimit(
       reason: result.success ? "ok" : "limited"
     };
   } catch (err) {
-    // Fallar abierto: si Upstash está caído no bloqueamos al usuario.
-    logger.warn({ scope, err }, "rate-limit: limiter.limit() failed, allowing request");
-    return { success: true, limit: 0, remaining: 0, reset: 0, reason: "no_redis" };
+    // Upstash caído: degradamos al limitador en memoria (no fail-open total).
+    logger.warn({ scope, err }, "rate-limit: limiter.limit() failed, fallback a memoria");
+    return inMemoryLimit(scope, identifier, window);
   }
 }
 

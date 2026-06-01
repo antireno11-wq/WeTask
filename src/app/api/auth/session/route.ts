@@ -13,8 +13,14 @@ export async function GET(req: NextRequest) {
   }
   const user = await prisma.user.findUnique({
     where: { id: identity.userId },
-    select: { authProvider: true, emailVerifiedAt: true, termsAcceptedAt: true }
+    select: { authProvider: true, emailVerifiedAt: true, termsAcceptedAt: true, sessionVersion: true }
   });
+
+  // AUTH-05: si la cookie quedó obsoleta (reset de contraseña posterior), la sesión es nula.
+  if (!user || (identity.sessionVersion ?? 0) !== user.sessionVersion) {
+    return NextResponse.json({ session: null }, { status: 200 });
+  }
+
   return NextResponse.json(
     {
       session: {

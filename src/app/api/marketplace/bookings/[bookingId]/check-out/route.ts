@@ -46,6 +46,11 @@ export async function POST(req: NextRequest, context: { params: { bookingId: str
       return NextResponse.json({ error: "El pago debe estar confirmado." }, { status: 409 });
     }
 
+    // BOOK-05: exige check-in previo (excepto idempotencia, que se maneja abajo).
+    if (!booking.checkInAt && !booking.checkOutAt) {
+      return NextResponse.json({ error: "Debes registrar el check-in antes de cerrar el servicio." }, { status: 409 });
+    }
+
     // Idempotencia: si ya pasó por check-out, devolver OK sin re-notificar.
     if (booking.checkOutAt && booking.status === BookingStatus.AWAITING_CUSTOMER_CONFIRMATION) {
       return NextResponse.json({ ok: true, deduped: true, booking }, { status: 200 });

@@ -6,6 +6,7 @@ import {
   PUBLIC_ONBOARDING_PHONE_COOKIE,
   PUBLIC_ONBOARDING_PHONE_VERIFIED_COOKIE
 } from "@/lib/onboarding-phone";
+import { getClientIp, rateLimit, tooManyRequestsResponse } from "@/lib/rate-limit";
 import { sha256 } from "@/lib/security";
 import { cleaningOnboardingPhoneVerifySchema } from "@/lib/validators";
 
@@ -13,6 +14,10 @@ export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
   try {
+    // PRO-05: limita la fuerza bruta del OTP por IP.
+    const rl = await rateLimit("otp.verify.public", getClientIp(req), "10/h");
+    if (!rl.success) return tooManyRequestsResponse(rl) as unknown as NextResponse;
+
     const body = await req.json();
     const input = cleaningOnboardingPhoneVerifySchema.parse(body);
     const pending = decodePendingPhoneVerification(req.cookies.get(PUBLIC_ONBOARDING_PHONE_COOKIE)?.value);

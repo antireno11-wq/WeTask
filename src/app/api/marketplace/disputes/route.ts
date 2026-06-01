@@ -81,6 +81,19 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // BOOK-06: no permitir múltiples disputas abiertas sobre la misma reserva
+    // (evita spam que bloquea indefinidamente el payout).
+    const openTicket = await prisma.disputeTicket.findFirst({
+      where: { bookingId: input.bookingId, status: { in: ["OPEN", "IN_REVIEW"] } },
+      select: { id: true }
+    });
+    if (openTicket) {
+      return NextResponse.json(
+        { error: "Ya existe un reclamo abierto para esta reserva.", disputeId: openTicket.id },
+        { status: 409 }
+      );
+    }
+
     const dueDateAt = new Date(Date.now() + 5 * 24 * 60 * 60 * 1000);
 
     const ticket = await prisma.disputeTicket.create({

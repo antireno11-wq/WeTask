@@ -1,6 +1,7 @@
 import { ProviderPaymentCreateInput, ProviderPaymentResult, ProviderRefundInput } from "@/lib/payments/types";
 
 const MP_API_BASE = "https://api.mercadopago.com";
+const MP_REQUEST_TIMEOUT_MS = 10_000;
 
 export type MercadoPagoCredentialMode = "test" | "production" | "unknown" | "missing";
 export type MercadoPagoHealthReport = {
@@ -137,13 +138,21 @@ async function mpRequest(
     headers.set("X-Idempotency-Key", init.idempotencyKey);
   }
 
-  const response = await fetch(`${MP_API_BASE}${path}`, {
-    ...init,
-    headers,
-    cache: "no-store"
-  });
-  const payload = await response.json().catch(() => ({}));
-  return { response, payload };
+  // PAY-09: timeout duro de 10s. Si MP no responde, lo tratamos como fallo de
+  // transporte (response.ok=false) para que los callers lo manejen como "no reachable"
+  // (G6) en vez de colgar el request del cliente o el cron.
+  try {
+    const response = await fetch(`${MP_API_BASE}${path}`, {
+      ...init,
+      headers,
+      cache: "no-store",
+      signal: AbortSignal.timeout(MP_REQUEST_TIMEOUT_MS)
+    });
+    const payload = await response.json().catch(() => ({}));
+    return { response, payload };
+  } catch {
+    return { response: { ok: false, status: 0 } as Response, payload: {} as any };
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -209,7 +218,8 @@ export async function exchangeMercadoPagoCode(code: string): Promise<MercadoPago
       code,
       redirect_uri: getOAuthRedirectUri()
     }).toString(),
-    cache: "no-store"
+    cache: "no-store",
+    signal: AbortSignal.timeout(MP_REQUEST_TIMEOUT_MS)
   });
   const payload: any = await response.json().catch(() => ({}));
   if (!response.ok || !payload?.access_token) {
@@ -238,7 +248,8 @@ export async function refreshMercadoPagoToken(refreshToken: string): Promise<Mer
       grant_type: "refresh_token",
       refresh_token: refreshToken
     }).toString(),
-    cache: "no-store"
+    cache: "no-store",
+    signal: AbortSignal.timeout(MP_REQUEST_TIMEOUT_MS)
   });
   const payload: any = await response.json().catch(() => ({}));
   if (!response.ok || !payload?.access_token) {

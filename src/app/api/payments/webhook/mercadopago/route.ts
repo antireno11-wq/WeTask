@@ -78,6 +78,16 @@ export async function POST(req: NextRequest) {
       body = {};
     }
 
+    // PAY-05: sólo procesamos notificaciones de pagos. Otros topics (merchant_order,
+    // plan, subscription, etc.) se ignoran para no tratar su id como un payment id.
+    const topic =
+      req.nextUrl.searchParams.get("type") ??
+      req.nextUrl.searchParams.get("topic") ??
+      (typeof body?.type === "string" ? body.type : null);
+    if (topic && topic !== "payment") {
+      return NextResponse.json({ ok: true, ignored: true, reason: "non_payment_topic", topic }, { status: 200 });
+    }
+
     const providerPaymentId = resolveProviderPaymentId(req, body);
     if (!providerPaymentId) {
       return NextResponse.json({ ok: true, ignored: true, reason: "missing_payment_id" }, { status: 200 });
@@ -95,9 +105,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Firma inválida" }, { status: 401 });
     }
 
-    if (verification === "unverifiable" && process.env.NODE_ENV === "production") {
-      // En producción exigimos secret configurado para no aceptar webhooks
-      // arbitrarios. En dev se permite para facilitar testing local.
+    if (verification === "unverifiable" && process.env.NODE_ENV !== "development" && process.env.NODE_ENV !== "test") {
+      // PAY-05: fuera de development/test exigimos el secret configurado para no aceptar
+      // webhooks arbitrarios (un NODE_ENV mal seteado ya no abre el webhook).
       return NextResponse.json(
         { error: "MERCADOPAGO_WEBHOOK_SECRET no configurado" },
         { status: 401 }

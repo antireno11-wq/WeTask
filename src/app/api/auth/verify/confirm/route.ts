@@ -1,11 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { getClientIp, rateLimit, tooManyRequestsResponse } from "@/lib/rate-limit";
 import { sha256 } from "@/lib/security";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
   try {
+    // AUTH-06: limita la fuerza bruta del código de 6 dígitos por IP.
+    const rl = await rateLimit("auth.verify.confirm", getClientIp(req), "10/m");
+    if (!rl.success) return tooManyRequestsResponse(rl) as unknown as NextResponse;
+
     const body = (await req.json()) as { token?: string };
     const token = body.token?.trim();
     if (!token) return NextResponse.json({ error: "Token requerido" }, { status: 400 });

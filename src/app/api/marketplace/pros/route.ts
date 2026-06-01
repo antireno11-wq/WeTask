@@ -36,7 +36,10 @@ export async function GET(req: NextRequest) {
 
     const profiles = await prisma.professionalProfile.findMany({
       where: {
-        isVerified: input.verified,
+        // PRO-04: este endpoint es público — sólo mostramos pros verificados y activos,
+        // nunca perfiles a medio aprobar. El query param `verified` ya no puede relajarlo.
+        isVerified: true,
+        verificationStatus: "ACTIVE",
         ratingAvg: input.minRating ? { gte: input.minRating } : undefined,
         coverageCity: input.city ? { equals: input.city, mode: "insensitive" } : undefined,
         hourlyRateFromClp: input.maxHourlyRateClp ? { lte: input.maxHourlyRateClp } : undefined,
@@ -55,7 +58,8 @@ export async function GET(req: NextRequest) {
       orderBy: [{ isVerified: "desc" }, { ratingAvg: "desc" }, { ratingsCount: "desc" }],
       take: input.limit,
       include: {
-        user: { select: { id: true, fullName: true, email: true } },
+        // PRO-04: no exponer email en el listado público.
+        user: { select: { id: true, fullName: true } },
         taskerServices: {
           where: {
             isActive: true,

@@ -2,6 +2,7 @@ import { UserRole } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { getRequestIdentity, hasRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getClientIp, rateLimit, tooManyRequestsResponse } from "@/lib/rate-limit";
 import { randomToken, sha256 } from "@/lib/security";
 import { sendTwilioSms } from "@/lib/twilio-sms";
 import { cleaningOnboardingPhoneSendSchema } from "@/lib/validators";
@@ -29,6 +30,14 @@ export async function POST(req: NextRequest) {
     if (phone.length < 7) {
       return NextResponse.json({ error: "Debes ingresar un teléfono válido" }, { status: 400 });
     }
+
+    // PRO-06: limita el gasto de SMS (toll fraud) por número, por usuario y por IP.
+    const rlPhone = await rateLimit("otp.phone", phone, "3/h");
+    if (!rlPhone.success) return tooManyRequestsResponse(rlPhone) as unknown as NextResponse;
+    const rlUser = await rateLimit("otp.phone.user", identity.userId, "5/h");
+    if (!rlUser.success) return tooManyRequestsResponse(rlUser) as unknown as NextResponse;
+    const rlIp = await rateLimit("otp.phone.ip", getClientIp(req), "10/h");
+    if (!rlIp.success) return tooManyRequestsResponse(rlIp) as unknown as NextResponse;
 
     const code = randomToken(6).replace(/[^0-9]/g, "").slice(0, 6).padEnd(6, "0");
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000);

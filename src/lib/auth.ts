@@ -10,6 +10,7 @@ export type RequestIdentity = {
   sessionId?: string | null;
   email?: string | null;
   fullName?: string | null;
+  sessionVersion?: number | null;
 };
 
 type SessionCookie = {
@@ -19,15 +20,25 @@ type SessionCookie = {
   exp?: number;
   email?: string | null;
   fullName?: string | null;
+  sv?: number;
 };
 
-export function encodeSessionCookie(identity: { userId: string; role: UserRole; email?: string | null; fullName?: string | null }) {
+export function encodeSessionCookie(identity: {
+  userId: string;
+  role: UserRole;
+  email?: string | null;
+  fullName?: string | null;
+  sessionVersion?: number;
+}) {
   const exp = Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 7;
   return signSession({
     userId: identity.userId,
     role: identity.role,
     email: identity.email ?? null,
     fullName: identity.fullName ?? null,
+    // AUTH-05: la versión de sesión se embebe en la cookie; al hacer reset de
+    // contraseña se incrementa en DB y las cookies viejas dejan de validar.
+    sv: identity.sessionVersion ?? 0,
     exp
   });
 }
@@ -40,7 +51,8 @@ export function decodeSessionCookie(raw: string | undefined): RequestIdentity {
     userId: signed.userId,
     role: signed.role,
     email: signed.email ?? null,
-    fullName: signed.fullName ?? null
+    fullName: signed.fullName ?? null,
+    sessionVersion: typeof signed.sv === "number" ? signed.sv : 0
   };
 }
 

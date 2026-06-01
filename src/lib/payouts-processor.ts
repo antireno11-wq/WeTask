@@ -134,6 +134,16 @@ export async function processBookingsForPayout(): Promise<ProcessBookingsResult>
 
     try {
       const tx = await prisma.$transaction(async (tx) => {
+        // PAY-08: lock pesimista + re-lectura del estado. Si el booking cambió entre
+        // que se leyó el candidato y esta tx (p.ej. un refund admin lo pasó a REFUNDED),
+        // abortamos este payout para no disponer dos veces del mismo dinero.
+        const locked = await tx.$queryRaw<Array<{ status: BookingStatus }>>`
+          SELECT status FROM "Booking" WHERE id = ${booking.id} FOR UPDATE
+        `;
+        if (!locked[0] || locked[0].status !== booking.status) {
+          return null;
+        }
+
         // Crear o reutilizar payout.
         const payout =
           booking.payout ??
@@ -235,6 +245,10 @@ export async function processBookingsForPayout(): Promise<ProcessBookingsResult>
 
         return payout.id;
       });
+      if (tx === null) {
+        // Estado cambió bajo el lock: saltamos sin marcar error.
+        continue;
+      }
       payoutId = tx;
     } catch (err) {
       result.failed += 1;

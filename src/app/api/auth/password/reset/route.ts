@@ -31,8 +31,17 @@ export async function POST(req: NextRequest) {
     const passwordHash = await hashPassword(newPassword);
 
     await prisma.$transaction([
-      prisma.user.update({ where: { id: reset.userId }, data: { passwordHash } }),
-      prisma.passwordResetToken.update({ where: { id: reset.id }, data: { usedAt: now } })
+      // AUTH-05: incrementa sessionVersion → invalida todas las cookies emitidas antes del reset.
+      prisma.user.update({
+        where: { id: reset.userId },
+        data: { passwordHash, sessionVersion: { increment: 1 } }
+      }),
+      prisma.passwordResetToken.update({ where: { id: reset.id }, data: { usedAt: now } }),
+      // AUTH-05: invalida cualquier otro token de reset pendiente del mismo usuario.
+      prisma.passwordResetToken.updateMany({
+        where: { userId: reset.userId, usedAt: null },
+        data: { usedAt: now }
+      })
     ]);
 
     return NextResponse.json({ ok: true }, { status: 200 });

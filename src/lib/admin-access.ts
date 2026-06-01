@@ -25,6 +25,7 @@ export async function requireAdminRequest(
       role: true,
       email: true,
       fullName: true,
+      sessionVersion: true,
       roleAssignments: {
         select: {
           role: {
@@ -39,7 +40,8 @@ export async function requireAdminRequest(
 
   const isAdmin = Boolean(user?.roleAssignments.some((assignment) => assignment.role.code === UserRole.ADMIN));
 
-  if (!user || !isAdmin) {
+  // AUTH-05: además del rol, la cookie debe coincidir con la sessionVersion vigente.
+  if (!user || !isAdmin || (identity.sessionVersion ?? 0) !== user.sessionVersion) {
     return { ok: false, response: NextResponse.json({ error: "No autorizado" }, { status: 403 }) };
   }
 

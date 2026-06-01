@@ -1,10 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { inferCommuneFromAddress, isActiveMvpCommune, normalizeCommune } from "@/lib/communes";
+import { getClientIp, rateLimit, tooManyRequestsResponse } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
   try {
+    // ADM-01: rate-limit por IP — endpoint facturable de Google.
+    const rl = await rateLimit("maps.validate", getClientIp(request), "30/m");
+    if (!rl.success) return tooManyRequestsResponse(rl) as unknown as NextResponse;
+
     const address = request.nextUrl.searchParams.get("address")?.trim();
 
     if (!address) {

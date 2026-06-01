@@ -60,11 +60,44 @@ function toAvailabilityBlocks(value: Prisma.JsonValue | null): AvailabilityBlock
   });
 }
 
-function mergeDateAndTime(date: Date, hhmm: string) {
-  const [hours, minutes] = hhmm.split(":").map(Number);
-  const next = new Date(date);
-  next.setHours(hours, minutes, 0, 0);
-  return next;
+// PRO-08: la disponibilidad del tasker se define en hora de Chile. El proceso suele
+// correr en UTC, así que NO podemos usar setHours (hora local del server). Estas
+// helpers convierten una hora de pared de America/Santiago al instante UTC correcto,
+// respetando el horario de verano (DST).
+const CHILE_TZ = "America/Santiago";
+
+function tzOffsetMs(date: Date): number {
+  const dtf = new Intl.DateTimeFormat("en-US", {
+    timeZone: CHILE_TZ,
+    hour12: false,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit"
+  });
+  const map: Record<string, string> = {};
+  for (const part of dtf.formatToParts(date)) {
+    if (part.type !== "literal") map[part.type] = part.value;
+  }
+  const asUtc = Date.UTC(
+    Number(map.year),
+    Number(map.month) - 1,
+    Number(map.day),
+    Number(map.hour),
+    Number(map.minute),
+    Number(map.second)
+  );
+  return asUtc - date.getTime();
+}
+
+function santiagoWallClockToUtc(year: number, monthIndex: number, day: number, hours: number, minutes: number): Date {
+  const guess = Date.UTC(year, monthIndex, day, hours, minutes);
+  // Dos pasadas para corregir el borde de transición DST.
+  let offset = tzOffsetMs(new Date(guess));
+  offset = tzOffsetMs(new Date(guess - offset));
+  return new Date(guess - offset);
 }
 
 export function buildUpcomingSlotsFromBlocks(blocksInput: Prisma.JsonValue | null, weeks = 6, anchorDate = new Date()) {
@@ -72,19 +105,33 @@ export function buildUpcomingSlotsFromBlocks(blocksInput: Prisma.JsonValue | nul
   if (blocks.length === 0) return [];
 
   const now = new Date(anchorDate);
+
+  // Día-calendario de "hoy" en Santiago, como cursor en UTC-midnight (getUTCDay() da
+  // entonces el día de la semana correcto en Chile).
+  const sToday = new Intl.DateTimeFormat("en-CA", {
+    timeZone: CHILE_TZ,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit"
+  }).format(now);
+  const [cy, cm, cd] = sToday.split("-").map(Number);
+  const cursor = new Date(Date.UTC(cy, cm - 1, cd));
+
   const slots: Array<{ startsAt: Date; endsAt: Date }> = [];
 
-    for (let weekOffset = 0; weekOffset < weeks; weekOffset += 1) {
+  for (let weekOffset = 0; weekOffset < weeks; weekOffset += 1) {
     for (const block of blocks) {
       const weekday = WEEK_DAY_INDEX.get(block.day as (typeof CLEANING_WEEK_DAYS)[number]);
       if (weekday == null) continue;
 
-      const baseDate = new Date(now);
-      const dayDelta = (weekday - baseDate.getDay() + 7) % 7;
-      baseDate.setDate(baseDate.getDate() + dayDelta + weekOffset * 7);
+      const baseDate = new Date(cursor);
+      const dayDelta = (weekday - baseDate.getUTCDay() + 7) % 7;
+      baseDate.setUTCDate(baseDate.getUTCDate() + dayDelta + weekOffset * 7);
 
-      const startsAt = mergeDateAndTime(baseDate, block.start);
-      const endsAt = mergeDateAndTime(baseDate, block.end);
+      const [sh, sm] = block.start.split(":").map(Number);
+      const [eh, em] = block.end.split(":").map(Number);
+      const startsAt = santiagoWallClockToUtc(baseDate.getUTCFullYear(), baseDate.getUTCMonth(), baseDate.getUTCDate(), sh, sm);
+      const endsAt = santiagoWallClockToUtc(baseDate.getUTCFullYear(), baseDate.getUTCMonth(), baseDate.getUTCDate(), eh, em);
 
       if (startsAt <= now || endsAt <= startsAt) continue;
       slots.push({ startsAt, endsAt });

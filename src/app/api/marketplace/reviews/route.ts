@@ -33,7 +33,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Reserva no encontrada" }, { status: 404 });
     }
 
-    if (booking.status !== "COMPLETED") {
+    // BOOK-04: el servicio puede estar en PAYOUT_SCHEDULED (cliente ya confirmó, escrow aún
+    // no liberado) o COMPLETED. En ambos el trabajo terminó y la reseña es válida.
+    if (booking.status !== "COMPLETED" && booking.status !== "PAYOUT_SCHEDULED") {
       return NextResponse.json({ error: "Solo puedes reseñar reservas finalizadas" }, { status: 400 });
     }
 

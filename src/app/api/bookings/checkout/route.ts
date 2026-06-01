@@ -325,12 +325,23 @@ export async function POST(req: NextRequest) {
     const created = await prisma.$transaction(async (tx) => {
       if (selectedSlotId) {
         const slots = await tx.$queryRaw<any[]>`
-          SELECT id, "isAvailable" FROM "AvailabilitySlot"
+          SELECT id, "isAvailable", "heldByUserId", "holdExpiresAt" FROM "AvailabilitySlot"
           WHERE id = ${selectedSlotId} AND "isAvailable" = true
           FOR UPDATE
         `;
         if (slots.length === 0) {
           throw new Error("El horario ya fue tomado por otro cliente");
+        }
+        // BOOK-02: respetar el hold dentro de la tx — un hold vigente de OTRO cliente
+        // no puede ser "robado" al pagar.
+        const slot = slots[0];
+        if (
+          slot.heldByUserId &&
+          slot.heldByUserId !== customer.id &&
+          slot.holdExpiresAt &&
+          new Date(slot.holdExpiresAt) > new Date()
+        ) {
+          throw new Error("El horario está reservado temporalmente por otro cliente");
         }
         await tx.availabilitySlot.update({
           where: { id: selectedSlotId },

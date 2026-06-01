@@ -39,6 +39,7 @@ export async function POST(req: NextRequest) {
         passwordHash: true,
         authProvider: true,
         emailVerifiedAt: true,
+        sessionVersion: true,
         roleAssignments: { select: { role: { select: { code: true } } } }
       }
     });
@@ -93,7 +94,7 @@ export async function POST(req: NextRequest) {
 
     response.cookies.set({
       name: SESSION_COOKIE_NAME,
-      value: encodeSessionCookie({ userId: user.id, role: sessionRole, email: user.email, fullName: user.fullName }),
+      value: encodeSessionCookie({ userId: user.id, role: sessionRole, email: user.email, fullName: user.fullName, sessionVersion: user.sessionVersion }),
       path: "/",
       httpOnly: true,
       sameSite: "lax",
