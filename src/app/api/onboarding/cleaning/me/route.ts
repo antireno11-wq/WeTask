@@ -2,8 +2,6 @@ import { CleaningOnboardingStatus, Prisma, UserRole } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { getRequestIdentity, hasRole } from "@/lib/auth";
 import { getChefServiceDefinition, isChefServiceRateWithinRange, isChefServiceSlug } from "@/lib/chef-service-types";
-import { isCleaningServiceSlug } from "@/lib/cleaning-service-types";
-import { CORE_SERVICES } from "@/lib/core-services";
 import { geocodeAddress } from "@/lib/geo";
 import { CLEANING_WEEK_DAYS } from "@/lib/cleaning-onboarding";
 import { normalizeCommune, normalizeCommuneList } from "@/lib/communes";
@@ -91,99 +89,6 @@ function denyLockedOnboarding(status: CleaningOnboardingStatus, identityRole: Us
   return null;
 }
 
-function getOnboardingServiceSlugs(value: Prisma.JsonValue | null): string[] {
-  if (!Array.isArray(value)) return [];
-  return value.filter((item): item is string => typeof item === "string");
-}
-
-async function upsertOnboardingTaskerServices(
-  userId: string,
-  onboarding: {
-    categorySlug: string;
-    offeredServices: Prisma.JsonValue | null;
-    hourlyRateClp: number | null;
-    minBookingHours: number | null;
-  },
-  explicitServiceRates: Array<{ serviceSlug: string; hourlyRateClp: number }>
-) {
-  const selectedCoreService = CORE_SERVICES.find((service) => service.slug === onboarding.categorySlug);
-  if (!selectedCoreService) return;
-
-  const selectedServiceSlugs = getOnboardingServiceSlugs(onboarding.offeredServices);
-  if (selectedServiceSlugs.length === 0) return;
-
-  const profile = await prisma.professionalProfile.findUnique({
-    where: { userId },
-    select: { id: true, hourlyRateFromClp: true }
-  });
-  if (!profile) return;
-
-  const category = await prisma.category.findUnique({
-    where: { slug: selectedCoreService.categorySlug },
-    select: { id: true }
-  });
-  if (!category) return;
-
-  const services = await prisma.service.findMany({
-    where: {
-      categoryId: category.id,
-      slug: { in: selectedServiceSlugs },
-      isActive: true
-    },
-    select: { id: true, slug: true, basePriceClp: true }
-  });
-  if (services.length === 0) return;
-
-  const explicitRateMap = new Map(
-    explicitServiceRates
-      .filter((item) =>
-        onboarding.categorySlug === "limpieza" ? isCleaningServiceSlug(item.serviceSlug) : onboarding.categorySlug === "chef" ? isChefServiceSlug(item.serviceSlug) : true
-      )
-      .map((item) => [item.serviceSlug, item.hourlyRateClp])
-  );
-
-  for (const service of services) {
-    const nextRate = explicitRateMap.get(service.slug) ?? onboarding.hourlyRateClp ?? service.basePriceClp;
-    await prisma.taskerService.upsert({
-      where: {
-        professionalProfileId_serviceId: {
-          professionalProfileId: profile.id,
-          serviceId: service.id
-        }
-      },
-      update: {
-        categoryId: category.id,
-        priceClp: nextRate,
-        minBooking: onboarding.minBookingHours ?? 1,
-        isActive: true
-      },
-      create: {
-        professionalProfileId: profile.id,
-        categoryId: category.id,
-        serviceId: service.id,
-        priceClp: nextRate,
-        minBooking: onboarding.minBookingHours ?? 1,
-        isActive: true
-      }
-    });
-  }
-
-  const activeServiceIds = services.map((service) => service.id);
-  await prisma.taskerService.updateMany({
-    where: {
-      professionalProfileId: profile.id,
-      categoryId: category.id,
-      serviceId: { notIn: activeServiceIds }
-    },
-    data: { isActive: false }
-  });
-
-  const fallbackRate = Math.min(...services.map((service) => explicitRateMap.get(service.slug) ?? onboarding.hourlyRateClp ?? service.basePriceClp));
-  await prisma.professionalProfile.update({
-    where: { userId },
-    data: { hourlyRateFromClp: fallbackRate }
-  });
-}
 
 export async function GET(req: NextRequest) {
   try {
@@ -222,12 +127,18 @@ export async function GET(req: NextRequest) {
       })
     ]);
 
-    const serviceRates = taskerServices
-      .filter((item) => item.service.category?.slug && typeof item.service.slug === "string")
-      .map((item) => ({
-        serviceSlug: item.service.slug,
-        hourlyRateClp: item.priceClp
-      }));
+    const dbServiceRates = (onboarding && Array.isArray(onboarding.serviceRates))
+      ? (onboarding.serviceRates as Array<{ serviceSlug: string; hourlyRateClp: number }>)
+      : [];
+
+    const serviceRates = dbServiceRates.length > 0
+      ? dbServiceRates
+      : taskerServices
+          .filter((item) => item.service.category?.slug && typeof item.service.slug === "string")
+          .map((item) => ({
+            serviceSlug: item.service.slug,
+            hourlyRateClp: item.priceClp
+          }));
 
     return NextResponse.json({ onboarding, user, serviceRates }, { status: 200 });
   } catch (error) {
@@ -278,19 +189,23 @@ export async function PATCH(req: NextRequest) {
         return NextResponse.json({ error: "Ese email ya esta registrado con otra cuenta" }, { status: 409 });
       }
 
-      data = {
-        profilePhotoUrl: parsed.profilePhotoUrl,
-        documentId: parsed.documentId.trim(),
-        baseCommune: parsed.baseCommune,
-        referenceAddress: parsed.referenceAddress.trim(),
-        currentStep: Math.max(onboarding.currentStep, 4)
-      };
-
       const coords = geocodeAddress({
         city: "Santiago",
         street: parsed.referenceAddress.trim(),
         commune: parsed.baseCommune
       });
+
+      data = {
+        profilePhotoUrl: parsed.profilePhotoUrl,
+        documentId: parsed.documentId.trim(),
+        baseCommune: parsed.baseCommune,
+        referenceAddress: parsed.referenceAddress.trim(),
+        coverageLatitude: coords.lat,
+        coverageLongitude: coords.lng,
+        // El teléfono se da por válido al ingresarlo (sin verificación SMS).
+        phoneValidatedAt: onboarding.phoneValidatedAt ?? new Date(),
+        currentStep: Math.max(onboarding.currentStep, 4)
+      };
 
       await prisma.user.update({
         where: { id: userId },
@@ -298,28 +213,6 @@ export async function PATCH(req: NextRequest) {
           fullName: parsed.fullName.trim(),
           email: parsed.email.trim().toLowerCase(),
           phone: parsed.phone.trim()
-        }
-      });
-
-      await prisma.professionalProfile.upsert({
-        where: { userId },
-        create: {
-          userId,
-          avatarUrl: parsed.profilePhotoUrl,
-          coverageStreet: parsed.referenceAddress.trim(),
-          coverageComuna: parsed.baseCommune,
-          coverageCity: "Santiago",
-          coverageLatitude: coords.lat,
-          coverageLongitude: coords.lng,
-          serviceRadiusKm: 8
-        },
-        update: {
-          avatarUrl: parsed.profilePhotoUrl,
-          coverageStreet: parsed.referenceAddress.trim(),
-          coverageComuna: parsed.baseCommune,
-          coverageCity: "Santiago",
-          coverageLatitude: coords.lat,
-          coverageLongitude: coords.lng
         }
       });
     }
@@ -446,6 +339,7 @@ export async function PATCH(req: NextRequest) {
       }
       data = {
         hourlyRateClp: parsed.hourlyRateClp,
+        serviceRates: parsed.serviceRates,
         minBookingHours: parsed.minBookingHours,
         weekendSurchargePct: parsed.weekendSurchargePct,
         holidaySurchargePct: parsed.holidaySurchargePct,
@@ -501,36 +395,6 @@ export async function PATCH(req: NextRequest) {
       where: { userId },
       data
     });
-
-    if (input.step === 9) {
-      const parsed = taskerOnboardingStep9Schema.parse(input.payload);
-      await upsertOnboardingTaskerServices(userId, updated, parsed.serviceRates);
-    }
-
-    if (input.step === 4 || input.step === 9) {
-      await prisma.professionalProfile.upsert({
-        where: { userId },
-        create: {
-          userId,
-          coverageStreet: updated.referenceAddress,
-          coverageComuna: updated.baseCommune,
-          coverageCity: "Santiago",
-          coverageLatitude: updated.coverageLatitude,
-          coverageLongitude: updated.coverageLongitude,
-          serviceRadiusKm: updated.maxTravelKm ?? 15,
-          hourlyRateFromClp: updated.hourlyRateClp
-        },
-        update: {
-          coverageStreet: updated.referenceAddress ?? undefined,
-          coverageComuna: updated.baseCommune ?? undefined,
-          coverageCity: "Santiago",
-          coverageLatitude: updated.coverageLatitude ?? undefined,
-          coverageLongitude: updated.coverageLongitude ?? undefined,
-          serviceRadiusKm: updated.maxTravelKm ?? undefined,
-          hourlyRateFromClp: updated.hourlyRateClp ?? undefined
-        }
-      });
-    }
 
     return NextResponse.json({ ok: true, onboarding: updated }, { status: 200 });
   } catch (error) {

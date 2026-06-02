@@ -66,23 +66,10 @@ async function ensureRoleAssignment(userId: string, code: UserRole, label: strin
   });
 }
 
-declare global {
-  var demoDataSeeded: boolean | undefined;
-}
-
-export async function ensureMarketplaceDemoData() {
-  if (process.env.NODE_ENV === "production") {
-    return { customerId: undefined };
+export async function ensureMarketplaceDemoData(): Promise<{ customerId: string | null }> {
+  if (process.env.SEED_DEMO_DATA !== "true") {
+    return { customerId: null };
   }
-  if (global.demoDataSeeded) {
-    const customer = await prisma.user.findUnique({
-      where: { email: "cliente-demo@wetask.cl" },
-      select: { id: true }
-    });
-    return { customerId: customer?.id ?? undefined };
-  }
-
-  global.demoDataSeeded = true;
 
   const legacyCategory = await prisma.category.findUnique({ where: { slug: "manitas" } });
   if (legacyCategory) {

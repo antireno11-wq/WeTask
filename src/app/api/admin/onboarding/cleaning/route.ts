@@ -2,6 +2,7 @@ import { CleaningOnboardingStatus, Prisma } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdminRequest } from "@/lib/admin-access";
 import { normalizeCommuneList } from "@/lib/communes";
+import { logError, logger } from "@/lib/logger";
 import { buildTaskerStatusEmailTemplate, sendPlatformEmail } from "@/lib/notifications";
 import { prisma } from "@/lib/prisma";
 import {
@@ -42,11 +43,7 @@ async function notifyTaskerStatusChange(params: {
       })
     });
   } catch (error) {
-    console.error("[tasker-admin] status email failed", {
-      to: params.to,
-      subject: params.subject,
-      detail: error instanceof Error ? error.message : "Error desconocido"
-    });
+    logError("tasker-admin.status_email", error, { to: params.to, subject: params.subject });
   }
 }
 
@@ -80,6 +77,9 @@ async function deleteOnboardingAndProfessionalData(tx: Prisma.TransactionClient,
   });
 }
 
+const MAX_PAGE_SIZE = 100;
+const DEFAULT_PAGE_SIZE = 50;
+
 export async function GET(req: NextRequest) {
   const admin = await requireAdminRequest(req);
   if (!admin.ok) return admin.response;
@@ -87,6 +87,10 @@ export async function GET(req: NextRequest) {
   const status = req.nextUrl.searchParams.get("status") ?? undefined;
   const order = req.nextUrl.searchParams.get("order") === "asc" ? "asc" : "desc";
   const view = req.nextUrl.searchParams.get("view") === "validated" ? "validated" : "queue";
+  const search = (req.nextUrl.searchParams.get("q") ?? "").trim();
+  const cursor = req.nextUrl.searchParams.get("cursor") ?? null;
+  const pageSizeRaw = Number(req.nextUrl.searchParams.get("pageSize") ?? DEFAULT_PAGE_SIZE);
+  const pageSize = Number.isFinite(pageSizeRaw) ? Math.min(Math.max(pageSizeRaw, 10), MAX_PAGE_SIZE) : DEFAULT_PAGE_SIZE;
 
   const validStatuses = [
     CleaningOnboardingStatus.BORRADOR,
@@ -97,7 +101,7 @@ export async function GET(req: NextRequest) {
   ];
   const normalizedStatusFilter = status && validStatuses.includes(status as CleaningOnboardingStatus) ? (status as CleaningOnboardingStatus) : null;
 
-  const queueWhere = normalizedStatusFilter
+  const queueStatusFilter: Prisma.CleaningOnboardingWhereInput = normalizedStatusFilter
     ? { status: normalizedStatusFilter }
     : {
         status: {
@@ -109,17 +113,41 @@ export async function GET(req: NextRequest) {
         }
       };
 
-  const validatedWhere = {
+  const validatedStatusFilter: Prisma.CleaningOnboardingWhereInput = {
     OR: [
       { status: { in: [CleaningOnboardingStatus.APROBADO, CleaningOnboardingStatus.ACTIVO] } },
       { user: { professionalProfile: { is: { isVerified: true } } } }
     ]
-  } satisfies Prisma.CleaningOnboardingWhereInput;
+  };
+
+  const searchFilter: Prisma.CleaningOnboardingWhereInput | null = search
+    ? {
+        OR: [
+          { documentId: { contains: search, mode: "insensitive" } },
+          {
+            user: {
+              OR: [
+                { fullName: { contains: search, mode: "insensitive" } },
+                { email: { contains: search, mode: "insensitive" } },
+                { phone: { contains: search } }
+              ]
+            }
+          }
+        ]
+      }
+    : null;
+
+  const baseWhere = view === "validated" ? validatedStatusFilter : queueStatusFilter;
+  const where: Prisma.CleaningOnboardingWhereInput = searchFilter
+    ? { AND: [baseWhere, searchFilter] }
+    : baseWhere;
 
   const items = await prisma.cleaningOnboarding.findMany({
-    where: view === "validated" ? validatedWhere : queueWhere,
-    orderBy: [{ submittedAt: order }, { createdAt: order }],
-    take: 300,
+    where,
+    orderBy: [{ submittedAt: order }, { createdAt: order }, { id: "asc" }],
+    take: pageSize + 1,
+    skip: cursor ? 1 : 0,
+    cursor: cursor ? { id: cursor } : undefined,
     include: {
       user: {
         select: {
@@ -162,7 +190,11 @@ export async function GET(req: NextRequest) {
     activeServicesByProfile.map((item) => [item.professionalProfileId, item._count._all])
   );
 
-  const normalizedItems = items
+  const hasMore = items.length > pageSize;
+  const visibleItems = hasMore ? items.slice(0, pageSize) : items;
+  const nextCursor = hasMore ? visibleItems[visibleItems.length - 1]?.id ?? null : null;
+
+  const normalizedItems = visibleItems
     .map((item) => {
       const activeTaskerServicesCount = item.user.professionalProfile?.id
         ? activeServicesCountMap.get(item.user.professionalProfile.id) ?? 0
@@ -211,7 +243,7 @@ export async function GET(req: NextRequest) {
       return item.status === normalizedStatusFilter;
     });
 
-  return NextResponse.json({ items: normalizedItems, view }, { status: 200 });
+  return NextResponse.json({ items: normalizedItems, view, nextCursor }, { status: 200 });
 }
 
 export async function PATCH(req: NextRequest) {
@@ -267,13 +299,26 @@ export async function PATCH(req: NextRequest) {
         return NextResponse.json({ error: "Debes indicar la causa del rechazo o corrección." }, { status: 400 });
       }
 
-      const updated = await prisma.cleaningOnboarding.update({
-        where: { id: input.onboardingId },
-        data: {
-          status: CleaningOnboardingStatus.REQUIERE_CORRECCION,
-          reviewedAt: new Date(),
-          adminReviewNotes: notes
-        }
+      const updated = await prisma.$transaction(async (tx) => {
+        const onboardingUpdate = await tx.cleaningOnboarding.update({
+          where: { id: input.onboardingId },
+          data: {
+            status: CleaningOnboardingStatus.REQUIERE_CORRECCION,
+            reviewedAt: new Date(),
+            adminReviewNotes: notes
+          }
+        });
+        await tx.onboardingReviewEvent.create({
+          data: {
+            onboardingId: input.onboardingId!,
+            actorId: admin.identity.userId,
+            action: "request_correction",
+            notes,
+            statusBefore: onboarding.status,
+            statusAfter: CleaningOnboardingStatus.REQUIERE_CORRECCION
+          }
+        });
+        return onboardingUpdate;
       });
 
       await sendPlatformEmail({
@@ -297,43 +342,125 @@ export async function PATCH(req: NextRequest) {
     }
 
     if (input.action === "set_pending") {
-      const updated = await prisma.cleaningOnboarding.update({
-        where: { id: input.onboardingId },
-        data: {
-          status: CleaningOnboardingStatus.PENDIENTE_REVISION,
-          adminReviewNotes: input.notes?.trim() || null
-        }
+      const updated = await prisma.$transaction(async (tx) => {
+        const onboardingUpdate = await tx.cleaningOnboarding.update({
+          where: { id: input.onboardingId },
+          data: {
+            status: CleaningOnboardingStatus.PENDIENTE_REVISION,
+            adminReviewNotes: input.notes?.trim() || null
+          }
+        });
+        await tx.onboardingReviewEvent.create({
+          data: {
+            onboardingId: input.onboardingId!,
+            actorId: admin.identity.userId,
+            action: "set_pending",
+            notes: input.notes?.trim() || null,
+            statusBefore: onboarding.status,
+            statusAfter: CleaningOnboardingStatus.PENDIENTE_REVISION
+          }
+        });
+        return onboardingUpdate;
       });
       return NextResponse.json({ ok: true, onboarding: updated }, { status: 200 });
     }
 
     if (input.action === "approve") {
-      const updated = await prisma.cleaningOnboarding.update({
-        where: { id: input.onboardingId },
-        data: {
-          status: CleaningOnboardingStatus.APROBADO,
-          reviewedAt: new Date(),
-          approvedAt: new Date(),
-          adminReviewNotes: input.notes?.trim() || null
+      try {
+        const updated = await prisma.$transaction(async (tx) => {
+          const onboardingUpdate = await tx.cleaningOnboarding.update({
+            where: { id: input.onboardingId },
+            data: {
+              status: CleaningOnboardingStatus.APROBADO,
+              reviewedAt: new Date(),
+              approvedAt: new Date(),
+              adminReviewNotes: input.notes?.trim() || null
+            }
+          });
+
+          const sync = await syncTaskerMarketplaceServicesFromOnboarding(onboarding.userId, tx);
+          if (sync.updated === 0 && sync.reason !== "synced") {
+            throw new Error(`marketplace_sync_failed:${sync.reason}`);
+          }
+
+          await tx.onboardingReviewEvent.create({
+            data: {
+              onboardingId: input.onboardingId!,
+              actorId: admin.identity.userId,
+              action: "approve",
+              notes: input.notes?.trim() || null,
+              statusBefore: onboarding.status,
+              statusAfter: CleaningOnboardingStatus.APROBADO
+            }
+          });
+
+          return onboardingUpdate;
+        });
+
+        // Chequear si el tasker ya conectó MercadoPago. Si no, ajustamos el copy
+        // para empujarlo a hacerlo: sin esto su perfil no recibe reservas pagadas.
+        const proUserState = await prisma.user.findUnique({
+          where: { id: onboarding.userId },
+          select: { mpAccountStatus: true }
+        });
+        const mpConnected = proUserState?.mpAccountStatus === "ACTIVE";
+
+        await notifyTaskerStatusChange({
+          to: onboarding.user.email,
+          fullName: onboarding.user.fullName,
+          subject: mpConnected
+            ? "WeTask: tu perfil fue aprobado"
+            : "WeTask: tu perfil fue aprobado — falta conectar MercadoPago",
+          title: "Tu perfil fue aprobado",
+          message: mpConnected
+            ? "Tu validación interna fue aprobada por el equipo de WeTask. Ya pasaste la revisión y tu perfil está listo para la activación final dentro de la plataforma."
+            : "Tu validación interna fue aprobada por el equipo de WeTask. Para empezar a recibir reservas pagadas necesitás conectar tu cuenta de MercadoPago desde tu panel — sin esto tu perfil no aparece en búsqueda.",
+          ctaLabel: mpConnected ? "Ver mi perfil" : "Conectar MercadoPago",
+          ctaPath: "/pro"
+        });
+
+        // Notificación in-app (siempre crear)
+        await prisma.notification.create({
+          data: {
+            userId: onboarding.userId,
+            title: mpConnected ? "Tu perfil fue aprobado" : "Aprobado — falta conectar MercadoPago",
+            body: mpConnected
+              ? "El equipo aprobó tu perfil. Pronto vas a recibir tu primera reserva."
+              : "Tu perfil fue aprobado. Para empezar a recibir reservas pagadas conectá tu cuenta MercadoPago en /pro."
+          }
+        });
+
+        return NextResponse.json({ ok: true, onboarding: updated }, { status: 200 });
+      } catch (error) {
+        const msg = error instanceof Error ? error.message : "";
+        if (msg.startsWith("marketplace_sync_failed:")) {
+          const reason = msg.replace("marketplace_sync_failed:", "");
+          return NextResponse.json(
+            { error: "No se pudo preparar el servicio marketplace al aprobar.", reason },
+            { status: 409 }
+          );
         }
-      });
-
-      await notifyTaskerStatusChange({
-        to: onboarding.user.email,
-        fullName: onboarding.user.fullName,
-        subject: "WeTask: tu perfil fue aprobado",
-        title: "Tu perfil fue aprobado",
-        message:
-          "Tu validación interna fue aprobada por el equipo de WeTask. Ya pasaste la revisión y tu perfil está listo para la activación final dentro de la plataforma.",
-        ctaLabel: "Ver mi perfil",
-        ctaPath: "/pro"
-      });
-
-      return NextResponse.json({ ok: true, onboarding: updated }, { status: 200 });
+        throw error;
+      }
     }
 
     if (input.action === "delete_record") {
       await prisma.$transaction(async (tx) => {
+        await tx.adminAuditLog.create({
+          data: {
+            actorId: admin.identity.userId,
+            action: "onboarding.delete_record",
+            targetType: "CleaningOnboarding",
+            targetId: input.onboardingId!,
+            beforeJson: {
+              status: onboarding.status,
+              userId: onboarding.userId,
+              userEmail: onboarding.user.email,
+              userFullName: onboarding.user.fullName,
+              notes: input.notes?.trim() || null
+            }
+          }
+        });
         await deleteOnboardingAndProfessionalData(tx, onboarding.userId, input.onboardingId);
       });
 
@@ -356,97 +483,129 @@ export async function PATCH(req: NextRequest) {
       );
     }
 
-    const marketplaceSync = await syncTaskerMarketplaceServicesFromOnboarding(onboarding.userId);
-    if (marketplaceSync.updated === 0 && marketplaceSync.reason !== "synced") {
-      return NextResponse.json(
-        { error: "No se pudo preparar el servicio marketplace del tasker.", reason: marketplaceSync.reason },
-        { status: 409 }
-      );
-    }
-
-    const activationUser = await prisma.user.findUnique({
-      where: { id: onboarding.userId },
-      select: {
-        professionalProfile: {
-          select: {
-            id: true,
-            isVerified: true,
-            coverageComuna: true,
-            hourlyRateFromClp: true
-          }
-        },
-        cleaningOnboarding: {
-          select: {
-            status: true,
-            currentStep: true,
-            submittedAt: true,
-            categorySlug: true,
-            baseCommune: true,
-            serviceCommunes: true,
-            hourlyRateClp: true
-          }
+    try {
+      const result = await prisma.$transaction(async (tx) => {
+        const marketplaceSync = await syncTaskerMarketplaceServicesFromOnboarding(onboarding.userId, tx);
+        if (marketplaceSync.updated === 0 && marketplaceSync.reason !== "synced") {
+          throw new Error(`marketplace_sync_failed:${marketplaceSync.reason}`);
         }
-      }
-    });
 
-    const activeTaskerServicesCount = activationUser?.professionalProfile
-      ? await prisma.taskerService.count({
-          where: {
-            professionalProfileId: activationUser.professionalProfile.id,
-            isActive: true
+        const activationUser = await tx.user.findUnique({
+          where: { id: onboarding.userId },
+          select: {
+            professionalProfile: {
+              select: {
+                id: true,
+                isVerified: true,
+                coverageComuna: true,
+                hourlyRateFromClp: true
+              }
+            },
+            cleaningOnboarding: {
+              select: {
+                status: true,
+                currentStep: true,
+                submittedAt: true,
+                categorySlug: true,
+                baseCommune: true,
+                serviceCommunes: true,
+                hourlyRateClp: true
+              }
+            }
           }
-        })
-      : 0;
+        });
 
-    const publication = getTaskerPublicationState({
-      onboarding: activationUser?.cleaningOnboarding ?? null,
-      profile: activationUser?.professionalProfile ?? null,
-      activeTaskerServicesCount
-    });
-    const activationMissingRequirements = publication.missingRequirements.filter(
-      (item) => item !== "published" && item !== "status_active"
-    );
-    if (activationMissingRequirements.length > 0) {
-      return NextResponse.json(
+        const activeTaskerServicesCount = activationUser?.professionalProfile
+          ? await tx.taskerService.count({
+              where: {
+                professionalProfileId: activationUser.professionalProfile.id,
+                isActive: true
+              }
+            })
+          : 0;
+
+        const publication = getTaskerPublicationState({
+          onboarding: activationUser?.cleaningOnboarding ?? null,
+          profile: activationUser?.professionalProfile ?? null,
+          activeTaskerServicesCount
+        });
+        const activationMissingRequirements = publication.missingRequirements.filter(
+          (item) => item !== "published" && item !== "status_active"
+        );
+        if (activationMissingRequirements.length > 0) {
+          throw new Error(`missing_requirements:${activationMissingRequirements.join(",")}`);
+        }
+
+        const updated = await tx.cleaningOnboarding.update({
+          where: { id: input.onboardingId },
+          data: {
+            status: CleaningOnboardingStatus.ACTIVO,
+            activatedAt: new Date(),
+            adminReviewNotes: input.notes?.trim() || onboarding.adminReviewNotes || null
+          }
+        });
+
+        const syncResult = await syncTaskerAvailabilitySlotsFromOnboarding(onboarding.userId, 6, tx);
+
+        await tx.onboardingReviewEvent.create({
+          data: {
+            onboardingId: input.onboardingId!,
+            actorId: admin.identity.userId,
+            action: "activate",
+            notes: input.notes?.trim() || null,
+            statusBefore: onboarding.status,
+            statusAfter: CleaningOnboardingStatus.ACTIVO
+          }
+        });
+
+        return { updated, marketplaceSync, syncResult };
+      });
+
+      logger.info(
         {
-          error: "El tasker no cumple las condiciones para publicarse.",
-          missingRequirements: activationMissingRequirements
+          onboardingId: input.onboardingId,
+          userId: onboarding.userId,
+          syncedServices: result.marketplaceSync.updated,
+          createdSlots: result.syncResult.created,
+          publication: result.syncResult.publication,
+          reason: result.syncResult.reason
         },
-        { status: 409 }
+        "tasker activation audit"
       );
-    }
 
-    const updated = await prisma.cleaningOnboarding.update({
-      where: { id: input.onboardingId },
-      data: {
-        status: CleaningOnboardingStatus.ACTIVO,
-        activatedAt: new Date(),
-        adminReviewNotes: input.notes?.trim() || onboarding.adminReviewNotes || null
+      await notifyTaskerStatusChange({
+        to: onboarding.user.email,
+        fullName: onboarding.user.fullName,
+        subject: "WeTask: tu perfil ya está activo",
+        title: "Ya puedes trabajar en WeTask",
+        message:
+          "Tu perfil ya fue activado y desde ahora puedes aparecer en la plataforma, recibir solicitudes y gestionar tus reservas desde tu panel de tasker.",
+        ctaLabel: "Ir a mi panel",
+        ctaPath: "/pro"
+      });
+
+      return NextResponse.json({ ok: true, onboarding: result.updated }, { status: 200 });
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : "";
+      if (msg.startsWith("marketplace_sync_failed:")) {
+        const reason = msg.replace("marketplace_sync_failed:", "");
+        return NextResponse.json(
+          { error: "No se pudo preparar el servicio marketplace del tasker.", reason },
+          { status: 409 }
+        );
       }
-    });
-
-    const syncResult = await syncTaskerAvailabilitySlotsFromOnboarding(onboarding.userId);
-    console.info("[tasker-admin] activation audit", {
-      onboardingId: input.onboardingId,
-      userId: onboarding.userId,
-      syncedServices: marketplaceSync.updated,
-      createdSlots: syncResult.created,
-      publication: syncResult.publication,
-      reason: syncResult.reason
-    });
-
-    await notifyTaskerStatusChange({
-      to: onboarding.user.email,
-      fullName: onboarding.user.fullName,
-      subject: "WeTask: tu perfil ya está activo",
-      title: "Ya puedes trabajar en WeTask",
-      message:
-        "Tu perfil ya fue activado y desde ahora puedes aparecer en la plataforma, recibir solicitudes y gestionar tus reservas desde tu panel de tasker.",
-      ctaLabel: "Ir a mi panel",
-      ctaPath: "/pro"
-    });
-
-    return NextResponse.json({ ok: true, onboarding: updated }, { status: 200 });
+      if (msg.startsWith("missing_requirements:")) {
+        const reqs = msg.replace("missing_requirements:", "").split(",");
+        return NextResponse.json(
+          {
+            error: "El tasker no cumple las condiciones para publicarse.",
+            missingRequirements: reqs
+          },
+          { status: 409 }
+        );
+      }
+      throw error;
+    }
   } catch (error) {
     return NextResponse.json(
       {

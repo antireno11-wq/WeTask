@@ -1,0 +1,653 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  CUSTOMER
+  PRO
+  ADMIN
+}
+
+enum AuthProvider {
+  EMAIL
+  GOOGLE
+  APPLE
+}
+
+enum CleaningOnboardingStatus {
+  BORRADOR
+  PENDIENTE_REVISION
+  REQUIERE_CORRECCION
+  APROBADO
+  ACTIVO
+}
+
+enum CleaningWorkMode {
+  SOLO
+  EQUIPO
+}
+
+enum CleaningAvailabilityMode {
+  FIJA
+  VARIABLE
+}
+
+enum BookingStatus {
+  CREATED
+  PENDING
+  PENDING_PAYMENT
+  PAYMENT_FAILED
+  CONFIRMED
+  ASSIGNED
+  ACCEPTED
+  IN_PROGRESS
+  COMPLETED
+  AWAITING_CUSTOMER_CONFIRMATION
+  PAYOUT_SCHEDULED
+  PAID_OUT
+  CANCELLED
+  DISPUTE
+  DISPUTE_OPEN
+  REFUNDED
+}
+
+enum PaymentStatus {
+  PENDING
+  AUTHORIZED
+  PAID
+  FAILED
+  REFUNDED
+  PARTIAL_REFUNDED
+}
+
+enum PayoutStatus {
+  PENDING
+  PROCESSING
+  PAID
+  FAILED
+}
+
+enum TicketStatus {
+  OPEN
+  IN_REVIEW
+  RESOLVED
+  CLOSED
+}
+
+model User {
+  id                  String                @id @default(cuid())
+  email               String                @unique
+  fullName            String
+  phone               String?
+  birthDate           DateTime?
+  mercadoPagoCustomerId String?
+  role                UserRole              @default(CUSTOMER)
+  authProvider        AuthProvider          @default(EMAIL)
+  passwordHash        String?
+  termsAcceptedAt     DateTime?
+  emailVerifiedAt     DateTime?
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime              @updatedAt
+  bookings            Booking[]             @relation("CustomerBookings")
+  proBookings         Booking[]             @relation("ProBookings")
+  addresses           Address[]
+  paymentMethods      CustomerPaymentMethod[]
+  sentMessages        Message[]             @relation("SenderMessages")
+  reviewsGiven        Review[]              @relation("ReviewAuthor")
+  professionalProfile ProfessionalProfile?
+  cleaningOnboarding  CleaningOnboarding?
+  payouts             Payout[]
+  notifications       Notification[]
+  roleAssignments     UserRoleAssignment[]
+  emailVerifications  EmailVerificationToken[]
+  passwordResets      PasswordResetToken[]
+  sessions            AuthSession[]
+}
+
+model CustomerPaymentMethod {
+  id                  String   @id @default(cuid())
+  userId              String
+  provider            String   @default("MERCADOPAGO")
+  providerCustomerId  String
+  providerCardId      String   @unique
+  paymentMethodId     String?
+  brand               String?
+  last4               String
+  expirationMonth     Int?
+  expirationYear      Int?
+  cardholderName      String?
+  payerEmail          String?
+  isDefault           Boolean  @default(false)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([userId, isDefault])
+}
+
+model Role {
+  id          String               @id @default(cuid())
+  code        UserRole             @unique
+  label       String
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+  assignments UserRoleAssignment[]
+}
+
+model UserRoleAssignment {
+  id        String   @id @default(cuid())
+  userId    String
+  roleId    String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role      Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, roleId])
+  @@index([roleId])
+}
+
+model EmailVerificationToken {
+  id         String   @id @default(cuid())
+  userId     String
+  tokenHash  String   @unique
+  expiresAt  DateTime
+  usedAt     DateTime?
+  createdAt  DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
+}
+
+model PasswordResetToken {
+  id         String   @id @default(cuid())
+  userId     String
+  tokenHash  String   @unique
+  expiresAt  DateTime
+  usedAt     DateTime?
+  createdAt  DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
+}
+
+model AuthSession {
+  id         String   @id @default(cuid())
+  userId     String
+  tokenHash  String   @unique
+  expiresAt  DateTime
+  revokedAt  DateTime?
+  createdAt  DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
+}
+
+model Category {
+  id                    String    @id @default(cuid())
+  slug                  String    @unique
+  name                  String
+  description           String?
+  minHours              Int       @default(1)
+  slotMinutes           Int       @default(60)
+  basePlatformFeePct    Decimal   @default(0) @db.Decimal(5, 2)
+  urgencyFeeClp         Int       @default(0)
+  materialFeeDefaultClp Int       @default(0)
+  isActive              Boolean   @default(true)
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+  services              Service[]
+  taskerServices        TaskerService[]
+}
+
+model Service {
+  id             String    @id @default(cuid())
+  slug           String    @unique
+  name           String
+  description    String
+  basePriceClp   Int
+  durationMin    Int
+  isActive       Boolean   @default(true)
+  categoryId     String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  bookings       Booking[]
+  slots          AvailabilitySlot[]
+  taskerServices TaskerService[]
+  category       Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  @@index([categoryId, isActive])
+}
+
+model ProfessionalProfile {
+  id                String      @id @default(cuid())
+  userId            String      @unique
+  avatarUrl         String?
+  avatarPositionX   Int         @default(50)
+  avatarPositionY   Int         @default(34)
+  bio               String?
+  isVerified        Boolean     @default(false)
+  verificationStatus String     @default("PENDING_REVIEW")
+  idDocumentType    String?
+  idDocumentNumber  String?
+  idDocumentUrl     String?
+  backgroundCheckUrl String?
+  ratingAvg         Decimal     @default(0) @db.Decimal(3, 2)
+  ratingsCount      Int         @default(0)
+  coverageStreet    String?
+  coverageComuna    String?
+  coverageCity      String?
+  coveragePostal    String?
+  coverageLatitude  Float?
+  coverageLongitude Float?
+  serviceRadiusKm   Int         @default(8)
+  hourlyRateFromClp Int?
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+  user              User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  slots             AvailabilitySlot[]
+  taskerServices    TaskerService[]
+  categoryProfiles  TaskerCategoryProfile[]
+}
+
+model TaskerService {
+  id                    String              @id @default(cuid())
+  professionalProfileId String
+  categoryId            String
+  serviceId             String
+  priceClp              Int
+  minBooking            Int                 @default(1)
+  isActive              Boolean             @default(true)
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+  professionalProfile   ProfessionalProfile @relation(fields: [professionalProfileId], references: [id], onDelete: Cascade)
+  category              Category            @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  service               Service             @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+
+  @@unique([professionalProfileId, serviceId])
+  @@index([professionalProfileId, isActive])
+  @@index([categoryId, isActive])
+  @@index([serviceId, isActive])
+}
+
+model TaskerCategoryProfile {
+  id                    String              @id @default(cuid())
+  professionalProfileId String
+  categorySlug          String
+  hourlyRateClp         Int
+  minBookingHours       Int                 @default(1)
+  serviceCommunes       String[]            @default([])
+  offeredServices       String[]            @default([])
+  experienceTypes       String[]            @default([])
+  scopeData             Json?
+  isActive              Boolean             @default(true)
+  completedAt           DateTime?
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+  professionalProfile   ProfessionalProfile @relation(fields: [professionalProfileId], references: [id], onDelete: Cascade)
+
+  @@unique([professionalProfileId, categorySlug])
+  @@index([professionalProfileId, isActive])
+}
+
+model AvailabilitySlot {
+  id                  String              @id @default(cuid())
+  professionalProfileId String
+  serviceId           String?
+  startsAt            DateTime
+  endsAt              DateTime
+  isAvailable         Boolean             @default(true)
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+  professionalProfile ProfessionalProfile @relation(fields: [professionalProfileId], references: [id], onDelete: Cascade)
+  service             Service?            @relation(fields: [serviceId], references: [id], onDelete: SetNull)
+  bookings            Booking[]           @relation("BookedSlot")
+
+  @@index([professionalProfileId, startsAt, isAvailable])
+}
+
+model Address {
+  id          String   @id @default(cuid())
+  userId      String
+  label       String?
+  street      String
+  city        String
+  postalCode  String
+  region      String?
+  country     String   @default("ES")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bookings    Booking[]
+
+  @@index([userId, city])
+}
+
+model Booking {
+  id                String        @id @default(cuid())
+  customerId        String
+  proId             String?
+  serviceId         String
+  bookedSlotId      String?
+  addressId         String?
+  status            BookingStatus @default(PENDING)
+  scheduledAt       DateTime
+  addressLine1      String
+  comuna            String
+  region            String
+  city              String?
+  postalCode        String?
+  notes             String?
+  hours             Int           @default(1)
+  slotMinutes       Int           @default(60)
+  autoAssign        Boolean       @default(false)
+  hourlyPriceClp    Int           @default(0)
+  subtotalClp       Int           @default(0)
+  extrasTotalClp    Int           @default(0)
+  platformFeeClp    Int           @default(0)
+  totalPriceClp     Int
+  paymentStatus     PaymentStatus @default(PENDING)
+  proReviewRating   Int?
+  proReviewComment  String?
+  proReviewedAt     DateTime?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  customer          User          @relation("CustomerBookings", fields: [customerId], references: [id], onDelete: Restrict)
+  pro               User?         @relation("ProBookings", fields: [proId], references: [id], onDelete: SetNull)
+  service           Service       @relation(fields: [serviceId], references: [id], onDelete: Restrict)
+  bookedSlot        AvailabilitySlot? @relation("BookedSlot", fields: [bookedSlotId], references: [id], onDelete: SetNull)
+  address           Address?      @relation(fields: [addressId], references: [id], onDelete: SetNull)
+  extras            BookingExtra[]
+  messages          Message[]
+  payment           Payment?
+  payout            Payout?
+  review            Review?
+  disputes          DisputeTicket[]
+  notifications     Notification[]
+
+  @@index([customerId, status])
+  @@index([proId, status])
+  @@index([scheduledAt, status])
+  @@index([bookedSlotId])
+}
+
+model BookingExtra {
+  id          String   @id @default(cuid())
+  bookingId   String
+  code        String
+  name        String
+  priceClp    Int
+  quantity    Int      @default(1)
+  createdAt   DateTime @default(now())
+  booking     Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@index([bookingId])
+}
+
+model Message {
+  id          String   @id @default(cuid())
+  bookingId   String
+  senderId    String
+  body        String
+  imageUrl    String?
+  createdAt   DateTime @default(now())
+  booking     Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  sender      User     @relation("SenderMessages", fields: [senderId], references: [id], onDelete: Restrict)
+
+  @@index([bookingId, createdAt])
+}
+
+model Payment {
+  id                  String       @id @default(cuid())
+  bookingId           String       @unique
+  provider            String       @default("STRIPE")
+  providerPaymentId   String?
+  providerStatus      String?
+  currency            String       @default("CLP")
+  paymentMethod       String?
+  last4               String?
+  payerEmail          String?
+  rawResponseJson     Json?
+  refundedAt          DateTime?
+  idempotencyKey      String?      @unique
+  errorCode           String?
+  errorMessage        String?
+  amountClp           Int
+  platformFeeClp      Int          @default(0)
+  status              PaymentStatus @default(PENDING)
+  paidAt              DateTime?
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+  booking             Booking      @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@index([provider, providerPaymentId])
+  @@index([providerStatus])
+}
+
+model Payout {
+  id                String       @id @default(cuid())
+  bookingId         String       @unique
+  proId             String
+  amountClp         Int
+  status            PayoutStatus @default(PENDING)
+  requestedAt       DateTime     @default(now())
+  paidAt            DateTime?
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+  booking           Booking      @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  pro               User         @relation(fields: [proId], references: [id], onDelete: Restrict)
+}
+
+model Review {
+  id                String   @id @default(cuid())
+  bookingId         String   @unique
+  authorId          String
+  rating            Int
+  punctuality       Int?
+  quality           Int?
+  communication     Int?
+  comment           String?
+  providerReply     String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  booking           Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  author            User     @relation("ReviewAuthor", fields: [authorId], references: [id], onDelete: Restrict)
+
+  @@index([rating])
+}
+
+model DisputeTicket {
+  id                String      @id @default(cuid())
+  bookingId         String
+  openedById        String?
+  category          String?
+  reason            String
+  evidence          Json?
+  resolution        String?
+  refundAmountClp   Int?
+  status            TicketStatus @default(OPEN)
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+  booking           Booking     @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@index([bookingId, status])
+}
+
+model Notification {
+  id          String   @id @default(cuid())
+  userId      String
+  bookingId   String?
+  title       String
+  body        String
+  isRead      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  booking     Booking? @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+}
+
+model ServiceLead {
+  id                 String   @id @default(cuid())
+  fullName           String
+  phone              String
+  comuna             String
+  serviceNeeded      String
+  problemDescription String
+  source             String   @default("landing")
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@index([createdAt])
+  @@index([comuna, serviceNeeded])
+}
+
+model CoverageWaitlist {
+  id        String   @id @default(cuid())
+  email     String
+  commune   String?
+  address   String?
+  source    String   @default("coverage_gate")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([email])
+  @@index([commune, createdAt])
+}
+
+enum TechnicianVerificationStatus {
+  PENDING
+  UNDER_REVIEW
+  APPROVED
+  REJECTED
+}
+
+model Technician {
+  id                   String                       @id @default(cuid())
+  fullName             String                       @map("full_name")
+  rut                  String                       @unique
+  birthDate            DateTime                     @map("birth_date")
+  phone                String
+  email                String
+  address              String
+  commune              String
+  lat                  Float?
+  lng                  Float?
+  specialties          Json
+  yearsExperience      Int                          @map("years_experience")
+  description          String
+  certifications       Json?
+  portfolioImages      Json                         @map("portfolio_images")
+  criminalRecordFile   String                       @map("criminal_record_file")
+  identityDocument     String                       @map("identity_document")
+  identitySelfie       String                       @map("identity_selfie")
+  affidavitAccepted    Boolean                      @default(false) @map("affidavit_accepted")
+  references           String?
+  coverageRadiusKm     Int                          @map("coverage_radius_km")
+  availableCommunes    Json                         @map("available_communes")
+  serviceCommunes      Json?                        @map("service_communes")
+  availabilitySchedule String                       @map("availability_schedule")
+  transportType        String                       @map("transport_type")
+  verificationStatus   TechnicianVerificationStatus @default(PENDING) @map("verification_status")
+  score                Int                          @default(0)
+  reviewNotes          String?                      @map("review_notes")
+  source               String                       @default("trabaja-con-nosotros")
+  createdAt            DateTime                     @default(now()) @map("created_at")
+  updatedAt            DateTime                     @updatedAt @map("updated_at")
+
+  @@index([createdAt])
+  @@index([commune, verificationStatus])
+  @@index([score])
+  @@map("technicians")
+}
+
+model CleaningOnboarding {
+  id                         String                   @id @default(cuid())
+  userId                     String                   @unique
+  status                     CleaningOnboardingStatus @default(BORRADOR)
+  currentStep                Int                      @default(1)
+  categorySlug               String                   @default("limpieza")
+  baseCommune                String?
+  referenceAddress           String?
+  documentId                 String?
+  birthDate                  DateTime?
+  profilePhotoPositionX      Int                      @default(50)
+  profilePhotoPositionY      Int                      @default(34)
+  nationality                String?
+  migrationStatus            String?
+  emergencyContactName       String?
+  emergencyContactPhone      String?
+  workReferences             String?
+  profilePhotoUrl            String?
+  shortDescription           String?
+  yearsExperience            Int?
+  workMode                   CleaningWorkMode?
+  experienceTypes            Json?
+  offeredServices            Json?
+  cleaningScope              Json?
+  petScope                   Json?
+  babysitterScope            Json?
+  trainerScope               Json?
+  teacherScope               Json?
+  chefScope                  Json?
+  makeupScope                Json?
+  ironingScope               Json?
+  acceptsHomesWithPets       Boolean?
+  acceptsHomesWithChildren   Boolean?
+  acceptsHomesWithElderly    Boolean?
+  worksWithClientProducts    Boolean?
+  bringsOwnProducts          Boolean?
+  bringsOwnTools             Boolean?
+  languages                  Json?
+  serviceCommunes            Json?
+  coverageLatitude           Float?
+  coverageLongitude          Float?
+  maxTravelKm                Int?
+  chargesTravelExtra         Boolean?
+  availabilityMode           CleaningAvailabilityMode?
+  availabilityBlocks         Json?
+  maxServicesPerDay          Int?
+  acceptsUrgentBookings      Boolean?
+  hourlyRateClp              Int?
+  minBookingHours            Int?
+  weekendSurchargePct        Int?
+  holidaySurchargePct        Int?
+  remoteCommuneSurchargeClp  Int?
+  deepCleaningHourlyRateClp  Int?
+  identityDocumentFile       String?
+  identityDocumentFrontFile  String?
+  identityDocumentBackFile   String?
+  identitySelfieFile         String?
+  criminalRecordFile         String?
+  bankAccountHolder          String?
+  bankAccountHolderRut       String?
+  bankName                   String?
+  bankAccountType            String?
+  bankAccountNumber          String?
+  billingType                String?
+  phoneVerificationCodeHash  String?
+  phoneVerificationExpiresAt DateTime?
+  phoneValidatedAt           DateTime?
+  trainingTopics             Json?
+  trainingCompletedAt        DateTime?
+  acceptsCancellationPolicy  Boolean?
+  acceptsServiceProtocol     Boolean?
+  acceptsDataProcessing      Boolean?
+  confirmsCleaningScope      Boolean?
+  submittedAt                DateTime?
+  reviewedAt                 DateTime?
+  approvedAt                 DateTime?
+  activatedAt                DateTime?
+  adminReviewNotes           String?
+  createdAt                  DateTime                 @default(now())
+  updatedAt                  DateTime                 @updatedAt
+  user                       User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([status, createdAt])
+  @@index([baseCommune])
+}

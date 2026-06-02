@@ -32,13 +32,13 @@ export function MarketNav() {
       }
 
       try {
-        const response = await fetch("/api/marketplace/notifications");
-        const data = (await response.json()) as { notifications?: Array<{ id: string }> };
+        const response = await fetch("/api/marketplace/notifications?unread=true&pageSize=5");
+        const data = (await response.json()) as { unreadCount?: number };
         if (!response.ok) {
           setNotificationCount(0);
           return;
         }
-        setNotificationCount(data.notifications?.length ?? 0);
+        setNotificationCount(data.unreadCount ?? 0);
       } catch {
         setNotificationCount(0);
       }
@@ -64,7 +64,7 @@ export function MarketNav() {
     : [
         { href: "/", label: "Inicio" },
         { href: "/como-funciona", label: "Cómo funciona" },
-        { href: "/services", label: "Servicios" },
+        { href: "/servicios", label: "Servicios" },
       ];
   const guestLinks = isAdminArea
     ? []

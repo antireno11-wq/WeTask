@@ -1,29 +1,54 @@
-import { UserRole } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
-import { getRequestIdentity, hasRole } from "@/lib/auth";
+import { requireAdminRequest } from "@/lib/admin-access";
+import { recordAdminAction } from "@/lib/audit-log";
+import { invalidateMarketplaceCatalog } from "@/lib/cache-tags";
 import { prisma } from "@/lib/prisma";
 import { marketplaceAdminFeeSchema } from "@/lib/validators";
 
 export async function PATCH(req: NextRequest) {
   try {
-    const identity = getRequestIdentity(req);
-    if (!hasRole(identity.role, UserRole.ADMIN)) {
-      return NextResponse.json({ error: "No autorizado" }, { status: 403 });
-    }
+    const admin = await requireAdminRequest(req);
+    if (!admin.ok) return admin.response;
 
     const body = await req.json();
     const input = marketplaceAdminFeeSchema.parse(body);
 
-    const category = await prisma.category.update({
-      where: { id: input.categoryId },
-      data: {
-        basePlatformFeePct: input.basePlatformFeePct,
-        minHours: input.minHours,
-        slotMinutes: input.slotMinutes
-      }
+    const result = await prisma.$transaction(async (tx) => {
+      const before = await tx.category.findUnique({
+        where: { id: input.categoryId },
+        select: { id: true, slug: true, basePlatformFeePct: true, minHours: true, slotMinutes: true }
+      });
+
+      const category = await tx.category.update({
+        where: { id: input.categoryId },
+        data: {
+          basePlatformFeePct: input.basePlatformFeePct,
+          minHours: input.minHours,
+          slotMinutes: input.slotMinutes
+        }
+      });
+
+      await recordAdminAction(
+        {
+          actorId: admin.identity.userId,
+          action: "category.update_rules",
+          target: { type: "Category", id: category.id },
+          before,
+          after: {
+            basePlatformFeePct: input.basePlatformFeePct,
+            minHours: input.minHours,
+            slotMinutes: input.slotMinutes
+          }
+        },
+        tx
+      );
+
+      return category;
     });
 
-    return NextResponse.json({ category }, { status: 200 });
+    invalidateMarketplaceCatalog();
+
+    return NextResponse.json({ category: result }, { status: 200 });
   } catch (error) {
     return NextResponse.json(
       {

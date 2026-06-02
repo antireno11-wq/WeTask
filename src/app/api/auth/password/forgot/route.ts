@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { buildPasswordResetEmailTemplate, sendPlatformEmail } from "@/lib/notifications";
 import { resolvePublicAppUrl } from "@/lib/public-app-url";
 import { prisma } from "@/lib/prisma";
+import { rateLimit, tooManyRequestsResponse } from "@/lib/rate-limit";
 import { randomToken, sha256 } from "@/lib/security";
 
 export const dynamic = "force-dynamic";
@@ -14,6 +15,10 @@ export async function POST(req: NextRequest) {
     if (!/^\S+@\S+\.\S+$/.test(email)) {
       return NextResponse.json({ error: "Error en el correo" }, { status: 400 });
     }
+
+    // 3 resets/h por email — evita spam.
+    const rl = await rateLimit("auth.password_forgot", email, "3/h");
+    if (!rl.success) return tooManyRequestsResponse(rl) as unknown as NextResponse;
 
     const emailConfigured = Boolean(process.env.RESEND_API_KEY && process.env.RESEND_FROM_EMAIL);
 

@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { resolvePublicAppUrl } from "@/lib/public-app-url";
 import { hashPassword, randomToken, sha256 } from "@/lib/security";
 import { verifyPassword } from "@/lib/security";
+import { getCurrentTermsVersionId } from "@/lib/terms-version";
 import { hasAssignedRole, resolveLoginRole } from "@/lib/user-roles";
 
 export const dynamic = "force-dynamic";
@@ -149,6 +150,8 @@ export async function POST(req: NextRequest) {
         }
       | null = null;
 
+    const termsVersionId = await getCurrentTermsVersionId();
+
     if (existingUser) {
       if (authProvider === "EMAIL") {
         if (existingUser.authProvider !== "EMAIL" || !existingUser.passwordHash || !password) {
@@ -188,7 +191,8 @@ export async function POST(req: NextRequest) {
         data: {
           fullName,
           phone: body.phone?.trim() || existingUser.phone || null,
-          termsAcceptedAt: new Date()
+          termsAcceptedAt: new Date(),
+          termsVersionId: termsVersionId ?? undefined
         },
         select: {
           id: true,
@@ -210,6 +214,7 @@ export async function POST(req: NextRequest) {
         authProvider,
         passwordHash,
         termsAcceptedAt: new Date(),
+        termsVersionId: termsVersionId ?? undefined,
         emailVerifiedAt: authProvider === "EMAIL" ? null : new Date(),
         roleAssignments: {
           create: {

@@ -2,10 +2,11 @@ import { PaymentStatus, UserRole } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getRequestIdentity, hasRole } from "@/lib/auth";
+import { emitBoletaForPaymentIfNeeded } from "@/lib/billing/boleta-hook";
 import { COVERAGE_UNAVAILABLE_MESSAGE, inferCommuneFromAddress, normalizeCommune, taskerServesCommune } from "@/lib/communes";
 import { calculateMarketplacePrice } from "@/lib/marketplace-pricing";
-import { createProviderPayment } from "@/lib/payments/provider-adapter";
-import { getMercadoPagoHealthSnapshot } from "@/lib/payments/providers/mercadopago";
+import { notifyBookingConfirmed } from "@/lib/notification-events";
+import { createMercadoPagoMarketplacePayment, getMercadoPagoHealthSnapshot } from "@/lib/payments/providers/mercadopago";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -259,6 +260,32 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // El tasker DEBE haber conectado MercadoPago para que el cobro pase por
+    // escrow nativo (modelo Marketplace). Sin esto el pago no es posible.
+    if (!assignedProId) {
+      return NextResponse.json(
+        { error: "No se pudo asignar profesional para esta reserva" },
+        { status: 400 }
+      );
+    }
+    const proMpCreds = await prisma.user.findUnique({
+      where: { id: assignedProId },
+      select: {
+        mpAccessToken: true,
+        mpUserId: true,
+        mpAccountStatus: true
+      }
+    });
+    if (!proMpCreds?.mpAccessToken || !proMpCreds.mpUserId || proMpCreds.mpAccountStatus !== "ACTIVE") {
+      return NextResponse.json(
+        {
+          error: "El profesional aún no conectó su cuenta de MercadoPago. Elige otro profesional o pídele que la active.",
+          reason: "tasker_mp_not_connected"
+        },
+        { status: 409 }
+      );
+    }
+
     const derivedKey = input.idempotencyKey
       ? input.idempotencyKey
       : `checkout_${input.customerId}_${selectedSlotId ?? "noslot"}_${input.startsAt.getTime()}_${price.totalClp}`;
@@ -296,13 +323,18 @@ export async function POST(req: NextRequest) {
 
     const created = await prisma.$transaction(async (tx) => {
       if (selectedSlotId) {
-        const lock = await tx.availabilitySlot.updateMany({
-          where: { id: selectedSlotId, isAvailable: true },
-          data: { isAvailable: false }
-        });
-        if (lock.count === 0) {
+        const slots = await tx.$queryRaw<any[]>`
+          SELECT id, "isAvailable" FROM "AvailabilitySlot"
+          WHERE id = ${selectedSlotId} AND "isAvailable" = true
+          FOR UPDATE
+        `;
+        if (slots.length === 0) {
           throw new Error("El horario ya fue tomado por otro cliente");
         }
+        await tx.availabilitySlot.update({
+          where: { id: selectedSlotId },
+          data: { isAvailable: false }
+        });
       }
 
       const address = await tx.address.create({
@@ -358,6 +390,9 @@ export async function POST(req: NextRequest) {
           providerStatus: "created",
           amountClp: price.totalClp,
           platformFeeClp: price.platformFeeClp,
+          applicationFeeClp: price.platformFeeClp,
+          collectorMpUserId: proMpCreds.mpUserId!,
+          escrowStatus: "HELD",
           status: PaymentStatus.PENDING,
           currency: "CLP",
           paymentMethod: paymentMethodId,
@@ -371,27 +406,33 @@ export async function POST(req: NextRequest) {
 
     let providerResult;
     try {
-      providerResult = await createProviderPayment("MERCADOPAGO", {
-        amount: price.totalClp,
-        currency: "CLP",
-        description: `${service.name} · WeTask`,
-        externalReference: created.booking.id,
-        idempotencyKey,
-        token: input.payment.token,
-        paymentMethodId,
-        issuerId: input.payment.issuerId,
-        installments: input.payment.installments,
-        payerEmail: normalizedPayerEmail,
-        payerIdentification:
-          input.payment.payerIdentificationType && input.payment.payerIdentificationNumber
-            ? {
-                type: input.payment.payerIdentificationType,
-                number: input.payment.payerIdentificationNumber
-              }
-            : undefined,
-        customerId: savedPaymentMethod?.providerCustomerId,
-        cardId: savedPaymentMethod?.providerCardId
-      });
+      providerResult = await createMercadoPagoMarketplacePayment(
+        {
+          amount: price.totalClp,
+          currency: "CLP",
+          description: `${service.name} · WeTask`,
+          externalReference: created.booking.id,
+          idempotencyKey,
+          token: input.payment.token,
+          paymentMethodId,
+          issuerId: input.payment.issuerId,
+          installments: input.payment.installments,
+          payerEmail: normalizedPayerEmail,
+          payerIdentification:
+            input.payment.payerIdentificationType && input.payment.payerIdentificationNumber
+              ? {
+                  type: input.payment.payerIdentificationType,
+                  number: input.payment.payerIdentificationNumber
+                }
+              : undefined,
+          customerId: savedPaymentMethod?.providerCustomerId,
+          cardId: savedPaymentMethod?.providerCardId
+        },
+        {
+          collectorAccessToken: proMpCreds.mpAccessToken!,
+          applicationFeeClp: price.platformFeeClp
+        }
+      );
     } catch (providerError) {
       await prisma.$transaction(async (tx) => {
         await tx.payment.update({
@@ -461,29 +502,38 @@ export async function POST(req: NextRequest) {
         });
       }
 
-      if (nextState.bookingStatus === "CONFIRMED") {
-        await tx.notification.create({
-          data: {
-            userId: customer.id,
-            bookingId: created.booking.id,
-            title: "Pago aprobado",
-            body: `Tu reserva ${created.booking.id} quedó confirmada.`
-          }
-        });
-        if (assignedProId) {
-          await tx.notification.create({
-            data: {
-              userId: assignedProId,
-              bookingId: created.booking.id,
-              title: "Nueva reserva pagada",
-              body: `Se confirmó una nueva reserva para ${service.name}.`
-            }
-          });
-        }
-      }
-
       return booking;
     });
+
+    if (finalBooking.status === "CONFIRMED") {
+      void emitBoletaForPaymentIfNeeded(created.payment.id);
+
+      const proRecord = assignedProId
+        ? await prisma.user.findUnique({
+            where: { id: assignedProId },
+            select: { id: true, fullName: true, email: true }
+          })
+        : null;
+
+      await notifyBookingConfirmed({
+        customer: {
+          userId: customer.id,
+          email: customer.email,
+          fullName: customer.fullName,
+          role: "CUSTOMER"
+        },
+        pro: proRecord
+          ? { userId: proRecord.id, email: proRecord.email, fullName: proRecord.fullName, role: "PRO" }
+          : null,
+        booking: {
+          id: created.booking.id,
+          serviceName: service.name,
+          scheduledAt: input.startsAt,
+          address: `${input.address.street}, ${clientCommune}`,
+          totalClp: price.totalClp
+        }
+      });
+    }
 
     return NextResponse.json(
       {
@@ -501,12 +551,13 @@ export async function POST(req: NextRequest) {
       { status: 200 }
     );
   } catch (error) {
+    const isConflict = error instanceof Error && error.message === "El horario ya fue tomado por otro cliente";
     return NextResponse.json(
       {
-        error: "No se pudo procesar checkout",
+        error: isConflict ? error.message : "No se pudo procesar checkout",
         detail: error instanceof Error ? error.message : "Error desconocido"
       },
-      { status: 400 }
+      { status: isConflict ? 409 : 400 }
     );
   }
 }

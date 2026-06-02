@@ -23,7 +23,8 @@ export async function POST(req: NextRequest, context: { params: { bookingId: str
         customerId: true,
         status: true,
         proReviewRating: true,
-        proReviewComment: true
+        proReviewComment: true,
+        proReviewedAt: true
       }
     });
 
@@ -37,6 +38,13 @@ export async function POST(req: NextRequest, context: { params: { bookingId: str
 
     if (booking.status !== "COMPLETED") {
       return NextResponse.json({ error: "Solo puedes reseñar clientes en reservas finalizadas" }, { status: 400 });
+    }
+
+    if (booking.proReviewedAt) {
+      return NextResponse.json(
+        { error: "Ya enviaste tu reseña para esta reserva" },
+        { status: 409 }
+      );
     }
 
     const updatedBooking = await prisma.booking.update({

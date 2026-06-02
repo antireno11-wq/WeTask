@@ -20,3 +20,18 @@ pnpm-debug.log*
 # prisma
 prisma/dev.db
 prisma/dev.db-journal
+
+# TypeScript incremental build cache
+tsconfig.tsbuildinfo
+.next/types
+
+# Local-only scratch / audit artifacts
+context.md
+tmp_webel/
+tmp_*/
+
+# Playwright
+playwright-report/
+test-results/
+.playwright/
+

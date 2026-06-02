@@ -394,6 +394,29 @@ export default function ClienteBookingActionsPage() {
                     <button className="cta" type="button" onClick={confirmService}>
                       Confirmar servicio
                     </button>
+                    {["AWAITING_CUSTOMER_CONFIRMATION", "PAYOUT_SCHEDULED", "COMPLETED"].includes(booking.status) ? (
+                      <Link className="cta" href={`/cliente/reservas/${bookingId}/calificar`}>
+                        Calificar al profesional
+                      </Link>
+                    ) : null}
+                    {booking.pro && ["AWAITING_CUSTOMER_CONFIRMATION", "PAYOUT_SCHEDULED", "COMPLETED"].includes(booking.status) ? (
+                      <Link
+                        className="cta ghost"
+                        href={(() => {
+                          const params = new URLSearchParams({ proId: booking.pro.id });
+                          const street = booking.address?.street ?? booking.addressLine1 ?? "";
+                          if (street) params.set("street", street);
+                          if (booking.comuna) params.set("commune", booking.comuna);
+                          const city = booking.city ?? booking.address?.city ?? "";
+                          if (city) params.set("city", city);
+                          const postal = booking.postalCode ?? booking.address?.postalCode ?? "";
+                          if (postal) params.set("postalCode", postal);
+                          return `/reservar?${params.toString()}`;
+                        })()}
+                      >
+                        Reservar de nuevo con {booking.pro.fullName.split(" ")[0]}
+                      </Link>
+                    ) : null}
                     <Link className="cta ghost" href={`/cliente/reservas/${bookingId}/problema`}>
                       Reportar problema
                     </Link>

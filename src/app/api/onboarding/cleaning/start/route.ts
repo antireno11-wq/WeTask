@@ -2,10 +2,10 @@ import { AuthProvider, CleaningOnboardingStatus, UserRole } from "@prisma/client
 import { NextRequest, NextResponse } from "next/server";
 import { encodeSessionCookie, SESSION_COOKIE_NAME } from "@/lib/auth";
 import { normalizeCommune } from "@/lib/communes";
-import { decodeVerifiedPhone, PUBLIC_ONBOARDING_PHONE_VERIFIED_COOKIE } from "@/lib/onboarding-phone";
 import { prisma } from "@/lib/prisma";
 import { cleaningOnboardingStartSchema } from "@/lib/validators";
 import { hashPassword, randomToken, sha256 } from "@/lib/security";
+import { getCurrentTermsVersionId } from "@/lib/terms-version";
 
 export const dynamic = "force-dynamic";
 
@@ -26,9 +26,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Debes crear una contraseña de al menos 8 caracteres." }, { status: 400 });
     }
     const passwordHash = provider === "EMAIL" ? await hashPassword(input.password ?? randomToken(12)) : null;
-    const verifiedPhone = decodeVerifiedPhone(req.cookies.get(PUBLIC_ONBOARDING_PHONE_VERIFIED_COOKIE)?.value);
     const phone = input.phone.trim();
-    const phoneIsVerified = verifiedPhone?.verified === true && verifiedPhone.phone.trim() === phone;
+    const termsVersionId = input.acceptTerms ? await getCurrentTermsVersionId() : null;
 
     const user = await prisma.user.create({
       data: {
@@ -39,6 +38,7 @@ export async function POST(req: NextRequest) {
         authProvider: provider,
         passwordHash,
         termsAcceptedAt: input.acceptTerms ? new Date() : null,
+        termsVersionId: termsVersionId ?? undefined,
         emailVerifiedAt: provider === "EMAIL" ? null : new Date(),
         roleAssignments: {
           create: {
@@ -48,18 +48,6 @@ export async function POST(req: NextRequest) {
                 create: { code: UserRole.PRO, label: "Tasker" }
               }
             }
-          }
-        },
-        professionalProfile: {
-          create: {
-            avatarUrl: input.profilePhotoUrl ?? null,
-            avatarPositionX: input.profilePhotoPositionX,
-            avatarPositionY: input.profilePhotoPositionY,
-            isVerified: false,
-            verificationStatus: "PENDING_REVIEW",
-            coverageComuna: baseCommune,
-            coverageCity: "Santiago",
-            serviceRadiusKm: 8
           }
         },
         cleaningOnboarding: {
@@ -74,7 +62,8 @@ export async function POST(req: NextRequest) {
             profilePhotoPositionX: input.profilePhotoPositionX,
             profilePhotoPositionY: input.profilePhotoPositionY,
             serviceCommunes: [baseCommune],
-            phoneValidatedAt: phoneIsVerified ? new Date() : null
+            // El teléfono se da por válido al ingresarlo (sin verificación SMS).
+            phoneValidatedAt: phone ? new Date() : null
           }
         }
       },

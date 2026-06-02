@@ -304,14 +304,29 @@ const dataUrlSchema = z
   .startsWith("data:")
   .max(8_000_000, "Archivo demasiado grande para el MVP");
 
-const imageDataUrlSchema = dataUrlSchema.refine((value) => /^data:image\/(png|jpe?g);base64,/i.test(value), {
-  message: "Debe ser una imagen JPG o PNG"
-});
+const STORAGE_KEY_PATTERN =
+  /^users\/[a-zA-Z0-9_-]+\/(identity_front|identity_back|identity_selfie|criminal_record|profile_photo|chat_image|dispute_evidence|check_in_photo)\/[a-zA-Z0-9_-]+\.(jpg|jpeg|png|webp|pdf|bin)$/i;
 
-const pdfOrImageDataUrlSchema = dataUrlSchema.refine(
-  (value) => /^data:(application\/pdf|image\/(png|jpe?g));base64,/i.test(value),
+function isStorageKeyValue(value: string): boolean {
+  return STORAGE_KEY_PATTERN.test(value);
+}
+
+const imageDataUrlSchema = z.string().refine(
+  (value) =>
+    isStorageKeyValue(value) ||
+    (value.length <= 8_000_000 && /^data:image\/(png|jpe?g|webp);base64,/i.test(value)),
   {
-    message: "Debe ser PDF o imagen"
+    message: "Debe ser una imagen JPG/PNG/WEBP o una key de storage válida"
+  }
+);
+
+const pdfOrImageDataUrlSchema = z.string().refine(
+  (value) =>
+    isStorageKeyValue(value) ||
+    (value.length <= 8_000_000 &&
+      /^data:(application\/pdf|image\/(png|jpe?g|webp));base64,/i.test(value)),
+  {
+    message: "Debe ser PDF o imagen, o una key de storage válida"
   }
 );
 

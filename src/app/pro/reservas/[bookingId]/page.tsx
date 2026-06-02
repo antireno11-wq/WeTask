@@ -4,6 +4,7 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { BookingChatPanel, type BookingChatMessage } from "@/components/booking-chat-panel";
+import { BookingServiceActionsPanel } from "@/components/booking-service-actions-panel";
 import { MarketNav } from "@/components/market-nav";
 import {
   canShareContactDetails,
@@ -29,6 +30,9 @@ type TaskerBookingDetail = {
   city: string | null;
   payout: { status: string } | null;
   disputes?: Array<{ id: string; status: string; category: string | null; createdAt: string }>;
+  onTheWayAt: string | null;
+  checkInAt: string | null;
+  checkOutAt: string | null;
 };
 
 type TaskerBookingView = "resumen" | "chat" | "acciones";
@@ -404,10 +408,19 @@ export default function ProBookingDetailPage() {
                 <section className="auth-flow-panel client-dashboard-section">
                   <div className="panel-head client-dashboard-panel-head">
                     <h2>Acciones del servicio</h2>
-                    <p>Actualiza el estado del servicio y cierra la visita cuando corresponda.</p>
+                    <p>Llevá al cliente paso a paso. Avisar de salida, marcar llegada y cerrar el servicio.</p>
                   </div>
 
-                  <div className="tasker-booking-actions-card">
+                  <BookingServiceActionsPanel
+                    bookingId={booking.id}
+                    status={booking.status as React.ComponentProps<typeof BookingServiceActionsPanel>["status"]}
+                    paymentStatus={booking.paymentStatus}
+                    onTheWayAt={booking.onTheWayAt}
+                    checkInAt={booking.checkInAt}
+                    checkOutAt={booking.checkOutAt}
+                  />
+
+                  <div className="tasker-booking-actions-card" style={{ marginTop: 16 }}>
                     <label>
                       Estado actual
                       <select value={statusValue} onChange={(event) => setStatusValue(event.target.value)}>

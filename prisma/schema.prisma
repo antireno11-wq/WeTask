@@ -80,52 +80,67 @@ enum TicketStatus {
 }
 
 model User {
-  id                  String                @id @default(cuid())
-  email               String                @unique
-  fullName            String
-  phone               String?
-  birthDate           DateTime?
-  mercadoPagoCustomerId String?
-  role                UserRole              @default(CUSTOMER)
-  authProvider        AuthProvider          @default(EMAIL)
-  passwordHash        String?
-  termsAcceptedAt     DateTime?
-  emailVerifiedAt     DateTime?
-  createdAt           DateTime              @default(now())
-  updatedAt           DateTime              @updatedAt
-  bookings            Booking[]             @relation("CustomerBookings")
-  proBookings         Booking[]             @relation("ProBookings")
-  addresses           Address[]
-  paymentMethods      CustomerPaymentMethod[]
-  sentMessages        Message[]             @relation("SenderMessages")
-  reviewsGiven        Review[]              @relation("ReviewAuthor")
-  professionalProfile ProfessionalProfile?
-  cleaningOnboarding  CleaningOnboarding?
-  payouts             Payout[]
-  notifications       Notification[]
-  roleAssignments     UserRoleAssignment[]
-  emailVerifications  EmailVerificationToken[]
-  passwordResets      PasswordResetToken[]
-  sessions            AuthSession[]
+  id                     String                   @id @default(cuid())
+  email                  String                   @unique
+  fullName               String
+  phone                  String?
+  birthDate              DateTime?
+  mercadoPagoCustomerId  String?
+  mpAccessToken          String?
+  mpRefreshToken         String?
+  mpUserId               String?
+  mpTokenExpiresAt       DateTime?
+  mpAccountStatus        String?
+  mpConnectedAt          DateTime?
+  role                   UserRole                 @default(CUSTOMER)
+  authProvider           AuthProvider             @default(EMAIL)
+  passwordHash           String?
+  termsAcceptedAt        DateTime?
+  termsVersionId         String?
+  emailVerifiedAt        DateTime?
+  deletedAt              DateTime?
+  scheduledDeletionAt    DateTime?
+  createdAt              DateTime                 @default(now())
+  updatedAt              DateTime                 @updatedAt
+  bookings               Booking[]                @relation("CustomerBookings")
+  proBookings            Booking[]                @relation("ProBookings")
+  addresses              Address[]
+  paymentMethods         CustomerPaymentMethod[]
+  sentMessages           Message[]                @relation("SenderMessages")
+  reviewsGiven           Review[]                 @relation("ReviewAuthor")
+  professionalProfile    ProfessionalProfile?
+  cleaningOnboarding     CleaningOnboarding?
+  payouts                Payout[]
+  payoutClawbacks        PayoutClawback[]
+  notifications          Notification[]
+  roleAssignments        UserRoleAssignment[]
+  emailVerifications     EmailVerificationToken[]
+  passwordResets         PasswordResetToken[]
+  sessions               AuthSession[]
+  adminAuditLogs         AdminAuditLog[]          @relation("AdminAuditLogActor")
+  onboardingReviewEvents OnboardingReviewEvent[]  @relation("OnboardingReviewActor")
+  mpOAuthStates          MercadoPagoOAuthState[]
+
+  @@index([mpUserId])
 }
 
 model CustomerPaymentMethod {
-  id                  String   @id @default(cuid())
-  userId              String
-  provider            String   @default("MERCADOPAGO")
-  providerCustomerId  String
-  providerCardId      String   @unique
-  paymentMethodId     String?
-  brand               String?
-  last4               String
-  expirationMonth     Int?
-  expirationYear      Int?
-  cardholderName      String?
-  payerEmail          String?
-  isDefault           Boolean  @default(false)
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
-  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                 String   @id @default(cuid())
+  userId             String
+  provider           String   @default("MERCADOPAGO")
+  providerCustomerId String
+  providerCardId     String   @unique
+  paymentMethodId    String?
+  brand              String?
+  last4              String
+  expirationMonth    Int?
+  expirationYear     Int?
+  cardholderName     String?
+  payerEmail         String?
+  isDefault          Boolean  @default(false)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, createdAt])
   @@index([userId, isDefault])
@@ -153,106 +168,113 @@ model UserRoleAssignment {
 }
 
 model EmailVerificationToken {
-  id         String   @id @default(cuid())
-  userId     String
-  tokenHash  String   @unique
-  expiresAt  DateTime
-  usedAt     DateTime?
-  createdAt  DateTime @default(now())
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id        String    @id @default(cuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, expiresAt])
 }
 
 model PasswordResetToken {
-  id         String   @id @default(cuid())
-  userId     String
-  tokenHash  String   @unique
-  expiresAt  DateTime
-  usedAt     DateTime?
-  createdAt  DateTime @default(now())
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id        String    @id @default(cuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, expiresAt])
 }
 
+/// RESERVADO. Hoy las sesiones son cookies HMAC-firmadas JWT-shape sin
+/// estado server-side (ver src/lib/security.ts:signSession). Este modelo
+/// existe para una feature futura: revocación de sesiones ("cerrar sesión
+/// en todos los dispositivos") + auditoría de logins. Cuando se implemente
+/// va a necesitar agregar userAgent, ipAddress y lastSeenAt. Por ahora
+/// account-cleanup-processor lo borra al hard-delete por seguridad
+/// preventiva, pero ninguna ruta INSERTA filas.
 model AuthSession {
-  id         String   @id @default(cuid())
-  userId     String
-  tokenHash  String   @unique
-  expiresAt  DateTime
-  revokedAt  DateTime?
-  createdAt  DateTime @default(now())
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id        String    @id @default(cuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, expiresAt])
 }
 
 model Category {
-  id                    String    @id @default(cuid())
-  slug                  String    @unique
+  id                    String          @id @default(cuid())
+  slug                  String          @unique
   name                  String
   description           String?
-  minHours              Int       @default(1)
-  slotMinutes           Int       @default(60)
-  basePlatformFeePct    Decimal   @default(0) @db.Decimal(5, 2)
-  urgencyFeeClp         Int       @default(0)
-  materialFeeDefaultClp Int       @default(0)
-  isActive              Boolean   @default(true)
-  createdAt             DateTime  @default(now())
-  updatedAt             DateTime  @updatedAt
+  minHours              Int             @default(1)
+  slotMinutes           Int             @default(60)
+  basePlatformFeePct    Decimal         @default(0) @db.Decimal(5, 2)
+  urgencyFeeClp         Int             @default(0)
+  materialFeeDefaultClp Int             @default(0)
+  isActive              Boolean         @default(true)
+  createdAt             DateTime        @default(now())
+  updatedAt             DateTime        @updatedAt
   services              Service[]
   taskerServices        TaskerService[]
 }
 
 model Service {
-  id             String    @id @default(cuid())
-  slug           String    @unique
+  id             String             @id @default(cuid())
+  slug           String             @unique
   name           String
   description    String
   basePriceClp   Int
   durationMin    Int
-  isActive       Boolean   @default(true)
+  isActive       Boolean            @default(true)
   categoryId     String?
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
   bookings       Booking[]
   slots          AvailabilitySlot[]
   taskerServices TaskerService[]
-  category       Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  category       Category?          @relation(fields: [categoryId], references: [id], onDelete: SetNull)
 
   @@index([categoryId, isActive])
 }
 
 model ProfessionalProfile {
-  id                String      @id @default(cuid())
-  userId            String      @unique
-  avatarUrl         String?
-  avatarPositionX   Int         @default(50)
-  avatarPositionY   Int         @default(34)
-  bio               String?
-  isVerified        Boolean     @default(false)
-  verificationStatus String     @default("PENDING_REVIEW")
-  idDocumentType    String?
-  idDocumentNumber  String?
-  idDocumentUrl     String?
+  id                 String                  @id @default(cuid())
+  userId             String                  @unique
+  avatarUrl          String?
+  avatarPositionX    Int                     @default(50)
+  avatarPositionY    Int                     @default(34)
+  bio                String?
+  isVerified         Boolean                 @default(false)
+  verificationStatus String                  @default("PENDING_REVIEW")
+  idDocumentType     String?
+  idDocumentNumber   String?
+  idDocumentUrl      String?
   backgroundCheckUrl String?
-  ratingAvg         Decimal     @default(0) @db.Decimal(3, 2)
-  ratingsCount      Int         @default(0)
-  coverageStreet    String?
-  coverageComuna    String?
-  coverageCity      String?
-  coveragePostal    String?
-  coverageLatitude  Float?
-  coverageLongitude Float?
-  serviceRadiusKm   Int         @default(8)
-  hourlyRateFromClp Int?
-  createdAt         DateTime    @default(now())
-  updatedAt         DateTime    @updatedAt
-  user              User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  slots             AvailabilitySlot[]
-  taskerServices    TaskerService[]
-  categoryProfiles  TaskerCategoryProfile[]
+  ratingAvg          Decimal                 @default(0) @db.Decimal(3, 2)
+  ratingsCount       Int                     @default(0)
+  coverageStreet     String?
+  coverageComuna     String?
+  coverageCity       String?
+  coveragePostal     String?
+  coverageLatitude   Float?
+  coverageLongitude  Float?
+  serviceRadiusKm    Int                     @default(8)
+  hourlyRateFromClp  Int?
+  createdAt          DateTime                @default(now())
+  updatedAt          DateTime                @updatedAt
+  user               User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  slots              AvailabilitySlot[]
+  taskerServices     TaskerService[]
+  categoryProfiles   TaskerCategoryProfile[]
 }
 
 model TaskerService {
@@ -296,79 +318,88 @@ model TaskerCategoryProfile {
 }
 
 model AvailabilitySlot {
-  id                  String              @id @default(cuid())
+  id                    String              @id @default(cuid())
   professionalProfileId String
-  serviceId           String?
-  startsAt            DateTime
-  endsAt              DateTime
-  isAvailable         Boolean             @default(true)
-  createdAt           DateTime            @default(now())
-  updatedAt           DateTime            @updatedAt
-  professionalProfile ProfessionalProfile @relation(fields: [professionalProfileId], references: [id], onDelete: Cascade)
-  service             Service?            @relation(fields: [serviceId], references: [id], onDelete: SetNull)
-  bookings            Booking[]           @relation("BookedSlot")
+  serviceId             String?
+  startsAt              DateTime
+  endsAt                DateTime
+  isAvailable           Boolean             @default(true)
+  holdExpiresAt         DateTime?
+  heldByUserId          String?
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+  professionalProfile   ProfessionalProfile @relation(fields: [professionalProfileId], references: [id], onDelete: Cascade)
+  service               Service?            @relation(fields: [serviceId], references: [id], onDelete: SetNull)
+  bookings              Booking[]           @relation("BookedSlot")
 
   @@index([professionalProfileId, startsAt, isAvailable])
+  @@index([holdExpiresAt])
 }
 
 model Address {
-  id          String   @id @default(cuid())
-  userId      String
-  label       String?
-  street      String
-  city        String
-  postalCode  String
-  region      String?
-  country     String   @default("CL")
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  bookings    Booking[]
+  id         String    @id @default(cuid())
+  userId     String
+  label      String?
+  street     String
+  city       String
+  postalCode String
+  region     String?
+  country    String    @default("CL")
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bookings   Booking[]
 
   @@index([userId, city])
 }
 
 model Booking {
-  id                String        @id @default(cuid())
-  customerId        String
-  proId             String?
-  serviceId         String
-  bookedSlotId      String?
-  addressId         String?
-  status            BookingStatus @default(PENDING)
-  scheduledAt       DateTime
-  addressLine1      String
-  comuna            String
-  region            String
-  city              String?
-  postalCode        String?
-  notes             String?
-  hours             Int           @default(1)
-  slotMinutes       Int           @default(60)
-  autoAssign        Boolean       @default(false)
-  hourlyPriceClp    Int           @default(0)
-  subtotalClp       Int           @default(0)
-  extrasTotalClp    Int           @default(0)
-  platformFeeClp    Int           @default(0)
-  totalPriceClp     Int
-  paymentStatus     PaymentStatus @default(PENDING)
-  proReviewRating   Int?
-  proReviewComment  String?
-  proReviewedAt     DateTime?
-  createdAt         DateTime      @default(now())
-  updatedAt         DateTime      @updatedAt
-  customer          User          @relation("CustomerBookings", fields: [customerId], references: [id], onDelete: Restrict)
-  pro               User?         @relation("ProBookings", fields: [proId], references: [id], onDelete: SetNull)
-  service           Service       @relation(fields: [serviceId], references: [id], onDelete: Restrict)
-  bookedSlot        AvailabilitySlot? @relation("BookedSlot", fields: [bookedSlotId], references: [id], onDelete: SetNull)
-  address           Address?      @relation(fields: [addressId], references: [id], onDelete: SetNull)
-  extras            BookingExtra[]
-  messages          Message[]
-  payment           Payment?
-  payout            Payout?
-  review            Review?
-  disputes          DisputeTicket[]
-  notifications     Notification[]
+  id               String            @id @default(cuid())
+  customerId       String
+  proId            String?
+  serviceId        String
+  bookedSlotId     String?
+  addressId        String?
+  status           BookingStatus     @default(PENDING)
+  scheduledAt      DateTime
+  addressLine1     String
+  comuna           String
+  region           String
+  city             String?
+  postalCode       String?
+  notes            String?
+  hours            Int               @default(1)
+  slotMinutes      Int               @default(60)
+  autoAssign       Boolean           @default(false)
+  hourlyPriceClp   Int               @default(0)
+  subtotalClp      Int               @default(0)
+  extrasTotalClp   Int               @default(0)
+  platformFeeClp   Int               @default(0)
+  totalPriceClp    Int
+  paymentStatus    PaymentStatus     @default(PENDING)
+  proReviewRating  Int?
+  proReviewComment String?
+  proReviewedAt    DateTime?
+  onTheWayAt       DateTime?
+  checkInAt        DateTime?
+  checkInLat       Float?
+  checkInLng       Float?
+  checkInPhotoKey  String?
+  checkOutAt       DateTime?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  customer         User              @relation("CustomerBookings", fields: [customerId], references: [id], onDelete: Restrict)
+  pro              User?             @relation("ProBookings", fields: [proId], references: [id], onDelete: SetNull)
+  service          Service           @relation(fields: [serviceId], references: [id], onDelete: Restrict)
+  bookedSlot       AvailabilitySlot? @relation("BookedSlot", fields: [bookedSlotId], references: [id], onDelete: SetNull)
+  address          Address?          @relation(fields: [addressId], references: [id], onDelete: SetNull)
+  extras           BookingExtra[]
+  messages         Message[]
+  payment          Payment?
+  payout           Payout?
+  review           Review?
+  disputes         DisputeTicket[]
+  notifications    Notification[]
 
   @@index([customerId, status])
   @@index([proId, status])
@@ -377,119 +408,159 @@ model Booking {
 }
 
 model BookingExtra {
-  id          String   @id @default(cuid())
-  bookingId   String
-  code        String
-  name        String
-  priceClp    Int
-  quantity    Int      @default(1)
-  createdAt   DateTime @default(now())
-  booking     Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  id        String   @id @default(cuid())
+  bookingId String
+  code      String
+  name      String
+  priceClp  Int
+  quantity  Int      @default(1)
+  createdAt DateTime @default(now())
+  booking   Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
 
   @@index([bookingId])
 }
 
 model Message {
-  id          String   @id @default(cuid())
-  bookingId   String
-  senderId    String
-  body        String
-  imageUrl    String?
-  createdAt   DateTime @default(now())
-  booking     Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
-  sender      User     @relation("SenderMessages", fields: [senderId], references: [id], onDelete: Restrict)
+  id        String   @id @default(cuid())
+  bookingId String
+  senderId  String
+  body      String
+  imageUrl  String?
+  createdAt DateTime @default(now())
+  booking   Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  sender    User     @relation("SenderMessages", fields: [senderId], references: [id], onDelete: Restrict)
 
   @@index([bookingId, createdAt])
 }
 
 model Payment {
-  id                  String       @id @default(cuid())
-  bookingId           String       @unique
-  provider            String       @default("STRIPE")
+  id                  String        @id @default(cuid())
+  bookingId           String        @unique
+  provider            String        @default("MERCADOPAGO")
   providerPaymentId   String?
   providerStatus      String?
-  currency            String       @default("CLP")
+  currency            String        @default("CLP")
   paymentMethod       String?
   last4               String?
   payerEmail          String?
   rawResponseJson     Json?
   refundedAt          DateTime?
-  idempotencyKey      String?      @unique
+  idempotencyKey      String?       @unique
   errorCode           String?
   errorMessage        String?
   amountClp           Int
-  platformFeeClp      Int          @default(0)
+  platformFeeClp      Int           @default(0)
+  applicationFeeClp   Int?
+  collectorMpUserId   String?
+  escrowStatus        String?
+  escrowReleasedAt    DateTime?
   status              PaymentStatus @default(PENDING)
   paidAt              DateTime?
-  createdAt           DateTime     @default(now())
-  updatedAt           DateTime     @updatedAt
-  booking             Booking      @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  boletaFolio         String?
+  boletaUrl           String?
+  boletaStatus        String?
+  boletaEmittedAt     DateTime?
+  boletaErrorMessage  String?
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+  booking             Booking       @relation(fields: [bookingId], references: [id], onDelete: Cascade)
 
   @@index([provider, providerPaymentId])
   @@index([providerStatus])
+  @@index([status, createdAt])
+  @@index([collectorMpUserId])
 }
 
 model Payout {
-  id                String       @id @default(cuid())
-  bookingId         String       @unique
-  proId             String
-  amountClp         Int
-  status            PayoutStatus @default(PENDING)
-  requestedAt       DateTime     @default(now())
-  paidAt            DateTime?
-  createdAt         DateTime     @default(now())
-  updatedAt         DateTime     @updatedAt
-  booking           Booking      @relation(fields: [bookingId], references: [id], onDelete: Cascade)
-  pro               User         @relation(fields: [proId], references: [id], onDelete: Restrict)
+  id          String       @id @default(cuid())
+  bookingId   String       @unique
+  proId       String
+  amountClp   Int
+  status      PayoutStatus @default(PENDING)
+  requestedAt DateTime     @default(now())
+  paidAt      DateTime?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  booking     Booking      @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  pro         User         @relation(fields: [proId], references: [id], onDelete: Restrict)
+
+  @@index([status, updatedAt])
+}
+
+/// Deuda de un tasker hacia la plataforma cuando se reembolsa a un cliente
+/// DESPUÉS de que el escrow ya fue liberado al tasker (G4/G9). Se descuenta
+/// de sus payouts futuros. status: PENDING | RECOVERED | WAIVED.
+model PayoutClawback {
+  id          String    @id @default(cuid())
+  proId       String
+  bookingId   String
+  disputeId   String?
+  amountClp   Int
+  reason      String
+  status      String    @default("PENDING")
+  createdAt   DateTime  @default(now())
+  recoveredAt DateTime?
+  pro         User      @relation(fields: [proId], references: [id], onDelete: Cascade)
+
+  @@index([proId, status])
+  @@index([bookingId])
 }
 
 model Review {
-  id                String   @id @default(cuid())
-  bookingId         String   @unique
-  authorId          String
-  rating            Int
-  punctuality       Int?
-  quality           Int?
-  communication     Int?
-  comment           String?
-  providerReply     String?
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-  booking           Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
-  author            User     @relation("ReviewAuthor", fields: [authorId], references: [id], onDelete: Restrict)
+  id            String   @id @default(cuid())
+  bookingId     String   @unique
+  authorId      String
+  rating        Int
+  punctuality   Int?
+  quality       Int?
+  communication Int?
+  comment       String?
+  providerReply String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  booking       Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  author        User     @relation("ReviewAuthor", fields: [authorId], references: [id], onDelete: Restrict)
 
   @@index([rating])
 }
 
 model DisputeTicket {
-  id                String      @id @default(cuid())
-  bookingId         String
-  openedById        String?
-  category          String?
-  reason            String
-  evidence          Json?
-  resolution        String?
-  refundAmountClp   Int?
-  status            TicketStatus @default(OPEN)
-  createdAt         DateTime    @default(now())
-  updatedAt         DateTime    @updatedAt
-  booking           Booking     @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  id              String       @id @default(cuid())
+  bookingId       String
+  openedById      String?
+  category        String?
+  reason          String
+  evidence        Json?
+  resolution      String?
+  refundAmountClp Int?
+  refundedProviderPaymentId String?
+  refundedAt      DateTime?
+  resolvedAt      DateTime?
+  resolvedById    String?
+  dueDateAt       DateTime?
+  status          TicketStatus @default(OPEN)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  booking         Booking      @relation(fields: [bookingId], references: [id], onDelete: Cascade)
 
   @@index([bookingId, status])
+  @@index([status, createdAt])
+  @@index([dueDateAt])
 }
 
 model Notification {
-  id          String   @id @default(cuid())
-  userId      String
-  bookingId   String?
-  title       String
-  body        String
-  isRead      Boolean  @default(false)
-  createdAt   DateTime @default(now())
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  booking     Booking? @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+  id        String   @id @default(cuid())
+  userId    String
+  bookingId String?
+  title     String
+  body      String
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  booking   Booking? @relation(fields: [bookingId], references: [id], onDelete: SetNull)
 
   @@index([userId, createdAt])
+  @@index([userId, isRead])
 }
 
 model ServiceLead {
@@ -520,64 +591,18 @@ model CoverageWaitlist {
   @@index([commune, createdAt])
 }
 
-enum TechnicianVerificationStatus {
-  PENDING
-  UNDER_REVIEW
-  APPROVED
-  REJECTED
-}
-
-model Technician {
-  id                   String                       @id @default(cuid())
-  fullName             String                       @map("full_name")
-  rut                  String                       @unique
-  birthDate            DateTime                     @map("birth_date")
-  phone                String
-  email                String
-  address              String
-  commune              String
-  lat                  Float?
-  lng                  Float?
-  specialties          Json
-  yearsExperience      Int                          @map("years_experience")
-  description          String
-  certifications       Json?
-  portfolioImages      Json                         @map("portfolio_images")
-  criminalRecordFile   String                       @map("criminal_record_file")
-  identityDocument     String                       @map("identity_document")
-  identitySelfie       String                       @map("identity_selfie")
-  affidavitAccepted    Boolean                      @default(false) @map("affidavit_accepted")
-  references           String?
-  coverageRadiusKm     Int                          @map("coverage_radius_km")
-  availableCommunes    Json                         @map("available_communes")
-  serviceCommunes      Json?                        @map("service_communes")
-  availabilitySchedule String                       @map("availability_schedule")
-  transportType        String                       @map("transport_type")
-  verificationStatus   TechnicianVerificationStatus @default(PENDING) @map("verification_status")
-  score                Int                          @default(0)
-  reviewNotes          String?                      @map("review_notes")
-  source               String                       @default("trabaja-con-nosotros")
-  createdAt            DateTime                     @default(now()) @map("created_at")
-  updatedAt            DateTime                     @updatedAt @map("updated_at")
-
-  @@index([createdAt])
-  @@index([commune, verificationStatus])
-  @@index([score])
-  @@map("technicians")
-}
-
 model CleaningOnboarding {
-  id                         String                   @id @default(cuid())
-  userId                     String                   @unique
-  status                     CleaningOnboardingStatus @default(BORRADOR)
-  currentStep                Int                      @default(1)
-  categorySlug               String                   @default("limpieza")
+  id                         String                    @id @default(cuid())
+  userId                     String                    @unique
+  status                     CleaningOnboardingStatus  @default(BORRADOR)
+  currentStep                Int                       @default(1)
+  categorySlug               String                    @default("limpieza")
   baseCommune                String?
   referenceAddress           String?
   documentId                 String?
   birthDate                  DateTime?
-  profilePhotoPositionX      Int                      @default(50)
-  profilePhotoPositionY      Int                      @default(34)
+  profilePhotoPositionX      Int                       @default(50)
+  profilePhotoPositionY      Int                       @default(34)
   nationality                String?
   migrationStatus            String?
   emergencyContactName       String?
@@ -619,6 +644,7 @@ model CleaningOnboarding {
   holidaySurchargePct        Int?
   remoteCommuneSurchargeClp  Int?
   deepCleaningHourlyRateClp  Int?
+  serviceRates               Json?
   identityDocumentFile       String?
   identityDocumentFrontFile  String?
   identityDocumentBackFile   String?
@@ -644,10 +670,74 @@ model CleaningOnboarding {
   approvedAt                 DateTime?
   activatedAt                DateTime?
   adminReviewNotes           String?
-  createdAt                  DateTime                 @default(now())
-  updatedAt                  DateTime                 @updatedAt
-  user                       User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt                  DateTime                  @default(now())
+  updatedAt                  DateTime                  @updatedAt
+  user                       User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reviewEvents               OnboardingReviewEvent[]   @relation("OnboardingReviewEventToOnboarding")
 
   @@index([status, createdAt])
   @@index([baseCommune])
+}
+
+model ProcessedWebhookEvent {
+  id          String   @id @default(cuid())
+  provider    String
+  eventId     String
+  payloadJson Json?
+  processedAt DateTime @default(now())
+
+  @@unique([provider, eventId])
+  @@index([processedAt])
+}
+
+model AdminAuditLog {
+  id         String   @id @default(cuid())
+  actorId    String?
+  action     String
+  targetType String
+  targetId   String?
+  beforeJson Json?
+  afterJson  Json?
+  createdAt  DateTime @default(now())
+  actor      User?    @relation("AdminAuditLogActor", fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([actorId, createdAt])
+  @@index([targetType, targetId])
+}
+
+model MercadoPagoOAuthState {
+  id        String   @id @default(cuid())
+  userId    String
+  state     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
+}
+
+model OnboardingReviewEvent {
+  id           String                    @id @default(cuid())
+  onboardingId String
+  actorId      String?
+  action       String
+  notes        String?
+  statusBefore CleaningOnboardingStatus?
+  statusAfter  CleaningOnboardingStatus?
+  createdAt    DateTime                  @default(now())
+  onboarding   CleaningOnboarding        @relation("OnboardingReviewEventToOnboarding", fields: [onboardingId], references: [id], onDelete: Cascade)
+  actor        User?                     @relation("OnboardingReviewActor", fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([onboardingId, createdAt])
+}
+
+model TermsVersion {
+  id          String   @id @default(cuid())
+  version     String   @unique
+  title       String
+  content     String
+  publishedAt DateTime
+  createdAt   DateTime @default(now())
+
+  @@index([publishedAt])
 }

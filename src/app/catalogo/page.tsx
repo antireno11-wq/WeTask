@@ -118,7 +118,7 @@ export default function CatalogoPage() {
                       <Link className="cta small" href={`/servicios/${category.slug}/pros?city=Santiago&postalCode=7500000&address=`}>
                         Ver profesionales
                       </Link>
-                      <Link className="cta ghost small" href={`/booking/new?serviceId=${service.id}`}>
+                      <Link className="cta ghost small" href={`/reservar?serviceId=${service.id}`}>
                         Reservar
                       </Link>
                     </div>

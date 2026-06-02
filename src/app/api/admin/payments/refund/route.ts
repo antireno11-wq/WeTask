@@ -1,9 +1,15 @@
-import { PaymentStatus, UserRole } from "@prisma/client";
+import { BookingStatus, PaymentStatus } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { getRequestIdentity, hasRole } from "@/lib/auth";
+import { requireAdminRequest } from "@/lib/admin-access";
+import { recordAdminAction } from "@/lib/audit-log";
+import {
+  assertTransition,
+  InvalidBookingTransitionError
+} from "@/lib/booking-state-machine";
 import { refundProviderPayment } from "@/lib/payments/provider-adapter";
 import { prisma } from "@/lib/prisma";
+import { rateLimit, tooManyRequestsResponse } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
@@ -18,10 +24,14 @@ const refundSchema = z
   });
 
 export async function POST(req: NextRequest) {
-  const identity = getRequestIdentity(req);
-  if (!hasRole(identity.role, UserRole.ADMIN)) {
-    return NextResponse.json({ error: "No autorizado" }, { status: 403 });
-  }
+  const admin = await requireAdminRequest(req);
+  if (!admin.ok) return admin.response;
+
+  // 10 refunds/h por admin — protección contra clicks accidentales o
+  // admin comprometido. Es muy poco para volumen real pero suficiente
+  // operacionalmente.
+  const rl = await rateLimit("admin.refund", admin.identity.userId ?? "unknown", "10/h");
+  if (!rl.success) return tooManyRequestsResponse(rl) as unknown as NextResponse;
 
   try {
     const body = await req.json();
@@ -32,7 +42,9 @@ export async function POST(req: NextRequest) {
       include: {
         booking: {
           select: {
-            id: true
+            id: true,
+            status: true,
+            paymentStatus: true
           }
         }
       }
@@ -44,6 +56,21 @@ export async function POST(req: NextRequest) {
 
     if (payment.provider !== "MERCADOPAGO" || !payment.providerPaymentId) {
       return NextResponse.json({ error: "Este pago no soporta reembolso automático" }, { status: 400 });
+    }
+
+    try {
+      assertTransition(payment.booking.status, BookingStatus.REFUNDED, "ADMIN");
+    } catch (transitionError) {
+      if (transitionError instanceof InvalidBookingTransitionError) {
+        return NextResponse.json(
+          {
+            error: `No se permite refund desde el estado ${transitionError.from}`,
+            from: transitionError.from
+          },
+          { status: 409 }
+        );
+      }
+      throw transitionError;
     }
 
     const providerResult = await refundProviderPayment("MERCADOPAGO", {
@@ -76,10 +103,30 @@ export async function POST(req: NextRequest) {
       await tx.booking.update({
         where: { id: payment.bookingId },
         data: {
-          status: "REFUNDED",
+          status: BookingStatus.REFUNDED,
           paymentStatus: PaymentStatus.REFUNDED
         }
       });
+
+      await recordAdminAction(
+        {
+          actorId: admin.identity.userId,
+          action: "payment.refund",
+          target: { type: "Payment", id: payment.id },
+          before: {
+            bookingId: payment.bookingId,
+            paymentStatus: payment.status,
+            bookingStatus: payment.booking.status
+          },
+          after: {
+            paymentStatus: PaymentStatus.REFUNDED,
+            bookingStatus: BookingStatus.REFUNDED,
+            providerStatus: "refunded",
+            refundAmountClp: input.amount ?? null
+          }
+        },
+        tx
+      );
     });
 
     return NextResponse.json({ ok: true, bookingId: payment.bookingId, paymentId: payment.id }, { status: 200 });

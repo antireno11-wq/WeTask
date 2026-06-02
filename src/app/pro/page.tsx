@@ -2,291 +2,43 @@
 
 import { FormEvent, useEffect, useMemo, useRef, useState, type ChangeEvent, type PointerEvent as ReactPointerEvent } from "react";
 import { MarketNav } from "@/components/market-nav";
+import { MercadoPagoConnectionCard } from "@/components/mercadopago-connection-card";
 import { ACTIVE_MVP_COMMUNES, inferCommuneFromAddress, normalizeCommune, normalizeCommuneList } from "@/lib/communes";
 import { CORE_SERVICES, type CoreTaskerServiceSlug } from "@/lib/core-services";
 import { geocodeAddress } from "@/lib/geo";
-
-const statusOptions = ["ACCEPTED", "IN_PROGRESS", "COMPLETED", "CANCELLED"];
-const CHILE_CITIES = ["Santiago", "Valparaiso", "Vina del Mar", "Concepcion", "La Serena", "Antofagasta", "Temuco", "Puerto Montt"];
-const TASKER_WIZARD_STORAGE_KEY = "wetask_tasker_wizard_v2";
-const PRO_STATUS_LABELS: Record<string, string> = {
-  ACCEPTED: "Aceptado",
-  IN_PROGRESS: "En curso",
-  COMPLETED: "Completado",
-  CANCELLED: "Cancelado",
-  CONFIRMED: "Confirmado",
-  ASSIGNED: "Asignado",
-  PENDING: "Pendiente"
-};
-
-type Booking = {
-  id: string;
-  status: string;
-  scheduledAt: string;
-  totalPriceClp: number;
-  proReviewRating: number | null;
-  proReviewComment: string | null;
-  proReviewedAt: string | null;
-  customer: { fullName: string; email: string };
-  service: { name: string };
-  payout: { status: string } | null;
-};
-
-type Notification = {
-  id: string;
-  title: string;
-  body: string;
-  createdAt: string;
-};
-
-type Service = {
-  id: string;
-  name: string;
-};
-
-type DayKey = "lunes" | "martes" | "miercoles" | "jueves" | "viernes" | "sabado" | "domingo";
-
-type AvailabilityBlock = {
-  day: DayKey;
-  start: string;
-  end: string;
-};
-
-type ProProfile = {
-  id: string;
-  avatarUrl?: string | null;
-  bio: string | null;
-  coverageStreet: string | null;
-  coverageComuna: string | null;
-  coverageCity: string | null;
-  coveragePostal: string | null;
-  coverageLatitude: number | null;
-  coverageLongitude: number | null;
-  serviceRadiusKm: number;
-  hourlyRateFromClp: number | null;
-  isVerified: boolean;
-};
-
-type ProProfileResponse = {
-  user?: {
-    id: string;
-    fullName: string;
-    email: string;
-  };
-  profile?: ProProfile | null;
-  categorySlug?: string | null;
-  profilePhotoUrl?: string | null;
-  availabilityMode?: "FIJA" | "VARIABLE" | null;
-  availabilityBlocks?: unknown;
-  taskerServices?: Service[];
-  serviceCommunes?: string[];
-  error?: string;
-  detail?: string;
-};
-
-type AddressValidationResponse = {
-  valid?: boolean;
-  skipped?: boolean;
-  normalizedAddress?: string;
-  commune?: string | null;
-  isActiveCommune?: boolean;
-  location?: { lat?: number | null; lng?: number | null };
-  error?: string;
-  detail?: string;
-};
-
-type ProSlot = {
-  id: string;
-  startsAt: string;
-  endsAt: string;
-  isAvailable: boolean;
-  source?: "saved" | "onboarding";
-  service: { id: string; name: string } | null;
-  bookings: Array<{ id: string; status: string }>;
-};
-
-type ProView = "resumen" | "perfil" | "agenda" | "reservas" | "resenas" | "notificaciones";
-const WEEK_DAY_OPTIONS: Array<{ key: DayKey; label: string; shortLabel: string }> = [
-  { key: "lunes", label: "Lunes", shortLabel: "Lun" },
-  { key: "martes", label: "Martes", shortLabel: "Mar" },
-  { key: "miercoles", label: "Miércoles", shortLabel: "Mié" },
-  { key: "jueves", label: "Jueves", shortLabel: "Jue" },
-  { key: "viernes", label: "Viernes", shortLabel: "Vie" },
-  { key: "sabado", label: "Sábado", shortLabel: "Sáb" },
-  { key: "domingo", label: "Domingo", shortLabel: "Dom" }
-];
-
-const TASKER_CATEGORY_ALIASES: Record<string, CoreTaskerServiceSlug> = {
-  limpieza: "limpieza",
-  mascotas: "mascotas",
-  "paseo-cuidado-mascotas": "mascotas",
-  babysitter: "babysitter",
-  "babysitter-por-horas": "babysitter",
-  "profesor-particular": "profesor-particular",
-  "personal-trainer": "personal-trainer",
-  chef: "chef",
-  "chef-a-domicilio": "chef",
-  maquillaje: "maquillaje",
-  "maquillaje-a-domicilio": "maquillaje",
-  planchado: "planchado"
-};
-
-function clp(value: number) {
-  return new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP", maximumFractionDigits: 0 }).format(value);
-}
-
-function dateInputDefault() {
-  const d = new Date();
-  return d.toISOString().slice(0, 10);
-}
-
-function formatBookingDate(value: string) {
-  return new Date(value).toLocaleString("es-CL", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-    hour: "2-digit",
-    minute: "2-digit"
-  });
-}
-
-function formatDayKey(date: Date) {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
-
-function shiftMonthKey(dayKey: string, delta: number) {
-  const base = new Date(`${dayKey}T12:00:00`);
-  const desiredDay = base.getDate();
-  const target = new Date(base);
-  target.setDate(1);
-  target.setMonth(target.getMonth() + delta);
-  const lastDay = new Date(target.getFullYear(), target.getMonth() + 1, 0).getDate();
-  target.setDate(Math.min(desiredDay, lastDay));
-  return formatDayKey(target);
-}
-
-function weekdayToDayKey(date: Date): DayKey {
-  return ["domingo", "lunes", "martes", "miercoles", "jueves", "viernes", "sabado"][date.getDay()] as DayKey;
-}
-
-function initialsFromName(value: string) {
-  const words = value
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2);
-
-  if (words.length === 0) return "WT";
-  return words.map((word) => word[0]?.toUpperCase() ?? "").join("");
-}
-
-function escapeRegex(value: string) {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
-function formatCoverageAddress(street: string, commune: string, city: string) {
-  const normalizedStreet = street
-    .replace(/\b\d{7}\b/g, " ")
-    .replace(/,\s*Región Metropolitana,?\s*Chile/gi, " ")
-    .replace(/,\s*Chile/gi, " ")
-    .replace(/\s+/g, " ")
-    .trim()
-    .replace(/\s+,/g, ",")
-    .replace(/,+$/g, "")
-    .trim();
-
-  const duplicatePatterns = [commune, city]
-    .map((value) => value.trim())
-    .filter(Boolean)
-    .map((value) => new RegExp(`(?:,\\s*)?${escapeRegex(value)}`, "gi"));
-
-  let cleanedStreet = normalizedStreet;
-  for (const pattern of duplicatePatterns) {
-    cleanedStreet = cleanedStreet.replace(pattern, "");
-  }
-
-  cleanedStreet = cleanedStreet
-    .replace(/\s+/g, " ")
-    .replace(/\s+,/g, ",")
-    .replace(/,+$/g, "")
-    .trim();
-
-  return [cleanedStreet || "Sin dirección", commune || "Sin comuna", city].filter(Boolean).join(", ");
-}
-
-function normalizeAvailabilityBlocks(value: unknown): AvailabilityBlock[] {
-  if (!Array.isArray(value)) return [];
-
-  return value
-    .map((item) => {
-      if (!item || typeof item !== "object") return null;
-      const candidate = item as Partial<AvailabilityBlock>;
-      if (typeof candidate.day !== "string" || typeof candidate.start !== "string" || typeof candidate.end !== "string") {
-        return null;
-      }
-      return {
-        day: candidate.day as DayKey,
-        start: candidate.start,
-        end: candidate.end
-      };
-    })
-    .filter((item): item is AvailabilityBlock => Boolean(item));
-}
-
-function localDraftProfilePhoto() {
-  if (typeof window === "undefined") return "";
-  try {
-    const raw = window.localStorage.getItem(TASKER_WIZARD_STORAGE_KEY);
-    if (!raw) return "";
-    const parsed = JSON.parse(raw) as { profilePhotoUrl?: string };
-    return typeof parsed.profilePhotoUrl === "string" ? parsed.profilePhotoUrl.trim() : "";
-  } catch {
-    return "";
-  }
-}
-
-function fileToDataUrl(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result || ""));
-    reader.onerror = () => reject(new Error("No se pudo leer el archivo"));
-    reader.readAsDataURL(file);
-  });
-}
-
-function loadImageElement(src: string): Promise<HTMLImageElement> {
-  return new Promise((resolve, reject) => {
-    const image = new Image();
-    image.onload = () => resolve(image);
-    image.onerror = () => reject(new Error("No se pudo procesar la foto"));
-    image.src = src;
-  });
-}
-
-async function createCenteredProfilePhoto(dataUrl: string, focusX: number, focusY: number) {
-  if (!dataUrl) return dataUrl;
-  const image = await loadImageElement(dataUrl);
-  const size = 720;
-  const canvas = document.createElement("canvas");
-  canvas.width = size;
-  canvas.height = size;
-  const context = canvas.getContext("2d");
-  if (!context) return dataUrl;
-
-  const scale = Math.max(size / image.width, size / image.height);
-  const drawWidth = image.width * scale;
-  const drawHeight = image.height * scale;
-  const normalizedX = Math.min(100, Math.max(0, focusX));
-  const normalizedY = Math.min(100, Math.max(0, focusY));
-  const offsetX = (size - drawWidth) * (normalizedX / 100);
-  const offsetY = (size - drawHeight) * (normalizedY / 100);
-
-  context.drawImage(image, offsetX, offsetY, drawWidth, drawHeight);
-  return canvas.toDataURL("image/jpeg", 0.92);
-}
+import ProNotificationsView from "./components/ProNotificationsView";
+import ProReservasView from "./components/ProReservasView";
+import type {
+  AddressValidationResponse,
+  AvailabilityBlock,
+  Booking,
+  DayKey,
+  Notification,
+  ProProfile,
+  ProProfileResponse,
+  ProSlot,
+  ProView,
+  Service
+} from "./types";
+import {
+  CHILE_CITIES,
+  PRO_STATUS_LABELS,
+  TASKER_CATEGORY_ALIASES,
+  WEEK_DAY_OPTIONS,
+  clp,
+  createCenteredProfilePhoto,
+  dateInputDefault,
+  fileToDataUrl,
+  formatBookingDate,
+  formatCoverageAddress,
+  formatDayKey,
+  initialsFromName,
+  localDraftProfilePhoto,
+  normalizeAvailabilityBlocks,
+  shiftMonthKey,
+  statusOptions,
+  weekdayToDayKey
+} from "./utils";
 
 function dataUrlToBlob(dataUrl: string): Blob {
   const parts = dataUrl.split(",");
@@ -668,6 +420,25 @@ export default function ProPage() {
         const response = await fetch("/api/auth/session");
         const data = (await response.json()) as { session?: { userId: string } | null };
         if (data.session?.userId) {
+          // Si el tasker recién fue aprobado y nunca vio la pantalla
+          // celebrativa, redirigir a /pro/perfil-aprobado (Fase 9).
+          if (typeof window !== "undefined") {
+            const seenFlag = `wetask_perfil_aprobado_seen_${data.session.userId}`;
+            if (!window.localStorage.getItem(seenFlag)) {
+              try {
+                const obRes = await fetch("/api/onboarding/cleaning/me", { cache: "no-store" });
+                if (obRes.ok) {
+                  const obData = (await obRes.json()) as { onboarding?: { status?: string } };
+                  if (obData.onboarding?.status === "APROBADO") {
+                    window.location.href = "/pro/perfil-aprobado";
+                    return;
+                  }
+                }
+              } catch {
+                // si falla el check, seguir cargando el panel normal
+              }
+            }
+          }
           setProId(data.session.userId);
           await loadAll(data.session.userId);
         }
@@ -1195,6 +966,8 @@ export default function ProPage() {
         </section>
 
         <div className="page client-dashboard-sections">
+          <MercadoPagoConnectionCard />
+
           {feedback ? <p className="feedback ok">{feedback}</p> : null}
           {error ? <p className="feedback error">{error}</p> : null}
 
@@ -1742,89 +1515,16 @@ export default function ProPage() {
             </section>
           ) : null}
 
-          {activeView === "notificaciones" ? (
-            <section className="auth-flow-panel client-dashboard-section">
-            <div className="panel-head client-dashboard-panel-head">
-              <h2>Notificaciones</h2>
-              <p>Mensajes y movimientos importantes de tu cuenta.</p>
-            </div>
-            <div className="list client-dashboard-list">
-              {notifications.length === 0 ? (
-                <p className="empty">Sin notificaciones por ahora.</p>
-              ) : (
-                notifications.map((item) => (
-                  <article className="booking-card client-dashboard-card" key={item.id}>
-                    <p>
-                      <strong>{item.title}</strong>
-                    </p>
-                    <p>{item.body}</p>
-                    <p>{new Date(item.createdAt).toLocaleString("es-CL")}</p>
-                  </article>
-                ))
-              )}
-            </div>
-            </section>
-          ) : null}
+          {activeView === "notificaciones" ? <ProNotificationsView notifications={notifications} /> : null}
 
           {activeView === "reservas" ? (
-            <section className="auth-flow-panel client-dashboard-section">
-            <div className="panel-head client-dashboard-panel-head">
-              <h2>Servicios</h2>
-              <p>Revisa y actualiza el estado de tus reservas activas sin mezclarlo con reseñas ni payouts.</p>
-            </div>
-
-            <div className="list client-dashboard-list">
-              {upcomingBookings.length === 0 ? (
-                <p className="empty">Todavía no tienes servicios asignados.</p>
-              ) : (
-                upcomingBookings.map((booking) => (
-                  <article className="booking-card client-dashboard-card" key={booking.id}>
-                    <div className="booking-head">
-                      <h3>{booking.service.name}</h3>
-                      <span
-                        className={`status ${
-                          booking.status === "COMPLETED" ? "status-completed" : booking.status === "CANCELLED" ? "status-cancelled" : "status-accepted"
-                        }`}
-                      >
-                        {PRO_STATUS_LABELS[booking.status] ?? booking.status}
-                      </span>
-                    </div>
-                    <p className="client-booking-eyebrow">{booking.status === "COMPLETED" ? "Servicio realizado" : "Próxima atención"}</p>
-                    <p>
-                      <strong>Cliente:</strong> {booking.customer.fullName} ({booking.customer.email})
-                    </p>
-                    <p>
-                      <strong>Fecha:</strong> {formatBookingDate(booking.scheduledAt)}
-                    </p>
-                    <p>
-                      <strong>Total:</strong> {clp(booking.totalPriceClp)}
-                    </p>
-                    <div className="status-editor">
-                      <label>
-                        Estado
-                        <select
-                          value={statusByBooking[booking.id] ?? booking.status}
-                          onChange={(e) => setStatusByBooking((prev) => ({ ...prev, [booking.id]: e.target.value }))}
-                        >
-                          {statusOptions.map((status) => (
-                            <option key={status} value={status}>
-                              {PRO_STATUS_LABELS[status] ?? status}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
-                      <button className="cta small" type="button" onClick={() => updateStatus(booking.id)}>
-                        Guardar estado
-                      </button>
-                      <button className="cta ghost small" type="button" onClick={() => completeBooking(booking.id)}>
-                        Finalizar
-                      </button>
-                    </div>
-                  </article>
-                ))
-              )}
-            </div>
-            </section>
+            <ProReservasView
+              bookings={upcomingBookings}
+              statusByBooking={statusByBooking}
+              setStatusByBooking={setStatusByBooking}
+              updateStatus={updateStatus}
+              completeBooking={completeBooking}
+            />
           ) : null}
 
           {activeView === "resenas" ? (

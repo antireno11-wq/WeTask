@@ -2,6 +2,11 @@ import { UserRole } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { getRequestIdentity, hasRole } from "@/lib/auth";
 import { sendBookingStatusEmailToCustomer } from "@/lib/booking-status-email";
+import {
+  assertTransition,
+  type BookingActor,
+  InvalidBookingTransitionError
+} from "@/lib/booking-state-machine";
 import { prisma } from "@/lib/prisma";
 import { marketplaceBookingStatusUpdateSchema } from "@/lib/validators";
 
@@ -26,9 +31,21 @@ export async function PATCH(req: NextRequest, context: { params: { bookingId: st
       return NextResponse.json({ error: "Solo puedes actualizar tus propias reservas" }, { status: 403 });
     }
 
-    const allowedTransitionsByPro = new Set(["ACCEPTED", "IN_PROGRESS", "AWAITING_CUSTOMER_CONFIRMATION", "CANCELLED"]);
-    if (identity.role === UserRole.PRO && !allowedTransitionsByPro.has(input.status)) {
-      return NextResponse.json({ error: "Estado no permitido para taskers" }, { status: 400 });
+    const actor: BookingActor = identity.role === UserRole.ADMIN ? "ADMIN" : "PRO";
+    try {
+      assertTransition(booking.status, input.status, actor);
+    } catch (transitionError) {
+      if (transitionError instanceof InvalidBookingTransitionError) {
+        return NextResponse.json(
+          {
+            error: `No se permite la transición ${transitionError.from} → ${transitionError.to} para ${actor}`,
+            from: transitionError.from,
+            to: transitionError.to
+          },
+          { status: 409 }
+        );
+      }
+      throw transitionError;
     }
 
     const updated = await prisma.booking.update({

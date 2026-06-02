@@ -1,6 +1,11 @@
-import { UserRole } from "@prisma/client";
+import { BookingStatus, UserRole } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { getRequestIdentity, hasRole } from "@/lib/auth";
+import {
+  assertTransition,
+  type BookingActor,
+  InvalidBookingTransitionError
+} from "@/lib/booking-state-machine";
 import { prisma } from "@/lib/prisma";
 
 export async function POST(req: NextRequest, context: { params: { bookingId: string } }) {
@@ -21,9 +26,26 @@ export async function POST(req: NextRequest, context: { params: { bookingId: str
       return NextResponse.json({ error: "No se puede finalizar sin pago confirmado" }, { status: 400 });
     }
 
+    const actor: BookingActor = identity.role === UserRole.ADMIN ? "ADMIN" : "PRO";
+    try {
+      assertTransition(booking.status, BookingStatus.AWAITING_CUSTOMER_CONFIRMATION, actor);
+    } catch (transitionError) {
+      if (transitionError instanceof InvalidBookingTransitionError) {
+        return NextResponse.json(
+          { error: "El estado actual de la reserva no permite finalizarla.", from: transitionError.from, to: transitionError.to },
+          { status: 409 }
+        );
+      }
+      throw transitionError;
+    }
+
     const updated = await prisma.booking.update({
       where: { id: booking.id },
-      data: { status: "AWAITING_CUSTOMER_CONFIRMATION" }
+      data: {
+        status: BookingStatus.AWAITING_CUSTOMER_CONFIRMATION,
+        // Señal de finalización del tasker, anclaje para el auto-confirm (G8).
+        checkOutAt: booking.checkOutAt ?? new Date()
+      }
     });
 
     if (booking.customerId) {

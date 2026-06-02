@@ -1,11 +1,14 @@
 import { NextResponse } from "next/server";
+import { unstable_cache } from "next/cache";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
-  try {
-    const services = await prisma.service.findMany({
+const SERVICES_TAG = "marketplace:services";
+
+const getServices = unstable_cache(
+  async () => {
+    return prisma.service.findMany({
       where: { isActive: true },
       orderBy: [{ name: "asc" }],
       select: {
@@ -17,6 +20,14 @@ export async function GET() {
         durationMin: true
       }
     });
+  },
+  ["marketplace:services:v1"],
+  { revalidate: 300, tags: [SERVICES_TAG] }
+);
+
+export async function GET() {
+  try {
+    const services = await getServices();
 
     return NextResponse.json({ services }, { status: 200 });
   } catch (error) {

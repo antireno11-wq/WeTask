@@ -64,42 +64,73 @@ function formatCommunes(value: unknown) {
   return communes.length ? communes.join(", ") : "-";
 }
 
+function daysInQueue(row: CleaningOnboardingItem): number | null {
+  const reference = row.submittedAt ?? row.createdAt;
+  if (!reference) return null;
+  const ts = new Date(reference).getTime();
+  if (Number.isNaN(ts)) return null;
+  return Math.max(0, Math.floor((Date.now() - ts) / (1000 * 60 * 60 * 24)));
+}
+
+function queueBadge(days: number | null) {
+  if (days === null) return null;
+  if (days >= 5) return { label: `${days}d en cola`, className: "status-cancelled" };
+  if (days >= 2) return { label: `${days}d en cola`, className: "status-pending" };
+  return { label: days === 0 ? "Hoy" : `${days}d`, className: "status-completed" };
+}
+
 export default function AdminCleaningOnboardingPage() {
   const [rows, setRows] = useState<CleaningOnboardingItem[]>([]);
   const [statusFilter, setStatusFilter] = useState<string>("");
   const [dateOrder, setDateOrder] = useState<"desc" | "asc">("desc");
   const [viewMode, setViewMode] = useState<"queue" | "validated">("queue");
+  const [searchInput, setSearchInput] = useState<string>("");
+  const [searchTerm, setSearchTerm] = useState<string>("");
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [ready, setReady] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [feedback, setFeedback] = useState("");
-  const pendingCount = rows.filter((row) => row.status === "PENDIENTE_REVISION").length;
-  const correctionCount = rows.filter((row) => row.status === "REQUIERE_CORRECCION").length;
-  const activeCount = rows.filter((row) => row.status === "ACTIVO").length;
   const queueCount = rows.filter((row) =>
     ["BORRADOR", "PENDIENTE_REVISION", "REQUIERE_CORRECCION"].includes(row.status)
   ).length;
   const validatedCount = rows.filter((row) => ["APROBADO", "ACTIVO"].includes(row.status)).length;
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError("");
-    try {
-      const search = new URLSearchParams();
-      if (statusFilter) search.set("status", statusFilter);
-      search.set("order", dateOrder);
-      search.set("view", viewMode);
-      const query = search.toString() ? `?${search.toString()}` : "";
-      const response = await fetch(`/api/admin/onboarding/cleaning${query}`);
-      const data = (await response.json()) as { items?: CleaningOnboardingItem[]; error?: string; detail?: string };
-      if (!response.ok || !data.items) throw new Error(data.detail || data.error || "No se pudo cargar onboarding");
-      setRows(data.items);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Error inesperado");
-    } finally {
-      setLoading(false);
-    }
-  }, [dateOrder, statusFilter, viewMode]);
+  const load = useCallback(
+    async (options?: { cursor?: string | null; append?: boolean }) => {
+      const cursor = options?.cursor ?? null;
+      const append = Boolean(options?.append);
+      if (append) setLoadingMore(true);
+      else setLoading(true);
+      setError("");
+      try {
+        const params = new URLSearchParams();
+        if (statusFilter) params.set("status", statusFilter);
+        params.set("order", dateOrder);
+        params.set("view", viewMode);
+        if (searchTerm.trim()) params.set("q", searchTerm.trim());
+        if (cursor) params.set("cursor", cursor);
+        const query = params.toString() ? `?${params.toString()}` : "";
+        const response = await fetch(`/api/admin/onboarding/cleaning${query}`);
+        const data = (await response.json()) as {
+          items?: CleaningOnboardingItem[];
+          nextCursor?: string | null;
+          error?: string;
+          detail?: string;
+        };
+        if (!response.ok || !data.items) throw new Error(data.detail || data.error || "No se pudo cargar onboarding");
+        setRows((current) => (append ? [...current, ...data.items!] : data.items!));
+        setNextCursor(data.nextCursor ?? null);
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Error inesperado");
+      } finally {
+        if (append) setLoadingMore(false);
+        else setLoading(false);
+      }
+    },
+    [dateOrder, searchTerm, statusFilter, viewMode]
+  );
 
   useEffect(() => {
     if (!ready) return;
@@ -112,6 +143,9 @@ export default function AdminCleaningOnboardingPage() {
     setStatusFilter(params.get("status") ?? "");
     setDateOrder(params.get("order") === "asc" ? "asc" : "desc");
     setViewMode(params.get("view") === "validated" ? "validated" : "queue");
+    const initialSearch = params.get("q") ?? "";
+    setSearchInput(initialSearch);
+    setSearchTerm(initialSearch);
     setReady(true);
   }, []);
 
@@ -122,13 +156,20 @@ export default function AdminCleaningOnboardingPage() {
     else params.delete("status");
     params.set("order", dateOrder);
     params.set("view", viewMode);
+    if (searchTerm.trim()) params.set("q", searchTerm.trim());
+    else params.delete("q");
     const query = params.toString();
     window.history.replaceState(null, "", query ? `${window.location.pathname}?${query}` : window.location.pathname);
-  }, [dateOrder, ready, statusFilter, viewMode]);
+  }, [dateOrder, ready, searchTerm, statusFilter, viewMode]);
 
   const handleViewChange = (nextView: "queue" | "validated") => {
     setViewMode(nextView);
     setStatusFilter("");
+  };
+
+  const handleSearchSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setSearchTerm(searchInput.trim());
   };
 
   const runAction = async (onboardingId: string, action: ActionType) => {
@@ -215,6 +256,30 @@ export default function AdminCleaningOnboardingPage() {
             )}
           </select>
         </label>
+        <form onSubmit={handleSearchSubmit} style={{ display: "inline-flex", gap: 8, alignItems: "center" }}>
+          <input
+            type="search"
+            placeholder="Buscar por nombre, email, teléfono o RUT"
+            value={searchInput}
+            onChange={(event) => setSearchInput(event.target.value)}
+            style={{ padding: "8px 12px", borderRadius: 12, border: "1px solid #cdddee", minWidth: 280, font: "inherit" }}
+          />
+          <button type="submit" className="cta small">
+            Buscar
+          </button>
+          {searchTerm ? (
+            <button
+              type="button"
+              className="cta ghost small"
+              onClick={() => {
+                setSearchInput("");
+                setSearchTerm("");
+              }}
+            >
+              Limpiar
+            </button>
+          ) : null}
+        </form>
         <button
           type="button"
           className="cta ghost small"
@@ -237,11 +302,19 @@ export default function AdminCleaningOnboardingPage() {
       ) : null}
 
       <div className="list">
-        {rows.map((row) => (
+        {rows.map((row) => {
+          const days = daysInQueue(row);
+          const badge = queueBadge(days);
+          return (
           <article key={row.id} className="booking-card">
             <div className="booking-head">
               <h3>{row.user.fullName}</h3>
-              <span className={`status ${statusClasses[row.status]}`}>{statusLabels[row.status]}</span>
+              <div style={{ display: "inline-flex", gap: 8, flexWrap: "wrap" }}>
+                <span className={`status ${statusClasses[row.status]}`}>{statusLabels[row.status]}</span>
+                {badge && viewMode === "queue" ? (
+                  <span className={`status ${badge.className}`}>{badge.label}</span>
+                ) : null}
+              </div>
             </div>
 
             <p>
@@ -302,8 +375,22 @@ export default function AdminCleaningOnboardingPage() {
               </button>
             </div>
           </article>
-        ))}
+          );
+        })}
       </div>
+
+      {nextCursor ? (
+        <div className="cta-row" style={{ justifyContent: "center", marginTop: 24 }}>
+          <button
+            type="button"
+            className="cta ghost"
+            onClick={() => void load({ cursor: nextCursor, append: true })}
+            disabled={loadingMore}
+          >
+            {loadingMore ? "Cargando..." : "Cargar más"}
+          </button>
+        </div>
+      ) : null}
     </AdminHeroShell>
   );
 }

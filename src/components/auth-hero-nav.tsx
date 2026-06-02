@@ -6,7 +6,7 @@ import { BrandLogo } from "@/components/brand-logo";
 const primaryLinks = [
   { href: "/", label: "Inicio" },
   { href: "/como-funciona", label: "Cómo funciona" },
-  { href: "/services", label: "Servicios" }
+  { href: "/servicios", label: "Servicios" }
 ];
 
 const accountLinks = [

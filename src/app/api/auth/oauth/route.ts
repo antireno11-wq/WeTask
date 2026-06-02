@@ -1,25 +1,46 @@
 import { UserRole } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
+import { OAuth2Client, type TokenPayload } from "google-auth-library";
 import { encodeSessionCookie, SESSION_COOKIE_NAME } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { resolveLoginRole } from "@/lib/user-roles";
 import { verifyOAuthToken } from "@/lib/oauth-verifier";
+import { getClientIp, rateLimit, tooManyRequestsResponse } from "@/lib/rate-limit";
+import { getCurrentTermsVersionId } from "@/lib/terms-version";
+import { resolveLoginRole } from "@/lib/user-roles";
 
 export const dynamic = "force-dynamic";
 
+type OAuthPayload = {
+  provider?: "GOOGLE" | "APPLE";
+  idToken?: string;
+  email?: string;
+  fullName?: string;
+  role?: "CUSTOMER" | "PRO";
+  acceptTerms?: boolean;
+};
+
+async function verifyGoogleIdToken(idToken: string): Promise<TokenPayload | null> {
+  const clientId = process.env.GOOGLE_OAUTH_CLIENT_ID;
+  if (!clientId) return null;
+  try {
+    const client = new OAuth2Client(clientId);
+    const ticket = await client.verifyIdToken({ idToken, audience: clientId });
+    return ticket.getPayload() ?? null;
+  } catch {
+    return null;
+  }
+}
+
 export async function POST(req: NextRequest) {
   try {
-    const body = (await req.json()) as {
-      provider?: "GOOGLE" | "APPLE";
-      idToken?: string;
-      email?: string;
-      fullName?: string;
-      role?: "CUSTOMER" | "PRO";
-      acceptTerms?: boolean;
-    };
+    const ip = getClientIp(req);
+    const rl = await rateLimit("auth.oauth", ip, "10/m");
+    if (!rl.success) return tooManyRequestsResponse(rl) as unknown as NextResponse;
 
+    const body = (await req.json()) as OAuthPayload;
     const provider = body.provider === "APPLE" ? "APPLE" : body.provider === "GOOGLE" ? "GOOGLE" : null;
     const role = body.role === "PRO" ? UserRole.PRO : UserRole.CUSTOMER;
+    const isProduction = process.env.NODE_ENV === "production";
 
     if (!provider) {
       return NextResponse.json({ error: "provider es requerido (GOOGLE o APPLE)" }, { status: 400 });
@@ -32,40 +53,58 @@ export async function POST(req: NextRequest) {
     let email = body.email?.trim().toLowerCase();
     let fullName = body.fullName?.trim();
 
-    const isProduction = process.env.NODE_ENV === "production";
-
     if (body.idToken) {
-      // Verify token cryptographically
-      try {
-        const verified = await verifyOAuthToken(provider, body.idToken);
-        email = verified.email;
-        fullName = verified.fullName;
-      } catch (verificationError) {
-        return NextResponse.json(
-          {
-            error: "Token de autenticación inválido",
-            detail: verificationError instanceof Error ? verificationError.message : "Error de verificación"
-          },
-          { status: 401 }
-        );
+      if (provider === "GOOGLE") {
+        if (!process.env.GOOGLE_OAUTH_CLIENT_ID) {
+          return NextResponse.json(
+            { error: "OAuth no está configurado en el servidor" },
+            { status: 503 }
+          );
+        }
+
+        const claims = await verifyGoogleIdToken(body.idToken);
+        if (!claims || !claims.email || claims.email_verified !== true) {
+          return NextResponse.json({ error: "Token de Google inválido o email no verificado" }, { status: 401 });
+        }
+
+        email = claims.email.trim().toLowerCase();
+        fullName = (claims.name || claims.given_name || email.split("@")[0]).trim();
+      } else {
+        try {
+          const verified = await verifyOAuthToken(provider, body.idToken);
+          email = verified.email;
+          fullName = verified.fullName;
+        } catch (verificationError) {
+          return NextResponse.json(
+            {
+              error: "Token de autenticación inválido",
+              detail: verificationError instanceof Error ? verificationError.message : "Error de verificación"
+            },
+            { status: 401 }
+          );
+        }
       }
+    } else if (isProduction) {
+      return NextResponse.json(
+        { error: "idToken es requerido en el entorno de producción para autenticación OAuth" },
+        { status: 400 }
+      );
+    } else if (!email || !fullName) {
+      return NextResponse.json(
+        { error: "idToken (o email y fullName en desarrollo) son requeridos" },
+        { status: 400 }
+      );
     } else {
-      // No token provided. Enforce it in production.
-      if (isProduction) {
-        return NextResponse.json(
-          { error: "idToken es requerido en el entorno de producción para autenticación OAuth" },
-          { status: 400 }
-        );
-      }
-      // Local dev fallback
-      if (!email || !fullName) {
-        return NextResponse.json(
-          { error: "idToken (o email y fullName en desarrollo) son requeridos" },
-          { status: 400 }
-        );
-      }
-      console.warn(`[oauth] Insecure dev fallback used for ${email}. Configure GOOGLE_CLIENT_ID/APPLE_CLIENT_ID for full verification.`);
+      console.warn(
+        `[oauth] Insecure dev fallback used for ${email}. Configure GOOGLE_OAUTH_CLIENT_ID for full verification.`
+      );
     }
+
+    if (!email || !fullName) {
+      return NextResponse.json({ error: "No se pudo determinar el email del usuario" }, { status: 400 });
+    }
+
+    const termsVersionId = await getCurrentTermsVersionId();
 
     const user = await prisma.user.upsert({
       where: { email },
@@ -73,6 +112,7 @@ export async function POST(req: NextRequest) {
         fullName,
         authProvider: provider,
         termsAcceptedAt: new Date(),
+        termsVersionId: termsVersionId ?? undefined,
         emailVerifiedAt: new Date()
       },
       create: {
@@ -81,6 +121,7 @@ export async function POST(req: NextRequest) {
         role,
         authProvider: provider,
         termsAcceptedAt: new Date(),
+        termsVersionId: termsVersionId ?? undefined,
         emailVerifiedAt: new Date(),
         roleAssignments: {
           create: {
@@ -136,7 +177,9 @@ export async function POST(req: NextRequest) {
 
     return response;
   } catch (error) {
-    return NextResponse.json({ error: "No se pudo autenticar con proveedor", detail: error instanceof Error ? error.message : "Error desconocido" }, { status: 400 });
+    return NextResponse.json(
+      { error: "No se pudo autenticar con proveedor", detail: error instanceof Error ? error.message : "Error desconocido" },
+      { status: 400 }
+    );
   }
 }
-

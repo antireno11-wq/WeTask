@@ -448,7 +448,7 @@ export default function SolicitarTecnicoPage() {
 
               <div className="we-results-list">
               {visibleTaskers.map((tasker) => {
-                const availabilityHref = `/profesionales/${tasker.userId}?date=${encodeURIComponent(serviceDate)}#availability`;
+                const availabilityHref = `/pro/${tasker.userId}?date=${encodeURIComponent(serviceDate)}#availability`;
 
                 return (
                 <article className="we-pro-card" key={`${tasker.id}-${tasker.userId}`}>

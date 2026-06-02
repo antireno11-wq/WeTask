@@ -140,20 +140,36 @@ function getOnboardingServiceSlugs(value: Prisma.JsonValue | null): string[] {
   return value.filter((item): item is string => typeof item === "string");
 }
 
+function parseOnboardingServiceRates(value: Prisma.JsonValue | null): Map<string, number> {
+  const map = new Map<string, number>();
+  if (!Array.isArray(value)) return map;
+  for (const item of value) {
+    if (!item || typeof item !== "object") continue;
+    const entry = item as { serviceSlug?: unknown; hourlyRateClp?: unknown };
+    if (typeof entry.serviceSlug !== "string") continue;
+    const rate = typeof entry.hourlyRateClp === "number" ? entry.hourlyRateClp : Number(entry.hourlyRateClp);
+    if (!Number.isFinite(rate) || rate <= 0) continue;
+    map.set(entry.serviceSlug, rate);
+  }
+  return map;
+}
+
 async function syncTaskerServicesForCategory(input: {
   professionalProfileId: string;
   categorySlug: string;
   hourlyRateClp: number | null;
   minBookingHours: number | null | undefined;
   offeredServices: string[];
-}) {
+  perServiceRates?: Map<string, number>;
+}, tx?: Prisma.TransactionClient) {
+  const client = tx || prisma;
   const normalizedCategorySlug = normalizeTaskerCategorySlug(input.categorySlug);
   const selectedCoreService = getCoreServiceForTaskerCategory(normalizedCategorySlug);
   if (!normalizedCategorySlug || !selectedCoreService) {
     return { updated: 0, reason: "missing_core_service" as const };
   }
 
-  const category = await prisma.category.findFirst({
+  const category = await client.category.findFirst({
     where: {
       isActive: true,
       slug: getMarketplaceCategorySlugForTaskerCategory(normalizedCategorySlug) ?? undefined
@@ -177,7 +193,7 @@ async function syncTaskerServicesForCategory(input: {
         : [];
 
   const services = selectedServices.length
-    ? await prisma.service.findMany({
+    ? await client.service.findMany({
         where: {
           categoryId: category.id,
           isActive: true,
@@ -185,7 +201,7 @@ async function syncTaskerServicesForCategory(input: {
         },
         orderBy: [{ basePriceClp: "asc" }]
       })
-    : await prisma.service.findMany({
+    : await client.service.findMany({
         where: {
           categoryId: category.id,
           isActive: true,
@@ -203,7 +219,9 @@ async function syncTaskerServicesForCategory(input: {
 
   let updated = 0;
   for (const service of services) {
-    await prisma.taskerService.upsert({
+    const priceClp =
+      input.perServiceRates?.get(service.slug) ?? input.hourlyRateClp ?? service.basePriceClp;
+    await client.taskerService.upsert({
       where: {
         professionalProfileId_serviceId: {
           professionalProfileId: input.professionalProfileId,
@@ -214,13 +232,13 @@ async function syncTaskerServicesForCategory(input: {
         professionalProfileId: input.professionalProfileId,
         categoryId: category.id,
         serviceId: service.id,
-        priceClp: input.hourlyRateClp ?? service.basePriceClp,
+        priceClp,
         minBooking: input.minBookingHours ?? category.minHours,
         isActive: true
       },
       update: {
         categoryId: category.id,
-        priceClp: input.hourlyRateClp ?? service.basePriceClp,
+        priceClp,
         minBooking: input.minBookingHours ?? category.minHours,
         isActive: true
       }
@@ -228,7 +246,7 @@ async function syncTaskerServicesForCategory(input: {
     updated += 1;
   }
 
-  await prisma.taskerService.updateMany({
+  await client.taskerService.updateMany({
     where: {
       professionalProfileId: input.professionalProfileId,
       categoryId: category.id,
@@ -245,8 +263,9 @@ async function syncTaskerServicesForCategory(input: {
   };
 }
 
-export async function syncTaskerMarketplaceServicesFromOnboarding(userId: string) {
-  const user = await prisma.user.findUnique({
+export async function syncTaskerMarketplaceServicesFromOnboarding(userId: string, tx?: Prisma.TransactionClient) {
+  const client = tx || prisma;
+  const user = await client.user.findUnique({
     where: { id: userId },
     select: {
       cleaningOnboarding: {
@@ -257,6 +276,7 @@ export async function syncTaskerMarketplaceServicesFromOnboarding(userId: string
           categorySlug: true,
           offeredServices: true,
           hourlyRateClp: true,
+          serviceRates: true,
           minBookingHours: true,
           profilePhotoUrl: true,
           shortDescription: true,
@@ -287,7 +307,7 @@ export async function syncTaskerMarketplaceServicesFromOnboarding(userId: string
     onboarding.currentStep >= 12 &&
     onboarding.submittedAt
   ) {
-    await prisma.cleaningOnboarding.update({
+    await client.cleaningOnboarding.update({
       where: { userId },
       data: {
         status: CleaningOnboardingStatus.ACTIVO
@@ -296,7 +316,7 @@ export async function syncTaskerMarketplaceServicesFromOnboarding(userId: string
     onboarding.status = CleaningOnboardingStatus.ACTIVO;
   }
 
-  const profile = await prisma.professionalProfile.upsert({
+  const profile = await client.professionalProfile.upsert({
     where: { userId },
     create: {
       userId,
@@ -326,15 +346,18 @@ export async function syncTaskerMarketplaceServicesFromOnboarding(userId: string
     }
   });
 
+  const perServiceRates = parseOnboardingServiceRates(onboarding.serviceRates);
+
   const mainSync = await syncTaskerServicesForCategory({
     professionalProfileId: profile.id,
     categorySlug: onboarding.categorySlug,
     hourlyRateClp: onboarding.hourlyRateClp,
     minBookingHours: onboarding.minBookingHours,
-    offeredServices: getOnboardingServiceSlugs(onboarding.offeredServices)
-  });
+    offeredServices: getOnboardingServiceSlugs(onboarding.offeredServices),
+    perServiceRates
+  }, tx);
 
-  const additionalCategories = await prisma.taskerCategoryProfile.findMany({
+  const additionalCategories = await client.taskerCategoryProfile.findMany({
     where: {
       professionalProfileId: profile.id,
       isActive: true
@@ -355,7 +378,7 @@ export async function syncTaskerMarketplaceServicesFromOnboarding(userId: string
       hourlyRateClp: item.hourlyRateClp,
       minBookingHours: item.minBookingHours,
       offeredServices: extractOfferedServicesForTaskerCategory(item.categorySlug, item.scopeData)
-    });
+    }, tx);
     updated += sync.updated;
   }
 
@@ -366,8 +389,9 @@ export async function syncTaskerMarketplaceServicesFromOnboarding(userId: string
   };
 }
 
-export async function syncTaskerAvailabilitySlotsFromOnboarding(userId: string, weeks = 6) {
-  const user = await prisma.user.findUnique({
+export async function syncTaskerAvailabilitySlotsFromOnboarding(userId: string, weeks = 6, tx?: Prisma.TransactionClient) {
+  const client = tx || prisma;
+  const user = await client.user.findUnique({
     where: { id: userId },
     select: {
       professionalProfile: {
@@ -394,7 +418,7 @@ export async function syncTaskerAvailabilitySlotsFromOnboarding(userId: string, 
   });
 
   const activeTaskerServicesCount = user?.professionalProfile
-    ? await prisma.taskerService.count({
+    ? await client.taskerService.count({
         where: {
           professionalProfileId: user.professionalProfile.id,
           isActive: true
@@ -421,7 +445,7 @@ export async function syncTaskerAvailabilitySlotsFromOnboarding(userId: string, 
     return { created: 0, publication, reason: "no_availability_blocks" };
   }
 
-  const existingSlots = await prisma.availabilitySlot.findMany({
+  const existingSlots = await client.availabilitySlot.findMany({
     where: {
       professionalProfileId: user.professionalProfile.id,
       startsAt: { gte: new Date() }
@@ -441,7 +465,7 @@ export async function syncTaskerAvailabilitySlotsFromOnboarding(userId: string, 
     return { created: 0, publication, reason: "already_synced" };
   }
 
-  await prisma.availabilitySlot.createMany({
+  await client.availabilitySlot.createMany({
     data: newSlots.map((slot) => ({
       professionalProfileId: user.professionalProfile!.id,
       serviceId: null,
