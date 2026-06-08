@@ -28,7 +28,8 @@ const sentryBuildOptions = {
   silent: true,
   widenClientFileUpload: true,
   hideSourceMaps: true,
-  disableLogger: true
+  disableLogger: true,
+  tunnelRoute: "/monitoring"
 };
 
 export default sentryEnabled

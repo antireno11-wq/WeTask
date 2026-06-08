@@ -8,6 +8,8 @@ if (dsn) {
     tracesSampleRate: process.env.NODE_ENV === "production" ? 0.1 : 0,
     environment: process.env.NODE_ENV ?? "development",
     enabled: process.env.NODE_ENV === "production",
+    // Attach local variable values to stack frames
+    includeLocalVariables: true,
     // No mandar datos sensibles al breadcrumb por accidente
     sendDefaultPii: false,
     beforeSend(event) {
