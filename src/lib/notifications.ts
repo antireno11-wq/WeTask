@@ -289,7 +289,7 @@ export function buildBookingReminderTemplate(payload: {
     title: payload.hoursUntil === 1 ? "Tu servicio empieza pronto" : "Recordatorio: tu servicio es mañana",
     intro: isCustomer
       ? `Te recordamos que tu servicio empieza en aproximadamente ${payload.hoursUntil} hora(s).`
-      : `Recordá que tenés que llegar a la dirección en aproximadamente ${payload.hoursUntil} hora(s).`,
+      : `Recuerda que tienes que llegar a la dirección en aproximadamente ${payload.hoursUntil} hora(s).`,
     bullets: [
       { label: "Servicio", value: payload.serviceName },
       { label: "Hora", value: payload.scheduledAt },

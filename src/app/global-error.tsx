@@ -15,7 +15,7 @@ export default function GlobalError({ error, reset }: { error: Error & { digest?
           <div style={{ maxWidth: 480, textAlign: "center" }}>
             <h1 style={{ fontSize: 24, marginBottom: 12 }}>Algo se rompió.</h1>
             <p style={{ color: "#48627d", marginBottom: 24 }}>
-              Recibimos el error y lo vamos a revisar. Mientras tanto podés reintentar o volver al inicio.
+              Recibimos el error y lo vamos a revisar. Mientras tanto puedes reintentar o volver al inicio.
             </p>
             <div style={{ display: "flex", gap: 12, justifyContent: "center" }}>
               <button

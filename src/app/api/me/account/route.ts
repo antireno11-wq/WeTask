@@ -109,7 +109,7 @@ export async function DELETE(req: NextRequest) {
   const response = NextResponse.json(
     {
       ok: true,
-      message: `Tu cuenta será eliminada el ${scheduledDeletionAt.toISOString().slice(0, 10)}. Hasta esa fecha podés cancelar la baja iniciando sesión y contactando soporte.`,
+      message: `Tu cuenta será eliminada el ${scheduledDeletionAt.toISOString().slice(0, 10)}. Hasta esa fecha puedes cancelar la baja iniciando sesión y contactando soporte.`,
       scheduledDeletionAt
     },
     { status: 200 }

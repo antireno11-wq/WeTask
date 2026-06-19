@@ -149,7 +149,7 @@ export default function PerfilAprobadoPage() {
                 </span>
                 <h3 style={{ margin: 0, fontSize: 18, color: "#17324d" }}>Conectá MercadoPago</h3>
                 <p style={{ margin: 0, color: "#48627d", fontSize: 14 }}>
-                  Sin esto, tus horarios no aparecen en búsqueda y no podés recibir reservas pagadas.
+                  Sin esto, tus horarios no aparecen en búsqueda y no puedes recibir reservas pagadas.
                 </p>
                 <Link
                   href="/pro"

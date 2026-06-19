@@ -289,7 +289,7 @@ export async function notifyBookingCompleted(
       fullName: input.customer.fullName,
       title: "Tu servicio fue completado",
       intro: `${input.serviceName} fue marcado como completado por tu profesional.`,
-      body: "Si todo estuvo bien, confirma en la app para que el pago se libere. Si hay algún problema, podés abrir un reclamo en las próximas 48h.",
+      body: "Si todo estuvo bien, confirma en la app para que el pago se libere. Si hay algún problema, puedes abrir un reclamo en las próximas 48h.",
       ctaLabel: "Confirmar o reportar",
       ctaUrl: `${baseUrl}/cliente/reservas/${input.bookingId}`
     }),

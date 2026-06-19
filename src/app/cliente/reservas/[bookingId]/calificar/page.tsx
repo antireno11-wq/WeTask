@@ -68,7 +68,7 @@ export default async function CalificarPage({ params }: { params: { bookingId: s
           ) : !canReview ? (
             <section className="auth-flow-panel" style={{ padding: 32, textAlign: "center", display: "grid", gap: 14 }}>
               <h1 style={{ margin: 0, fontSize: 22, color: "#17324d" }}>
-                Aún no podés calificar
+                Aún no puedes calificar
               </h1>
               <p style={{ margin: 0, color: "#48627d" }}>
                 Vas a poder dejar tu reseña una vez que el profesional cierre el servicio.

@@ -96,6 +96,10 @@ export async function POST(req: NextRequest) {
     if (input.hours < serviceCategory.minHours) {
       return NextResponse.json({ error: `Mínimo ${serviceCategory.minHours} hora(s) para este servicio` }, { status: 400 });
     }
+    // BOOK-13: no permitir reservar un horario en el pasado (slots stale).
+    if (input.startsAt.getTime() <= Date.now()) {
+      return NextResponse.json({ error: "El horario seleccionado ya pasó. Elige uno futuro." }, { status: 400 });
+    }
 
     let assignedProId = input.proId ?? null;
     let selectedSlotId = input.slotId ?? null;

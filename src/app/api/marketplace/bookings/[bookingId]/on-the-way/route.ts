@@ -40,7 +40,7 @@ export async function POST(req: NextRequest, context: { params: { bookingId: str
     }
     if (!VALID_STATUSES.includes(booking.status)) {
       return NextResponse.json(
-        { error: "Solo podés avisar que vas en camino en reservas confirmadas." },
+        { error: "Solo puedes avisar que vas en camino en reservas confirmadas." },
         { status: 409 }
       );
     }

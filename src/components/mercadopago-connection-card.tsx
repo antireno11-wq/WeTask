@@ -38,7 +38,7 @@ export function MercadoPagoConnectionCard() {
     if (typeof window === "undefined") return;
     const params = new URLSearchParams(window.location.search);
     if (params.get("mpConnected") === "true") {
-      setInfo("Tu cuenta MercadoPago se conectó correctamente. Ya podés recibir reservas pagadas con escrow.");
+      setInfo("Tu cuenta MercadoPago se conectó correctamente. Ya puedes recibir reservas pagadas con escrow.");
       params.delete("mpConnected");
       const q = params.toString();
       window.history.replaceState(null, "", q ? `${window.location.pathname}?${q}` : window.location.pathname);
@@ -106,7 +106,7 @@ export function MercadoPagoConnectionCard() {
           <h3>Cuenta MercadoPago</h3>
           <p>
             Conectá tu cuenta de MercadoPago para recibir pagos con escrow real. Mientras no esté conectada, tus horarios
-            no aparecen en búsqueda y no podés recibir reservas pagadas.
+            no aparecen en búsqueda y no puedes recibir reservas pagadas.
           </p>
         </div>
         {connected ? (
@@ -130,7 +130,7 @@ export function MercadoPagoConnectionCard() {
       ) : (
         <p style={{ marginTop: 12, color: "#48627d" }}>
           Te vamos a redirigir a MercadoPago para autorizar a WeTask como marketplace y cobrar en tu nombre. Necesitás
-          tener cuenta de MercadoPago (vendedor) — si no tenés, la creás gratis en mercadopago.cl.
+          tener cuenta de MercadoPago (vendedor) — si no tienes, la creas gratis en mercadopago.cl.
         </p>
       )}
 

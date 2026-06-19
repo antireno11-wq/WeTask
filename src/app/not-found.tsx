@@ -7,7 +7,7 @@ export default function NotFound() {
         <p style={{ color: "#7c4dff", fontWeight: 600, marginBottom: 8, fontSize: 14 }}>Error 404</p>
         <h1 style={{ fontSize: 28, marginBottom: 12 }}>Página no encontrada.</h1>
         <p style={{ color: "#48627d", marginBottom: 24 }}>
-          La URL que buscás no existe o fue movida. Verificá el link o volvé al inicio.
+          La URL que buscas no existe o fue movida. Verifica el link o vuelve al inicio.
         </p>
         <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
           <Link

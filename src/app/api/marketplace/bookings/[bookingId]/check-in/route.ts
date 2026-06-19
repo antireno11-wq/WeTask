@@ -71,7 +71,7 @@ export async function POST(req: NextRequest, context: { params: { bookingId: str
     }
     if (!VALID_STATUSES_FOR_CHECK_IN.includes(booking.status)) {
       return NextResponse.json(
-        { error: "Solo podés hacer check-in en reservas confirmadas.", from: booking.status },
+        { error: "Solo puedes hacer check-in en reservas confirmadas.", from: booking.status },
         { status: 409 }
       );
     }

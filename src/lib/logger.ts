@@ -48,7 +48,7 @@ export const logger: Logger = pino({
     remove: false
   },
   // Pretty transport en dev requeriría pino-pretty como dev dep + transport.
-  // Lo mantengo simple: JSON siempre. Si querés pretty local, usar
+  // Lo mantengo simple: JSON siempre. Si quieres pretty local, usar
   // `LOG_LEVEL=debug npm run dev | npx pino-pretty`.
   formatters: {
     level: (label) => ({ level: label })

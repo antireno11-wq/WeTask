@@ -203,7 +203,7 @@ export function BookingServiceActionsPanel({
       </div>
 
       {!paymentReady ? (
-        <p className="feedback error">El pago aún no está confirmado. No podés iniciar la ceremonia.</p>
+        <p className="feedback error">El pago aún no está confirmado. No puedes iniciar la ceremonia.</p>
       ) : null}
 
       <ol style={{ display: "grid", gap: 14, margin: 0, padding: 0, listStyle: "none" }}>
@@ -249,7 +249,7 @@ export function BookingServiceActionsPanel({
               <span style={{ fontSize: 13, color: "#48627d" }}>
                 {checkInAt
                   ? `Llegaste a las ${formatTime(checkInAt)}`
-                  : "Capturamos tu ubicación y, si querés, una foto del antes."}
+                  : "Capturamos tu ubicación y, si quieres, una foto del antes."}
               </span>
             </div>
             <button
