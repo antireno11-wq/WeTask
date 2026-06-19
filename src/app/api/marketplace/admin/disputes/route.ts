@@ -179,6 +179,7 @@ export async function PATCH(req: NextRequest) {
                 providerPaymentId: true,
                 status: true,
                 amountClp: true,
+                refundedAmountClp: true,
                 escrowStatus: true
               }
             },
@@ -201,10 +202,22 @@ export async function PATCH(req: NextRequest) {
       dispute.booking.payment?.escrowStatus === "RELEASED" || dispute.booking.payout?.status === "PAID";
     const useClawback = wantsRefund && escrowReleased;
 
+    // PAY-06: validar contra el SALDO restante (monto cobrado menos refunds
+    // previos), no contra el total — evita sobre-reembolso apilando parciales.
+    const amountChargedClp = dispute.booking.payment?.amountClp ?? 0;
+    const alreadyRefundedClp = dispute.booking.payment?.refundedAmountClp ?? 0;
+    const remainingRefundableClp = amountChargedClp - alreadyRefundedClp;
+
     if (wantsRefund) {
-      if (refundAmount > (dispute.booking.payment?.amountClp ?? 0)) {
+      if (remainingRefundableClp <= 0) {
         return NextResponse.json(
-          { error: "El monto a reembolsar no puede exceder el monto cobrado" },
+          { error: "Este pago ya fue reembolsado en su totalidad" },
+          { status: 409 }
+        );
+      }
+      if (refundAmount > remainingRefundableClp) {
+        return NextResponse.json(
+          { error: `El monto a reembolsar excede el saldo reembolsable (${remainingRefundableClp} CLP)` },
           { status: 400 }
         );
       }
@@ -248,7 +261,8 @@ export async function PATCH(req: NextRequest) {
       }
     }
 
-    const isFullRefund = wantsRefund && refundAmount >= (dispute.booking.payment?.amountClp ?? 0);
+    const cumulativeRefundedClp = alreadyRefundedClp + refundAmount;
+    const isFullRefund = wantsRefund && cumulativeRefundedClp >= amountChargedClp;
     const nextPaymentStatus = wantsRefund
       ? isFullRefund
         ? PaymentStatus.REFUNDED
@@ -300,7 +314,7 @@ export async function PATCH(req: NextRequest) {
             if (dispute.booking.payment) {
               await tx.payment.update({
                 where: { id: dispute.booking.payment.id },
-                data: { status: nextPaymentStatus!, escrowStatus: "CONTESTED" }
+                data: { status: nextPaymentStatus!, refundedAmountClp: cumulativeRefundedClp, escrowStatus: "CONTESTED" }
               });
             }
           } else if (dispute.booking.payment) {
@@ -308,6 +322,7 @@ export async function PATCH(req: NextRequest) {
               where: { id: dispute.booking.payment.id },
               data: {
                 status: nextPaymentStatus!,
+                refundedAmountClp: cumulativeRefundedClp,
                 providerStatus: providerRefundResult!.providerStatus,
                 refundedAt: providerRefundResult!.refundedAt ?? new Date(),
                 rawResponseJson: providerRefundResult!.raw as Prisma.InputJsonValue

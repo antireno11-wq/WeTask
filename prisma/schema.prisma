@@ -452,6 +452,7 @@ model Payment {
   errorCode           String?
   errorMessage        String?
   amountClp           Int
+  refundedAmountClp   Int           @default(0)
   platformFeeClp      Int           @default(0)
   applicationFeeClp   Int?
   collectorMpUserId   String?

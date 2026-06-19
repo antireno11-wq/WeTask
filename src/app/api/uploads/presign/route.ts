@@ -16,9 +16,9 @@ export const dynamic = "force-dynamic";
 const presignSchema = z.object({
   kind: z.enum(STORAGE_KINDS),
   contentType: z.string().min(3).max(120),
-  // PRO-07: obligatorio para poder validar el tamaño ANTES de firmar la URL
-  // (cierra el bypass de omitir sizeBytes). La enforcement dura en el objeto final
-  // requiere migrar a createPresignedPost con content-length-range.
+  // PRO-07: obligatorio para validar el tamaño ANTES de firmar la URL. El valor
+  // se firma como Content-Length en el PUT, así R2 también lo hace cumplir en el
+  // objeto final (no es solo un check client-side).
   sizeBytes: z.coerce.number().int().positive()
 });
 
@@ -77,6 +77,9 @@ export async function POST(req: NextRequest) {
     const uploadUrl = await getPresignedUploadUrl({
       key,
       contentType: input.contentType,
+      // PRO-07: el Content-Length va firmado → R2 rechaza si el cuerpo real no
+      // coincide con el tamaño ya validado contra el límite del kind.
+      contentLength: input.sizeBytes,
       expiresInSeconds: 900
     });
     return NextResponse.json({ uploadUrl, key, maxBytes: limits.maxBytes }, { status: 200 });

@@ -118,15 +118,24 @@ export function isStorageKey(value: string | null | undefined): value is string 
 export async function getPresignedUploadUrl(input: {
   key: string;
   contentType: string;
+  contentLength?: number;
   expiresInSeconds?: number;
 }): Promise<string> {
   const client = getClient();
   const command = new PutObjectCommand({
     Bucket: getBucket(),
     Key: input.key,
-    ContentType: input.contentType
+    ContentType: input.contentType,
+    // PRO-07: firmar el Content-Length exacto hace que el header sea parte de la
+    // firma. Si el cuerpo real difiere del tamaño declarado-y-validado, R2/S3
+    // rechaza con 403 (firma inválida). Cierra el bypass de declarar un tamaño
+    // chico para aprobar y luego subir un archivo enorme.
+    ...(typeof input.contentLength === "number" ? { ContentLength: input.contentLength } : {})
   });
-  return getSignedUrl(client, command, { expiresIn: input.expiresInSeconds ?? 900 });
+  return getSignedUrl(client, command, {
+    expiresIn: input.expiresInSeconds ?? 900,
+    ...(typeof input.contentLength === "number" ? { signableHeaders: new Set(["content-length"]) } : {})
+  });
 }
 
 export async function getPresignedReadUrl(input: {

@@ -69,27 +69,45 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Este pago no soporta reembolso automático" }, { status: 400 });
     }
 
-    // PAY-06: el monto del refund nunca puede superar lo cobrado.
-    if (input.amount && input.amount > payment.amountClp) {
+    // PAY-06: el refund nunca puede superar el SALDO restante (monto cobrado
+    // menos lo ya reembolsado en parciales previos, sea por este endpoint o por
+    // disputas). Sin esto, apilar refunds parciales sobre-reembolsa al cliente.
+    const alreadyRefunded = payment.refundedAmountClp ?? 0;
+    const remainingRefundable = payment.amountClp - alreadyRefunded;
+    if (remainingRefundable <= 0) {
       return NextResponse.json(
-        { error: `El monto excede lo cobrado (${payment.amountClp} CLP)` },
+        { error: "Este pago ya fue reembolsado en su totalidad", paymentId: payment.id },
+        { status: 409 }
+      );
+    }
+    const refundAmountReq = input.amount ?? remainingRefundable;
+    if (refundAmountReq > remainingRefundable) {
+      return NextResponse.json(
+        { error: `El monto excede el saldo reembolsable (${remainingRefundable} CLP)` },
         { status: 400 }
       );
     }
+    const cumulativeRefunded = alreadyRefunded + refundAmountReq;
+    const isFullRefund = cumulativeRefunded >= payment.amountClp;
+    const nextPaymentStatus = isFullRefund ? PaymentStatus.REFUNDED : PaymentStatus.PARTIAL_REFUNDED;
 
-    try {
-      assertTransition(payment.booking.status, BookingStatus.REFUNDED, "ADMIN");
-    } catch (transitionError) {
-      if (transitionError instanceof InvalidBookingTransitionError) {
-        return NextResponse.json(
-          {
-            error: `No se permite refund desde el estado ${transitionError.from}`,
-            from: transitionError.from
-          },
-          { status: 409 }
-        );
+    // El booking solo pasa a REFUNDED en un refund TOTAL. En parciales el
+    // booking conserva su estado (el servicio puede seguir en pie).
+    if (isFullRefund) {
+      try {
+        assertTransition(payment.booking.status, BookingStatus.REFUNDED, "ADMIN");
+      } catch (transitionError) {
+        if (transitionError instanceof InvalidBookingTransitionError) {
+          return NextResponse.json(
+            {
+              error: `No se permite refund desde el estado ${transitionError.from}`,
+              from: transitionError.from
+            },
+            { status: 409 }
+          );
+        }
+        throw transitionError;
       }
-      throw transitionError;
     }
 
     // PAY-03: si el escrow YA fue liberado al tasker, un refund automático a MP haría que la
@@ -105,7 +123,7 @@ export async function POST(req: NextRequest) {
           { status: 409 }
         );
       }
-      const refundAmount = input.amount ?? payment.amountClp;
+      const refundAmount = refundAmountReq;
       const proId = payment.booking.proId;
       await prisma.$transaction(async (tx) => {
         await tx.payoutClawback.create({
@@ -119,19 +137,26 @@ export async function POST(req: NextRequest) {
         });
         await tx.payment.update({
           where: { id: payment.id },
-          data: { status: PaymentStatus.REFUNDED, escrowStatus: "CONTESTED", refundedAt: new Date() }
+          data: {
+            status: nextPaymentStatus,
+            refundedAmountClp: cumulativeRefunded,
+            escrowStatus: "CONTESTED",
+            refundedAt: new Date()
+          }
         });
-        await tx.booking.update({
-          where: { id: payment.bookingId },
-          data: { status: BookingStatus.REFUNDED, paymentStatus: PaymentStatus.REFUNDED }
-        });
+        if (isFullRefund) {
+          await tx.booking.update({
+            where: { id: payment.bookingId },
+            data: { status: BookingStatus.REFUNDED, paymentStatus: nextPaymentStatus }
+          });
+        }
         await recordAdminAction(
           {
             actorId: admin.identity.userId,
             action: "payment.refund.clawback",
             target: { type: "Payment", id: payment.id },
             before: { bookingId: payment.bookingId, paymentStatus: payment.status, bookingStatus: payment.booking.status },
-            after: { paymentStatus: PaymentStatus.REFUNDED, clawbackAmountClp: refundAmount, escrowStatus: "CONTESTED" }
+            after: { paymentStatus: nextPaymentStatus, clawbackAmountClp: refundAmount, cumulativeRefundedClp: cumulativeRefunded, escrowStatus: "CONTESTED" }
           },
           tx
         );
@@ -150,7 +175,7 @@ export async function POST(req: NextRequest) {
 
     const providerResult = await refundProviderPayment("MERCADOPAGO", {
       providerPaymentId: payment.providerPaymentId,
-      amount: input.amount
+      amount: refundAmountReq
     });
 
     if (providerResult.status !== "refunded") {
@@ -168,22 +193,25 @@ export async function POST(req: NextRequest) {
       await tx.payment.update({
         where: { id: payment.id },
         data: {
-          status: PaymentStatus.REFUNDED,
-          providerStatus: "refunded",
-          // PAY-12: dejar el escrow consistente tras el refund.
-          escrowStatus: "REFUNDED",
+          status: nextPaymentStatus,
+          refundedAmountClp: cumulativeRefunded,
+          providerStatus: isFullRefund ? "refunded" : payment.providerStatus,
+          // PAY-12: dejar el escrow consistente solo cuando el refund es total.
+          escrowStatus: isFullRefund ? "REFUNDED" : payment.escrowStatus,
           refundedAt: providerResult.refundedAt ?? new Date(),
           rawResponseJson: providerResult.raw as any
         }
       });
 
-      await tx.booking.update({
-        where: { id: payment.bookingId },
-        data: {
-          status: BookingStatus.REFUNDED,
-          paymentStatus: PaymentStatus.REFUNDED
-        }
-      });
+      if (isFullRefund) {
+        await tx.booking.update({
+          where: { id: payment.bookingId },
+          data: {
+            status: BookingStatus.REFUNDED,
+            paymentStatus: nextPaymentStatus
+          }
+        });
+      }
 
       await recordAdminAction(
         {
@@ -196,10 +224,11 @@ export async function POST(req: NextRequest) {
             bookingStatus: payment.booking.status
           },
           after: {
-            paymentStatus: PaymentStatus.REFUNDED,
-            bookingStatus: BookingStatus.REFUNDED,
-            providerStatus: "refunded",
-            refundAmountClp: input.amount ?? null
+            paymentStatus: nextPaymentStatus,
+            bookingStatus: isFullRefund ? BookingStatus.REFUNDED : payment.booking.status,
+            providerStatus: isFullRefund ? "refunded" : payment.providerStatus,
+            refundAmountClp: refundAmountReq,
+            cumulativeRefundedClp: cumulativeRefunded
           }
         },
         tx
