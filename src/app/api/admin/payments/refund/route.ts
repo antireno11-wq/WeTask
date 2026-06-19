@@ -11,6 +11,7 @@ import {
 import { refundProviderPayment } from "@/lib/payments/provider-adapter";
 import { prisma } from "@/lib/prisma";
 import { rateLimit, tooManyRequestsResponse } from "@/lib/rate-limit";
+import { computeRefund } from "@/lib/refund-math";
 
 export const dynamic = "force-dynamic";
 
@@ -71,25 +72,21 @@ export async function POST(req: NextRequest) {
 
     // PAY-06: el refund nunca puede superar el SALDO restante (monto cobrado
     // menos lo ya reembolsado en parciales previos, sea por este endpoint o por
-    // disputas). Sin esto, apilar refunds parciales sobre-reembolsa al cliente.
-    const alreadyRefunded = payment.refundedAmountClp ?? 0;
-    const remainingRefundable = payment.amountClp - alreadyRefunded;
-    if (remainingRefundable <= 0) {
-      return NextResponse.json(
-        { error: "Este pago ya fue reembolsado en su totalidad", paymentId: payment.id },
-        { status: 409 }
-      );
+    // disputas). Lógica centralizada en computeRefund (cubierta por tests).
+    const refund = computeRefund(payment.amountClp, payment.refundedAmountClp ?? 0, input.amount);
+    if (!refund.ok) {
+      const msg =
+        refund.reason === "fully_refunded"
+          ? "Este pago ya fue reembolsado en su totalidad"
+          : refund.reason === "exceeds_remaining"
+            ? `El monto excede el saldo reembolsable (${refund.remainingClp} CLP)`
+            : "Monto de reembolso inválido";
+      return NextResponse.json({ error: msg, paymentId: payment.id }, { status: refund.reason === "fully_refunded" ? 409 : 400 });
     }
-    const refundAmountReq = input.amount ?? remainingRefundable;
-    if (refundAmountReq > remainingRefundable) {
-      return NextResponse.json(
-        { error: `El monto excede el saldo reembolsable (${remainingRefundable} CLP)` },
-        { status: 400 }
-      );
-    }
-    const cumulativeRefunded = alreadyRefunded + refundAmountReq;
-    const isFullRefund = cumulativeRefunded >= payment.amountClp;
-    const nextPaymentStatus = isFullRefund ? PaymentStatus.REFUNDED : PaymentStatus.PARTIAL_REFUNDED;
+    const refundAmountReq = refund.refundAmountClp;
+    const cumulativeRefunded = refund.cumulativeRefundedClp;
+    const isFullRefund = refund.isFullRefund;
+    const nextPaymentStatus = refund.nextPaymentStatus;
 
     // El booking solo pasa a REFUNDED en un refund TOTAL. En parciales el
     // booking conserva su estado (el servicio puede seguir en pie).

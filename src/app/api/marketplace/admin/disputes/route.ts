@@ -12,6 +12,7 @@ import {
 import { sendPlatformEmail } from "@/lib/notifications";
 import { refundProviderPayment } from "@/lib/payments/provider-adapter";
 import { prisma } from "@/lib/prisma";
+import { computeRefund } from "@/lib/refund-math";
 
 const MAX_PAGE_SIZE = 100;
 const DEFAULT_PAGE_SIZE = 30;
@@ -204,22 +205,21 @@ export async function PATCH(req: NextRequest) {
 
     // PAY-06: validar contra el SALDO restante (monto cobrado menos refunds
     // previos), no contra el total — evita sobre-reembolso apilando parciales.
+    // Lógica centralizada en computeRefund (cubierta por tests).
     const amountChargedClp = dispute.booking.payment?.amountClp ?? 0;
-    const alreadyRefundedClp = dispute.booking.payment?.refundedAmountClp ?? 0;
-    const remainingRefundableClp = amountChargedClp - alreadyRefundedClp;
+    const refundComp = wantsRefund
+      ? computeRefund(amountChargedClp, dispute.booking.payment?.refundedAmountClp ?? 0, refundAmount)
+      : null;
 
     if (wantsRefund) {
-      if (remainingRefundableClp <= 0) {
-        return NextResponse.json(
-          { error: "Este pago ya fue reembolsado en su totalidad" },
-          { status: 409 }
-        );
-      }
-      if (refundAmount > remainingRefundableClp) {
-        return NextResponse.json(
-          { error: `El monto a reembolsar excede el saldo reembolsable (${remainingRefundableClp} CLP)` },
-          { status: 400 }
-        );
+      if (refundComp && !refundComp.ok) {
+        const msg =
+          refundComp.reason === "fully_refunded"
+            ? "Este pago ya fue reembolsado en su totalidad"
+            : refundComp.reason === "exceeds_remaining"
+              ? `El monto a reembolsar excede el saldo reembolsable (${refundComp.remainingClp} CLP)`
+              : "Monto de reembolso inválido";
+        return NextResponse.json({ error: msg }, { status: refundComp.reason === "fully_refunded" ? 409 : 400 });
       }
       if (!canTransition(dispute.booking.status, BookingStatus.REFUNDED, "ADMIN")) {
         return NextResponse.json(
@@ -261,8 +261,8 @@ export async function PATCH(req: NextRequest) {
       }
     }
 
-    const cumulativeRefundedClp = alreadyRefundedClp + refundAmount;
-    const isFullRefund = wantsRefund && cumulativeRefundedClp >= amountChargedClp;
+    const cumulativeRefundedClp = refundComp?.ok ? refundComp.cumulativeRefundedClp : 0;
+    const isFullRefund = Boolean(refundComp?.ok && refundComp.isFullRefund);
     const nextPaymentStatus = wantsRefund
       ? isFullRefund
         ? PaymentStatus.REFUNDED
