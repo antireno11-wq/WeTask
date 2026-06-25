@@ -60,8 +60,7 @@ jobs:
     needs: checks
 
     env:
-      NODE_ENV: production
-      SESSION_SECRET: ${{ secrets.SESSION_SECRET }}
+      SESSION_SECRET: ${{ secrets.SESSION_SECRET || 'ci-placeholder-session-secret-32-bytes-min' }}
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
       NEXT_PUBLIC_APP_URL: ${{ secrets.PLAYWRIGHT_BASE_URL || 'http://localhost:3000' }}
       APP_URL: ${{ secrets.PLAYWRIGHT_BASE_URL || 'http://localhost:3000' }}
@@ -98,9 +97,14 @@ jobs:
       - name: Build (solo si no hay URL de staging externa)
         if: env.PLAYWRIGHT_BASE_URL == 'http://localhost:3000'
         run: npm run build
+        env:
+          NODE_ENV: production
 
       - name: Run E2E tests
         run: npx playwright test --reporter=list
+        env:
+          NODE_ENV: production
+          CI: true
 
       - name: Upload Playwright report
         uses: actions/upload-artifact@v4
