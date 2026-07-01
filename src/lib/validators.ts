@@ -420,7 +420,7 @@ export const cleaningOnboardingStartSchema = z.object({
   categorySlug: z.string().min(2).max(120).optional(),
   baseCommune: activeCommuneInputSchema,
   acceptTerms: z.boolean().optional().default(false),
-  profilePhotoUrl: imageDataUrlSchema.optional(),
+  profilePhotoUrl: z.union([imageDataUrlSchema, z.literal("")]).optional().nullable(),
   profilePhotoPositionX: z.coerce.number().min(0).max(100).optional(),
   profilePhotoPositionY: z.coerce.number().min(0).max(100).optional(),
   documentId: chileanRutSchema.optional(),
@@ -520,7 +520,7 @@ export const taskerOnboardingStep3Schema = z.object({
   documentId: chileanRutSchema,
   referenceAddress: z.string().min(5).max(240),
   baseCommune: activeCommuneInputSchema,
-  profilePhotoUrl: imageDataUrlSchema
+  profilePhotoUrl: z.union([imageDataUrlSchema, z.literal("")]).optional().nullable()
 });
 
 export const taskerOnboardingStep4Schema = z.object({

@@ -1197,37 +1197,35 @@ function CleaningOnboardingPageContent() {
       setError("Ingresa tu dirección.");
       return;
     }
-    if (!draft.profilePhotoUrl) {
-      setError("La foto de perfil es obligatoria.");
-      return;
-    }
 
     setSaving(true);
     setError("");
     setFeedback("");
     try {
       const normalizedProfilePhoto = await createCenteredProfilePhoto(draft.profilePhotoUrl, photoFocus.x, photoFocus.y);
-      let profilePhotoFinal = normalizedProfilePhoto || draft.profilePhotoUrl;
-      if (profilePhotoFinal && profilePhotoFinal.startsWith("data:")) {
-        try {
-          const uploadedKey = await uploadAssetViaPresign({
-            source: { dataUrl: profilePhotoFinal, contentType: "image/jpeg" },
-            kind: "profile_photo"
-          });
-          if (uploadedKey) {
-            profilePhotoFinal = uploadedKey;
-          }
-        } catch (uploadError) {
-          setError("No se pudo subir la foto de perfil al servidor. Intente de nuevo.");
-          setSaving(false);
-          return;
-        }
-      }
+      let profilePhotoFinal = normalizedProfilePhoto || draft.profilePhotoUrl || null;
+      const hasDataUrl = profilePhotoFinal && profilePhotoFinal.startsWith("data:");
 
       const addressOk = await validateHomeAddress();
       if (!addressOk) return;
 
       if (session?.role === "PRO") {
+        if (profilePhotoFinal && profilePhotoFinal.startsWith("data:")) {
+          try {
+            const uploadedKey = await uploadAssetViaPresign({
+              source: { dataUrl: profilePhotoFinal, contentType: "image/jpeg" },
+              kind: "profile_photo"
+            });
+            if (uploadedKey) {
+              profilePhotoFinal = uploadedKey;
+            }
+          } catch (uploadError) {
+            setError("No se pudo subir la foto de perfil al servidor. Intente de nuevo.");
+            setSaving(false);
+            return;
+          }
+        }
+
         await persistServerStep(3, {
           fullName: `${draft.firstName.trim()} ${draft.lastName.trim()}`,
           email: draft.email.trim().toLowerCase(),
@@ -1249,7 +1247,7 @@ function CleaningOnboardingPageContent() {
             baseCommune: draft.homeCommune,
             referenceAddress: draft.address.trim(),
             documentId: draft.rut.trim(),
-            profilePhotoUrl: profilePhotoFinal
+            profilePhotoUrl: null
           })
         });
         const data = (await response.json()) as {
@@ -1263,6 +1261,31 @@ function CleaningOnboardingPageContent() {
         }
         setSession(data.session);
         setOnboarding(data.onboarding);
+
+        if (profilePhotoFinal && profilePhotoFinal.startsWith("data:")) {
+          try {
+            const uploadedKey = await uploadAssetViaPresign({
+              source: { dataUrl: profilePhotoFinal, contentType: "image/jpeg" },
+              kind: "profile_photo"
+            });
+            if (uploadedKey) {
+              profilePhotoFinal = uploadedKey;
+              // Now that session cookie is set, we update onboarding with the uploaded key.
+              await persistServerStep(3, {
+                fullName: `${draft.firstName.trim()} ${draft.lastName.trim()}`,
+                email: draft.email.trim().toLowerCase(),
+                phone: draft.phone.trim(),
+                documentId: draft.rut.trim(),
+                referenceAddress: draft.address.trim(),
+                baseCommune: draft.homeCommune,
+                profilePhotoUrl: profilePhotoFinal
+              });
+            }
+          } catch (uploadError) {
+            console.error("No se pudo subir la foto de perfil en el registro:", uploadError);
+            setFeedback("Tu cuenta fue creada, pero no pudimos subir tu foto. Podrás intentarlo más tarde.");
+          }
+        }
       }
       setActiveStep(4);
     } catch (eventualError) {
@@ -2098,7 +2121,7 @@ function CleaningOnboardingPageContent() {
                     <p className="input-hint">{validatingAddress ? "Validando tu dirección automáticamente." : "La comuna se detecta automáticamente desde la dirección."}</p>
                   </label>
                   <label className="full">
-                    Foto de perfil
+                    Foto de perfil (opcional)
                     <input
                       type="file"
                       accept="image/png,image/jpeg"

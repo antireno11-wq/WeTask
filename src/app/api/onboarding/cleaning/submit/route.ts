@@ -51,7 +51,6 @@ function listMissingFields(onboarding: Awaited<ReturnType<typeof prisma.cleaning
   const required: Array<[string, unknown]> = [
     ["categorySlug", onboarding.categorySlug],
     ["phoneValidatedAt", onboarding.phoneValidatedAt],
-    ["profilePhotoUrl", onboarding.profilePhotoUrl],
     ["baseCommune", onboarding.baseCommune],
     ["referenceAddress", onboarding.referenceAddress],
     ["documentId", onboarding.documentId],

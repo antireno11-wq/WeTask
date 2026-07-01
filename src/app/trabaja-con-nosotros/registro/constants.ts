@@ -90,7 +90,6 @@ export const ONBOARDING_STEP_ITEMS: Array<{ step: WizardStep; label: string }> =
 
 export const SUBMIT_REQUIRED_FIELDS: Record<string, { label: string; step: WizardStep }> = {
   categorySlug: { label: "Categoría de servicio", step: 5 },
-  profilePhotoUrl: { label: "Foto de perfil", step: 3 },
   baseCommune: { label: "Comuna donde vive", step: 3 },
   referenceAddress: { label: "Dirección validada", step: 3 },
   documentId: { label: "RUT", step: 3 },

@@ -197,7 +197,7 @@ export async function PATCH(req: NextRequest) {
       });
 
       data = {
-        profilePhotoUrl: parsed.profilePhotoUrl,
+        profilePhotoUrl: parsed.profilePhotoUrl && parsed.profilePhotoUrl !== "" ? parsed.profilePhotoUrl : null,
         documentId: parsed.documentId.trim(),
         baseCommune: parsed.baseCommune,
         referenceAddress: parsed.referenceAddress.trim(),

@@ -64,7 +64,7 @@ export async function POST(req: NextRequest) {
             baseCommune,
             referenceAddress: input.referenceAddress?.trim() || null,
             documentId: input.documentId?.trim() || null,
-            profilePhotoUrl: input.profilePhotoUrl ?? null,
+            profilePhotoUrl: input.profilePhotoUrl && input.profilePhotoUrl !== "" ? input.profilePhotoUrl : null,
             profilePhotoPositionX: input.profilePhotoPositionX,
             profilePhotoPositionY: input.profilePhotoPositionY,
             serviceCommunes: [baseCommune],
